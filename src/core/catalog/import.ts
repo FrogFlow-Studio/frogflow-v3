@@ -19,7 +19,14 @@ export type ImportField =
   | "fileUrl"
   | "fileUrlKz"
   | "sortOrder"
-  | "kind";
+  | "kind"
+  | "sku"
+  | "photos";
+
+/** Строк за один импорт; сверх этого файл режем явно, с ошибкой, а не молча. */
+export const MAX_IMPORT_ROWS = 1000;
+/** Фото на товар из одной ячейки. */
+export const MAX_IMPORT_PHOTOS = 5;
 
 const ALIASES: Record<ImportField, string[]> = {
   id: ["id", "ид", "идентификатор"],
@@ -43,6 +50,19 @@ const ALIASES: Record<ImportField, string[]> = {
   ],
   sortOrder: ["порядок", "сортировка", "sort", "sort_order", "order"],
   kind: ["тип", "вид", "fulfillment_kind", "kind", "type"],
+  sku: ["артикул", "арт", "код товара", "sku", "article", "vendor code"],
+  photos: [
+    "фото",
+    "фотографии",
+    "изображения",
+    "картинки",
+    "ссылки на фото",
+    "photo",
+    "photos",
+    "image",
+    "images",
+    "image url",
+  ],
 };
 
 export const IMPORT_FIELD_TITLES: Record<ImportField, string> = {
@@ -59,6 +79,8 @@ export const IMPORT_FIELD_TITLES: Record<ImportField, string> = {
   fileUrlKz: "Ссылка на материал (kk)",
   sortOrder: "Порядок",
   kind: "Тип",
+  sku: "Артикул",
+  photos: "Фото (ссылки)",
 };
 
 const norm = (s: string) =>
@@ -181,11 +203,16 @@ export type ProductDraft = {
   fileUrlKz: string | null;
   sortOrder: number | null;
   kind: "digital" | "physical" | null;
+  sku: string | null;
+  /** null — колонки «Фото» нет; [] — есть, но в строке пусто. */
+  photos: string[] | null;
 };
 
 export type ParsedImport = {
   drafts: ProductDraft[];
   errors: Array<{ line: number; message: string }>;
+  /** Строка принята, но часть ячейки отброшена (например, неверная ссылка на фото). */
+  warnings: Array<{ line: number; message: string }>;
   unknownColumns: string[];
   fields: ImportField[];
 };
@@ -193,12 +220,38 @@ export type ParsedImport = {
 const cell = (row: string[], i: number | undefined) =>
   i === undefined ? undefined : (row[i] ?? "").trim();
 
-export function parseCatalogCsv(text: string): ParsedImport {
+/** Артикул для сравнения: без регистра и лишних пробелов, не длиннее 64. */
+export const skuKey = (raw: string) => raw.trim().toLowerCase().replace(/\s+/g, " ").slice(0, 64);
+
+/** Ссылки на фото из ячейки: только https, не больше MAX_IMPORT_PHOTOS; негодное — в `bad`. */
+export function parsePhotoLinks(raw: string): { urls: string[]; bad: string[] } {
+  const urls: string[] = [];
+  const bad: string[] = [];
+  for (const part of raw.split(/[\s;|]+/)) {
+    const p = part.trim();
+    if (!p) continue;
+    let ok = false;
+    try {
+      const u = new URL(p);
+      ok = u.protocol === "https:" && p.length <= 500 && !u.username && !u.password;
+    } catch {
+      ok = false;
+    }
+    if (!ok) bad.push(p.slice(0, 60));
+    else if (!urls.includes(p)) urls.push(p);
+  }
+  return { urls: urls.slice(0, MAX_IMPORT_PHOTOS), bad: bad.concat(urls.slice(MAX_IMPORT_PHOTOS)) };
+}
+
+/** maxRows — потолок строк за раз (загрузка файла); таблица по ссылке читается целиком, её вторую тысячу терять нельзя. */
+export function parseCatalogCsv(text: string, opts: { maxRows?: number } = {}): ParsedImport {
+  const maxRows = opts.maxRows ?? Infinity;
   const rows = parseCsv(text);
   if (rows.length === 0)
     return {
       drafts: [],
       errors: [{ line: 0, message: "Файл пуст" }],
+      warnings: [],
       unknownColumns: [],
       fields: [],
     };
@@ -208,16 +261,36 @@ export function parseCatalogCsv(text: string): ParsedImport {
     return {
       drafts: [],
       errors: [{ line: 1, message: "Не нашёл колонку с названием товара («Название» или «name»)" }],
+      warnings: [],
       unknownColumns: unknown,
       fields,
     };
   const drafts: ProductDraft[] = [];
   const errors: Array<{ line: number; message: string }> = [];
-  rows.slice(1).forEach((row, i) => {
+  const warnings: Array<{ line: number; message: string }> = [];
+  const dataRows = rows.slice(1);
+  if (dataRows.length > maxRows)
+    errors.push({
+      line: maxRows + 2,
+      message: `В файле ${dataRows.length} строк, за один раз берём ${maxRows}: остальные не обработаны — загрузите их вторым файлом`,
+    });
+  const firstSeen = new Map<string, number>();
+  dataRows.slice(0, maxRows).forEach((row, i) => {
     const line = i + 2;
     const name = cell(row, map.name) ?? "";
     if (!name) {
       errors.push({ line, message: "Пустое название — строка пропущена" });
+      return;
+    }
+    const sku = cell(row, map.sku) ? skuKey(cell(row, map.sku)!) : null;
+    // Один товар дважды в файле: берём первую строку, повтор не создаёт второй.
+    const dupKey = sku ? `sku:${sku}` : `name:${name.trim().toLowerCase()}`;
+    const was = firstSeen.get(dupKey);
+    if (was !== undefined) {
+      errors.push({
+        line,
+        message: `«${name}» уже есть в строке ${was} — повтор пропущен`,
+      });
       return;
     }
     const priceRaw = cell(row, map.price);
@@ -225,6 +298,17 @@ export function parseCatalogCsv(text: string): ParsedImport {
     if (priceRaw !== undefined && priceRaw !== "" && price === null) {
       errors.push({ line, message: `Не понял цену «${priceRaw}» у «${name}» — строка пропущена` });
       return;
+    }
+    firstSeen.set(dupKey, line);
+    let photos: string[] | null = null;
+    if (map.photos !== undefined) {
+      const links = parsePhotoLinks(cell(row, map.photos) ?? "");
+      photos = links.urls;
+      if (links.bad.length)
+        warnings.push({
+          line,
+          message: `у «${name}» не взяты ссылки на фото (нужен https, не больше ${MAX_IMPORT_PHOTOS}): ${links.bad.join(", ")}`,
+        });
     }
     const stockRaw = cell(row, map.stock);
     const kindRaw = norm(cell(row, map.kind) ?? "");
@@ -259,42 +343,63 @@ export function parseCatalogCsv(text: string): ParsedImport {
             ? "digital"
             : null
         : null,
+      sku,
+      photos,
     });
   });
-  return { drafts, errors, unknownColumns: unknown, fields };
+  return { drafts, errors, warnings, unknownColumns: unknown, fields };
 }
 
 export type ExistingProduct = { id: string; name: string };
+export type PlanMatch = "id" | "sku" | "name";
 
-/** Что сделает импорт: по id, иначе по названию без учёта регистра — обновить, иначе создать. */
+/**
+ * Что сделает импорт: по id, затем по артикулу (skus: артикул → id товара),
+ * затем по названию без учёта регистра — обновить, иначе создать. Один
+ * существующий товар обновляется не больше одного раза: повторная строка на
+ * него попадает в `repeats`, а не превращается во второй новый товар.
+ */
 export function planImport(
   drafts: ProductDraft[],
   existing: ExistingProduct[],
+  skus: ReadonlyMap<string, string> = new Map(),
 ): {
   create: ProductDraft[];
-  update: Array<{ id: string; by: "id" | "name"; draft: ProductDraft }>;
+  update: Array<{ id: string; by: PlanMatch; draft: ProductDraft }>;
   unmatchedIds: ProductDraft[];
+  repeats: ProductDraft[];
 } {
   const byId = new Map(existing.map((p) => [p.id, p]));
   const byName = new Map(existing.map((p) => [p.name.trim().toLowerCase(), p]));
   const create: ProductDraft[] = [];
-  const update: Array<{ id: string; by: "id" | "name"; draft: ProductDraft }> = [];
+  const update: Array<{ id: string; by: PlanMatch; draft: ProductDraft }> = [];
   const unmatchedIds: ProductDraft[] = [];
+  const repeats: ProductDraft[] = [];
   const seen = new Set<string>();
   for (const d of drafts) {
+    let hit: { id: string; by: PlanMatch } | null = null;
     if (d.id) {
-      if (byId.has(d.id)) {
-        update.push({ id: d.id, by: "id", draft: d });
-        continue;
-      }
-      unmatchedIds.push(d);
+      if (byId.has(d.id)) hit = { id: d.id, by: "id" };
+      else unmatchedIds.push(d);
     }
-    const key = d.name.trim().toLowerCase();
-    const hit = byName.get(key);
-    if (hit && !seen.has(hit.id)) {
-      seen.add(hit.id);
-      update.push({ id: hit.id, by: "name", draft: d });
-    } else create.push(d);
+    if (!hit && d.sku) {
+      const id = skus.get(d.sku);
+      if (id && byId.has(id)) hit = { id, by: "sku" };
+    }
+    if (!hit) {
+      const p = byName.get(d.name.trim().toLowerCase());
+      if (p) hit = { id: p.id, by: "name" };
+    }
+    if (!hit) {
+      create.push(d);
+      continue;
+    }
+    if (seen.has(hit.id)) {
+      repeats.push(d);
+      continue;
+    }
+    seen.add(hit.id);
+    update.push({ id: hit.id, by: hit.by, draft: d });
   }
-  return { create, update, unmatchedIds };
+  return { create, update, unmatchedIds, repeats };
 }

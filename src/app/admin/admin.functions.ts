@@ -635,16 +635,26 @@ export const deleteTeamMemberFn = createServerFn({ method: "POST" })
 
 /* ── каталог ─────────────────────────────────────────────────────── */
 
-/** Импорт каталога из CSV: предпросмотр (что создастся и обновится) или применение. */
+/** Импорт каталога из CSV или Excel (.xlsx, base64): предпросмотр (что создастся и обновится) или применение. */
 export const importCatalogFn = createServerFn({ method: "POST" })
   .validator((d: unknown) =>
-    z.object({ csv: z.string().min(1).max(4_000_000), apply: z.boolean().default(false) }).parse(d),
+    z
+      .object({
+        csv: z.string().min(1).max(4_000_000).optional(),
+        xlsx: z.string().min(1).max(8_000_000).optional(),
+        apply: z.boolean().default(false),
+      })
+      .refine((v) => Boolean(v.csv) !== Boolean(v.xlsx))
+      .parse(d),
   )
   .handler(async ({ data }) => {
     const ctx = await adminWrite();
     const m = await import("@/core/catalog/import.server");
-    if (!data.apply) return { preview: await m.previewImport(ctx, data.csv), result: null };
-    return { preview: null, result: await m.applyImport(ctx, data.csv, await actor()) };
+    const csv = data.xlsx
+      ? (await import("@/core/catalog/xlsx.server")).xlsxToCsv(Buffer.from(data.xlsx, "base64"))
+      : data.csv!;
+    if (!data.apply) return { preview: await m.previewImport(ctx, csv), result: null };
+    return { preview: null, result: await m.applyImport(ctx, csv, await actor()) };
   });
 
 /** Каталог из Google Таблицы: ссылка, настройки и итог последнего обновления. */

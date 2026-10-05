@@ -56,6 +56,8 @@ const SAVED = {
   },
   community_recommend: ["b41a34cb-7944-441b-8f71-503184fc0f1f"],
   community_mod: { status: "hidden", reason: "спам", at: "2026-10-04T10:00:00.000Z" },
+  // импорт каталога (core/catalog/import.server): артикул → id товара
+  catalog_skus: { "ab-1": "b41a34cb-7944-441b-8f71-503184fc0f1f" },
   // оператор
   slug: "shop",
   hosts: ["shop.kz"],
@@ -102,6 +104,15 @@ describe("settingsFromJson не теряет сохранённые ключи",
     expect(settingsFromJson({ delivery: { pdf_watermark: "yes" } }).delivery).toEqual({
       pdf_watermark: false,
     });
+  });
+
+  it("артикулы импорта: пары «артикул → id» переживают чтение, мусор отбрасывается", () => {
+    expect(s.catalog_skus).toEqual(SAVED.catalog_skus);
+    expect(
+      settingsFromJson({
+        catalog_skus: { a: "не-id", b: 5, [`x`.repeat(65)]: SAVED.catalog_skus["ab-1"] },
+      }).catalog_skus,
+    ).toBeUndefined();
   });
 
   it("приглашение автора: кто пригласил и выданный зачёт переживают чтение; мусор отбрасывается", () => {
@@ -253,6 +264,7 @@ const ALL = {
   marketplace: { listed: true, hidden: false, approved: true, category: "Торты", city: "Алматы" },
   collections: [{ id: "a1b2c3d4", name: "Весна", product_ids: [UUID], created_at: AT }],
   delivery: { pdf_watermark: true },
+  catalog_skus: { "ab-1": UUID },
 } satisfies Record<keyof TenantSettings, unknown>;
 
 describe("каждый верхний ключ TenantSettings переживает чтение", () => {

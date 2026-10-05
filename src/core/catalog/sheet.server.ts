@@ -383,7 +383,7 @@ export async function previewSheet(
 ): Promise<SheetPreview> {
   const dl = await downloadSheet(link, fetchImpl);
   if (!dl.ok) return dl;
-  return { ok: true, preview: await previewImport(ctx, dl.csv) };
+  return { ok: true, preview: await previewImport(ctx, dl.csv, Infinity) };
 }
 
 /**

@@ -305,6 +305,12 @@ export function settingsFromJson(json: unknown): TenantSettings {
     community_recommend: Array.isArray(s.community_recommend)
       ? s.community_recommend.filter((x): x is string => typeof x === "string")
       : undefined,
+    catalog_skus: (() => {
+      const out: Record<string, string> = {};
+      for (const [k, v] of Object.entries(obj(s.catalog_skus)))
+        if (k && k.length <= 64 && typeof v === "string" && /^[0-9a-f-]{36}$/i.test(v)) out[k] = v;
+      return Object.keys(out).length ? out : undefined;
+    })(),
     // Свои тексты бота и рабочие часы (страница «Тексты бота»): без разбора здесь они не доходят до бота.
     bot_texts: parseBotTexts(s.bot_texts),
     work_hours: cleanWorkHours(s.work_hours) ?? undefined,
