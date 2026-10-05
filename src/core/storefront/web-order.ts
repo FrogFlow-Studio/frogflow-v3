@@ -3,9 +3,9 @@ import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Json } from "@/core/db-types";
 import {
   getCustomer,
+  getCustomerByTelegramId,
   setEmail,
   upsertCustomer,
-  userKey,
   type Customer,
 } from "@/core/customers/customers";
 import { isWebSource } from "./web-source";
@@ -99,15 +99,19 @@ export async function webCustomer(
  * карточке продавца и в «Моих заказах» заказы бота и сайта вместе. Канал
  * заказа остаётся `web`: страница заказа, оплата, письмо и срок неоплаченного
  * работают как у любого заказа с сайта. Почта — его собственная: он вошёл.
- * Нет такого покупателя в боте — null, оформление идёт по почте.
+ * Нет такого покупателя в боте — null, оформление идёт по почте. То же для покупателя
+ * Instagram/WhatsApp, вошедшего по коду: заказ ложится в его карточку, а не в карточку по почте.
  */
 export async function telegramWebCustomer(
   ctx: TenantContext,
   telegramId: number,
   email: string,
 ): Promise<Customer | null> {
-  const c = await getCustomer(ctx, userKey("telegram", telegramId));
-  if (!c || c.platform !== "telegram" || c.telegramId !== telegramId) return null;
+  // Telegram или Instagram/WhatsApp (вход по коду, К2): у них `telegram_id` — настоящий или
+  // синтетический, и сессия витрины доказывает владение именно им. Покупатель сайта по почте
+  // сюда не относится: его карточка не бота.
+  const c = await getCustomerByTelegramId(ctx, telegramId);
+  if (!c || c.platform === "web" || c.telegramId !== telegramId) return null;
   const withEmail = c.email === email ? c : await setEmail(ctx, c, email);
   return { ...withEmail, platform: "web" };
 }

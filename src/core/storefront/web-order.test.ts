@@ -317,6 +317,51 @@ describe("заказ с сайта после входа через Telegram", (
     expect(await telegramWebCustomer(ctx, 42, "a@b.cd")).toBeNull();
   });
 
+  it("покупатель Instagram/WhatsApp, вошедший по коду, — та же карточка бота, а не карточка по почте (К2)", async () => {
+    const { syntheticTelegramId } = await import("@/core/customers/customers");
+    for (const [key, platform] of [
+      ["ig_555", "instagram"],
+      ["wa_77001234567", "whatsapp"],
+    ] as const) {
+      const { db, ctx } = setup();
+      const id = syntheticTelegramId(key);
+      db.tables.bot_users = [
+        tgRow({ user_key: key, telegram_id: id, platform, loyalty_points: 120 }),
+      ];
+      const c = await telegramWebCustomer(ctx, id, "anna@example.com");
+      expect(c).toMatchObject({ userKey: key, telegramId: id, platform: "web" });
+      // Почта записана только в эту карточку, баллы не тронуты, новых карточек нет.
+      expect(db.tables.bot_users).toHaveLength(1);
+      expect(db.tables.bot_users[0]).toMatchObject({
+        email: "anna@example.com",
+        loyalty_points: 120,
+      });
+    }
+  });
+
+  it("одна почта без входа карточку Instagram/WhatsApp не открывает и не склеивает (К2)", async () => {
+    const { syntheticTelegramId } = await import("@/core/customers/customers");
+    const { db, ctx } = setup();
+    const id = syntheticTelegramId("ig_555");
+    db.tables.bot_users = [
+      tgRow({
+        user_key: "ig_555",
+        telegram_id: id,
+        platform: "instagram",
+        email: "anna@example.com",
+        loyalty_points: 120,
+      }),
+    ];
+    const c = await webCustomer(ctx, { email: "anna@example.com", name: "Аня", phone: null });
+    expect(c.userKey).toMatch(/^web_/);
+    expect(c.userKey).not.toBe("ig_555");
+    expect(db.tables.bot_users.find((r) => r.user_key === "ig_555")).toMatchObject({
+      loyalty_points: 120,
+    });
+    // Чужой telegram_id (не из подписанного входа) тоже ничего не находит.
+    expect(await telegramWebCustomer(ctx, id + 1, "anna@example.com")).toBeNull();
+  });
+
   it("корзина покупателя в боте после заказа с сайта возвращается как была", async () => {
     const { db, ctx } = setup();
     db.tables.cart_items = [
