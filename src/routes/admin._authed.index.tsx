@@ -1,3 +1,4 @@
+import { TrialOrder } from "@/app/admin/trial-order";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import {
@@ -151,23 +152,26 @@ function Dashboard() {
                       skipLabel={t("launch.skip")}
                     >
                       {r.step === "firstOrder" ? (
-                        "url" in d.setup.testOrder ? (
-                          <>
-                            <a
-                              href={d.setup.testOrder.url}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="btn-secondary my-1 inline-block text-sm"
-                            >
-                              {t("overview.testOrder.open")}
-                            </a>
-                            <span className="block">{t("overview.testOrder.how")}</span>
-                          </>
-                        ) : d.setup.testOrder.missing === "telegram" ? (
-                          t("overview.testOrder.needTelegram")
-                        ) : (
-                          t("overview.testOrder.needProducts")
-                        )
+                        <>
+                          {"url" in d.setup.testOrder ? (
+                            <>
+                              <a
+                                href={d.setup.testOrder.url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="btn-secondary my-1 inline-block text-sm"
+                              >
+                                {t("overview.testOrder.open")}
+                              </a>
+                              <span className="block">{t("overview.testOrder.how")}</span>
+                            </>
+                          ) : d.setup.testOrder.missing === "telegram" ? (
+                            t("overview.testOrder.needTelegram")
+                          ) : (
+                            t("overview.testOrder.needProducts")
+                          )}
+                          <TrialOrder t={t} />
+                        </>
                       ) : r.step === "products" ? (
                         t("launch.productsHint", { n: d.setup.productsCount })
                       ) : (
