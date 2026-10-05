@@ -235,6 +235,8 @@ export const ru = {
   "product.ready.k.category": "категория",
   "product.ready.k.file": "файл для выдачи",
   "product.ready.k.photos": "{n} фото",
+  "products.col.stock": "Остаток",
+  "products.col.ready": "Готовность",
 } as const;
 
 export const kk: SectionDict<typeof ru> = {
@@ -468,6 +470,8 @@ export const kk: SectionDict<typeof ru> = {
   "product.ready.k.category": "санат",
   "product.ready.k.file": "беретін файл",
   "product.ready.k.photos": "{n} фото",
+  "products.col.stock": "Қалдық",
+  "products.col.ready": "Дайындық",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -701,6 +705,8 @@ export const en: SectionDict<typeof ru> = {
   "product.ready.k.category": "category",
   "product.ready.k.file": "delivery file",
   "product.ready.k.photos": "{n} more photos",
+  "products.col.stock": "Stock",
+  "products.col.ready": "Readiness",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -933,4 +939,6 @@ export const uz: SectionDict<typeof ru> = {
   "product.ready.k.category": "kategoriya",
   "product.ready.k.file": "yetkaziladigan fayl",
   "product.ready.k.photos": "yana {n} ta rasm",
+  "products.col.stock": "Qoldiq",
+  "products.col.ready": "Tayyorlik",
 };

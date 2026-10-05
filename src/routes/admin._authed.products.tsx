@@ -18,6 +18,8 @@ import { pruneUpsellFn, upsellHealthFn } from "@/app/admin/upsell.functions";
 import { adminT, type AdminKey, type AdminT } from "@/app/i18n/admin";
 import { EmptyState } from "@/app/ui/states";
 import { Badge, Card, Empty, ErrorBox, PageTitle, Switch, useAction } from "@/app/ui";
+import { ReadinessBadge } from "@/app/admin/product-readiness";
+import { rowReadiness } from "@/core/catalog/readiness";
 import { formatMoney } from "@/core/money/money";
 import { imagePath } from "@/core/catalog/image-url";
 import { nextPageOffset } from "@/core/catalog/picker";
@@ -296,6 +298,8 @@ function ProductsPage() {
                 <th>{t("products.col.name")}</th>
                 <th>{t("products.col.categories")}</th>
                 <th className="text-right">{t("products.col.price")}</th>
+                <th className="text-right">{t("products.col.stock")}</th>
+                <th>{t("products.col.ready")}</th>
                 {shop.modules.stock && <th className="text-right">{t("products.col.daysLeft")}</th>}
                 <th>{t("products.col.files")}</th>
                 <th>{t("products.col.onSale")}</th>
@@ -359,6 +363,12 @@ function ProductsPage() {
                       .join(", ") || "—"}
                   </td>
                   <td className="text-right tabular-nums">{formatMoney(p.price, p.currency)}</td>
+                  <td className="text-right tabular-nums">
+                    {p.stock_quantity === null ? "—" : p.stock_quantity}
+                  </td>
+                  <td>
+                    <ReadinessBadge r={rowReadiness(p)} t={t} />
+                  </td>
                   {shop.modules.stock && (
                     <td
                       className={`text-right tabular-nums ${

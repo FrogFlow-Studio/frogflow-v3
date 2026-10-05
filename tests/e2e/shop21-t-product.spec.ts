@@ -71,3 +71,23 @@ test("карточка товара на телефоне: одна колонк
   );
   expect(overflow).toBeLessThanOrEqual(1);
 });
+
+test("список товаров показывает готовность и остаток", async ({ page }) => {
+  await page.goto("/admin/login");
+  await page.locator('input[name="username"]').fill(F.PRODUCT21_SELLER_LOGIN);
+  await page.locator('input[name="password"]').fill(F.PRODUCT21_SELLER_PASSWORD);
+  await page.getByRole("button", { name: "Войти", exact: true }).click();
+  await expect(page).toHaveURL(/\/admin$/);
+  await page.goto("/admin/products");
+  await expect(page.getByRole("columnheader", { name: "Готовность", exact: true })).toBeVisible();
+  await expect(page.getByRole("columnheader", { name: "Остаток", exact: true })).toBeVisible();
+  const row = page.getByRole("row").filter({ hasText: F.PRODUCT21_ITEM_NAME });
+  await expect(row).toContainText("Не хватает");
+  await expect(row).toContainText("описание");
+  await expect(row).toContainText("категория");
+  await expect(row).toContainText("5");
+  // Поиск по названию остаётся.
+  await page.getByPlaceholder("Поиск по названию", { exact: true }).fill("нет такого товара");
+  await page.keyboard.press("Enter");
+  await expect(page.getByText(F.PRODUCT21_ITEM_NAME)).toHaveCount(0);
+});

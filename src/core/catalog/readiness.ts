@@ -54,3 +54,30 @@ export function productReadiness(i: ReadinessInput): Readiness {
     ready: missing.length === 0,
   };
 }
+
+/** Строка списка товаров (core/catalog/admin: ProductListRow) — то, что нужно для готовности. */
+export type ReadinessRow = {
+  name: string;
+  price: number;
+  variants: number;
+  images: number;
+  files: number;
+  fulfillment_kind: string;
+  category_ids: unknown;
+  has_description: boolean;
+  is_course: boolean;
+};
+
+export function rowReadiness(r: ReadinessRow): Readiness {
+  return productReadiness({
+    name: r.name,
+    description: r.has_description ? "x" : "",
+    price: r.price,
+    variants: r.variants,
+    photos: r.images,
+    categories: Array.isArray(r.category_ids) ? r.category_ids.length : 0,
+    kind: r.fulfillment_kind === "physical" ? "physical" : "digital",
+    files: r.files,
+    isCourse: r.is_course,
+  });
+}

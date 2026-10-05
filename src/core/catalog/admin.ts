@@ -10,6 +10,7 @@ import { PRODUCT_SELECT, type Product } from "./catalog";
 import { materialCount } from "./materials";
 import { pickerTerm } from "./picker";
 import { toJson } from "@/core/json";
+import { isCourseProduct } from "@/core/courses/marker";
 
 type ProductInsert = Database["public"]["Tables"]["products"]["Insert"];
 type CategoryRow = Database["public"]["Tables"]["categories"]["Row"];
@@ -108,6 +109,9 @@ export type ProductListRow = {
   files: number;
   variants: number;
   cover: string | null;
+  /** Для «Готовности» в списке: текст описания не отдаём, только есть он или нет. */
+  has_description: boolean;
+  is_course: boolean;
 };
 
 /** Строк на странице списка товаров; следующая — кнопкой «Показать ещё». */
@@ -167,7 +171,7 @@ export async function listProductsForAdmin(
       ctx.db
         .from("products")
         .select(
-          "id, name, price, currency, is_active, sort_order, fulfillment_kind, stock_quantity, category_ids, created_at, file_path, file_url, file_path_kz, file_url_kz, product_images(image_path, sort_order), product_material_files(language, file_path), product_variants(id)",
+          "id, name, description, price, currency, is_active, sort_order, fulfillment_kind, stock_quantity, category_ids, created_at, file_path, file_url, file_path_kz, file_url_kz, product_images(image_path, sort_order), product_material_files(language, file_path), product_variants(id)",
         ),
     )
       .order("sort_order")
@@ -193,6 +197,8 @@ export async function listProductsForAdmin(
     // Товар v1 с файлом в старых полях — не «нет файла» (core/catalog/materials).
     files: materialCount(p),
     variants: p.product_variants?.length ?? 0,
+    has_description: Boolean(p.description?.trim()),
+    is_course: isCourseProduct(p),
     cover:
       p.product_images?.slice().sort((a, b) => a.sort_order - b.sort_order)[0]?.image_path ?? null,
   }));

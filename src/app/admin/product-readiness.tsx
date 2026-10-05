@@ -1,6 +1,6 @@
 import type { AdminT } from "@/app/i18n/admin";
 import type { Readiness } from "@/core/catalog/readiness";
-import { Card } from "@/app/ui";
+import { Badge, Card } from "@/app/ui";
 
 /** «цена, 2 фото» — чего не хватает; пусто, если карточка готова. */
 export function readinessGaps(r: Readiness, t: AdminT): string {
@@ -39,5 +39,15 @@ export function ReadinessCard({ r, t }: { r: Readiness; t: AdminT }) {
         {readinessLine(r, t)}
       </p>
     </Card>
+  );
+}
+
+/** Короткая отметка для строки списка: «100%» или «67%», в подсказке — чего не хватает. */
+export function ReadinessBadge({ r, t }: { r: Readiness; t: AdminT }) {
+  return (
+    <span title={readinessLine(r, t)}>
+      <Badge tone={r.ready ? "ok" : "warn"}>{r.percent}%</Badge>
+      {!r.ready && <span className="ml-2 text-xs text-muted">{readinessGaps(r, t)}</span>}
+    </span>
   );
 }

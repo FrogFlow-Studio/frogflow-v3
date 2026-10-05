@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { productReadiness, type ReadinessInput } from "./readiness";
+import { productReadiness, rowReadiness, type ReadinessInput } from "./readiness";
 
 const full: ReadinessInput = {
   name: "Набор",
@@ -50,5 +50,24 @@ describe("готовность карточки", () => {
 
   it("без категории не готово", () => {
     expect(productReadiness({ ...full, categories: 0 }).missing).toEqual([{ key: "category" }]);
+  });
+});
+
+describe("готовность по строке списка", () => {
+  const row = {
+    name: "Набор",
+    price: 1500,
+    variants: 0,
+    images: 3,
+    files: 1,
+    fulfillment_kind: "digital",
+    category_ids: ["c1"],
+    has_description: true,
+    is_course: false,
+  };
+  it("совпадает с расчётом по полям карточки", () => {
+    expect(rowReadiness(row)).toEqual(productReadiness(full));
+    const r = rowReadiness({ ...row, images: 1, price: 0, category_ids: null });
+    expect(r.missing.map((g) => g.key)).toEqual(["price", "photos", "category"]);
   });
 });
