@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import * as F from "./fixtures.ts";
-import { watch } from "./helpers.ts";
+import { watch, openFilters } from "./helpers.ts";
 
 /** Площадка (В7): каталог показывает только согласных и одобренных, фильтры и поиск работают. */
 const S = F.MARKET19_SHOPS;
@@ -27,6 +27,7 @@ test("площадка: два магазина из четырёх, скрыт�
 test("площадка: фильтр по городу и поиск по названию", async ({ page }) => {
   const errors = await watch(page);
   await page.goto("/market");
+  await openFilters(page);
   await page.getByRole("combobox", { name: "Город", exact: true }).selectOption("Астана");
   await page.getByRole("button", { name: "Найти", exact: true }).click();
   await expect(page).toHaveURL(/city=%D0%90%D1%81%D1%82%D0%B0%D0%BD%D0%B0|city=Астана/);

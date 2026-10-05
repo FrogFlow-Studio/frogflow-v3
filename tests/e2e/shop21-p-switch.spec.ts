@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import * as F from "./fixtures.ts";
-import { watch } from "./helpers.ts";
+import { watch, openFilters } from "./helpers.ts";
 
 /** Площадка (П1): переключатель «Авторы / Все товары», фильтр по категории, автор под товаром. */
 const S = F.MARKET19_SHOPS;
@@ -11,6 +11,7 @@ test("переключатель Авторы / Все товары и филь�
   await page.goto("/market");
   await page.getByRole("link", { name: "Все товары", exact: true }).click();
   await expect(page).toHaveURL(/\/market\/search/);
+  await openFilters(page);
   await page.getByRole("combobox", { name: "Категория", exact: true }).selectOption("Цветы");
   await page.getByRole("button", { name: "Найти", exact: true }).click();
   await expect(page.getByRole("heading", { name: I.rose.name, exact: true })).toBeVisible();

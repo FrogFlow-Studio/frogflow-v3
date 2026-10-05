@@ -1,6 +1,6 @@
 import { expect, test, type APIRequestContext } from "@playwright/test";
 import * as F from "./fixtures.ts";
-import { watch } from "./helpers.ts";
+import { watch, openFilters } from "./helpers.ts";
 
 /**
  * Путь покупателя через площадку (Ш3): поиск товара → магазин → товар (с отзывом) → корзина →
@@ -27,11 +27,12 @@ test("площадка → поиск → магазин → товар → ко
   });
 
   await page.goto("/market/search");
+  await openFilters(page);
   await page.getByRole("textbox", { name: "Что ищете", exact: true }).fill("пряник ш20");
   await page.getByRole("button", { name: "Найти", exact: true }).click();
   await expect(page.getByRole("heading", { name: P.name, exact: true })).toBeVisible();
   await expect(page.getByText(`в магазине ${S.name}`)).toBeVisible();
-  await page.locator(`a[href="/s/${S.slug}"]`).click();
+  await page.locator(`a[href="/s/${S.slug}"]`).first().click();
 
   await expect(page).toHaveURL(new RegExp(`/s/${S.slug}$`));
   await page.goto(`/s/${S.slug}/p/${P.id}`);
