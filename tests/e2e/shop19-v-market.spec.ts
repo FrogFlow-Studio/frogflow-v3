@@ -35,6 +35,7 @@ test("площадка: фильтр по городу и поиск по наз
   await expect(page.getByText(S.cake.name)).toHaveCount(0);
 
   await page.goto("/market");
+  await openFilters(page);
   await page.getByRole("textbox", { name: "Поиск по названию", exact: true }).fill("Лавка");
   await page.getByRole("button", { name: "Найти", exact: true }).click();
   await expect(page.getByRole("heading", { name: S.cake.name, exact: true })).toBeVisible();

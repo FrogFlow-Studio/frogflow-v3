@@ -22,7 +22,7 @@ test("покупатели: сегменты считаются, сохраня�
   // Свой сегмент по тегу: сохраняется и появляется чипом.
   await page.getByPlaceholder("Название сегмента", { exact: true }).fill(mine);
   await page.getByRole("combobox", { name: "Покупок не меньше", exact: true }).selectOption("tag");
-  await page.getByPlaceholder("Значение", { exact: true }).fill("опт");
+  await page.getByPlaceholder("Значение", { exact: true }).fill("нет-такого-тега-е2е");
   await page.getByRole("button", { name: "Сохранить сегмент", exact: true }).click();
   await expect(page.getByRole("button", { name: mine, exact: true })).toBeVisible();
   await page.getByRole("button", { name: mine, exact: true }).click();
