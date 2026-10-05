@@ -19,12 +19,15 @@ const noHorizontalScroll = (page: Page) =>
 
 /** На телефоне меню прячется за кнопкой; на компьютере оно на виду. */
 async function openMenu(page: Page) {
-  const create = page.getByRole("button", { name: "+ Создать", exact: true });
-  if (!(await create.first().isVisible())) {
-    const burger = page.getByRole("button", { name: /меню/i }).first();
-    if (await burger.isVisible()) await burger.click();
+  const create = page.getByRole("button", { name: "+ Создать", exact: true }).first();
+  const burger = page.getByRole("button", { name: /меню/i }).first();
+  // Ждём появления кнопки или меню (страница ещё грузится), а не проверяем один раз сразу после входа.
+  await expect(create.or(burger)).toBeVisible();
+  if (!(await create.isVisible())) {
+    await burger.click();
+    await expect(create).toBeVisible();
   }
-  return create.first();
+  return create;
 }
 
 test("владелец: «Ждёт вас», продажи сегодня и «+ Создать»", async ({ page }) => {
