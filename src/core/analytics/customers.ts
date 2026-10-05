@@ -17,13 +17,74 @@ export type WeekRow = { week: string; fresh: number; returning: number };
 
 export type TopBuyer = { buyer: string; amount: number; orders: number };
 
+/** Покупатели периода: новые и вернувшиеся, их доля и средний чек (У3). */
+export type ReturningStats = {
+  /** Покупателей с оплатой в периоде; 0 — «пока нет данных». */
+  buyers: number;
+  /** Из них вернувшиеся: первая покупка раньше начала периода. */
+  returning: number;
+  /** Доля вернувшихся, %; null, пока покупателей нет. */
+  share: number | null;
+  /** Валюта среднего чека — та, в которой больше покупок периода. */
+  currency: string | null;
+  fresh: { buyers: number; orders: number; avg: number | null };
+  back: { buyers: number; orders: number; avg: number | null };
+};
+
 export type CustomersReport = {
   weeks: WeekRow[];
+  period: ReturningStats;
   /** Валюта рейтинга — та, в которой больше всего покупок. */
   currency: string | null;
   top: TopBuyer[];
   dormant: { count: number; days: number };
 };
+
+/**
+ * «Вернулись покупатели» за последние `days` суток (У3). `purchases` — только
+ * оплаченные заказы (readPurchases отсеивает остальные), вся доступная
+ * история: первая покупка до начала периода делает покупателя вернувшимся.
+ * Средний чек — по заказам периода в одной валюте, суммы валют не смешиваются.
+ */
+export function returningStats(purchases: Purchase[], days: number, now: Date): ReturningStats {
+  const from = new Date(now.getTime() - days * 86_400_000).toISOString();
+  const to = now.toISOString();
+  const firstAt = new Map<string, string>();
+  for (const p of purchases) {
+    const cur = firstAt.get(p.buyer);
+    if (!cur || p.at < cur) firstAt.set(p.buyer, p.at);
+  }
+  const inPeriod = purchases.filter((p) => p.at >= from && p.at <= to);
+  const counts = new Map<string, number>();
+  for (const p of inPeriod) counts.set(p.currency, (counts.get(p.currency) ?? 0) + 1);
+  const currency =
+    [...counts.entries()].sort(([a, x], [b, y]) => y - x || a.localeCompare(b))[0]?.[0] ?? null;
+  const group = () => ({ buyers: new Set<string>(), orders: 0, sum: 0 });
+  const fresh = group();
+  const back = group();
+  for (const p of inPeriod) {
+    const g = (firstAt.get(p.buyer) ?? p.at) >= from ? fresh : back;
+    g.buyers.add(p.buyer);
+    if (p.currency === currency) {
+      g.orders += 1;
+      g.sum += p.amount;
+    }
+  }
+  const pack = (g: ReturnType<typeof group>) => ({
+    buyers: g.buyers.size,
+    orders: g.orders,
+    avg: g.orders ? Math.round((g.sum / g.orders) * 100) / 100 : null,
+  });
+  const buyers = fresh.buyers.size + back.buyers.size;
+  return {
+    buyers,
+    returning: back.buyers.size,
+    share: buyers ? Math.round((back.buyers.size / buyers) * 100) : null,
+    currency,
+    fresh: pack(fresh),
+    back: pack(back),
+  };
+}
 
 export const DORMANT_DAYS = 60;
 export const TOP_BUYERS = 20;
@@ -57,7 +118,7 @@ export function lastWeeks(count: number, tz: string, now: Date): string[] {
 export function customersReport(
   purchases: Purchase[],
   tz: string,
-  opts: { now?: Date; weeks: number },
+  opts: { now?: Date; weeks: number; days?: number },
 ): CustomersReport {
   const now = opts.now ?? new Date();
   const byBuyer = new Map<string, Purchase[]>();
@@ -110,6 +171,7 @@ export function customersReport(
   }
   return {
     weeks: [...rows.values()],
+    period: returningStats(purchases, opts.days ?? 30, now),
     currency,
     top,
     dormant: { count: dormant, days: DORMANT_DAYS },

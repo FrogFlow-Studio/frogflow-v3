@@ -5,6 +5,7 @@ import { analyticsFn } from "@/app/admin/admin.functions";
 import { explainSalesFn } from "@/app/admin/analytics.functions";
 import { adminT, intlLocale, type AdminT } from "@/app/i18n/admin";
 import { Badge, Card, ErrorBox, Field, PageTitle, useAction } from "@/app/ui";
+import { PROMOTE } from "@/core/analytics/promote";
 import { canEdit } from "@/core/auth/roles";
 import { BarList, ChartCard, DataTable, LineChart } from "@/app/ui/charts";
 import { compactNumber, shortDay } from "@/core/analytics/pure";
@@ -323,6 +324,7 @@ function AnalyticsPage() {
         />
         <SourceLinksCard bot={a.links.bot} store={a.links.store} />
         {canEdit(shop.role) && <ExplainCard days={days} />}
+        {a.promote && <PromoteCard hints={a.promote} />}
         <SpeedCard rows={a.speed} />
         {a.sales.length > 0 && <SalesCard sales={a.sales} tz={a.timezone} moneyAll={moneyAll} />}
         {a.giftsBundles && <BundlesCard r={a.giftsBundles} moneyAll={moneyAll} />}
@@ -559,6 +561,41 @@ function CustomersCard({
   const money = (v: number) => formatMoney(v, c.currency ?? currencyFallback);
   return (
     <Card title={t("analytics.customers.title")} className="lg:col-span-2">
+      <div className="mb-4 border-b border-line pb-4" data-returning>
+        <h3 className="mb-2 text-sm font-medium">{t("growth.returning.title")}</h3>
+        {c.period.share === null ? (
+          <p className="text-sm text-muted">{t("growth.returning.none")}</p>
+        ) : (
+          <>
+            <p className="mb-2 text-sm">
+              {t("growth.returning.share", {
+                n: c.period.share,
+                back: c.period.returning,
+                all: c.period.buyers,
+              })}
+            </p>
+            <DataTable
+              head={[
+                "",
+                t("growth.returning.buyers"),
+                t("analytics.col.orders"),
+                t("growth.returning.avg"),
+              ]}
+              rows={[
+                [t("growth.returning.fresh"), c.period.fresh.buyers, c.period.fresh.orders],
+                [t("growth.returning.back"), c.period.back.buyers, c.period.back.orders],
+              ].map((r, i) => {
+                const g = i === 0 ? c.period.fresh : c.period.back;
+                return [
+                  ...r,
+                  g.avg === null ? "—" : formatMoney(g.avg, c.period.currency ?? currencyFallback),
+                ];
+              })}
+            />
+          </>
+        )}
+        <p className="mt-2 text-xs text-muted">{t("growth.returning.hint")}</p>
+      </div>
       <div className="grid gap-4 lg:grid-cols-2">
         <div>
           <h3 className="mb-2 text-sm font-medium">{t("analytics.customers.weeks")}</h3>
@@ -742,6 +779,93 @@ function BundlesCard({
         </div>
       )}
       <p className="mt-2 text-xs text-muted">{t("analytics.bundles.hint")}</p>
+    </Card>
+  );
+}
+
+/** «Что продвигать» (У4): хорошо оценённые товары, которые редко берут, и товары, которые скоро закончатся. */
+function PromoteCard({
+  hints,
+}: {
+  hints: NonNullable<Awaited<ReturnType<typeof analyticsFn>>["promote"]>;
+}) {
+  const { shop } = Route.useRouteContext();
+  const t = adminT(shop.locale);
+  const days = PROMOTE.windowDays;
+  const link = (id: string, name: string) => (
+    <Link to="/admin/products/$id" params={{ id }} className="font-medium hover:underline">
+      {name}
+    </Link>
+  );
+  return (
+    <Card title={t("growth.promote.title")} className="lg:col-span-2">
+      {hints === "failed" ? (
+        <p className="text-sm text-danger">{t("growth.promote.failed")}</p>
+      ) : hints.quality.length === 0 && hints.stock.length === 0 ? (
+        <p className="text-sm text-muted">{t("growth.promote.empty")}</p>
+      ) : (
+        <div className="grid gap-4 lg:grid-cols-2">
+          {hints.quality.length > 0 && (
+            <div>
+              <h3 className="mb-2 text-sm font-medium">{t("growth.promote.quality")}</h3>
+              <ul className="space-y-2 text-sm">
+                {hints.quality.map((h) => (
+                  <li key={h.id}>
+                    {link(h.id, h.name)}
+                    <span className="block text-muted">
+                      {t("growth.promote.qualityItem", {
+                        avg: h.avg,
+                        count: h.count,
+                        days,
+                        sold: h.sold,
+                      })}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              {hints.total.quality > hints.quality.length && (
+                <p className="mt-2 text-xs text-muted">
+                  {t("growth.promote.more", {
+                    shown: hints.quality.length,
+                    total: hints.total.quality,
+                  })}
+                </p>
+              )}
+            </div>
+          )}
+          {hints.stock.length > 0 && (
+            <div>
+              <h3 className="mb-2 text-sm font-medium">{t("growth.promote.stock")}</h3>
+              <ul className="space-y-2 text-sm">
+                {hints.stock.map((h) => (
+                  <li key={h.id}>
+                    {link(h.id, h.name)}
+                    <span className="block text-muted">
+                      {h.stock === 0
+                        ? t("growth.promote.stockOut", { days, sold: h.sold })
+                        : t("growth.promote.stockItem", {
+                            stock: h.stock,
+                            days,
+                            sold: h.sold,
+                            left: h.daysLeft,
+                          })}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              {hints.total.stock > hints.stock.length && (
+                <p className="mt-2 text-xs text-muted">
+                  {t("growth.promote.more", {
+                    shown: hints.stock.length,
+                    total: hints.total.stock,
+                  })}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+      <p className="mt-3 text-xs text-muted">{t("growth.promote.hint")}</p>
     </Card>
   );
 }

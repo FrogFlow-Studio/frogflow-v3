@@ -63,7 +63,7 @@ export async function customersBlock(
 ): Promise<CustomersBlock> {
   const purchases = await readPurchases(ctx, now);
   const weeks = Math.max(4, Math.ceil(days / 7));
-  const report = customersReport(purchases, ctx.timezone, { now, weeks });
+  const report = customersReport(purchases, ctx.timezone, { now, weeks, days });
   const names = new Map<string, string>();
   const keys = report.top.map((t) => t.buyer);
   for (let i = 0; i < keys.length; i += CHUNK) {
