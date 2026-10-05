@@ -24,6 +24,9 @@ export type SeoProduct = {
 
 export type SeoRating = { avg: number; count: number } | null;
 
+/** Одобренный отзыв для разметки `Review`: только то, что покупатель и так видит на странице. */
+export type SeoReview = { author: string; rating: number; text: string | null; date: string };
+
 export const shopCanonical = (origin: string, slug: string) =>
   `${origin.replace(/\/+$/, "")}/s/${slug}`;
 
@@ -54,6 +57,7 @@ export function productJsonLd(
   p: SeoProduct,
   shop: { name: string; slug: string; origin: string },
   rating: SeoRating,
+  reviews: readonly SeoReview[] = [],
 ): Record<string, unknown> {
   const url = productCanonical(shop.origin, shop.slug, p.id);
   const availability = `https://schema.org/${p.inStock ? "InStock" : "OutOfStock"}`;
@@ -115,6 +119,23 @@ export function productJsonLd(
             bestRating: 5,
             worstRating: 1,
           },
+          // Отзывы идут только вместе с оценкой: одно без другого поисковик не принимает.
+          ...(reviews.length
+            ? {
+                review: reviews.map((r) => ({
+                  "@type": "Review",
+                  author: { "@type": "Person", name: r.author },
+                  reviewRating: {
+                    "@type": "Rating",
+                    ratingValue: r.rating,
+                    bestRating: 5,
+                    worstRating: 1,
+                  },
+                  ...(r.text ? { reviewBody: shareText(r.text, 500) } : {}),
+                  datePublished: r.date.slice(0, 10),
+                })),
+              }
+            : {}),
         }
       : {}),
   };

@@ -60,6 +60,8 @@ export async function shopSitemapResponse(request: Request, slug: string): Promi
 
 /** Карта страниц самой платформы (главная и ниши) — только на общем адресе. */
 export const PAGES_SITEMAP = "/sitemap-pages.xml";
+/** Карта площадки: авторы и товары, которые вправе показываться (core/marketplace/sitemap.server). */
+export const MARKET_SITEMAP = "/sitemap-market.xml";
 
 /** /sitemap.xml: индекс на общем адресе, карта магазина на его домене. */
 export async function rootSitemapResponse(request: Request): Promise<Response> {
@@ -69,6 +71,7 @@ export async function rootSitemapResponse(request: Request): Promise<Response> {
     return new Response(
       sitemapIndexXml([
         `${APP_URL}${PAGES_SITEMAP}`,
+        `${APP_URL}${MARKET_SITEMAP}`,
         ...platformSitemapLocs(await directory(), APP_URL),
       ]),
       { headers: XML },
@@ -90,4 +93,14 @@ export async function pagesSitemapResponse(request: Request): Promise<Response> 
 /** /robots.txt */
 export function robotsResponse(request: Request): Response {
   return new Response(robotsTxt(`${new URL(request.url).origin}/sitemap.xml`), { headers: TEXT });
+}
+
+/** /sitemap-market.xml: авторы и товары площадки — только на общем адресе. */
+export async function marketSitemapResponse(request: Request): Promise<Response> {
+  const url = new URL(request.url);
+  const { APP_URL } = env();
+  if (!isPlatformHost(url.host, APP_URL)) return notFound();
+  const { directoryShops } = await import("@/core/marketplace/items.server");
+  const { marketSitemapXml } = await import("@/core/marketplace/sitemap.server");
+  return new Response(await marketSitemapXml(await directoryShops(), APP_URL), { headers: XML });
 }

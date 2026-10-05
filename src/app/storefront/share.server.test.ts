@@ -47,7 +47,19 @@ vi.mock("@/core/tenant/resolve.server", () => ({
 vi.mock("@tanstack/react-start/server", () => ({ getRequestUrl: () => new URL(requestUrl) }));
 vi.mock("@/config/env", () => ({ env: () => ({ APP_URL: "https://www.frogflow.tech" }) }));
 const approvedRating = vi.fn(async () => ({ avg: 4.5, count: 2 }));
-vi.mock("@/core/reviews/photos.server", () => ({ approvedRating }));
+const approvedReviews = vi.fn(async () => [
+  {
+    id: "r1",
+    rating: 5,
+    comment: "Отлично",
+    createdAt: "2026-09-20T10:00:00Z",
+    buyer: "Анна К.",
+    photos: [],
+    reply: null,
+    confirmed: true,
+  },
+]);
+vi.mock("@/core/reviews/photos.server", () => ({ approvedRating, approvedReviews }));
 
 const { manifestResponse, iconResponse, productSeo, shareInfo } = await import("./share.server");
 const { shareOrigin } = await import("@/core/storefront/share.server");
@@ -162,6 +174,7 @@ describe("разметка товара для поиска", () => {
     expect(await productSeo("shop", "shown")).toEqual({
       listed: true,
       rating: { avg: 4.5, count: 2 },
+      reviews: [{ author: "Анна К.", rating: 5, text: "Отлично", date: "2026-09-20T10:00:00Z" }],
     });
   });
 
@@ -173,12 +186,16 @@ describe("разметка товара для поиска", () => {
     categories = [{ id: "hidden", name: "h", parent_id: null, is_visible: false }];
     products = [product("p", over)];
     approvedRating.mockClear();
-    expect(await productSeo("shop", "p")).toEqual({ listed: false, rating: null });
+    expect(await productSeo("shop", "p")).toEqual({ listed: false, rating: null, reviews: [] });
     expect(approvedRating).not.toHaveBeenCalled();
   });
 
   it("нет товара — без разметки", async () => {
-    expect(await productSeo("shop", "missing")).toEqual({ listed: false, rating: null });
+    expect(await productSeo("shop", "missing")).toEqual({
+      listed: false,
+      rating: null,
+      reviews: [],
+    });
   });
 
   it.each([

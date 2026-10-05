@@ -83,6 +83,32 @@ describe("JSON-LD товара", () => {
     expect(productJsonLd(base, shop, { avg: 0, count: 0 })).not.toHaveProperty("aggregateRating");
   });
 
+  it("Review (Л4): с оценкой — до пяти отзывов в формате schema.org; без оценки и без отзывов — нет", () => {
+    const reviews = [
+      { author: "Анна К.", rating: 5, text: "Отлично <b>очень</b>", date: "2026-09-20T10:00:00Z" },
+      { author: "Олег", rating: 3, text: null, date: "2026-09-21T10:00:00Z" },
+    ];
+    const ld = productJsonLd(base, shop, { avg: 4, count: 2 }, reviews);
+    expect(ld.review).toEqual([
+      {
+        "@type": "Review",
+        author: { "@type": "Person", name: "Анна К." },
+        reviewRating: { "@type": "Rating", ratingValue: 5, bestRating: 5, worstRating: 1 },
+        reviewBody: "Отлично очень",
+        datePublished: "2026-09-20",
+      },
+      {
+        "@type": "Review",
+        author: { "@type": "Person", name: "Олег" },
+        reviewRating: { "@type": "Rating", ratingValue: 3, bestRating: 5, worstRating: 1 },
+        datePublished: "2026-09-21",
+      },
+    ]);
+    expect(productJsonLd(base, shop, null, reviews)).not.toHaveProperty("review");
+    expect(productJsonLd(base, shop, { avg: 4, count: 2 }, [])).not.toHaveProperty("review");
+    expect(() => JSON.parse(jsonLdScript(ld).children)).not.toThrow();
+  });
+
   it("название с </script> не закрывает тег, JSON разбирается обратно", () => {
     const s = jsonLdScript(productJsonLd({ ...base, name: "A</script><script>x()" }, shop, null));
     expect(s.type).toBe("application/ld+json");

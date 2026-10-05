@@ -64,7 +64,14 @@ export const Route = createFileRoute("/s/$slug/p/$id")({
     const ld =
       seoShop && loaderData.seo?.listed
         ? [
-            jsonLdScript(productJsonLd(loaderData.product, seoShop, loaderData.seo.rating)),
+            jsonLdScript(
+              productJsonLd(
+                loaderData.product,
+                seoShop,
+                loaderData.seo.rating,
+                loaderData.seo.reviews,
+              ),
+            ),
             jsonLdScript(
               breadcrumbJsonLd(
                 storefrontCrumbs(seoShop, shop?.categories ?? [], loaderData.product.categoryIds, {

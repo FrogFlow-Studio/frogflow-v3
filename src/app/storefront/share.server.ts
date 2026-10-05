@@ -10,6 +10,7 @@ import { PRODUCT_SELECT, type Product } from "@/core/catalog/catalog";
 import { listAllCategories } from "@/core/catalog/admin";
 import { visibleCategoryIds } from "@/core/storefront/categories";
 import { listedOnStorefront } from "@/core/storefront/sitemap";
+import type { SeoReview } from "@/core/storefront/seo";
 import { serverFailure } from "@/lib/server-failure";
 
 /**
@@ -55,7 +56,11 @@ export async function shareInfo(slug: string): Promise<{
 export async function productSeo(
   slug: string,
   id: string,
-): Promise<{ listed: boolean; rating: { avg: number; count: number } | null } | null> {
+): Promise<{
+  listed: boolean;
+  rating: { avg: number; count: number } | null;
+  reviews: SeoReview[];
+} | null> {
   const t = await openShop(slug, "catalog");
   if (!t) return null;
   const { tenantContext } = await import("@/core/tenant/resolve.server");
@@ -67,10 +72,25 @@ export async function productSeo(
   if (error) throw serverFailure(error.message);
   const known = new Set(cats.map((c) => c.id));
   if (!data || !listedOnStorefront(data as Product, known, visibleCategoryIds(cats)))
-    return { listed: false, rating: null };
-  const { approvedRating } = await import("@/core/reviews/photos.server");
-  return { listed: true, rating: await approvedRating(ctx, id) };
+    return { listed: false, rating: null, reviews: [] };
+  const { approvedRating, approvedReviews } = await import("@/core/reviews/photos.server");
+  const rating = await approvedRating(ctx, id);
+  // Отзывы для разметки (до пяти свежих): без оценки отзывов нет, как и на странице.
+  const reviews = rating ? await approvedReviews(ctx, id, SEO_REVIEWS) : [];
+  return {
+    listed: true,
+    rating,
+    reviews: reviews.map((r) => ({
+      author: r.buyer ?? "Покупатель",
+      rating: r.rating,
+      text: r.comment,
+      date: r.createdAt,
+    })),
+  };
 }
+
+/** Сколько отзывов кладём в разметку товара. */
+const SEO_REVIEWS = 5;
 
 const TEXT = { "content-type": "text/plain; charset=utf-8" };
 const notFound = () => new Response("not found", { status: 404, headers: TEXT });

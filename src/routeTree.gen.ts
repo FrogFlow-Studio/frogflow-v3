@@ -15,6 +15,7 @@ import { Route as MarketRouteImport } from './routes/market'
 import { Route as OperatorRouteImport } from './routes/operator'
 import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
 import { Route as SignupRouteImport } from './routes/signup'
+import { Route as SitemapMarketDotxmlRouteImport } from './routes/sitemap-market[.]xml'
 import { Route as SitemapPagesDotxmlRouteImport } from './routes/sitemap-pages[.]xml'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as StatusRouteImport } from './routes/status'
@@ -181,6 +182,11 @@ const RobotsDottxtRoute = RobotsDottxtRouteImport.update({
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SitemapMarketDotxmlRoute = SitemapMarketDotxmlRouteImport.update({
+  id: '/sitemap-market.xml',
+  path: '/sitemap-market.xml',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SitemapPagesDotxmlRoute = SitemapPagesDotxmlRouteImport.update({
@@ -890,6 +896,7 @@ export interface FileRoutesByFullPath {
   '/operator': typeof OperatorRouteWithChildren
   '/robots.txt': typeof RobotsDottxtRoute
   '/signup': typeof SignupRoute
+  '/sitemap-market.xml': typeof SitemapMarketDotxmlRoute
   '/sitemap-pages.xml': typeof SitemapPagesDotxmlRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/status': typeof StatusRoute
@@ -1032,6 +1039,7 @@ export interface FileRoutesByTo {
   '/operator': typeof OperatorAuthedIndexRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/signup': typeof SignupRoute
+  '/sitemap-market.xml': typeof SitemapMarketDotxmlRoute
   '/sitemap-pages.xml': typeof SitemapPagesDotxmlRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/status': typeof StatusRoute
@@ -1173,6 +1181,7 @@ export interface FileRoutesById {
   '/operator': typeof OperatorRouteWithChildren
   '/robots.txt': typeof RobotsDottxtRoute
   '/signup': typeof SignupRoute
+  '/sitemap-market.xml': typeof SitemapMarketDotxmlRoute
   '/sitemap-pages.xml': typeof SitemapPagesDotxmlRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/status': typeof StatusRoute
@@ -1320,6 +1329,7 @@ export interface FileRouteTypes {
     | '/operator'
     | '/robots.txt'
     | '/signup'
+    | '/sitemap-market.xml'
     | '/sitemap-pages.xml'
     | '/sitemap.xml'
     | '/status'
@@ -1462,6 +1472,7 @@ export interface FileRouteTypes {
     | '/operator'
     | '/robots.txt'
     | '/signup'
+    | '/sitemap-market.xml'
     | '/sitemap-pages.xml'
     | '/sitemap.xml'
     | '/status'
@@ -1602,6 +1613,7 @@ export interface FileRouteTypes {
     | '/operator'
     | '/robots.txt'
     | '/signup'
+    | '/sitemap-market.xml'
     | '/sitemap-pages.xml'
     | '/sitemap.xml'
     | '/status'
@@ -1748,6 +1760,7 @@ export interface RootRouteChildren {
   OperatorRoute: typeof OperatorRouteWithChildren
   RobotsDottxtRoute: typeof RobotsDottxtRoute
   SignupRoute: typeof SignupRoute
+  SitemapMarketDotxmlRoute: typeof SitemapMarketDotxmlRoute
   SitemapPagesDotxmlRoute: typeof SitemapPagesDotxmlRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   StatusRoute: typeof StatusRoute
@@ -1826,6 +1839,13 @@ declare module '@tanstack/react-router' {
       path: '/signup'
       fullPath: '/signup'
       preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sitemap-market.xml': {
+      id: '/sitemap-market.xml'
+      path: '/sitemap-market.xml'
+      fullPath: '/sitemap-market.xml'
+      preLoaderRoute: typeof SitemapMarketDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sitemap-pages.xml': {
@@ -3076,6 +3096,7 @@ const rootRouteChildren: RootRouteChildren = {
   OperatorRoute: OperatorRouteWithChildren,
   RobotsDottxtRoute: RobotsDottxtRoute,
   SignupRoute: SignupRoute,
+  SitemapMarketDotxmlRoute: SitemapMarketDotxmlRoute,
   SitemapPagesDotxmlRoute: SitemapPagesDotxmlRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   StatusRoute: StatusRoute,
