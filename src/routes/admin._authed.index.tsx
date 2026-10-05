@@ -20,6 +20,10 @@ import type { LimitNotice } from "@/core/plans/tenant";
 import { launchDone, type LaunchStepKey } from "@/core/courses/launch";
 import { MovedWelcome } from "@/app/admin/moved-welcome";
 import { useLiveOrders } from "@/app/admin/live-orders";
+import { waitingTiles } from "@/app/admin/waiting";
+import { WaitingCard } from "@/app/admin/waiting-card";
+import { PaceCard } from "@/app/admin/pace-card";
+import { buildAdminNav } from "@/app/admin/nav-model";
 
 export const Route = createFileRoute("/admin/_authed/")({
   loader: () => dashboardFn(),
@@ -57,7 +61,19 @@ function Dashboard() {
         title={t("overview.title")}
         subtitle={`${t(verticalTitleKey(shop.vertical))}${shop.telegram ? ` · @${shop.telegram}` : ""}`}
       />
-      {shop.role !== "accountant" && <TodayCard tasks={d.today} t={t} modules={shop.modules} />}
+      <WaitingCard
+        tiles={waitingTiles(buildAdminNav(shop), shop, d.counts.awaiting_confirmation ?? 0)}
+        t={t}
+      />
+      {d.pace && <PaceCard pace={d.pace} t={t} />}
+      {shop.role !== "accountant" && (
+        <TodayCard
+          // «Ждёт вас» уже показывает чеки, диалоги и обращения: здесь их нет.
+          tasks={d.today.filter((x) => !["receipts", "dialogs", "tickets"].includes(x.key))}
+          t={t}
+          modules={shop.modules}
+        />
+      )}
       {shop.role !== "accountant" && d.setup.starter > 0 && (
         <div className="mb-6 flex flex-wrap items-center gap-3 rounded-md border border-line p-3 text-sm">
           <span className="min-w-0 flex-1">{t("overview.starter.banner")}</span>

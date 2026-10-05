@@ -47,6 +47,7 @@ export * from "./fixtures/shop19-p5-wizard.ts";
 export * from "./fixtures/shop19-a-empty.ts";
 export * from "./fixtures/shop19-v-collections.ts";
 export * from "./fixtures/shop20-r-walk.ts";
+export * from "./fixtures/shop21-zh-home.ts";
 export * from "./fixtures/shop20-sh.ts";
 export * from "./fixtures/shop19-a-notify.ts";
 export * from "./fixtures/shop19-a-reports.ts";

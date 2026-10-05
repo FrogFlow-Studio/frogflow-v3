@@ -278,6 +278,8 @@ export const adminShopFn = createServerFn({ method: "GET" }).handler(async () =>
     const locale = isLocale(st.admin_locale)
       ? st.admin_locale
       : (ctx.tenant.settings.default_locale ?? "ru");
+    // Чтения, что при сбое дают 0 в бейджах меню: блок «Ждёт вас» показывает их как сбой, а не «0».
+    const waitingFailed: string[] = [];
     return {
       botId: ctx.tenant.id,
       name: shopName,
@@ -295,7 +297,10 @@ export const adminShopFn = createServerFn({ method: "GET" }).handler(async () =>
         ctx.tenant.modules.courses && !accountant
           ? await import("@/core/courses/homework.server")
               .then(async (m) => m.waitingCount(await m.listHomework(ctx)))
-              .catch(() => 0)
+              .catch(() => {
+                waitingFailed.push("homework");
+                return 0;
+              })
           : 0,
       /** Консультант по прайсу (BOVI) — пункт «Прайс консультанта» в меню. */
       pricelist: (await import("@/core/consultant/pricelist/mode")).pricelistMode(ctx.tenant),
@@ -326,7 +331,10 @@ export const adminShopFn = createServerFn({ method: "GET" }).handler(async () =>
       /** Открытые обращения helpdesk — бейдж «Обращения» в навигации. */
       ticketsOpen:
         ctx.tenant.modules.helpdesk && !accountant
-          ? await (await import("@/core/helpdesk/tickets")).countOpenTickets(ctx).catch(() => 0)
+          ? await (await import("@/core/helpdesk/tickets")).countOpenTickets(ctx).catch(() => {
+              waitingFailed.push("tickets");
+              return 0;
+            })
           : 0,
       /** Непрочитанные новости платформы — бейдж «Что нового» (сбой — без бейджа, не 0 «прочитано»). */
       newsUnread: accountant
@@ -351,7 +359,12 @@ export const adminShopFn = createServerFn({ method: "GET" }).handler(async () =>
       /** Сколько исходящих не доставлено после всех повторов — бейдж в навигации. */
       undelivered: accountant
         ? 0
-        : await (await import("@/core/outbox/outbox")).countUndelivered(ctx).catch(() => 0),
+        : await (await import("@/core/outbox/outbox")).countUndelivered(ctx).catch(() => {
+            waitingFailed.push("undelivered");
+            return 0;
+          }),
+      /** Какие числа «Ждёт вас» не прочитались (в бейджах меню они 0): плитка скажет «не удалось загрузить». */
+      waitingFailed,
     };
   } catch {
     return null;
@@ -474,11 +487,22 @@ export const dashboardFn = createServerFn({ method: "GET" }).handler(async () =>
   let today: import("@/core/overview/today").TodayTask[] = [];
   let rev1 = rev30;
   let rev7 = rev30;
+  // Продажи к этому же времени вчера и по часам (Ж3): сбой чтения — «не удалось загрузить», страница живёт.
+  let pace: import("@/core/overview/pace").SalesPace | "failed" | null = null;
   if (!accountant) {
-    [today, rev1, rev7] = await Promise.all([
+    [today, rev1, rev7, pace] = await Promise.all([
       (await import("@/core/overview/today")).todayTasks(ctx),
       revenue(ctx, 1),
       revenue(ctx, 7),
+      import("@/core/overview/pace.server")
+        .then((m) => m.loadSalesPace(ctx))
+        .catch((e): "failed" => {
+          console.error(
+            `[admin:${ctx.tenant.id}] продажи за сегодня`,
+            e instanceof Error ? e.message : e,
+          );
+          return "failed";
+        }),
     ]);
   }
   return {
@@ -486,6 +510,7 @@ export const dashboardFn = createServerFn({ method: "GET" }).handler(async () =>
     rev30,
     rev1,
     rev7,
+    pace,
     today,
     limits,
     recent: accountant ? redactOrders(recent) : recent,

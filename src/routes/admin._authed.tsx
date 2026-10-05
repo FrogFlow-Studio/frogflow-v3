@@ -15,6 +15,8 @@ import { DeletionBanner } from "@/app/admin/deletion-ui";
 import { SubscriptionBanner } from "@/app/admin/subscription-banner";
 import { TrialBanner } from "@/app/admin/trial-banner";
 import { CommandPalette } from "@/app/admin/command-palette";
+import { CreateMenu } from "@/app/admin/create-menu";
+import { createActions } from "@/app/admin/create-actions";
 import { SupportFab } from "@/app/admin/support-fab";
 import { SUPPORTED_LOCALES, type Locale } from "@/core/i18n/locale";
 
@@ -43,6 +45,7 @@ function Layout() {
   }, [shop.locale]);
   const owner = shop.role === "owner";
   const nav = buildAdminNav(shop);
+  const create = createActions(nav, shop);
   const switchLocale = async (locale: Locale) => {
     await setAdminLocaleFn({ data: { locale } });
     await router.invalidate();
@@ -61,7 +64,12 @@ function Layout() {
           {shop.status !== "active" && <Badge tone="warn">{t("nav.paused")}</Badge>}
         </span>
       }
-      nav={<AdminNavLinks nav={nav} t={t} />}
+      nav={
+        <>
+          <CreateMenu actions={create} t={t} />
+          <AdminNavLinks nav={nav} t={t} />
+        </>
+      }
       user={
         <div className="space-y-2">
           <div className="flex items-center justify-between gap-2 px-1">
@@ -131,6 +139,7 @@ function Layout() {
       </button>
       <CommandPalette
         locale={shop.locale}
+        actions={create.map((a) => ({ label: t(a.label), to: a.to, params: a.params }))}
         sections={[nav.overview, ...nav.groups.flatMap((g) => g.items)].map((i) => ({
           label: t(i.label),
           to: i.to,

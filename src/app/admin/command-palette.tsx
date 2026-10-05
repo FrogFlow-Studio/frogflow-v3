@@ -16,10 +16,13 @@ type Item = { label: string; hint: string; go: () => void };
 export function CommandPalette({
   locale,
   sections,
+  actions = [],
 }: {
   locale: Locale;
   /** Разделы, доступные этой роли (из меню): поиск по названию раздела. */
   sections: Array<{ label: string; to: string; hash?: string }>;
+  /** «Создать» (Ж5): новый заказ, товар, рассылка… — только то, что роль и модули позволяют. */
+  actions?: Array<{ label: string; to: string; params?: Record<string, string> }>;
 }) {
   const t = adminT(locale);
   const navigate = useNavigate();
@@ -78,6 +81,15 @@ export function CommandPalette({
     hint: t("palette.section"),
     go: () => void navigate({ to: x.to as never, hash: x.hash }),
   }));
+  // Пустой запрос — все действия «Создать»; с запросом — подходящие по названию, выше всего прочего.
+  const needle = q.trim().toLowerCase();
+  const actionItems: Item[] = actions
+    .filter((a) => !needle || a.label.toLowerCase().includes(needle))
+    .map((a) => ({
+      label: a.label,
+      hint: t("create.title"),
+      go: () => void navigate({ to: a.to as never, params: a.params as never }),
+    }));
   const more = (
     label: string,
     to: "/admin/orders" | "/admin/customers" | "/admin/products",
@@ -88,6 +100,7 @@ export function CommandPalette({
   });
   const items: Item[] = res
     ? [
+        ...actionItems,
         ...sectionItems,
         ...res.orders.map((o) => ({
           label: `#${o.no} · ${o.name}`,
@@ -108,7 +121,7 @@ export function CommandPalette({
         ...(res.productsMore ? [more(t("palette.allProducts"), "/admin/products")] : []),
         ...(res.customersMore ? [more(t("palette.allCustomers"), "/admin/customers")] : []),
       ]
-    : sectionItems;
+    : [...actionItems, ...sectionItems];
   if (!open) return null;
   return (
     <div
