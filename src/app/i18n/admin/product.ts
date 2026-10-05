@@ -214,7 +214,7 @@ export const ru = {
   "product.stockHistory.reason.bundle": "Набор в заказе №{no}",
   "product.tabs": "Разделы карточки",
   "product.tab.main": "Основное",
-  "product.tab.price": "Цена и остаток",
+  "product.tab.price": "Цена",
   "product.tab.photos": "Фото",
   "product.tab.variants": "Варианты",
   "product.tab.bundle": "Набор",
@@ -237,6 +237,7 @@ export const ru = {
   "product.ready.k.photos": "{n} фото",
   "products.col.stock": "Остаток",
   "products.col.ready": "Готовность",
+  "product.tab.stock": "Склад",
 } as const;
 
 export const kk: SectionDict<typeof ru> = {
@@ -449,7 +450,7 @@ export const kk: SectionDict<typeof ru> = {
   "product.stockHistory.reason.bundle": "№{no} тапсырыстағы жиынтық",
   "product.tabs": "Карточка бөлімдері",
   "product.tab.main": "Негізгі",
-  "product.tab.price": "Баға және қалдық",
+  "product.tab.price": "Баға",
   "product.tab.photos": "Фото",
   "product.tab.variants": "Нұсқалар",
   "product.tab.bundle": "Жиынтық",
@@ -472,6 +473,7 @@ export const kk: SectionDict<typeof ru> = {
   "product.ready.k.photos": "{n} фото",
   "products.col.stock": "Қалдық",
   "products.col.ready": "Дайындық",
+  "product.tab.stock": "Қойма",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -684,7 +686,7 @@ export const en: SectionDict<typeof ru> = {
   "product.stockHistory.reason.bundle": "Bundle in order #{no}",
   "product.tabs": "Card sections",
   "product.tab.main": "Basics",
-  "product.tab.price": "Price and stock",
+  "product.tab.price": "Price",
   "product.tab.photos": "Photos",
   "product.tab.variants": "Variants",
   "product.tab.bundle": "Bundle",
@@ -707,6 +709,7 @@ export const en: SectionDict<typeof ru> = {
   "product.ready.k.photos": "{n} more photos",
   "products.col.stock": "Stock",
   "products.col.ready": "Readiness",
+  "product.tab.stock": "Stock",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -918,7 +921,7 @@ export const uz: SectionDict<typeof ru> = {
   "product.stockHistory.reason.bundle": "№{no} buyurtmadagi toʻplam",
   "product.tabs": "Karta bo‘limlari",
   "product.tab.main": "Asosiy",
-  "product.tab.price": "Narx va qoldiq",
+  "product.tab.price": "Narx",
   "product.tab.photos": "Foto",
   "product.tab.variants": "Variantlar",
   "product.tab.bundle": "To‘plam",
@@ -941,4 +944,5 @@ export const uz: SectionDict<typeof ru> = {
   "product.ready.k.photos": "yana {n} ta rasm",
   "products.col.stock": "Qoldiq",
   "products.col.ready": "Tayyorlik",
+  "product.tab.stock": "Ombor",
 };

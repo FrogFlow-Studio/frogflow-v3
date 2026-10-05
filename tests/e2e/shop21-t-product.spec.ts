@@ -17,9 +17,10 @@ test("карточка товара одной страницей: оглавл�
   // Вкладок нет, оглавление есть, все разделы на одной странице.
   await expect(page.getByRole("tablist")).toHaveCount(0);
   const toc = page.getByRole("navigation", { name: "Разделы карточки", exact: true });
-  for (const n of ["Основное", "Фото", "Цена и остаток", "Варианты"])
+  for (const n of ["Основное", "Фото", "Цена", "Склад", "Варианты"])
     await expect(toc.getByRole("link", { name: n, exact: true })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Цена и остаток", exact: true })).toBeVisible();
+  await expect(page.locator("#sec-price")).toBeVisible();
+  await expect(page.locator("#sec-stock")).toBeVisible();
   await expect(page.getByLabel("Базовая цена", { exact: true })).toBeVisible();
 
   // Готовность: пока ничего не заполнено, не хватает названия и цены.
@@ -51,6 +52,13 @@ test("карточка товара одной страницей: оглавл�
   await expect(page.getByRole("heading", { name: "Товар Т21", exact: true })).toBeVisible();
   await expect(page.getByLabel("Базовая цена", { exact: true })).toHaveValue("2500");
   await expect(bar).toContainText("Все изменения сохранены");
+  // Склад — отдельный раздел; остаток и цена пишутся одной формой, не мешая друг другу.
+  await page.getByLabel("Остаток", { exact: true }).fill("7");
+  await bar.getByRole("button", { name: "Сохранить", exact: true }).click();
+  await expect(bar).toContainText("Все изменения сохранены");
+  await page.reload();
+  await expect(page.getByLabel("Остаток", { exact: true })).toHaveValue("7");
+  await expect(page.getByLabel("Базовая цена", { exact: true })).toHaveValue("2500");
   // Набор — раздел, потому что у магазина включён модуль наборов; у сохранённого физического товара он есть.
   await expect(toc.getByRole("link", { name: "Набор", exact: true })).toBeVisible();
   expect(errors).toEqual([]);

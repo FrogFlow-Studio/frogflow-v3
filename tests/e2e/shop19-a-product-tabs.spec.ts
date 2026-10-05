@@ -13,7 +13,7 @@ test("карточка товара: разделы, сохранение и п�
 
   await page.goto("/admin/products/new");
   const tabs = page.getByRole("navigation", { name: "Разделы карточки", exact: true });
-  for (const n of ["Основное", "Цена и остаток", "Фото", "Варианты"])
+  for (const n of ["Основное", "Цена", "Склад", "Фото", "Варианты"])
     await expect(tabs.getByRole("link", { name: n, exact: true })).toBeVisible();
   // Без модулей «Наборы» и «Допродажа» этих разделов нет.
   await expect(tabs.getByRole("link", { name: "Набор", exact: true })).toHaveCount(0);

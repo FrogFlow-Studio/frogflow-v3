@@ -143,7 +143,7 @@ function CategoryPicker({
   );
 }
 
-type ProductTab = "main" | "price" | "photos" | "variants" | "bundle" | "promo";
+type ProductTab = "main" | "price" | "stock" | "photos" | "variants" | "bundle" | "promo";
 
 /** Обёртка: «Отменить» пересоздаёт редактор, поля и списки возвращаются к сохранённому. */
 function ProductEditor() {
@@ -276,6 +276,7 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
   const tabs: ProductTab[] = [
     "main",
     "price",
+    "stock",
     "photos",
     "variants",
     ...(shop.modules.bundles && p?.id && kind === "physical" ? (["bundle"] as const) : []),
@@ -307,7 +308,15 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
     isCourse,
   });
   // Новый вид: все разделы идут подряд в порядке работы над карточкой, вкладок нет.
-  const newOrder: ProductTab[] = ["main", "photos", "price", "variants", "bundle", "promo"];
+  const newOrder: ProductTab[] = [
+    "main",
+    "photos",
+    "price",
+    "stock",
+    "variants",
+    "bundle",
+    "promo",
+  ];
   const panel = (k: ProductTab) => ({
     className: "space-y-4",
     style: { order: newOrder.indexOf(k) },
@@ -613,6 +622,20 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
               )}
             </Card>
 
+            {shop.modules.profit && p?.id && (
+              <CostCard
+                productId={p.id}
+                variantNames={[...new Set((p.product_variants ?? []).map((v) => v.name.trim()))]}
+                canWrite={canEdit(shop.role) || shop.role === "accountant"}
+                t={t}
+              />
+            )}
+            {shop.modules.subscriptions && p?.id && <SubscriptionCard productId={p.id} t={t} />}
+          </div>
+          <div data-tab="stock" {...panel("stock")}>
+            {tabs.includes("stock") && (
+              <SectionHeading id="stock">{t("product.tab.stock")}</SectionHeading>
+            )}
             <Card title={t("product.card.stock")}>
               <div className="mt-3 grid gap-3 sm:grid-cols-3">
                 <Field
@@ -697,15 +720,6 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
                 </div>
               )}
             </Card>
-            {shop.modules.profit && p?.id && (
-              <CostCard
-                productId={p.id}
-                variantNames={[...new Set((p.product_variants ?? []).map((v) => v.name.trim()))]}
-                canWrite={canEdit(shop.role) || shop.role === "accountant"}
-                t={t}
-              />
-            )}
-            {shop.modules.subscriptions && p?.id && <SubscriptionCard productId={p.id} t={t} />}
             {shop.modules.warehouse && kind === "physical" && p?.id && (
               <SupplierCard productId={p.id} canWrite={canEdit(shop.role)} t={t} />
             )}
