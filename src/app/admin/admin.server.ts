@@ -487,7 +487,9 @@ export async function runOrderAction(
       const { PHYSICAL_NEXT, PHYSICAL_PREV, setPhysicalStatus } =
         await import("@/core/orders/admin");
       const to = (action === "next" ? PHYSICAL_NEXT : PHYSICAL_PREV)[order.status];
-      if (!to) return { ok: false, message: t("msg.orders.noTransition") };
+      // Шаги сборки — только у физического заказа: так же решает `orderActions` для кнопок.
+      if (!to || order.fulfillment_kind !== "physical")
+        return { ok: false, message: t("msg.orders.noTransition") };
       const ok = await setPhysicalStatus(ctx, id, order.status, to);
       if (ok) {
         const { recordOrderEvent } = await import("@/core/orders/events");

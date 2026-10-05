@@ -2,8 +2,8 @@ import { expect, test } from "@playwright/test";
 import * as F from "./fixtures.ts";
 import { watch } from "./helpers.ts";
 
-/** А4: карточка заказа — панель действий сверху остаётся на виду, кнопки только допустимых переходов, история рядом/вкладкой. */
-test("карточка заказа: действия наверху, история вкладкой на телефоне", async ({ page }, info) => {
+/** А4 → З2: карточка заказа — шаги статуса и главная кнопка наверху, прочие действия под «Ещё», история одной лентой. */
+test("карточка заказа: шаги, главная кнопка и «Ещё», история лентой", async ({ page }, info) => {
   const errors = await watch(page);
   await page.goto("/admin/login");
   await page.locator('input[name="username"]').fill(F.ORD19_SELLER_LOGIN);
@@ -11,37 +11,28 @@ test("карточка заказа: действия наверху, истор
   await page.getByRole("button", { name: "Войти", exact: true }).click();
   await expect(page).toHaveURL(/\/admin$/);
 
-  // Чек на проверке: можно подтвердить и отклонить.
+  // Чек на проверке: главная кнопка — подтвердить; отклонить спрятано под «Ещё».
   await page.goto(`/admin/orders/${F.ORD19_ORDERS[0][0]}`);
   const confirm = page.getByRole("button", { name: "✅ Подтвердить и выдать", exact: true });
   await expect(confirm).toBeVisible();
+  await expect(page.getByRole("list", { name: "Шаги заказа", exact: true })).toBeVisible();
+  await page.locator("summary", { hasText: "Ещё" }).click();
   await expect(page.getByRole("button", { name: "Отклонить", exact: true })).toBeVisible();
 
-  const phone = info.project.name === "phone";
-  const events = page.getByRole("heading", { name: "История", exact: true });
-  if (phone) {
-    await expect(events).toBeHidden();
-    await page.getByRole("tab", { name: "История", exact: true }).click();
-    await expect(events).toBeVisible();
-    await page.getByRole("tab", { name: "Заказ", exact: true }).click();
-    await expect(events).toBeHidden();
-  } else {
-    await expect(events).toBeVisible();
+  // История — одной лентой на той же странице, без вкладок.
+  await expect(page.getByRole("heading", { name: "История", exact: true })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "История", exact: true })).toHaveCount(0);
+
+  // Панель действий липкая в колонке заказа (компьютер): после прокрутки кнопка в окне.
+  if (info.project.name !== "phone") {
+    await page.getByTestId("order-detail").evaluate((el) => (el.scrollTop = el.scrollHeight));
+    await expect(confirm).toBeInViewport();
   }
 
-  // Панель действий липкая: после прокрутки кнопка всё ещё в окне.
-  await page
-    .locator("div.overflow-y-auto")
-    .first()
-    .evaluate((el) => (el.scrollTop = el.scrollHeight));
-  await expect(confirm).toBeInViewport();
-
-  // Выданный заказ: допустимых переходов нет.
+  // Выданный заказ: допустимых переходов нет, главной кнопки нет.
   await page.goto(`/admin/orders/${F.ORD19_ORDERS[2][0]}`);
   await expect(page.getByRole("heading", { name: /Заказ #3/ })).toBeVisible();
   await expect(page.getByRole("button", { name: "Отклонить", exact: true })).toHaveCount(0);
-  await expect(
-    page.getByRole("button", { name: "✅ Подтвердить и выдать", exact: true }),
-  ).toHaveCount(0);
+  await expect(page.getByTestId("order-main-action")).toHaveCount(0);
   expect(errors).toEqual([]);
 });

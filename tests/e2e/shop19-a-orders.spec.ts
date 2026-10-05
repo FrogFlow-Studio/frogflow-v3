@@ -3,7 +3,7 @@ import * as F from "./fixtures.ts";
 import { watch } from "./helpers.ts";
 
 /** А3: заказы на телефоне — карточки вместо таблицы, фильтры-чипы, поиск по телефону, без горизонтальной прокрутки. */
-test("список заказов: карточки на телефоне, чипы и поиск", async ({ page }, info) => {
+test("список заказов: карточки на телефоне, чипы и поиск", async ({ page }) => {
   const errors = await watch(page);
   await page.goto("/admin/login");
   await page.locator('input[name="username"]').fill(F.ORD19_SELLER_LOGIN);
@@ -14,11 +14,9 @@ test("список заказов: карточки на телефоне, чи�
   await expect(page.getByRole("heading", { name: "Заказы", exact: true })).toBeVisible();
 
   const seen = (n: string) => page.getByText(n).filter({ visible: true });
-  const phone = info.project.name === "phone";
-  // Видна ровно одна форма списка: таблица на компьютере, карточки на телефоне.
-  await expect(page.getByRole("table")).toHaveCount(phone ? 0 : 1);
-  await expect(page.getByRole("link", { name: /Айгерим Ж/ })).toHaveCount(phone ? 1 : 0);
-  if (!phone) await expect(page.getByRole("cell", { name: /Айгерим Ж/ })).toBeVisible();
+  // Список — карточки и на компьютере (З1: узкая колонка рядом с очередями и заказом), таблицы нет.
+  await expect(page.getByRole("table")).toHaveCount(0);
+  await expect(page.getByRole("link", { name: /Айгерим Ж/ })).toHaveCount(1);
 
   // Чип статуса оставляет только свой заказ.
   const filters = page.getByRole("group", { name: "Фильтр по статусу", exact: true });

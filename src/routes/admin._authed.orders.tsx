@@ -4,6 +4,7 @@ import {
   Link,
   Outlet,
   useNavigate,
+  useParams,
   useRouteContext,
   useRouter,
 } from "@tanstack/react-router";
@@ -19,7 +20,6 @@ import { EmptyState } from "@/app/ui/states";
 import { BATCH_MAX } from "@/core/orders/batch-pure";
 import { formatMoney } from "@/core/money/money";
 import { displayNo } from "@/core/orders/pure";
-import { slotOf } from "@/core/fulfillment/slots";
 
 const search = z.object({
   status: z.string().optional(),
@@ -167,6 +167,8 @@ function OrdersPage() {
   const { status, q, pickup, unpaid, assembly } = Route.useSearch();
   const physical = shop.vertical === "confectionery" || shop.vertical === "flowers";
   const navigate = useNavigate();
+  const selectedId = Number(useParams({ strict: false }).id) || null;
+  const detailOpen = selectedId !== null;
   const router = useRouter();
   const pull = usePullToRefresh(() => router.invalidate());
   const [query, setQuery] = useState(q ?? "");
@@ -269,326 +271,281 @@ function OrdersPage() {
           </div>
         }
       />
-      {physical && (
-        <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
-          <span className="text-muted">{t("physical.pickupLabel")}</span>
-          {PICKUP_KEYS.map((k) => (
-            <Link
-              key={k}
-              to="/admin/orders"
-              search={{ status, q, pickup: pickup === k ? undefined : k, unpaid, assembly }}
-              className={`badge cursor-pointer ${pickup === k ? "border-accent bg-accent/10 text-accent" : ""}`}
-            >
-              {t(`physical.pickup.${k}`)}
-            </Link>
-          ))}
-        </div>
-      )}
-      {physical && load && (
-        <div className="mb-3 space-y-1 text-sm">
-          {load.days.map((d, i) => (
-            <div key={d.date} className="flex flex-wrap items-center gap-x-3 gap-y-1">
-              <span className="text-muted">
-                {t("physical.load.label")}{" "}
-                {t(i === 0 ? "physical.pickup.today" : "physical.pickup.tomorrow")}
-              </span>
-              <span
-                className={`badge ${load.limits.day !== null && d.total >= load.limits.day ? "border-danger text-danger" : ""}`}
+      <div className="lg:grid lg:grid-cols-[190px_minmax(0,1fr)_minmax(0,1.3fr)] lg:items-start lg:gap-4 xl:grid-cols-[200px_minmax(0,1fr)_minmax(0,1.7fr)]">
+        <aside aria-label={t("orders.queues")} className={detailOpen ? "max-lg:hidden" : ""}>
+          <div
+            role="group"
+            aria-label={t("orders.filtersLabel")}
+            className="mb-3 flex flex-wrap gap-2 lg:flex-col lg:gap-1"
+          >
+            {tabs.map(([s, label]) => (
+              <Link
+                key={label}
+                to="/admin/orders"
+                search={{ status: s, q, pickup, unpaid, assembly }}
+                className={`badge cursor-pointer lg:justify-between ${status === s ? "border-accent bg-accent/10 text-accent" : ""}`}
               >
-                {d.total}
-                {load.limits.day !== null ? ` / ${load.limits.day}` : ""}
-              </span>
-              {d.slots.map((x) => (
-                <span
-                  key={x.slot}
-                  className={`badge ${load.limits.slot !== null && x.count >= load.limits.slot ? "border-danger text-danger" : ""}`}
+                {label}
+                {s && counts[s] ? ` · ${counts[s]}` : ""}
+              </Link>
+            ))}
+          </div>
+          {physical && (
+            <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
+              <span className="text-muted">{t("physical.pickupLabel")}</span>
+              {PICKUP_KEYS.map((k) => (
+                <Link
+                  key={k}
+                  to="/admin/orders"
+                  search={{ status, q, pickup: pickup === k ? undefined : k, unpaid, assembly }}
+                  className={`badge cursor-pointer ${pickup === k ? "border-accent bg-accent/10 text-accent" : ""}`}
                 >
-                  {x.slot}: {x.count}
-                  {load.limits.slot !== null ? ` / ${load.limits.slot}` : ""}
-                </span>
+                  {t(`physical.pickup.${k}`)}
+                </Link>
               ))}
             </div>
-          ))}
-        </div>
-      )}
-      {(physical || unpaid || (counts.unpaid ?? 0) > 0) && (
-        <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
-          {physical && (
-            <Link
-              to="/admin/orders"
-              search={{ status, q, pickup, unpaid, assembly: assembly ? undefined : "today" }}
-              className={`badge cursor-pointer ${assembly ? "border-accent bg-accent/10 text-accent" : ""}`}
-            >
-              {t("orders.filter.assembly")}
-            </Link>
           )}
-          <Link
-            to="/admin/orders"
-            search={{ status, q, pickup, unpaid: unpaid ? undefined : true, assembly }}
-            className={`badge cursor-pointer ${unpaid ? "border-accent bg-accent/10 text-accent" : ""}`}
-          >
-            {t("physical.unpaid")}
-            {counts.unpaid ? ` · ${counts.unpaid}` : ""}
-          </Link>
-        </div>
-      )}
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <div
-          role="group"
-          aria-label={t("orders.filtersLabel")}
-          className="-mx-4 flex w-[calc(100%+2rem)] gap-2 overflow-x-auto px-4 pb-1 md:mx-0 md:w-auto md:flex-wrap md:overflow-visible md:px-0 md:pb-0 [&>a]:shrink-0 [&>a]:whitespace-nowrap"
-        >
-          {tabs.map(([s, label]) => (
-            <Link
-              key={label}
-              to="/admin/orders"
-              search={{ status: s, q, pickup, unpaid, assembly }}
-              className={`badge cursor-pointer ${status === s ? "border-accent bg-accent/10 text-accent" : ""}`}
-            >
-              {label}
-              {s && counts[s] ? ` · ${counts[s]}` : ""}
-            </Link>
-          ))}
-        </div>
-        <form
-          className="flex w-full gap-2 md:ml-auto md:w-auto"
-          onSubmit={(e) => {
-            e.preventDefault();
-            void navigate({
-              to: "/admin/orders",
-              search: { status, q: query || undefined, pickup, unpaid, assembly },
-            });
-          }}
-        >
-          <input
-            className="input min-w-0 flex-1 md:w-56 md:flex-none"
-            placeholder={t("orders.searchPlaceholder")}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-          <button className="btn-secondary">{t("common.search")}</button>
-        </form>
-      </div>
-      {(picked.length > 0 || allMode) && (
-        <div
-          role="region"
-          aria-label={t("orders.batch.selected", { n: total })}
-          className="card sticky top-2 z-10 mb-3 flex flex-wrap items-center gap-2 p-3 text-sm"
-        >
-          <span className="font-medium">{t("orders.batch.selected", { n: total })}</span>
-          {!allMode && pageAllPicked && matching !== null && matching > pageIds.length && (
-            <button
-              type="button"
-              className="btn-secondary text-xs"
-              onClick={() => setAllMode(true)}
-            >
-              {t("orders.batch.selectFilter", { n: matching })}
-            </button>
+          {physical && load && (
+            <div className="mb-3 space-y-1 text-sm">
+              {load.days.map((d, i) => (
+                <div key={d.date} className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <span className="text-muted">
+                    {t("physical.load.label")}{" "}
+                    {t(i === 0 ? "physical.pickup.today" : "physical.pickup.tomorrow")}
+                  </span>
+                  <span
+                    className={`badge ${load.limits.day !== null && d.total >= load.limits.day ? "border-danger text-danger" : ""}`}
+                  >
+                    {d.total}
+                    {load.limits.day !== null ? ` / ${load.limits.day}` : ""}
+                  </span>
+                  {d.slots.map((x) => (
+                    <span
+                      key={x.slot}
+                      className={`badge ${load.limits.slot !== null && x.count >= load.limits.slot ? "border-danger text-danger" : ""}`}
+                    >
+                      {x.slot}: {x.count}
+                      {load.limits.slot !== null ? ` / ${load.limits.slot}` : ""}
+                    </span>
+                  ))}
+                </div>
+              ))}
+            </div>
           )}
-          {!allMode && pageAllPicked && matching === null && (
-            <span className="text-xs text-muted">{t("orders.batch.counting")}</span>
-          )}
-          {allMode && (
-            <span className="text-xs text-muted">
-              {t("orders.batch.filterPicked", { n: total })}
-            </span>
-          )}
-          {tooMany ? (
-            <span className="text-xs text-danger">
-              {t("orders.batch.printLimit", { max: BATCH_MAX })}
-            </span>
-          ) : (
-            <>
-              <a
-                className="btn-secondary text-xs"
-                href={`/admin/print-batch?${new URLSearchParams({ kind: "slips", ...flat(printSearch) })}`}
-                target="_blank"
-                rel="noreferrer"
+          {(physical || unpaid || (counts.unpaid ?? 0) > 0) && (
+            <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
+              {physical && (
+                <Link
+                  to="/admin/orders"
+                  search={{ status, q, pickup, unpaid, assembly: assembly ? undefined : "today" }}
+                  className={`badge cursor-pointer ${assembly ? "border-accent bg-accent/10 text-accent" : ""}`}
+                >
+                  {t("orders.filter.assembly")}
+                </Link>
+              )}
+              <Link
+                to="/admin/orders"
+                search={{ status, q, pickup, unpaid: unpaid ? undefined : true, assembly }}
+                className={`badge cursor-pointer ${unpaid ? "border-accent bg-accent/10 text-accent" : ""}`}
               >
-                {t("orders.batch.slips")}
-              </a>
-              <a
-                className="btn-secondary text-xs"
-                href={`/admin/print-batch?${new URLSearchParams({ kind: "labels", ...flat(printSearch) })}`}
-                target="_blank"
-                rel="noreferrer"
-              >
-                {t("orders.batch.labels")}
-              </a>
-            </>
+                {t("physical.unpaid")}
+                {counts.unpaid ? ` · ${counts.unpaid}` : ""}
+              </Link>
+            </div>
           )}
-          {canEdit(shop.role) && (
-            <button
-              type="button"
-              className="btn-primary text-xs"
-              disabled={assemble.busy}
-              onClick={() => void assemble.run().catch(() => {})}
-            >
-              {t("orders.batch.assemble")}
-            </button>
-          )}
-          <button
-            type="button"
-            className="btn-ghost text-xs"
-            onClick={() => {
-              setPicked([]);
-              setAllMode(false);
+        </aside>
+        <section className={detailOpen ? "min-w-0 max-lg:hidden" : "min-w-0"}>
+          <form
+            className="mb-3 flex w-full gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void navigate({
+                to: "/admin/orders",
+                search: { status, q: query || undefined, pickup, unpaid, assembly },
+              });
             }}
           >
-            {t("orders.batch.clear")}
-          </button>
-          <ErrorBox error={assemble.error} />
-        </div>
-      )}
-      {batchMsg && (
-        <p role="status" className="mb-3 text-sm">
-          {batchMsg}
-        </p>
-      )}
-      {orders.length === 0 ? (
-        status || q || pickup || unpaid || assembly ? (
-          <Empty>{t("orders.empty")}</Empty>
-        ) : (
-          <EmptyState
-            title={t("orders.emptyTitle")}
-            hint={t("orders.emptyHint")}
-            action={{ label: t("nav.botPreview"), to: "/admin/bot-preview" }}
-          />
-        )
-      ) : (
-        <>
-          <ul className="space-y-2 md:hidden">
-            {orders.map((o) => (
-              <li key={o.id} className="flex items-start gap-2">
+            <input
+              className="input min-w-0 flex-1"
+              placeholder={t("orders.searchPlaceholder")}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+            <button className="btn-secondary">{t("common.search")}</button>
+          </form>
+          {(picked.length > 0 || allMode) && (
+            <div
+              role="region"
+              aria-label={t("orders.batch.selected", { n: total })}
+              className="card sticky top-2 z-10 mb-3 flex flex-wrap items-center gap-2 p-3 text-sm"
+            >
+              <span className="font-medium">{t("orders.batch.selected", { n: total })}</span>
+              {!allMode && pageAllPicked && matching !== null && matching > pageIds.length && (
+                <button
+                  type="button"
+                  className="btn-secondary text-xs"
+                  onClick={() => setAllMode(true)}
+                >
+                  {t("orders.batch.selectFilter", { n: matching })}
+                </button>
+              )}
+              {!allMode && pageAllPicked && matching === null && (
+                <span className="text-xs text-muted">{t("orders.batch.counting")}</span>
+              )}
+              {allMode && (
+                <span className="text-xs text-muted">
+                  {t("orders.batch.filterPicked", { n: total })}
+                </span>
+              )}
+              {tooMany ? (
+                <span className="text-xs text-danger">
+                  {t("orders.batch.printLimit", { max: BATCH_MAX })}
+                </span>
+              ) : (
+                <>
+                  <a
+                    className="btn-secondary text-xs"
+                    href={`/admin/print-batch?${new URLSearchParams({ kind: "slips", ...flat(printSearch) })}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {t("orders.batch.slips")}
+                  </a>
+                  <a
+                    className="btn-secondary text-xs"
+                    href={`/admin/print-batch?${new URLSearchParams({ kind: "labels", ...flat(printSearch) })}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {t("orders.batch.labels")}
+                  </a>
+                </>
+              )}
+              {canEdit(shop.role) && (
+                <button
+                  type="button"
+                  className="btn-primary text-xs"
+                  disabled={assemble.busy}
+                  onClick={() => void assemble.run().catch(() => {})}
+                >
+                  {t("orders.batch.assemble")}
+                </button>
+              )}
+              <button
+                type="button"
+                className="btn-ghost text-xs"
+                onClick={() => {
+                  setPicked([]);
+                  setAllMode(false);
+                }}
+              >
+                {t("orders.batch.clear")}
+              </button>
+              <ErrorBox error={assemble.error} />
+            </div>
+          )}
+          {batchMsg && (
+            <p role="status" className="mb-3 text-sm">
+              {batchMsg}
+            </p>
+          )}
+          {orders.length === 0 ? (
+            status || q || pickup || unpaid || assembly ? (
+              <Empty>{t("orders.empty")}</Empty>
+            ) : (
+              <EmptyState
+                title={t("orders.emptyTitle")}
+                hint={t("orders.emptyHint")}
+                action={{ label: t("nav.botPreview"), to: "/admin/bot-preview" }}
+              />
+            )
+          ) : (
+            <>
+              <label className="mb-2 flex items-center gap-2 text-xs text-muted">
                 <input
                   type="checkbox"
-                  className="mt-4"
-                  aria-label={t("orders.batch.pick", { no: displayNo(o) })}
-                  checked={picked.includes(o.id)}
-                  onChange={() => toggle(o.id)}
+                  aria-label={t("orders.batch.pickAll")}
+                  checked={pageAllPicked}
+                  onChange={togglePage}
                 />
-                <Link
-                  to="/admin/orders/$id"
-                  params={{ id: String(o.id) }}
-                  className="card block min-w-0 flex-1 p-3 text-sm"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-medium">#{displayNo(o)}</span>
-                    <OrderStatus status={o.status} />
-                  </div>
-                  <div className="mt-1 truncate">{o.display_name}</div>
-                  <div className="truncate text-xs text-muted">
-                    {o.contact ?? o.customer_email ?? ""}
-                  </div>
-                  <div className="truncate text-xs text-muted">
-                    {(o.order_items ?? []).map((i) => i.name_snapshot).join(", ")}
-                  </div>
-                  <div className="mt-2 flex items-center justify-between gap-2">
-                    <span className="tabular-nums font-medium">
-                      {formatMoney(o.total, o.currency)}
-                    </span>
-                    <span className="text-xs text-muted">
-                      {new Date(o.created_at).toLocaleString(intlLocale(shop.locale), {
-                        dateStyle: "short",
-                        timeStyle: "short",
-                      })}
-                    </span>
-                  </div>
-                </Link>
-              </li>
-            ))}
-          </ul>
-          <div className="card hidden overflow-x-auto md:block">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>
+                {t("orders.batch.pickAll")}
+              </label>
+              <ul className="space-y-2" data-testid="orders-list">
+                {orders.map((o) => (
+                  <li key={o.id} className="flex items-start gap-2">
                     <input
                       type="checkbox"
-                      aria-label={t("orders.batch.pickAll")}
-                      checked={pageAllPicked}
-                      onChange={togglePage}
+                      className="mt-4"
+                      aria-label={t("orders.batch.pick", { no: displayNo(o) })}
+                      checked={picked.includes(o.id)}
+                      onChange={() => toggle(o.id)}
                     />
-                  </th>
-                  <th>{t("orders.col.no")}</th>
-                  <th>{t("orders.col.customer")}</th>
-                  <th>{t("orders.col.items")}</th>
-                  <th className="text-right">{t("orders.col.total")}</th>
-                  <th>{t("orders.col.status")}</th>
-                  <th>{t("orders.col.channel")}</th>
-                  <th>{t("orders.col.when")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {orders.map((o) => (
-                  <tr key={o.id} className="hover:bg-surface-2/60">
-                    <td>
-                      <input
-                        type="checkbox"
-                        aria-label={t("orders.batch.pick", { no: displayNo(o) })}
-                        checked={picked.includes(o.id)}
-                        onChange={() => toggle(o.id)}
-                      />
-                    </td>
-                    <td>
-                      <Link
-                        to="/admin/orders/$id"
-                        params={{ id: String(o.id) }}
-                        className="font-medium hover:underline"
-                      >
-                        #{displayNo(o)}
-                      </Link>
-                    </td>
-                    <td>
-                      {o.display_name}
-                      <div className="text-xs text-muted">
+                    <Link
+                      to="/admin/orders/$id"
+                      params={{ id: String(o.id) }}
+                      search={true}
+                      aria-current={selectedId === o.id ? "true" : undefined}
+                      className={`card block min-w-0 flex-1 p-3 text-sm ${selectedId === o.id ? "border-accent ring-1 ring-accent" : ""}`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-medium">#{displayNo(o)}</span>
+                        <OrderStatus status={o.status} />
+                      </div>
+                      <div className="mt-1 truncate">{o.display_name}</div>
+                      <div className="truncate text-xs text-muted">
                         {o.contact ?? o.customer_email ?? ""}
                       </div>
-                    </td>
-                    <td className="max-w-xs truncate text-muted">
-                      {(o.order_items ?? []).map((i) => i.name_snapshot).join(", ")}
-                    </td>
-                    <td className="text-right tabular-nums">
-                      {formatMoney(o.total, o.currency)}
-                      {o.fulfillment_kind === "physical" &&
-                        Number(o.paid_amount) > 0 &&
-                        Number(o.paid_amount) < Number(o.total) && (
-                          <div className="text-xs text-muted">
-                            {t("physical.paid")} {formatMoney(o.paid_amount, o.currency)}
-                          </div>
+                      <div className="truncate text-xs text-muted">
+                        {(o.order_items ?? []).map((i) => i.name_snapshot).join(", ")}
+                      </div>
+                      <div className="truncate text-xs text-muted">
+                        {o.platform === "web" ? t("order.platformWeb") : o.platform}
+                        {o.fulfillment_at && (
+                          <span className="text-fg">
+                            {" → "}
+                            {new Date(o.fulfillment_at).toLocaleDateString(
+                              intlLocale(shop.locale),
+                              {
+                                timeZone: "UTC",
+                                day: "2-digit",
+                                month: "2-digit",
+                              },
+                            )}
+                          </span>
                         )}
-                    </td>
-                    <td>
-                      <OrderStatus status={o.status} />
-                    </td>
-                    <td className="text-muted">
-                      {o.platform === "web" ? t("order.platformWeb") : o.platform}
-                    </td>
-                    <td className="whitespace-nowrap text-muted">
-                      {new Date(o.created_at).toLocaleString(intlLocale(shop.locale), {
-                        dateStyle: "short",
-                        timeStyle: "short",
-                      })}
-                      {o.fulfillment_at && (
-                        <div className="text-xs text-fg">
-                          →{" "}
-                          {new Date(o.fulfillment_at).toLocaleDateString(intlLocale(shop.locale), {
-                            timeZone: "UTC",
-                            day: "2-digit",
-                            month: "2-digit",
+                      </div>
+                      <div className="mt-2 flex items-center justify-between gap-2">
+                        <span className="tabular-nums font-medium">
+                          {formatMoney(o.total, o.currency)}
+                          {o.fulfillment_kind === "physical" &&
+                            Number(o.paid_amount) > 0 &&
+                            Number(o.paid_amount) < Number(o.total) && (
+                              <span className="ml-1 text-xs font-normal text-muted">
+                                {t("physical.paid")} {formatMoney(o.paid_amount, o.currency)}
+                              </span>
+                            )}
+                        </span>
+                        <span className="text-xs text-muted">
+                          {new Date(o.created_at).toLocaleString(intlLocale(shop.locale), {
+                            dateStyle: "short",
+                            timeStyle: "short",
                           })}
-                          {slotOf(o.fulfillment_at, []) && ` ${slotOf(o.fulfillment_at, [])}`}
-                        </div>
-                      )}
-                    </td>
-                  </tr>
+                        </span>
+                      </div>
+                    </Link>
+                  </li>
                 ))}
-              </tbody>
-            </table>
-          </div>
-        </>
-      )}
-      <Outlet />
+              </ul>
+            </>
+          )}
+        </section>
+        <section className="min-w-0">
+          {!detailOpen && (
+            <p className="card p-4 text-sm text-muted max-lg:hidden">{t("orders.pickOrder")}</p>
+          )}
+          <Outlet />
+        </section>
+      </div>
     </>
   );
 }
