@@ -41,6 +41,14 @@ export const ru = {
   "growth.funnel.cart": "Корзина",
   "growth.funnel.ordered": "Заказ",
   "growth.funnel.paid": "Оплата",
+  "growth.source.search": "Поисковики",
+  "growth.source.market": "Площадка FrogFlow",
+  "growth.source.link": "Ссылки с других сайтов",
+  "growth.visits.visit": "Визиты",
+  "growth.visits.product": "Смотрели товар",
+  "growth.visits.note":
+    "Визиты и просмотры товара считаются только на витрине: счётчик без личных данных, по одному визиту за сессию браузера, и только с момента, как включён счётчик.",
+  "growth.visits.failed": "Визиты не удалось загрузить: остальная воронка показана без них.",
 };
 
 export const kk: SectionDict<typeof ru> = {
@@ -84,6 +92,15 @@ export const kk: SectionDict<typeof ru> = {
   "growth.funnel.cart": "Себет",
   "growth.funnel.ordered": "Тапсырыс",
   "growth.funnel.paid": "Төлем",
+  "growth.source.search": "Іздеу жүйелері",
+  "growth.source.market": "FrogFlow алаңы",
+  "growth.source.link": "Басқа сайттардан сілтемелер",
+  "growth.visits.visit": "Кірулер",
+  "growth.visits.product": "Тауарды қарағандар",
+  "growth.visits.note":
+    "Кірулер мен тауар қараулар тек витринада есептеледі: жеке деректерсіз санауыш, браузер сессиясына бір кіру, санауыш қосылған сәттен бастап ғана.",
+  "growth.visits.failed":
+    "Кірулерді жүктеу мүмкін болмады: воронканың қалған бөлігі оларсыз көрсетілген.",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -126,6 +143,14 @@ export const en: SectionDict<typeof ru> = {
   "growth.funnel.cart": "Cart",
   "growth.funnel.ordered": "Order",
   "growth.funnel.paid": "Payment",
+  "growth.source.search": "Search engines",
+  "growth.source.market": "FrogFlow marketplace",
+  "growth.source.link": "Links from other sites",
+  "growth.visits.visit": "Visits",
+  "growth.visits.product": "Viewed a product",
+  "growth.visits.note":
+    "Visits and product views are counted on the storefront only: a counter without personal data, one visit per browser session, and only since the counter was switched on.",
+  "growth.visits.failed": "Could not load visits: the rest of the funnel is shown without them.",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -169,4 +194,13 @@ export const uz: SectionDict<typeof ru> = {
   "growth.funnel.cart": "Savat",
   "growth.funnel.ordered": "Buyurtma",
   "growth.funnel.paid": "To‘lov",
+  "growth.source.search": "Qidiruv tizimlari",
+  "growth.source.market": "FrogFlow maydonchasi",
+  "growth.source.link": "Boshqa saytlardan havolalar",
+  "growth.visits.visit": "Tashriflar",
+  "growth.visits.product": "Mahsulotni ko‘rganlar",
+  "growth.visits.note":
+    "Tashriflar va mahsulot ko‘rishlar faqat vitrinada hisoblanadi: shaxsiy ma’lumotsiz hisoblagich, brauzer sessiyasiga bitta tashrif va faqat hisoblagich yoqilgan paytdan boshlab.",
+  "growth.visits.failed":
+    "Tashriflarni yuklab bo‘lmadi: voronkaning qolgan qismi ularsiz ko‘rsatilgan.",
 };

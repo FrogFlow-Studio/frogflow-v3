@@ -5,6 +5,7 @@ const full = {
   sources: [{ source: "all" }, { source: "tag:vesna" }],
   links: { bot: "shop_bot", store: "https://x.example/s/shop" },
   promote: { quality: [], stock: [], total: { quality: 0, stock: 0 } },
+  visits: { visit: 5, product: 2 },
   funnel: [{ channel: "all" }],
   customers: { weeks: [] },
 };
@@ -15,6 +16,7 @@ describe("аналитика по ролям (У5)", () => {
     expect(v.sources).toEqual([]);
     expect(v.links).toEqual({ bot: null, store: null });
     expect(v.promote).toBeNull();
+    expect(v.visits).toBeNull();
     expect(v.funnel).toEqual(full.funnel);
     expect(v.customers).toEqual(full.customers);
   });

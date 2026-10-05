@@ -58,6 +58,8 @@ export const WEB_BUDGETS = {
   review: { limit: 6, windowMs: 10 * 60_000 },
   /** Ссылка «корзина → бот»: каждая — строка в базе, анонимному вызову без счёта нельзя. */
   handoff: { limit: 20, windowMs: 10 * 60_000 },
+  /** Счётчик визитов витрины (У1): человеку за десять минут хватает нескольких, а накрутку счёта режем. */
+  visit: { limit: 30, windowMs: 10 * 60_000 },
 } as const satisfies Record<string, Budget>;
 
 export function webSubject(who: string): string {

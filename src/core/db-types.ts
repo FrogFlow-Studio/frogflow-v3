@@ -158,6 +158,40 @@ export type Database = {
           },
         ];
       };
+      // Заведена миграцией 22-3 (репозиторий; в базу применяет Яков): счётчик визитов
+      // витрины по источникам и дням, без личных данных.
+      visit_sources: {
+        Row: {
+          bot_id: string;
+          day: string;
+          source: string;
+          stage: string;
+          n: number;
+        };
+        Insert: {
+          bot_id?: string;
+          day: string;
+          source: string;
+          stage: string;
+          n?: number;
+        };
+        Update: {
+          bot_id?: string;
+          day?: string;
+          source?: string;
+          stage?: string;
+          n?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "visit_sources_bot_id_fkey";
+            columns: ["bot_id"];
+            isOneToOne: false;
+            referencedRelation: "bots";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       // Заведена MIGRATION-25-module-requests.sql — тем же поводом, что и
       // admin_login_attempts выше: миграция уже применена к живой базе, но
       // scripts/sync-db-types.mjs не заводит новые таблицы, только колонки.

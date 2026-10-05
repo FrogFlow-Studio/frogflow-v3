@@ -43,6 +43,8 @@ const PLATFORM: Record<string, string> = {
 /** Подпись группы источника (core/analytics/source-funnel). */
 function sourceLabel(source: string, t: AdminT): string {
   if (source === "all") return t("analytics.sources.all");
+  if (["search", "market", "link"].includes(source))
+    return t(`growth.source.${source}` as "growth.source.search");
   if (["direct", "referral", "storefront", "product", "other"].includes(source))
     return t(`analytics.sources.${source}` as "analytics.sources.direct");
   if (source.startsWith(SOURCE_TAG_GROUP))
@@ -166,7 +168,8 @@ function Tile({ label, value, delta }: { label: string; value: string; delta: nu
 
 function AnalyticsPage() {
   const a = Route.useLoaderData();
-  const funnel = growthFunnel(a.funnel, null);
+  const visits = a.visits && a.visits !== "failed" ? a.visits : null;
+  const funnel = growthFunnel(a.funnel, visits);
   const { days } = Route.useSearch();
   const { shop } = Route.useRouteContext();
   const t = adminT(shop.locale);
@@ -277,6 +280,10 @@ function AnalyticsPage() {
                 />
               )}
               <p className="mt-2 text-xs text-muted">{t("analytics.funnel.hint")}</p>
+              {visits && <p className="mt-1 text-xs text-muted">{t("growth.visits.note")}</p>}
+              {a.visits === "failed" && (
+                <p className="mt-1 text-xs text-danger">{t("growth.visits.failed")}</p>
+              )}
             </>
           }
           table={
@@ -317,11 +324,13 @@ function AnalyticsPage() {
                 <DataTable
                   head={[
                     t("analytics.sources.col"),
+                    ...(visits ? [t("growth.visits.visit"), t("growth.visits.product")] : []),
                     ...FUNNEL_STAGES.map((st) => t(`analytics.funnel.${st}`)),
                     t("analytics.col.revenue"),
                   ]}
                   rows={a.sources.map((r) => [
                     sourceLabel(r.source, t),
+                    ...(visits ? [num(r.visit ?? 0), num(r.product ?? 0)] : []),
                     ...FUNNEL_STAGES.map((st) => num(r[st])),
                     moneyAll(r.revenue),
                   ])}

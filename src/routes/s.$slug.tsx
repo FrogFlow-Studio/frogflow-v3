@@ -1,6 +1,7 @@
 import type React from "react";
 import { useEffect } from "react";
 import { rememberWebSource } from "@/app/storefront/source";
+import { sendVisit, trackVisit } from "@/app/storefront/visit-track";
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { storeInfoFn } from "@/app/storefront/storefront.functions";
 import { storeShareFn } from "@/app/storefront/share.functions";
@@ -66,6 +67,20 @@ function StoreLayout() {
   const shop = Route.useLoaderData();
   // Откуда пришёл покупатель (utm, ref) — запоминается при первом входе.
   useEffect(() => rememberWebSource(shop.slug, window.location.search), [shop.slug]);
+  // Счётчик визитов (У1): раз за сессию, без cookie и личных данных.
+  useEffect(() => {
+    try {
+      trackVisit(
+        shop.slug,
+        window.location.search,
+        document.referrer,
+        window.sessionStorage,
+        sendVisit(shop.slug),
+      );
+    } catch {
+      /* sessionStorage закрыт — визит не считаем */
+    }
+  }, [shop.slug]);
   return (
     <StorefrontLocaleProvider slug={shop.slug} initial={shop.locale}>
       <CartProvider slug={shop.slug}>

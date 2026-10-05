@@ -1,7 +1,8 @@
 import { publicHeaders } from "@/app/cache-policy";
 import { createFileRoute, Link, useLoaderData } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { storeProductFn } from "@/app/storefront/storefront.functions";
+import { sendVisit, trackProductView, trackVisit } from "@/app/storefront/visit-track";
 import { useCart } from "@/app/storefront/cart";
 import { FavoriteButton } from "@/app/storefront/favorites";
 import { useStorefrontLocale } from "@/app/storefront/locale";
@@ -98,6 +99,16 @@ function ProductPage() {
   const { slug } = Route.useParams();
   const shop = useLoaderData({ from: "/s/$slug" });
   useRememberViewed(slug, p.id);
+  // Счётчик визитов (У1): раз за сессию. Зашли сразу на товар — сначала визит, потом просмотр товара.
+  useEffect(() => {
+    try {
+      const send = sendVisit(slug);
+      trackVisit(slug, window.location.search, document.referrer, window.sessionStorage, send);
+      trackProductView(slug, window.sessionStorage, send);
+    } catch {
+      /* sessionStorage закрыт — не считаем */
+    }
+  }, [slug]);
   const { locale, t } = useStorefrontLocale();
   const cart = useCart();
   const [img, setImg] = useState(0);

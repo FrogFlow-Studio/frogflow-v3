@@ -9,8 +9,9 @@ export function accountantView<
     sources: unknown[];
     links: { bot: string | null; store: string | null };
     promote: unknown;
+    visits: unknown;
   },
 >(a: T, accountant: boolean): T {
   if (!accountant) return a;
-  return { ...a, sources: [], links: { bot: null, store: null }, promote: null };
+  return { ...a, sources: [], links: { bot: null, store: null }, promote: null, visits: null };
 }

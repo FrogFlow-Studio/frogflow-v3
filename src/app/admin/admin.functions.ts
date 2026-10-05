@@ -2782,7 +2782,7 @@ export const analyticsFn = createServerFn({ method: "GET" })
     const from = new Date(now.getTime() - data.days * 86_400_000);
     const funnels = await import("@/core/analytics/funnel.server");
     const { accountantView } = await import("@/core/analytics/role-view");
-    const [a, funnel, sources, cohorts, customers, speed, sales, giftsBundles, promote] =
+    const [a, funnel, sources, cohorts, customers, speed, sales, giftsBundles, promote, visits] =
       await Promise.all([
         (await import("@/core/analytics/analytics")).analytics(ctx, data.days),
         funnels.buyerFunnel(ctx, from, now),
@@ -2804,6 +2804,18 @@ export const analyticsFn = createServerFn({ method: "GET" })
                 );
                 return "failed";
               }),
+        // Визиты витрины (У1): таблицы может не быть (null — «нет данных»), сбой чтения — «не удалось загрузить»; бухгалтеру не нужны.
+        accountant
+          ? null
+          : import("@/core/analytics/visits.server")
+              .then((m) => m.loadVisits(ctx, from, now))
+              .catch((e): "failed" => {
+                console.error(
+                  `[admin:${ctx.tenant.id}] визиты`,
+                  e instanceof Error ? e.message : e,
+                );
+                return "failed";
+              }),
       ]);
     const { storefrontOpen } = await import("@/core/storefront/access");
     const { storefrontBase } = await import("@/core/tenant/custom-domain");
@@ -2815,11 +2827,16 @@ export const analyticsFn = createServerFn({ method: "GET" })
           ? storefrontBase(ctx.tenant, ctx.appUrl)
           : null,
     };
+    const sourceRows: import("@/core/analytics/visits").SourceRowWithVisits[] =
+      visits && visits !== "failed"
+        ? (await import("@/core/analytics/visits")).attachVisits(sources, visits)
+        : sources;
     return accountantView(
       {
         ...a,
         funnel,
-        sources,
+        sources: sourceRows,
+        visits: visits && visits !== "failed" ? visits.total : visits,
         links,
         cohorts,
         customers,
