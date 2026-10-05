@@ -39,6 +39,9 @@ test("новое меню: группы, нижняя панель на теле
   await bar.getByRole("button", { name: "Ещё", exact: true }).click();
   const sheet = page.getByRole("dialog", { name: "Все разделы", exact: true });
   await expect(sheet.getByRole("group", { name: "Настройки", exact: true })).toBeVisible();
+  // Группы свёрнуты, открыта только текущая: «Каталог» раскрываем нажатием.
+  await expect(sheet.getByRole("link", { name: "Категории", exact: true })).toBeHidden();
+  await sheet.getByRole("button", { name: "Каталог", exact: true }).click();
   await sheet.getByRole("link", { name: "Категории", exact: true }).click();
   await expect(page).toHaveURL(/\/admin\/categories$/);
   await expect(sheet).toBeHidden();

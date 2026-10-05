@@ -49,7 +49,13 @@ function ItemLink({
   );
 }
 
-/** Сгруппированное меню: «Обзор» отдельно, затем группы с заголовками. */
+/** Закреплённые сверху: самые частые пункты, в группах их нет. */
+const PINNED = new Set(["/admin/orders", "/admin/chat"]);
+
+/**
+ * Меню: «Обзор» и закреплённые «Заказы»/«Входящие» сверху, ниже группы-аккордеон.
+ * Раскрыта одна группа — с текущей страницей, остальные свёрнуты до заголовка.
+ */
 export function AdminNavLinks({
   nav,
   t,
@@ -60,25 +66,56 @@ export function AdminNavLinks({
   onNavigate?: () => void;
 }) {
   const isActive = useActive();
+  const pinned = nav.groups.flatMap((g) => g.items).filter((i) => PINNED.has(i.to));
+  const groups = nav.groups
+    .map((g) => ({ ...g, items: g.items.filter((i) => !PINNED.has(i.to)) }))
+    .filter((g) => g.items.length > 0);
+  const activeGroup = groups.find((g) => g.items.some(isActive))?.id ?? null;
+  const [open, setOpen] = useState<string | null>(activeGroup);
+  // Перешли на другую страницу (в том числе по ссылке извне) — раскрывается её группа.
+  useEffect(() => {
+    if (activeGroup) setOpen(activeGroup);
+  }, [activeGroup]);
   return (
-    <div className="space-y-3">
+    <div className="space-y-1">
       <ItemLink item={nav.overview} t={t} active={isActive(nav.overview)} onNavigate={onNavigate} />
-      {nav.groups.map((g) => (
-        <div key={g.id} role="group" aria-label={t(g.label)} className="space-y-0.5">
-          <div className="px-3 pt-1 text-[11px] font-semibold uppercase tracking-wide text-muted">
-            {t(g.label)}
-          </div>
-          {g.items.map((item) => (
-            <ItemLink
-              key={`${item.to}#${item.hash ?? ""}`}
-              item={item}
-              t={t}
-              active={isActive(item)}
-              onNavigate={onNavigate}
-            />
-          ))}
-        </div>
+      {pinned.map((item) => (
+        <ItemLink key={item.to} item={item} t={t} active={isActive(item)} onNavigate={onNavigate} />
       ))}
+      <div className="my-1 border-t border-line" />
+      {groups.map((g) => {
+        const expanded = open === g.id;
+        // Бейдж свёрнутой группы — сумма чисел внутри, чтобы «красное» было видно, не раскрывая.
+        const total = g.items.reduce((n, i) => n + (i.badge?.value ?? 0), 0);
+        return (
+          <div key={g.id} role="group" aria-label={t(g.label)} className="space-y-0.5">
+            <button
+              type="button"
+              aria-expanded={expanded}
+              onClick={() => setOpen(expanded ? null : g.id)}
+              className="flex w-full items-center justify-between gap-2 rounded-md px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-muted hover:bg-surface-2"
+            >
+              <span>{t(g.label)}</span>
+              <span className="flex items-center gap-2">
+                {!expanded && total > 0 && <Badge tone="accent">{total}</Badge>}
+                <span aria-hidden className={`text-[10px] ${expanded ? "rotate-90" : ""}`}>
+                  ▶
+                </span>
+              </span>
+            </button>
+            {expanded &&
+              g.items.map((item) => (
+                <ItemLink
+                  key={`${item.to}#${item.hash ?? ""}`}
+                  item={item}
+                  t={t}
+                  active={isActive(item)}
+                  onNavigate={onNavigate}
+                />
+              ))}
+          </div>
+        );
+      })}
     </div>
   );
 }
