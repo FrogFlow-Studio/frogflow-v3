@@ -139,6 +139,7 @@ function Layout() {
       </button>
       <CommandPalette
         locale={shop.locale}
+        shop={shop}
         actions={create.map((a) => ({ label: t(a.label), to: a.to, params: a.params }))}
         sections={[nav.overview, ...nav.groups.flatMap((g) => g.items)].map((i) => ({
           label: t(i.label),

@@ -109,3 +109,22 @@ test("настройки: «Удалить магазин» последним �
   await expect(shown.last()).toHaveAttribute("data-settings-section", "delete");
   expect(errors).toEqual([]);
 });
+
+/** Н4: Ctrl K открывает настройку сразу на своей теме. */
+test("Ctrl K: «часовой пояс» открывает настройки на теме «Магазин»", async ({ page }) => {
+  const errors = await watch(page);
+  await page.goto("/admin/login");
+  await page.locator('input[name="username"]').fill(F.SELLER_LOGIN);
+  await page.locator('input[name="password"]').fill(F.SELLER_PASSWORD);
+  await page.getByRole("button", { name: "Войти", exact: true }).click();
+  await expect(page).toHaveURL(/\/admin$/);
+  await page.goto("/admin/settings");
+  await page.getByRole("button", { name: "Оплата и доставка", exact: true }).click();
+  await expect(page.locator('[data-settings-section="shop"]')).toBeHidden();
+  await page.evaluate(() => window.dispatchEvent(new Event("admin:search")));
+  await page.getByPlaceholder("Заказ, покупатель, товар или раздел…").fill("часовой пояс");
+  await page.getByRole("button").filter({ hasText: "настройка · Магазин" }).click();
+  await expect(page.locator('[data-settings-section="shop"]')).toBeVisible();
+  await expect(page.locator('[data-settings-section="zones"]')).toBeHidden();
+  expect(errors).toEqual([]);
+});

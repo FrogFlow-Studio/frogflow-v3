@@ -1,4 +1,4 @@
-import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useRouter, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import {
   zernioStateFn,
@@ -148,19 +148,16 @@ function SettingsPage() {
     shown: new Set(visibleEntries.map((e) => e.id)),
     recent: recentEntries(recentKeys),
   };
-  // Якорь `#id` открывает тему своей карточки и прокручивает к ней.
+  // Якорь `#id` открывает тему своей карточки и прокручивает к ней — и при заходе,
+  // и когда адрес меняется на этой же странице (Ctrl K, ссылка из текста).
+  const hash = useRouterState({ select: (s) => s.location.hash });
   useEffect(() => {
-    const open = () => {
-      const target = themeForHash(window.location.hash);
-      if (!target) return;
-      setTheme(target);
-      const id = decodeURIComponent(window.location.hash.slice(1));
-      requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView({ block: "start" }));
-    };
-    open();
-    window.addEventListener("hashchange", open);
-    return () => window.removeEventListener("hashchange", open);
-  }, []);
+    const target = themeForHash(hash);
+    if (!target) return;
+    setTheme(target);
+    const id = decodeURIComponent(hash.replace(/^#/, ""));
+    requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView({ block: "start" }));
+  }, [hash]);
   // Разделы с отдельной страницы — ссылкой, но только когда человек ищет или выбрал тему.
   const links = query.trim() || theme !== "all" ? visibleEntries.filter((e) => e.to) : [];
   const save = useAction(async (f: FormData) => {

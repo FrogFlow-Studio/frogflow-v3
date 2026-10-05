@@ -313,7 +313,7 @@ export const SETTINGS_REGISTRY: readonly SettingsEntry[] = [
 const BY_ID = new Map(SETTINGS_REGISTRY.map((e) => [e.id, e]));
 export const settingsEntry = (id: string): SettingsEntry | undefined => BY_ID.get(id);
 
-/** Запись попадает в поиск по названию раздела, названиям его полей и ключам настроек. */
+/** Запись попадает в поиск по названию раздела и темы, названиям его полей и ключам настроек. */
 export function entryMatches(
   e: SettingsEntry,
   query: string,
@@ -323,6 +323,8 @@ export function entryMatches(
   if (!q) return true;
   const hay = [
     text(e.title, e.titleVars),
+    // и по названию темы: «Деньги» находит все разделы темы
+    text(`settings19.theme.${e.theme}` as AdminKey),
     e.id,
     ...(e.fields ?? []).map((f) => text(f)),
     ...(e.keys ?? []),

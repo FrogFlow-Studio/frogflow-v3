@@ -4,6 +4,7 @@ import { adminSearchFn } from "@/app/admin/admin.functions";
 import { adminT } from "@/app/i18n/admin";
 import type { Locale } from "@/core/i18n/locale";
 import { formatMoney } from "@/core/money/money";
+import { searchSettings } from "@/app/admin/settings/palette";
 import { searchSections } from "@/core/search/search-sections";
 
 type Results = Awaited<ReturnType<typeof adminSearchFn>>;
@@ -16,11 +17,14 @@ type Item = { label: string; hint: string; go: () => void };
 export function CommandPalette({
   locale,
   sections,
+  shop,
   actions = [],
 }: {
   locale: Locale;
   /** Разделы, доступные этой роли (из меню): поиск по названию раздела. */
   sections: Array<{ label: string; to: string; hash?: string }>;
+  /** Роль и модули магазина: какие настройки показать в поиске. */
+  shop: { role: string; modules: Partial<Record<string, boolean>> };
   /** «Создать» (Ж5): новый заказ, товар, рассылка… — только то, что роль и модули позволяют. */
   actions?: Array<{ label: string; to: string; params?: Record<string, string> }>;
 }) {
@@ -81,6 +85,12 @@ export function CommandPalette({
     hint: t("palette.section"),
     go: () => void navigate({ to: x.to as never, hash: x.hash }),
   }));
+  // Настройка открывается сразу на своей теме: якорь `#id` страница настроек разворачивает сама.
+  const settingItems: Item[] = searchSettings(shop, q, t).map((x) => ({
+    label: x.label,
+    hint: `${t("palette.setting")} · ${x.theme}`,
+    go: () => void navigate({ to: x.to as never, hash: x.hash }),
+  }));
   // Пустой запрос — все действия «Создать»; с запросом — подходящие по названию, выше всего прочего.
   const needle = q.trim().toLowerCase();
   const actionItems: Item[] = actions
@@ -102,6 +112,7 @@ export function CommandPalette({
     ? [
         ...actionItems,
         ...sectionItems,
+        ...settingItems,
         ...res.orders.map((o) => ({
           label: `#${o.no} · ${o.name}`,
           hint: formatMoney(o.total, o.currency),
@@ -121,7 +132,7 @@ export function CommandPalette({
         ...(res.productsMore ? [more(t("palette.allProducts"), "/admin/products")] : []),
         ...(res.customersMore ? [more(t("palette.allCustomers"), "/admin/customers")] : []),
       ]
-    : [...actionItems, ...sectionItems];
+    : [...actionItems, ...sectionItems, ...settingItems];
   if (!open) return null;
   return (
     <div
