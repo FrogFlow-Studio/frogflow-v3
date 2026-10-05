@@ -3,7 +3,13 @@
  * умолчанию «Магазин»; «Все» остаётся пунктом. Чистые функции — страница
  * только вызывает их, а тест проверяет без браузера.
  */
-import { settingsEntry, type SettingsTheme } from "./registry";
+import {
+  entryVisible,
+  SETTINGS_REGISTRY,
+  SETTINGS_THEMES,
+  settingsEntry,
+  type SettingsTheme,
+} from "./registry";
 
 export type ThemeChoice = SettingsTheme | "all";
 
@@ -23,4 +29,14 @@ export function themeForHash(hash: string): SettingsTheme | null {
 /** Раздел показан: тема совпадает или «Все»; при поиске тема не мешает найти. */
 export function themeShows(choice: ThemeChoice, theme: SettingsTheme, searching: boolean): boolean {
   return searching || choice === "all" || choice === theme;
+}
+
+/** Темы, в которых для этой роли и модулей есть хотя бы один раздел: пустой темы в списке нет. */
+export function visibleThemes(shop: {
+  role: string;
+  modules: Partial<Record<string, boolean>>;
+}): SettingsTheme[] {
+  return SETTINGS_THEMES.filter((th) =>
+    SETTINGS_REGISTRY.some((e) => e.theme === th && entryVisible(e, shop)),
+  );
 }

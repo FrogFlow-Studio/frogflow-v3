@@ -7,7 +7,15 @@
 import type { AdminKey } from "@/app/i18n/admin";
 import type { ModuleKey } from "@/core/modules/registry";
 
-export const SETTINGS_THEMES = ["shop", "payment", "channels", "bots", "team", "advanced"] as const;
+export const SETTINGS_THEMES = [
+  "shop",
+  "money",
+  "payment",
+  "channels",
+  "bots",
+  "team",
+  "advanced",
+] as const;
 export type SettingsTheme = (typeof SETTINGS_THEMES)[number];
 
 export type SettingsEntry = {
@@ -107,7 +115,22 @@ export const SETTINGS_REGISTRY: readonly SettingsEntry[] = [
     title: "settings.svcNotice.title",
     keys: ["notify_photo_not_receipt", "notify_bot_pause"],
   }),
-  E({ id: "payment-methods", theme: "payment", title: "settings.pay.title" }),
+  E({ id: "payment-methods", theme: "money", title: "settings.pay.title", ownerOnly: true }),
+  E({
+    id: "commission",
+    theme: "money",
+    title: "commission.nav",
+    to: "/admin/commission",
+    ownerOnly: true,
+  }),
+  E({ id: "billing", theme: "money", title: "billing.nav", to: "/admin/billing", ownerOnly: true }),
+  E({
+    id: "ai-balance",
+    theme: "money",
+    title: "nav.aiBalance",
+    to: "/admin/ai-balance",
+    ownerOnly: true,
+  }),
   E({
     id: "fulfillment",
     theme: "payment",

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_THEME, themeForHash, themeShows } from "./nav";
-import { SETTINGS_REGISTRY } from "./registry";
+import { DEFAULT_THEME, themeForHash, themeShows, visibleThemes } from "./nav";
+import { entryVisible, SETTINGS_REGISTRY } from "./registry";
 
 describe("темы настроек в новом виде", () => {
   it("открывается «Магазин», а прежний вид по умолчанию показывает «Все»", () => {
@@ -26,5 +26,25 @@ describe("темы настроек в новом виде", () => {
     expect(themeShows("shop", "payment", false)).toBe(false);
     expect(themeShows("all", "payment", false)).toBe(true);
     expect(themeShows("shop", "payment", true)).toBe(true);
+  });
+
+  it("тема «Деньги»: владельцу есть, менеджеру нет; пустая тема в списке не показывается", () => {
+    const modules = { admin_roles: true };
+    expect(visibleThemes({ role: "owner", modules })).toContain("money");
+    expect(visibleThemes({ role: "manager", modules })).not.toContain("money");
+    const money = SETTINGS_REGISTRY.filter((e) => e.theme === "money");
+    expect(money.map((e) => e.id).sort()).toEqual(
+      ["ai-balance", "billing", "commission", "payment-methods"].sort(),
+    );
+    for (const e of money) {
+      expect(entryVisible(e, { role: "manager", modules }), e.id).toBe(false);
+      expect(entryVisible(e, { role: "owner", modules }), e.id).toBe(true);
+    }
+    // страницы на месте: ссылки ведут туда, где они жили
+    expect(money.filter((e) => e.to).map((e) => e.to)).toEqual([
+      "/admin/commission",
+      "/admin/billing",
+      "/admin/ai-balance",
+    ]);
   });
 });

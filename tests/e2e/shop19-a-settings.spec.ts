@@ -77,3 +77,20 @@ test("настройки: тема слева, якорь открывает т�
   expect(overflow).toBe(false);
   expect(errors).toEqual([]);
 });
+
+/** Н2: тема «Деньги» — способы оплаты и ссылки на комиссию, историю оплат, ИИ-баланс. */
+test("настройки: тема «Деньги» со ссылками на страницы денег", async ({ page }) => {
+  const errors = await watch(page);
+  await page.goto("/admin/login");
+  await page.locator('input[name="username"]').fill(F.SELLER_LOGIN);
+  await page.locator('input[name="password"]').fill(F.SELLER_PASSWORD);
+  await page.getByRole("button", { name: "Войти", exact: true }).click();
+  await expect(page).toHaveURL(/\/admin$/);
+  await page.goto("/admin/settings");
+  await page.getByRole("button", { name: "Деньги", exact: true }).click();
+  await expect(page.locator('[data-settings-section="payment-methods"]')).toBeVisible();
+  await expect(page.locator('[data-settings-section="zones"]')).toBeHidden();
+  for (const href of ["/admin/commission", "/admin/billing", "/admin/ai-balance"])
+    await expect(page.locator(`a[href="${href}"]`).filter({ hasText: "Открыть" })).toBeVisible();
+  expect(errors).toEqual([]);
+});

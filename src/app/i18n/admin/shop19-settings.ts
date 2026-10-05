@@ -4,6 +4,7 @@ import type { SectionDict } from "../section";
 export const ru = {
   "settings19.theme.all": "Все",
   "settings19.theme.shop": "Магазин",
+  "settings19.theme.money": "Деньги",
   "settings19.theme.payment": "Оплата и доставка",
   "settings19.theme.channels": "Каналы",
   "settings19.theme.bots": "Боты",
@@ -19,6 +20,7 @@ export const ru = {
 export const kk: SectionDict<typeof ru> = {
   "settings19.theme.all": "Барлығы",
   "settings19.theme.shop": "Дүкен",
+  "settings19.theme.money": "Ақша",
   "settings19.theme.payment": "Төлем және жеткізу",
   "settings19.theme.channels": "Арналар",
   "settings19.theme.bots": "Боттар",
@@ -34,6 +36,7 @@ export const kk: SectionDict<typeof ru> = {
 export const en: SectionDict<typeof ru> = {
   "settings19.theme.all": "All",
   "settings19.theme.shop": "Shop",
+  "settings19.theme.money": "Money",
   "settings19.theme.payment": "Payment and delivery",
   "settings19.theme.channels": "Channels",
   "settings19.theme.bots": "Bots",
@@ -49,6 +52,7 @@ export const en: SectionDict<typeof ru> = {
 export const uz: SectionDict<typeof ru> = {
   "settings19.theme.all": "Hammasi",
   "settings19.theme.shop": "Do‘kon",
+  "settings19.theme.money": "Pul",
   "settings19.theme.payment": "To‘lov va yetkazib berish",
   "settings19.theme.channels": "Kanallar",
   "settings19.theme.bots": "Botlar",

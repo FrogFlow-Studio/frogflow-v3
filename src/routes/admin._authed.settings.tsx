@@ -14,7 +14,6 @@ import {
   entryVisible,
   recentEntries,
   SETTINGS_REGISTRY,
-  SETTINGS_THEMES,
 } from "@/app/admin/settings/registry";
 import {
   SettingsFilterProvider,
@@ -25,6 +24,7 @@ import {
   DEFAULT_THEME,
   themeForHash,
   themeShows,
+  visibleThemes,
   type ThemeChoice,
 } from "@/app/admin/settings/nav";
 import { lazyCard } from "@/app/admin/settings/lazy-card";
@@ -202,7 +202,7 @@ function SettingsPage() {
   });
   const themeChips = (
     <div className="flex gap-1 overflow-x-auto md:flex-col md:overflow-visible">
-      {(["all", ...SETTINGS_THEMES] as const).map((x) => (
+      {(["all", ...visibleThemes(shop)] as const).map((x) => (
         <button
           key={x}
           type="button"
