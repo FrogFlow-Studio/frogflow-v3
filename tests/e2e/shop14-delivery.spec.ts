@@ -95,6 +95,7 @@ test("админка: ручной заказ на нерабочий или з�
   await expect(page.getByText("заказы уже набраны по лимиту")).toHaveCount(0);
 
   await page.goto("/admin/settings");
+  await page.getByRole("button", { name: "Все", exact: true }).click();
   await expect(page.locator('input[name="day_limit"]')).toHaveValue(String(F.DELIVERY_DAY_LIMIT));
   await expect(page.locator('input[name="closed7"]')).toBeChecked();
   expect(errors).toEqual([]);

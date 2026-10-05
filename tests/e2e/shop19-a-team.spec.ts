@@ -17,6 +17,7 @@ test("приглашение менеджера по ссылке", async ({ pag
   await expect(page).toHaveURL(/\/admin$/);
 
   await page.goto("/admin/settings");
+  await page.getByRole("button", { name: "Все", exact: true }).click();
   // Карточки команды подгружаются лениво (С3): клик до гидрации пропадает, поэтому повторяем,
   // пока форма не откроется (кнопка только открывает форму, повтор безопасен).
   await expect(async () => {

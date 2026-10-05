@@ -13,8 +13,11 @@ test("настройки: темы, поиск, ссылка на отдельн
   await page.goto("/admin/settings");
 
   const section = (id: string) => page.locator(`[data-settings-section="${id}"]`);
-  await expect(section("telegram")).toBeVisible();
+  // Открыта тема «Магазин»; остальные карточки скрыты до выбора темы.
   await expect(section("shop")).toBeVisible();
+  await expect(section("telegram")).toBeHidden();
+  await page.getByRole("button", { name: "Все", exact: true }).click();
+  await expect(section("telegram")).toBeVisible();
 
   // Поиск по названию: остаётся только найденное.
   const search = page.getByRole("searchbox", { name: "Найти настройку по названию", exact: true });
@@ -37,12 +40,37 @@ test("настройки: темы, поиск, ссылка на отдельн
 
   // Тема.
   await page.goto("/admin/settings");
+  await expect(section("shop")).toBeVisible();
   await page.getByRole("button", { name: "Оплата и доставка", exact: true }).click();
   await expect(section("zones")).toBeVisible();
   await expect(section("telegram")).toBeHidden();
   await page.getByRole("button", { name: "Все", exact: true }).click();
   await expect(section("telegram")).toBeVisible();
 
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
+  );
+  expect(overflow).toBe(false);
+  expect(errors).toEqual([]);
+});
+
+/** Н1: темы настроек слева, открыта одна, якорь открывает свою тему; телефон без горизонтальной прокрутки. */
+test("настройки: тема слева, якорь открывает тему", async ({ page }) => {
+  const errors = await watch(page);
+  await page.goto("/admin/login");
+  await page.locator('input[name="username"]').fill(F.SELLER_LOGIN);
+  await page.locator('input[name="password"]').fill(F.SELLER_PASSWORD);
+  await page.getByRole("button", { name: "Войти", exact: true }).click();
+  await expect(page).toHaveURL(/\/admin$/);
+  await page.goto("/admin/settings");
+  const section = (id: string) => page.locator(`[data-settings-section="${id}"]`);
+  await expect(section("shop")).toBeVisible();
+  await expect(section("telegram")).toBeHidden();
+  await page.goto("/admin/settings#zones");
+  await expect(section("zones")).toBeVisible();
+  await expect(section("shop")).toBeHidden();
+  await page.getByRole("button", { name: "Все", exact: true }).click();
+  await expect(section("shop")).toBeVisible();
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
   );

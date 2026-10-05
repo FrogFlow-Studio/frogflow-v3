@@ -13,6 +13,7 @@ test("мастер канала: на шаге «проверка связи» �
   await page.getByRole("button", { name: "Войти", exact: true }).click();
   await expect(page).toHaveURL(/\/admin$/);
   await page.goto("/admin/settings");
+  await page.getByRole("button", { name: "Все", exact: true }).click();
   await expect(page.getByText("Подключение Instagram по шагам", { exact: true })).toBeVisible();
   await expect(page.getByText("2. Проверка связи", { exact: true })).toBeVisible();
   await expect(page.getByText(/Связь платформы с вашим аккаунтом ещё не включена/)).toBeVisible();

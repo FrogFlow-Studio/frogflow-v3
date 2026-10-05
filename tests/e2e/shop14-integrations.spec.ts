@@ -11,6 +11,7 @@ test("интеграции: журнал доставки вебхуков по�
   await page.getByRole("button", { name: "Войти", exact: true }).click();
   await expect(page).toHaveURL(/\/admin$/);
   await page.goto("/admin/settings");
+  await page.getByRole("button", { name: "Все", exact: true }).click();
   const log = page.getByTestId("crm-log");
   await expect(page.getByTestId("api-last-use")).toContainText("203.0.113.7 · 1C-Connector/8.3");
   await expect(log.getByText("Журнал доставки", { exact: true })).toBeVisible();

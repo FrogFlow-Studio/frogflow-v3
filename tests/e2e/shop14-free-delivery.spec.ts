@@ -44,6 +44,7 @@ test("админка: порог бесплатной доставки виде�
   await page.getByRole("button", { name: "Войти", exact: true }).click();
   await expect(page).toHaveURL(/\/admin$/);
   await page.goto("/admin/settings");
+  await page.getByRole("button", { name: "Все", exact: true }).click();
   const card = page.getByTestId("free-delivery-card");
   await expect(card.getByLabel("Общий порог, KZT")).toHaveValue(String(F.FREE14_THRESHOLD));
   const zone = card.getByLabel(`Порог для района «${F.FREE14_ZONE_NAME}», KZT`);

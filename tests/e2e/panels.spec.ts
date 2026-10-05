@@ -63,6 +63,7 @@ test("настройки продавца: разделы рисуются и о
   await page.getByRole("button", { name: "Войти", exact: true }).click();
   await expect(page).toHaveURL(/\/admin$/);
   await page.goto("/admin/settings");
+  await page.getByRole("button", { name: "Все", exact: true }).click();
   // Разделы, которые видны на тарифе e2e-магазина (остальные — по модулям).
   for (const title of [
     "Магазин",

@@ -1,5 +1,5 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   zernioStateFn,
   deliveryZonesFn,
@@ -15,13 +15,18 @@ import {
   recentEntries,
   SETTINGS_REGISTRY,
   SETTINGS_THEMES,
-  type SettingsTheme,
 } from "@/app/admin/settings/registry";
 import {
   SettingsFilterProvider,
   SettingsSection,
   type SettingsFilter,
 } from "@/app/admin/settings/section";
+import {
+  DEFAULT_THEME,
+  themeForHash,
+  themeShows,
+  type ThemeChoice,
+} from "@/app/admin/settings/nav";
 import { lazyCard } from "@/app/admin/settings/lazy-card";
 import type { Locale } from "@/core/i18n/locale";
 import { DELIVERY_NOTE_MAX } from "@/core/delivery/note";
@@ -129,19 +134,33 @@ function SettingsPage() {
   const t = adminT(shop.locale);
   const router = useRouter();
   const [saved, setSaved] = useState(false);
-  const [theme, setTheme] = useState<SettingsTheme | "all">("all");
+  // Темы слева, открыта одна («Магазин»); «Все» — отдельный пункт.
+  const [theme, setTheme] = useState<ThemeChoice>(DEFAULT_THEME);
   const [query, setQuery] = useState("");
   const text = (k: AdminKey, vars?: Record<string, string>) => t(k, vars);
   const visibleEntries = SETTINGS_REGISTRY.filter(
     (e) =>
       entryVisible(e, shop) &&
-      (theme === "all" || e.theme === theme) &&
+      themeShows(theme, e.theme, Boolean(query.trim())) &&
       entryMatches(e, query, text),
   );
   const filter: SettingsFilter = {
     shown: new Set(visibleEntries.map((e) => e.id)),
     recent: recentEntries(recentKeys),
   };
+  // Якорь `#id` открывает тему своей карточки и прокручивает к ней.
+  useEffect(() => {
+    const open = () => {
+      const target = themeForHash(window.location.hash);
+      if (!target) return;
+      setTheme(target);
+      const id = decodeURIComponent(window.location.hash.slice(1));
+      requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView({ block: "start" }));
+    };
+    open();
+    window.addEventListener("hashchange", open);
+    return () => window.removeEventListener("hashchange", open);
+  }, []);
   // Разделы с отдельной страницы — ссылкой, но только когда человек ищет или выбрал тему.
   const links = query.trim() || theme !== "all" ? visibleEntries.filter((e) => e.to) : [];
   const save = useAction(async (f: FormData) => {
@@ -181,6 +200,21 @@ function SettingsPage() {
     setSaved(true);
     await router.invalidate();
   });
+  const themeChips = (
+    <div className="flex gap-1 overflow-x-auto md:flex-col md:overflow-visible">
+      {(["all", ...SETTINGS_THEMES] as const).map((x) => (
+        <button
+          key={x}
+          type="button"
+          className={`btn-ghost shrink-0 whitespace-nowrap text-sm md:text-left ${theme === x ? "font-medium text-accent" : ""}`}
+          aria-pressed={theme === x}
+          onClick={() => setTheme(x)}
+        >
+          {t(`settings19.theme.${x}` as AdminKey)}
+        </button>
+      ))}
+    </div>
+  );
   return (
     <>
       <PageTitle title={t("settings.title")} />
@@ -193,386 +227,391 @@ function SettingsPage() {
           aria-label={t("settings19.search")}
           onChange={(e) => setQuery(e.target.value)}
         />
-        <div className="flex flex-wrap gap-2">
-          {(["all", ...SETTINGS_THEMES] as const).map((x) => (
-            <button
-              key={x}
-              type="button"
-              className={`btn-ghost text-sm ${theme === x ? "font-medium text-accent" : ""}`}
-              aria-pressed={theme === x}
-              onClick={() => setTheme(x)}
-            >
-              {t(`settings19.theme.${x}` as AdminKey)}
-            </button>
-          ))}
+      </div>
+      <div className="grid gap-4 md:grid-cols-[13rem_minmax(0,1fr)]">
+        <nav aria-label={t("settings.title")}>{themeChips}</nav>
+        <div className="min-w-0">
+          {visibleEntries.length === 0 && <Empty>{t("settings19.empty")}</Empty>}
+          {links.length > 0 && (
+            <div className="mb-4 grid gap-3 sm:grid-cols-2">
+              {links.map((e) => (
+                <div key={e.id} className="card flex items-center justify-between gap-3 p-3">
+                  <span>
+                    <span className="block font-medium">{t(e.title, e.titleVars)}</span>
+                    <span className="block text-xs text-muted">{t("settings19.elsewhere")}</span>
+                  </span>
+                  <a href={e.to} className="btn-secondary text-sm">
+                    {t("settings19.open")}
+                  </a>
+                </div>
+              ))}
+            </div>
+          )}
+          <SettingsFilterProvider value={filter}>
+            <div className="grid gap-4 lg:grid-cols-2">
+              <SettingsSection id="telegram">
+                <TelegramCard telegram={telegram} />
+              </SettingsSection>
+              {(shop.modules.instagram || shop.modules.whatsapp) && (
+                <SettingsSection id="channel-wizard">
+                  <ChannelWizardCards
+                    instagram={shop.modules.instagram}
+                    whatsapp={shop.modules.whatsapp}
+                  />
+                </SettingsSection>
+              )}
+              {(shop.modules.instagram || shop.modules.whatsapp) && (
+                <SettingsSection id="instagram-whatsapp">
+                  <ChannelsCard
+                    zernio={zernio}
+                    instagram={shop.modules.instagram}
+                    whatsapp={shop.modules.whatsapp}
+                  />
+                </SettingsSection>
+              )}
+              {shop.modules.instagram && (
+                <SettingsSection id="dbot-instagram">
+                  <DirectBotCard platform="instagram" />
+                </SettingsSection>
+              )}
+              {shop.modules.instagram && shop.modules.dm_shop && (
+                <SettingsSection id="ice-breakers">
+                  <IceBreakersCard />
+                </SettingsSection>
+              )}
+              {shop.modules.whatsapp && (
+                <SettingsSection id="dbot-whatsapp">
+                  <DirectBotCard platform="whatsapp" />
+                </SettingsSection>
+              )}
+              <SettingsSection id="shop">
+                <Card title={t("settings.shop.title")}>
+                  <form
+                    className="space-y-3"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      void save.run(new FormData(e.currentTarget)).catch(() => {});
+                    }}
+                  >
+                    <Field label={t("settings.shop.name")}>
+                      <input
+                        className="input"
+                        name="shop_name"
+                        defaultValue={settings.shop_name ?? shop.name}
+                      />
+                    </Field>
+                    <Field
+                      label={t("settings.shop.adminChatId")}
+                      hint={t("settings.shop.adminChatIdHint", {
+                        owner: ownerTelegramId ? ` (${ownerTelegramId})` : "",
+                      })}
+                    >
+                      <input
+                        className="input"
+                        name="admin_chat_id"
+                        defaultValue={settings.admin_chat_id ?? ""}
+                      />
+                    </Field>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <Field
+                        label={t("settings.shop.currency")}
+                        hint={t("settings.shop.currencyHint")}
+                      >
+                        <select
+                          className="input"
+                          name="shop_currency"
+                          defaultValue={(settings.shop_currency ?? "KZT").toUpperCase()}
+                        >
+                          {CURRENCIES.map((c) => (
+                            <option key={c} value={c}>
+                              {c}
+                            </option>
+                          ))}
+                        </select>
+                      </Field>
+                      <Field
+                        label={t("settings.shop.timezone")}
+                        hint={t("settings.shop.timezoneHint")}
+                      >
+                        <select
+                          className="input"
+                          name="shop_timezone"
+                          defaultValue={timezone ?? ""}
+                        >
+                          <option value="">{t("settings.shop.timezoneDefault")}</option>
+                          {TIMEZONES.map((z) => (
+                            <option key={z} value={z}>
+                              {z}
+                            </option>
+                          ))}
+                        </select>
+                      </Field>
+                    </div>
+                    <Field label={t("settings.shop.tagline")} hint={t("settings.shop.taglineHint")}>
+                      <input
+                        className="input"
+                        name="shop_tagline"
+                        maxLength={160}
+                        defaultValue={settings.shop_tagline ?? ""}
+                      />
+                    </Field>
+                    <Field label={t("settings.shop.accent")} hint={t("settings.shop.accentHint")}>
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="checkbox"
+                          name="storefront_accent_on"
+                          defaultChecked={Boolean(settings.storefront_accent)}
+                        />
+                        <input
+                          type="color"
+                          name="storefront_accent"
+                          className="h-9 w-16 rounded border border-line"
+                          defaultValue={settings.storefront_accent || "#2f9e5f"}
+                        />
+                      </div>
+                    </Field>
+                    {shop.modules.web_storefront && (
+                      <Field
+                        label={t("settings.shop.webCheckout")}
+                        hint={t("settings.shop.webCheckoutHint")}
+                      >
+                        <input
+                          type="checkbox"
+                          name="storefront_checkout"
+                          defaultChecked={
+                            parseWebCheckout(settings.storefront_checkout ?? null).enabled
+                          }
+                        />
+                      </Field>
+                    )}
+                    {shop.modules.web_storefront && (
+                      <Field
+                        label={t("settings.shop.tgLogin")}
+                        hint={t("settings.shop.tgLoginHint")}
+                      >
+                        <input
+                          type="checkbox"
+                          name="storefront_tg_login"
+                          defaultChecked={
+                            parseWebCheckout(settings.storefront_checkout ?? null).tgLogin
+                          }
+                        />
+                      </Field>
+                    )}
+                    <Field label={t("settings.shop.contactLink")}>
+                      <input
+                        className="input"
+                        name="admin_contact_link"
+                        defaultValue={settings.admin_contact_link ?? ""}
+                        placeholder="https://t.me/username"
+                      />
+                    </Field>
+                    {shop.modules.loyalty && (
+                      <Field
+                        label={t("settings.shop.loyaltyPercent")}
+                        hint={t("settings.shop.loyaltyHint")}
+                      >
+                        <input
+                          className="input w-32"
+                          name="loyalty_earn_percent"
+                          type="number"
+                          min={1}
+                          max={100}
+                          defaultValue={settings.loyalty_earn_percent ?? "5"}
+                        />
+                      </Field>
+                    )}
+                    {shop.modules.loyalty && (
+                      <Field
+                        label={t("settings.shop.loyaltyMaxRedeem")}
+                        hint={t("settings.shop.loyaltyMaxRedeemHint")}
+                      >
+                        <input
+                          className="input w-32"
+                          name="loyalty_max_redeem_percent"
+                          type="number"
+                          min={0}
+                          max={100}
+                          defaultValue={settings.loyalty_max_redeem_percent ?? "100"}
+                        />
+                      </Field>
+                    )}
+                    {shop.modules.multi_language && (
+                      <Field
+                        label={t("settings.shop.langTiming")}
+                        hint={t("settings.shop.langTimingHint")}
+                      >
+                        <select
+                          className="input"
+                          name="delivery_lang_timing"
+                          defaultValue={settings.delivery_lang_timing ?? "during"}
+                        >
+                          <option value="during">{t("settings.shop.langDuring")}</option>
+                          <option value="before">{t("settings.shop.langBefore")}</option>
+                        </select>
+                      </Field>
+                    )}
+                    <Field label={t("settings.shop.instruction")}>
+                      <textarea
+                        className="input"
+                        name="instruction_caption"
+                        rows={3}
+                        defaultValue={settings.instruction_caption ?? ""}
+                      />
+                    </Field>
+                    {(shop.modules.instagram || shop.modules.whatsapp) && (
+                      <Field
+                        label={t("settings.shop.deliveryNote")}
+                        hint={t("settings.shop.deliveryNoteHint")}
+                      >
+                        <textarea
+                          className="input"
+                          name="delivery_email_note"
+                          rows={3}
+                          maxLength={DELIVERY_NOTE_MAX}
+                          defaultValue={settings.delivery_email_note ?? ""}
+                        />
+                      </Field>
+                    )}
+                    <div className="flex items-center gap-3">
+                      <button className="btn-primary" disabled={save.busy}>
+                        {t("common.save")}
+                      </button>
+                      {saved && <span className="text-xs text-ok">{t("settings.saved")}</span>}
+                    </div>
+                    <ErrorBox error={save.error} />
+                  </form>
+                </Card>
+              </SettingsSection>
+              <SettingsSection id="payment-methods">
+                <PaymentMethods methods={methods} />
+              </SettingsSection>
+              <SettingsSection id="fulfillment">
+                <FulfillmentCard settings={settings} />
+              </SettingsSection>
+              <SettingsSection id="min-order">
+                <MinOrderCard />
+              </SettingsSection>
+              {shop.modules.bundles && (
+                <SettingsSection id="gift-wrap">
+                  <GiftWrapCard />
+                </SettingsSection>
+              )}
+              <SettingsSection id="community">
+                <CommunityCard />
+              </SettingsSection>
+              <SettingsSection id="about">
+                <AboutCard />
+              </SettingsSection>
+              <SettingsSection id="design">
+                <DesignCard />
+              </SettingsSection>
+              <SettingsSection id="marketplace">
+                <MarketplaceCard />
+              </SettingsSection>
+              <SettingsSection id="zones">
+                <ZonesCard zones={zones} />
+              </SettingsSection>
+              <SettingsSection id="free-delivery">
+                <FreeDeliveryCard />
+              </SettingsSection>
+              <SettingsSection id="watermark">
+                <WatermarkCard enabled={pdfWatermark} />
+              </SettingsSection>
+              {shop.modules.robokassa && (
+                <SettingsSection id="robokassa">
+                  <RobokassaCard settings={settings} />
+                </SettingsSection>
+              )}
+              {shop.modules.crypto && shop.role === "owner" && (
+                <SettingsSection id="crypto">
+                  <CryptoCard settings={settings} />
+                </SettingsSection>
+              )}
+              {shop.modules.stripe && shop.role === "owner" && (
+                <SettingsSection id="stripe">
+                  <StripeCard settings={settings} />
+                </SettingsSection>
+              )}
+              {shop.modules.telegram_stars && (
+                <SettingsSection id="stars">
+                  <StarsCard settings={settings} />
+                </SettingsSection>
+              )}
+              {shop.modules.receipt_ocr && (
+                <SettingsSection id="receipt-ocr">
+                  <ReceiptOcrCard settings={settings} hasKey={visionKey} />
+                </SettingsSection>
+              )}
+              {shop.modules.smart_search && (
+                <SettingsSection id="smart-search">
+                  <SmartSearchCard settings={settings} hasKey={smartSearchKey} />
+                </SettingsSection>
+              )}
+              <SettingsSection id="weekly">
+                <WeeklyReportCard settings={settings} />
+              </SettingsSection>
+              <SettingsSection id="auto-v3">
+                <AutoMessagesCard settings={settings} />
+              </SettingsSection>
+              <SettingsSection id="service-notices">
+                <ServiceNoticesCard settings={settings} />
+              </SettingsSection>
+              <SettingsSection id="pay-remind">
+                <PayReminderCard settings={settings} />
+              </SettingsSection>
+              {shop.modules.legal_docs && (
+                <SettingsSection id="legal">
+                  <LegalCard settings={settings} />
+                </SettingsSection>
+              )}
+              {shop.modules.notify_in_bot && (
+                <SettingsSection id="notify">
+                  <NotifyCard />
+                </SettingsSection>
+              )}
+              {shop.modules.stock && (
+                <SettingsSection id="low-stock">
+                  <LowStockCard />
+                </SettingsSection>
+              )}
+              <SettingsSection id="push">
+                <PushCard />
+              </SettingsSection>
+              {shop.modules.crm_integration && (
+                <SettingsSection id="crm">
+                  <CrmCard />
+                </SettingsSection>
+              )}
+              {shop.modules.public_api && shop.role === "owner" && (
+                <SettingsSection id="api">
+                  <ApiKeyCard />
+                </SettingsSection>
+              )}
+              {shop.modules.admin_roles && (
+                <SettingsSection id="team">
+                  <TeamCard />
+                </SettingsSection>
+              )}
+              {shop.role === "owner" && (
+                <SettingsSection id="takeout">
+                  <TakeoutCard />
+                </SettingsSection>
+              )}
+              {shop.role === "owner" && (
+                <SettingsSection id="invite">
+                  <InviteCard />
+                </SettingsSection>
+              )}
+              {shop.role === "owner" && !shop.deletionAt && (
+                <SettingsSection id="delete">
+                  <DeleteShopCard locale={shop.locale} shopName={shop.name} />
+                </SettingsSection>
+              )}
+            </div>
+          </SettingsFilterProvider>
         </div>
       </div>
-      {visibleEntries.length === 0 && <Empty>{t("settings19.empty")}</Empty>}
-      {links.length > 0 && (
-        <div className="mb-4 grid gap-3 sm:grid-cols-2">
-          {links.map((e) => (
-            <div key={e.id} className="card flex items-center justify-between gap-3 p-3">
-              <span>
-                <span className="block font-medium">{t(e.title, e.titleVars)}</span>
-                <span className="block text-xs text-muted">{t("settings19.elsewhere")}</span>
-              </span>
-              <a href={e.to} className="btn-secondary text-sm">
-                {t("settings19.open")}
-              </a>
-            </div>
-          ))}
-        </div>
-      )}
-      <SettingsFilterProvider value={filter}>
-        <div className="grid gap-4 lg:grid-cols-2">
-          <SettingsSection id="telegram">
-            <TelegramCard telegram={telegram} />
-          </SettingsSection>
-          {(shop.modules.instagram || shop.modules.whatsapp) && (
-            <SettingsSection id="channel-wizard">
-              <ChannelWizardCards
-                instagram={shop.modules.instagram}
-                whatsapp={shop.modules.whatsapp}
-              />
-            </SettingsSection>
-          )}
-          {(shop.modules.instagram || shop.modules.whatsapp) && (
-            <SettingsSection id="instagram-whatsapp">
-              <ChannelsCard
-                zernio={zernio}
-                instagram={shop.modules.instagram}
-                whatsapp={shop.modules.whatsapp}
-              />
-            </SettingsSection>
-          )}
-          {shop.modules.instagram && (
-            <SettingsSection id="dbot-instagram">
-              <DirectBotCard platform="instagram" />
-            </SettingsSection>
-          )}
-          {shop.modules.instagram && shop.modules.dm_shop && (
-            <SettingsSection id="ice-breakers">
-              <IceBreakersCard />
-            </SettingsSection>
-          )}
-          {shop.modules.whatsapp && (
-            <SettingsSection id="dbot-whatsapp">
-              <DirectBotCard platform="whatsapp" />
-            </SettingsSection>
-          )}
-          <SettingsSection id="shop">
-            <Card title={t("settings.shop.title")}>
-              <form
-                className="space-y-3"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  void save.run(new FormData(e.currentTarget)).catch(() => {});
-                }}
-              >
-                <Field label={t("settings.shop.name")}>
-                  <input
-                    className="input"
-                    name="shop_name"
-                    defaultValue={settings.shop_name ?? shop.name}
-                  />
-                </Field>
-                <Field
-                  label={t("settings.shop.adminChatId")}
-                  hint={t("settings.shop.adminChatIdHint", {
-                    owner: ownerTelegramId ? ` (${ownerTelegramId})` : "",
-                  })}
-                >
-                  <input
-                    className="input"
-                    name="admin_chat_id"
-                    defaultValue={settings.admin_chat_id ?? ""}
-                  />
-                </Field>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <Field label={t("settings.shop.currency")} hint={t("settings.shop.currencyHint")}>
-                    <select
-                      className="input"
-                      name="shop_currency"
-                      defaultValue={(settings.shop_currency ?? "KZT").toUpperCase()}
-                    >
-                      {CURRENCIES.map((c) => (
-                        <option key={c} value={c}>
-                          {c}
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
-                  <Field label={t("settings.shop.timezone")} hint={t("settings.shop.timezoneHint")}>
-                    <select className="input" name="shop_timezone" defaultValue={timezone ?? ""}>
-                      <option value="">{t("settings.shop.timezoneDefault")}</option>
-                      {TIMEZONES.map((z) => (
-                        <option key={z} value={z}>
-                          {z}
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
-                </div>
-                <Field label={t("settings.shop.tagline")} hint={t("settings.shop.taglineHint")}>
-                  <input
-                    className="input"
-                    name="shop_tagline"
-                    maxLength={160}
-                    defaultValue={settings.shop_tagline ?? ""}
-                  />
-                </Field>
-                <Field label={t("settings.shop.accent")} hint={t("settings.shop.accentHint")}>
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="checkbox"
-                      name="storefront_accent_on"
-                      defaultChecked={Boolean(settings.storefront_accent)}
-                    />
-                    <input
-                      type="color"
-                      name="storefront_accent"
-                      className="h-9 w-16 rounded border border-line"
-                      defaultValue={settings.storefront_accent || "#2f9e5f"}
-                    />
-                  </div>
-                </Field>
-                {shop.modules.web_storefront && (
-                  <Field
-                    label={t("settings.shop.webCheckout")}
-                    hint={t("settings.shop.webCheckoutHint")}
-                  >
-                    <input
-                      type="checkbox"
-                      name="storefront_checkout"
-                      defaultChecked={
-                        parseWebCheckout(settings.storefront_checkout ?? null).enabled
-                      }
-                    />
-                  </Field>
-                )}
-                {shop.modules.web_storefront && (
-                  <Field label={t("settings.shop.tgLogin")} hint={t("settings.shop.tgLoginHint")}>
-                    <input
-                      type="checkbox"
-                      name="storefront_tg_login"
-                      defaultChecked={
-                        parseWebCheckout(settings.storefront_checkout ?? null).tgLogin
-                      }
-                    />
-                  </Field>
-                )}
-                <Field label={t("settings.shop.contactLink")}>
-                  <input
-                    className="input"
-                    name="admin_contact_link"
-                    defaultValue={settings.admin_contact_link ?? ""}
-                    placeholder="https://t.me/username"
-                  />
-                </Field>
-                {shop.modules.loyalty && (
-                  <Field
-                    label={t("settings.shop.loyaltyPercent")}
-                    hint={t("settings.shop.loyaltyHint")}
-                  >
-                    <input
-                      className="input w-32"
-                      name="loyalty_earn_percent"
-                      type="number"
-                      min={1}
-                      max={100}
-                      defaultValue={settings.loyalty_earn_percent ?? "5"}
-                    />
-                  </Field>
-                )}
-                {shop.modules.loyalty && (
-                  <Field
-                    label={t("settings.shop.loyaltyMaxRedeem")}
-                    hint={t("settings.shop.loyaltyMaxRedeemHint")}
-                  >
-                    <input
-                      className="input w-32"
-                      name="loyalty_max_redeem_percent"
-                      type="number"
-                      min={0}
-                      max={100}
-                      defaultValue={settings.loyalty_max_redeem_percent ?? "100"}
-                    />
-                  </Field>
-                )}
-                {shop.modules.multi_language && (
-                  <Field
-                    label={t("settings.shop.langTiming")}
-                    hint={t("settings.shop.langTimingHint")}
-                  >
-                    <select
-                      className="input"
-                      name="delivery_lang_timing"
-                      defaultValue={settings.delivery_lang_timing ?? "during"}
-                    >
-                      <option value="during">{t("settings.shop.langDuring")}</option>
-                      <option value="before">{t("settings.shop.langBefore")}</option>
-                    </select>
-                  </Field>
-                )}
-                <Field label={t("settings.shop.instruction")}>
-                  <textarea
-                    className="input"
-                    name="instruction_caption"
-                    rows={3}
-                    defaultValue={settings.instruction_caption ?? ""}
-                  />
-                </Field>
-                {(shop.modules.instagram || shop.modules.whatsapp) && (
-                  <Field
-                    label={t("settings.shop.deliveryNote")}
-                    hint={t("settings.shop.deliveryNoteHint")}
-                  >
-                    <textarea
-                      className="input"
-                      name="delivery_email_note"
-                      rows={3}
-                      maxLength={DELIVERY_NOTE_MAX}
-                      defaultValue={settings.delivery_email_note ?? ""}
-                    />
-                  </Field>
-                )}
-                <div className="flex items-center gap-3">
-                  <button className="btn-primary" disabled={save.busy}>
-                    {t("common.save")}
-                  </button>
-                  {saved && <span className="text-xs text-ok">{t("settings.saved")}</span>}
-                </div>
-                <ErrorBox error={save.error} />
-              </form>
-            </Card>
-          </SettingsSection>
-          <SettingsSection id="payment-methods">
-            <PaymentMethods methods={methods} />
-          </SettingsSection>
-          <SettingsSection id="fulfillment">
-            <FulfillmentCard settings={settings} />
-          </SettingsSection>
-          <SettingsSection id="min-order">
-            <MinOrderCard />
-          </SettingsSection>
-          {shop.modules.bundles && (
-            <SettingsSection id="gift-wrap">
-              <GiftWrapCard />
-            </SettingsSection>
-          )}
-          <SettingsSection id="community">
-            <CommunityCard />
-          </SettingsSection>
-          <SettingsSection id="about">
-            <AboutCard />
-          </SettingsSection>
-          <SettingsSection id="design">
-            <DesignCard />
-          </SettingsSection>
-          <SettingsSection id="marketplace">
-            <MarketplaceCard />
-          </SettingsSection>
-          <SettingsSection id="zones">
-            <ZonesCard zones={zones} />
-          </SettingsSection>
-          <SettingsSection id="free-delivery">
-            <FreeDeliveryCard />
-          </SettingsSection>
-          <SettingsSection id="watermark">
-            <WatermarkCard enabled={pdfWatermark} />
-          </SettingsSection>
-          {shop.modules.robokassa && (
-            <SettingsSection id="robokassa">
-              <RobokassaCard settings={settings} />
-            </SettingsSection>
-          )}
-          {shop.modules.crypto && shop.role === "owner" && (
-            <SettingsSection id="crypto">
-              <CryptoCard settings={settings} />
-            </SettingsSection>
-          )}
-          {shop.modules.stripe && shop.role === "owner" && (
-            <SettingsSection id="stripe">
-              <StripeCard settings={settings} />
-            </SettingsSection>
-          )}
-          {shop.modules.telegram_stars && (
-            <SettingsSection id="stars">
-              <StarsCard settings={settings} />
-            </SettingsSection>
-          )}
-          {shop.modules.receipt_ocr && (
-            <SettingsSection id="receipt-ocr">
-              <ReceiptOcrCard settings={settings} hasKey={visionKey} />
-            </SettingsSection>
-          )}
-          {shop.modules.smart_search && (
-            <SettingsSection id="smart-search">
-              <SmartSearchCard settings={settings} hasKey={smartSearchKey} />
-            </SettingsSection>
-          )}
-          <SettingsSection id="weekly">
-            <WeeklyReportCard settings={settings} />
-          </SettingsSection>
-          <SettingsSection id="auto-v3">
-            <AutoMessagesCard settings={settings} />
-          </SettingsSection>
-          <SettingsSection id="service-notices">
-            <ServiceNoticesCard settings={settings} />
-          </SettingsSection>
-          <SettingsSection id="pay-remind">
-            <PayReminderCard settings={settings} />
-          </SettingsSection>
-          {shop.modules.legal_docs && (
-            <SettingsSection id="legal">
-              <LegalCard settings={settings} />
-            </SettingsSection>
-          )}
-          {shop.modules.notify_in_bot && (
-            <SettingsSection id="notify">
-              <NotifyCard />
-            </SettingsSection>
-          )}
-          {shop.modules.stock && (
-            <SettingsSection id="low-stock">
-              <LowStockCard />
-            </SettingsSection>
-          )}
-          <SettingsSection id="push">
-            <PushCard />
-          </SettingsSection>
-          {shop.modules.crm_integration && (
-            <SettingsSection id="crm">
-              <CrmCard />
-            </SettingsSection>
-          )}
-          {shop.modules.public_api && shop.role === "owner" && (
-            <SettingsSection id="api">
-              <ApiKeyCard />
-            </SettingsSection>
-          )}
-          {shop.modules.admin_roles && (
-            <SettingsSection id="team">
-              <TeamCard />
-            </SettingsSection>
-          )}
-          {shop.role === "owner" && (
-            <SettingsSection id="takeout">
-              <TakeoutCard />
-            </SettingsSection>
-          )}
-          {shop.role === "owner" && (
-            <SettingsSection id="invite">
-              <InviteCard />
-            </SettingsSection>
-          )}
-          {shop.role === "owner" && !shop.deletionAt && (
-            <SettingsSection id="delete">
-              <DeleteShopCard locale={shop.locale} shopName={shop.name} />
-            </SettingsSection>
-          )}
-        </div>
-      </SettingsFilterProvider>
     </>
   );
 }
