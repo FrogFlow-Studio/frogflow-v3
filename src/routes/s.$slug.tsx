@@ -142,6 +142,7 @@ function StoreFrame() {
           city={shop.marketCity}
           hasAbout={shop.hasAbout}
           onMarket={shop.onMarket}
+          trust={shop.trust}
         />
       )}
       {shop.paused && (

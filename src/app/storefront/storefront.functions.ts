@@ -38,6 +38,7 @@ export const storeInfoFn = createServerFn({ method: "GET" })
     const { storefrontOpen } = await import("@/core/storefront/access");
     const { webCheckoutSettings } = await import("@/core/storefront/web-order");
     const { shownOnMarketplace, marketplaceCity } = await import("@/core/marketplace/consent");
+    const { parseTrust, TRUST_KEY } = await import("@/core/marketplace/trust");
     return {
       ...(await storeInfo(ctx)),
       /** Ссылка «Сертификат» в шапке: продажа сертификатов и оформление на сайте открыты. */
@@ -53,6 +54,10 @@ export const storeInfoFn = createServerFn({ method: "GET" })
       /** Магазин виден на площадке: у него есть плашка «Вы смотрите только магазин…» (П2). */
       onMarket: shownOnMarketplace(ctx.tenant),
       marketCity: marketplaceCity(ctx.tenant),
+      /** Цифры доверия по настоящим заказам (П3): считает крон площадки; нет записи — плашка без них. */
+      trust: shownOnMarketplace(ctx.tenant)
+        ? parseTrust(await (await import("@/core/settings/settings")).getSetting(ctx, TRUST_KEY))
+        : null,
       /** Язык витрины — язык магазина; покупатель может сменить его через `?lang=`. */
       locale: (ctx.tenant.settings.default_locale ?? "ru") as Locale,
     };

@@ -19,6 +19,11 @@ export function ShowcaseBlocks({ slug, sections }: { slug: string; sections: Sho
                 <li key={r.id} className="card p-3 text-sm">
                   <div aria-label={`${r.rating}/5`}>{"★".repeat(r.rating)}</div>
                   <p className="mt-1 line-clamp-4 whitespace-pre-line">{r.comment}</p>
+                  {r.confirmed && (
+                    <p className="mt-1 text-xs text-ok" data-testid="review-confirmed">
+                      ✓ {t("review.confirmed")}
+                    </p>
+                  )}
                   <Link
                     to="/s/$slug/p/$id"
                     params={{ slug, id: r.productId }}

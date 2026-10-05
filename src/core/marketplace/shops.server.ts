@@ -33,6 +33,8 @@ export type RefreshResult = {
   action: "listed" | "removed" | "not-ready";
   /** Что стало с товарами магазина в поиске площадки (В8); нет таблицы поиска — «not-ready». */
   items?: ItemsResult;
+  /** Цифры доверия автора (П3): «updated» — записаны, «failed» — прежние остались. */
+  trust?: "updated" | "failed";
 };
 
 /**
@@ -102,7 +104,22 @@ export async function refreshMarketplaceShop(
       { onConflict: "bot_id" },
     );
     check("магазин не записан в каталог", error);
-    return { action: "listed", items: await syncMarketplaceItems(ctx, svc, new Date(), opts) };
+    // Доверие по настоящим заказам (П3): сбой не мешает каталогу, прежняя запись остаётся.
+    const trust = await import("./trust.server")
+      .then((m) => m.refreshTrust(ctx, { rating, count }))
+      .then(
+        (ok) => (ok ? ("updated" as const) : ("failed" as const)),
+        async (e) => {
+          const { logFailure } = await import("@/lib/log-failure");
+          logFailure("marketplace.trust", e, { botId: t.id });
+          return "failed" as const;
+        },
+      );
+    return {
+      action: "listed",
+      items: await syncMarketplaceItems(ctx, svc, new Date(), opts),
+      trust,
+    };
   } catch (e) {
     if (e instanceof MarketplaceNotReady) return { action: "not-ready" };
     throw e;

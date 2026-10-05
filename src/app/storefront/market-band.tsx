@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { answerLabel, type Trust } from "@/core/marketplace/trust";
 import { readMarketBack, type MarketBack } from "@/app/market/back";
 import { useStorefrontLocale } from "@/app/storefront/locale";
 
@@ -16,6 +17,7 @@ export function MarketBand(props: {
   city: string;
   hasAbout: boolean;
   onMarket: boolean;
+  trust: Trust | null;
 }) {
   const { t } = useStorefrontLocale();
   const [back, setBack] = useState<MarketBack | null>(null);
@@ -33,6 +35,7 @@ export function MarketBand(props: {
             {[props.tagline, props.city].filter(Boolean).join(" · ")}
           </p>
         )}
+        <TrustLine trust={props.trust} />
         <div className="mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
           <nav className="flex flex-wrap gap-1" aria-label={props.name}>
             <Link to="/s/$slug" params={{ slug: props.slug }} className={tab}>
@@ -64,5 +67,28 @@ export function MarketBand(props: {
         </div>
       </div>
     </section>
+  );
+}
+
+/** Цифры платформы по настоящим заказам: только то, что есть, ничего не придумывается. */
+function TrustLine({ trust }: { trust: Trust | null }) {
+  const { t, locale } = useStorefrontLocale();
+  if (!trust) return null;
+  const parts: string[] = [];
+  if (trust.delivered > 0)
+    parts.push(
+      t("trust.delivered", { count: new Intl.NumberFormat(locale).format(trust.delivered) }),
+    );
+  if (trust.answerHours != null) {
+    const a = answerLabel(trust.answerHours);
+    parts.push(t(`trust.answer.${a.unit}` as "trust.answer.h", { n: a.n }));
+  }
+  if (trust.rating != null)
+    parts.push(t("trust.rating", { rating: trust.rating.toFixed(1), count: trust.ratingCount }));
+  if (parts.length === 0) return null;
+  return (
+    <p className="mt-1 text-xs" data-testid="market-trust">
+      {parts.join(" · ")}
+    </p>
   );
 }

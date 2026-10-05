@@ -42,3 +42,13 @@ test("прямая ссылка на магазин: плашки с площа�
   ).toBeVisible();
   await expect(page.getByTestId("market-band")).toHaveCount(0);
 });
+
+test("цифры доверия не выдумываются: без посчитанных заказов строки на плашке нет", async ({
+  page,
+}) => {
+  await watch(page);
+  await page.goto(`/market/search?category=Торты`);
+  await page.locator(`a[href="/s/${S.slug}"]`).first().click();
+  await expect(page.getByTestId("market-band")).toBeVisible();
+  await expect(page.getByTestId("market-trust")).toHaveCount(0);
+});
