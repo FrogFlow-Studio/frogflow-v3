@@ -1,3 +1,4 @@
+import { FilterForm } from "@/app/market/filter-form";
 import { publicHeaders } from "@/app/cache-policy";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect } from "react";
@@ -87,7 +88,7 @@ function MarketPage() {
       ) : (
         <>
           <p className="mt-1 text-sm text-muted">{t("lead")}</p>
-          <form method="get" action="/market" className="mt-5 flex flex-wrap items-end gap-3">
+          <FilterForm action="/market" openLabel={t("filter.open")} closeLabel={t("filter.apply")}>
             {lang && <input type="hidden" name="lang" value={lang} />}
             <label className="text-sm">
               <span className="block text-muted">{t("search.label")}</span>
@@ -124,7 +125,7 @@ function MarketPage() {
             <button type="submit" className="btn">
               {t("search.button")}
             </button>
-          </form>
+          </FilterForm>
           {data.shops.length === 0 ? (
             <p className="mt-6 text-sm text-muted">{t("empty")}</p>
           ) : (
