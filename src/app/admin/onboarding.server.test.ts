@@ -15,7 +15,9 @@ vi.mock("@/channels/telegram/notify", () => ({
   },
 }));
 
-const { runTrialOrder, TRIAL_DONE_KEY, TRIAL_STAMP_KEY } = await import("./onboarding.server");
+const { runTrialOrder, loadFirstWeek, TRIAL_DONE_KEY, TRIAL_STAMP_KEY } =
+  await import("./onboarding.server");
+const { withBrokenReads } = await import("../../../tests/broken-db");
 
 let db: FakeDb;
 const NOW = Date.parse("2026-10-05T10:00:00Z");
@@ -152,5 +154,75 @@ describe("пробный заказ", () => {
     expect(r.ok).toBe(true);
     expect(r.notified).toBe("none");
     expect(state.sent).toHaveLength(0);
+  });
+});
+
+describe("первые 7 дней: факты из базы", () => {
+  const empty = () => {
+    db.tables.products = [];
+    db.tables.payment_methods = [];
+    db.tables.bot_users = [];
+    db.tables.orders = [];
+    db.tables.app_settings = [];
+  };
+  const steps = async (c = ctx()) =>
+    (await loadFirstWeek(c)).rows.filter((r) => r.done).map((r) => r.step);
+
+  it("пустой магазин: ни одного пункта", async () => {
+    empty();
+    expect(await steps()).toEqual([]);
+  });
+
+  it("товар закрывается только включённым", async () => {
+    empty();
+    db.tables.products = [product({ is_active: false })];
+    expect(await steps()).toEqual([]);
+    db.tables.products = [product({ is_active: true })];
+    expect(await steps()).toEqual(["product"]);
+  });
+
+  it("оплата: способ оплаты или робокасса", async () => {
+    empty();
+    db.tables.payment_methods = [pay];
+    expect(await steps()).toEqual(["payment"]);
+    empty();
+    expect(await steps(ctx({ robokassa: true }))).toEqual(["payment"]);
+  });
+
+  it("ссылка: сам продавец покупателем не считается, другой человек — считается", async () => {
+    empty();
+    db.tables.bot_users = [
+      { user_key: "tg:500000221", bot_id: BOT, telegram_id: 500000221, state: {} },
+    ];
+    expect(await steps()).toEqual([]);
+    db.tables.bot_users.push({ user_key: "tg:700", bot_id: BOT, telegram_id: 700, state: {} });
+    expect(await steps()).toEqual(["link"]);
+  });
+
+  it("пробный заказ: закрывается отметкой «прошёл», а не нажатием кнопки", async () => {
+    empty();
+    db.tables.payment_methods = [pay];
+    // кнопку нажали, но проверка не прошла (нет файла) — отметки нет, пункт не закрыт
+    db.tables.products = [product({ file_path: null, file_name: null })];
+    await runTrialOrder(ctx(), null, NOW);
+    expect(await steps()).not.toContain("trial");
+    db.tables.products = [product()];
+    await runTrialOrder(ctx(), null, NOW + 120_000);
+    expect(await steps()).toContain("trial");
+  });
+
+  it("оплаченный заказ закрывает всё, неоплаченный — ничего", async () => {
+    empty();
+    db.tables.orders = [{ id: 1, bot_id: BOT, status: "pending", paid_amount: 0, total: 1500 }];
+    expect(await steps()).toEqual([]);
+    db.tables.orders = [{ id: 2, bot_id: BOT, status: "paid", paid_amount: 1500, total: 1500 }];
+    const s = await loadFirstWeek(ctx());
+    expect(s).toMatchObject({ percent: 100, visible: false, sold: true });
+  });
+
+  it("не прочиталось — ошибка, а не «ничего не сделано»", async () => {
+    empty();
+    const broken = { ...(ctx() as object), db: withBrokenReads(db, ["products"]) } as never;
+    await expect(loadFirstWeek(broken)).rejects.toThrow();
   });
 });

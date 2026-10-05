@@ -1,3 +1,4 @@
+import { FirstWeekCard } from "@/app/admin/first-week-card";
 import { TrialOrder } from "@/app/admin/trial-order";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
@@ -40,6 +41,9 @@ function Dashboard() {
   const t = adminT(shop.locale);
   const loc = intlLocale(shop.locale);
   const router = useRouter();
+  // «Первые 7 дней» (Р3): пока не закрыты все четыре пункта, они стоят вместо общего «Запуска».
+  const firstWeek =
+    d.firstWeek && d.firstWeek !== "failed" && d.firstWeek.visible ? d.firstWeek : null;
   const progress = setupProgress(d.setup, d.setup.relevant, d.setup.skipped);
   const next = nextSetupStep(d.setup, d.setup.relevant, d.setup.skipped);
   const skip = useAction(async (step: SetupStep, hide: boolean) => {
@@ -117,113 +121,118 @@ function Dashboard() {
           )}
           {shop.vertical === "courses" && shop.modules.courses && <LaunchCard t={t} />}
           {shop.vertical === "courses" && shop.modules.courses && <SchoolCard t={t} loc={loc} />}
-          {shop.role !== "accountant" && !d.setup.hidden && progress.percent < 100 && (
-            <Card
-              title={`${t("launch.title")} · ${t("launch.percent", { n: progress.percent })}`}
-              className="mb-6"
-              actions={
-                <button
-                  className="btn-ghost text-xs"
-                  disabled={hide.busy}
-                  onClick={() => void hide.run().catch(() => {})}
-                >
-                  {t("common.hide")}
-                </button>
-              }
-            >
-              <div className="mb-3 h-1.5 overflow-hidden rounded-full bg-line">
-                <div
-                  className="h-full bg-accent transition-all"
-                  style={{ width: `${progress.percent}%` }}
-                />
-              </div>
-              <p className="mb-3 text-sm text-muted">{t("overview.stepsIntro")}</p>
-              <ol className="space-y-2 text-sm">
-                {progress.rows
-                  .filter((r) => !r.skipped)
-                  .map((r) => (
-                    <Step
-                      key={r.step}
-                      current={next === r.step ? t("overview.next") : null}
-                      done={r.done}
-                      to={STEP_LINKS[r.step]}
-                      title={stepTitle(r.step, t)}
-                      onSkip={() => void skip.run(r.step, true).catch(() => {})}
-                      skipLabel={t("launch.skip")}
-                    >
-                      {r.step === "firstOrder" ? (
-                        <>
-                          {"url" in d.setup.testOrder ? (
-                            <>
-                              <a
-                                href={d.setup.testOrder.url}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="btn-secondary my-1 inline-block text-sm"
-                              >
-                                {t("overview.testOrder.open")}
-                              </a>
-                              <span className="block">{t("overview.testOrder.how")}</span>
-                            </>
-                          ) : d.setup.testOrder.missing === "telegram" ? (
-                            t("overview.testOrder.needTelegram")
-                          ) : (
-                            t("overview.testOrder.needProducts")
-                          )}
-                          <TrialOrder t={t} />
-                        </>
-                      ) : r.step === "products" ? (
-                        t("launch.productsHint", { n: d.setup.productsCount })
-                      ) : (
-                        t(STEP_HINTS[r.step])
-                      )}
-                    </Step>
-                  ))}
-              </ol>
-              {progress.rows.some((r) => r.skipped) && (
-                <div className="mt-3 text-xs text-muted">
-                  {t("launch.skipped")}:{" "}
-                  {progress.rows
-                    .filter((r) => r.skipped)
-                    .map((r) => (
-                      <button
-                        key={r.step}
-                        className="mr-2 underline"
-                        onClick={() => void skip.run(r.step, false).catch(() => {})}
-                      >
-                        {stepTitle(r.step, t)} · {t("launch.restore")}
-                      </button>
-                    ))}
-                </div>
-              )}
-              <ErrorBox error={skip.error} />
-              {d.setup.template && (
-                <div className="mt-4 rounded-md border border-line p-3">
-                  <p className="text-sm font-medium">{t("overview.template.title")}</p>
-                  <p className="mb-2 text-xs text-muted">{t("overview.template.hint")}</p>
+          {firstWeek && <FirstWeekCard state={firstWeek} t={t} />}
+          {shop.role !== "accountant" &&
+            !d.setup.hidden &&
+            progress.percent < 100 &&
+            !firstWeek && (
+              <Card
+                title={`${t("launch.title")} · ${t("launch.percent", { n: progress.percent })}`}
+                className="mb-6"
+                actions={
                   <button
-                    className="btn-secondary text-sm"
-                    disabled={template.busy}
-                    onClick={() => void template.run().catch(() => {})}
+                    className="btn-ghost text-xs"
+                    disabled={hide.busy}
+                    onClick={() => void hide.run().catch(() => {})}
                   >
-                    {t("overview.template.apply")}
+                    {t("common.hide")}
                   </button>
-                  <ErrorBox error={template.error} />
+                }
+              >
+                <div className="mb-3 h-1.5 overflow-hidden rounded-full bg-line">
+                  <div
+                    className="h-full bg-accent transition-all"
+                    style={{ width: `${progress.percent}%` }}
+                  />
                 </div>
-              )}
-              {d.setup.slug && (
-                <p className="mt-3 text-xs text-muted">
-                  {t("overview.storefront")} <span className="font-mono">/s/{d.setup.slug}</span>
-                  {shop.telegram && (
-                    <>
-                      {" "}
-                      · {t("overview.bot")} <span className="font-mono">t.me/{shop.telegram}</span>
-                    </>
-                  )}
-                </p>
-              )}
-            </Card>
-          )}
+                <p className="mb-3 text-sm text-muted">{t("overview.stepsIntro")}</p>
+                <ol className="space-y-2 text-sm">
+                  {progress.rows
+                    .filter((r) => !r.skipped)
+                    .map((r) => (
+                      <Step
+                        key={r.step}
+                        current={next === r.step ? t("overview.next") : null}
+                        done={r.done}
+                        to={STEP_LINKS[r.step]}
+                        title={stepTitle(r.step, t)}
+                        onSkip={() => void skip.run(r.step, true).catch(() => {})}
+                        skipLabel={t("launch.skip")}
+                      >
+                        {r.step === "firstOrder" ? (
+                          <>
+                            {"url" in d.setup.testOrder ? (
+                              <>
+                                <a
+                                  href={d.setup.testOrder.url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="btn-secondary my-1 inline-block text-sm"
+                                >
+                                  {t("overview.testOrder.open")}
+                                </a>
+                                <span className="block">{t("overview.testOrder.how")}</span>
+                              </>
+                            ) : d.setup.testOrder.missing === "telegram" ? (
+                              t("overview.testOrder.needTelegram")
+                            ) : (
+                              t("overview.testOrder.needProducts")
+                            )}
+                            <TrialOrder t={t} />
+                          </>
+                        ) : r.step === "products" ? (
+                          t("launch.productsHint", { n: d.setup.productsCount })
+                        ) : (
+                          t(STEP_HINTS[r.step])
+                        )}
+                      </Step>
+                    ))}
+                </ol>
+                {progress.rows.some((r) => r.skipped) && (
+                  <div className="mt-3 text-xs text-muted">
+                    {t("launch.skipped")}:{" "}
+                    {progress.rows
+                      .filter((r) => r.skipped)
+                      .map((r) => (
+                        <button
+                          key={r.step}
+                          className="mr-2 underline"
+                          onClick={() => void skip.run(r.step, false).catch(() => {})}
+                        >
+                          {stepTitle(r.step, t)} · {t("launch.restore")}
+                        </button>
+                      ))}
+                  </div>
+                )}
+                <ErrorBox error={skip.error} />
+                {d.setup.template && (
+                  <div className="mt-4 rounded-md border border-line p-3">
+                    <p className="text-sm font-medium">{t("overview.template.title")}</p>
+                    <p className="mb-2 text-xs text-muted">{t("overview.template.hint")}</p>
+                    <button
+                      className="btn-secondary text-sm"
+                      disabled={template.busy}
+                      onClick={() => void template.run().catch(() => {})}
+                    >
+                      {t("overview.template.apply")}
+                    </button>
+                    <ErrorBox error={template.error} />
+                  </div>
+                )}
+                {d.setup.slug && (
+                  <p className="mt-3 text-xs text-muted">
+                    {t("overview.storefront")} <span className="font-mono">/s/{d.setup.slug}</span>
+                    {shop.telegram && (
+                      <>
+                        {" "}
+                        · {t("overview.bot")}{" "}
+                        <span className="font-mono">t.me/{shop.telegram}</span>
+                      </>
+                    )}
+                  </p>
+                )}
+              </Card>
+            )}
           {shop.role === "owner" && <AiBalanceCard t={t} />}
         </aside>
         <div className="lg:col-start-1">

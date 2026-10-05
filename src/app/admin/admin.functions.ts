@@ -499,6 +499,18 @@ export const dashboardFn = createServerFn({ method: "GET" }).handler(async () =>
         console.error(`[admin:${ctx.tenant.id}] рост`, e instanceof Error ? e.message : e);
         return "failed";
       });
+  // «Первые 7 дней» (Р3): не прочиталось — карточку просто не показываем.
+  const firstWeek = accountant
+    ? null
+    : await import("./onboarding.server")
+        .then((m) => m.loadFirstWeek(ctx))
+        .catch((e): "failed" => {
+          console.error(
+            `[admin:${ctx.tenant.id}] первые 7 дней`,
+            e instanceof Error ? e.message : e,
+          );
+          return "failed";
+        });
   if (!accountant) {
     [today, rev1, rev7, pace] = await Promise.all([
       (await import("@/core/overview/today")).todayTasks(ctx),
@@ -527,6 +539,7 @@ export const dashboardFn = createServerFn({ method: "GET" }).handler(async () =>
     recent: accountant ? redactOrders(recent) : recent,
     products: products ?? 0,
     customers: customers ?? 0,
+    firstWeek,
     // Чек-лист первых шагов на «Обзоре» для только что открытого магазина.
     setup: {
       telegram: Boolean(ctx.tenant.telegramTokenEnc),

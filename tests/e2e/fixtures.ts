@@ -58,4 +58,5 @@ export * from "./fixtures/shop22-r-share.ts";
 export * from "./fixtures/shop22-r-trial.ts";
 export * from "./fixtures/shop22-r-kinds.ts";
 export * from "./fixtures/shop22-r-start.ts";
+export * from "./fixtures/shop22-r-week.ts";
 export * from "./fixtures/shop19-a-team.ts";

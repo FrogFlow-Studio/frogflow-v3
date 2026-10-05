@@ -54,6 +54,7 @@ import { seedShop22RShare } from "./seed/shop22-r-share.ts";
 import { seedShop22RTrial } from "./seed/shop22-r-trial.ts";
 import { seedShop22RKinds } from "./seed/shop22-r-kinds.ts";
 import { seedShop22RStart } from "./seed/shop22-r-start.ts";
+import { seedShop22RWeek } from "./seed/shop22-r-week.ts";
 import { seedShop19VCollections } from "./seed/shop19-v-collections.ts";
 import { seedShop20RWalk } from "./seed/shop20-r-walk.ts";
 import { seedShop21ZhHome } from "./seed/shop21-zh-home.ts";
@@ -116,6 +117,7 @@ export function seedDb(): StubDb {
   seedShop22RTrial(db, now);
   seedShop22RKinds(db, now);
   seedShop22RStart(db, now);
+  seedShop22RWeek(db, now);
   seedShop19VCollections(db, now);
   seedShop20Sh(db, now);
   seedShop22LCollections(db, now);

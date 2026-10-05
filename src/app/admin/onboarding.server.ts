@@ -10,6 +10,7 @@ import type { TenantContext } from "@/core/tenant/resolve.server";
 import { serverFailure } from "@/lib/server-failure";
 import { getSettingsStrict, setSetting, updateSettingAtomic } from "@/core/settings/settings";
 import { trialIssues, trialPassed, type TrialResult } from "@/core/orders/trial";
+import { firstWeekState, type FirstWeekState } from "@/core/launch/first-week";
 import { adminTFor } from "./locale.server";
 
 export const TRIAL_STAMP_KEY = "trial_order_stamp";
@@ -137,4 +138,55 @@ async function sendTrialNotice(
 export async function trialDoneAt(ctx: TenantContext): Promise<string | null> {
   const s = await getSettingsStrict(ctx, [TRIAL_DONE_KEY]);
   return s[TRIAL_DONE_KEY] || null;
+}
+
+/**
+ * Факты для «Первых 7 дней» (core/launch/first-week). Любое непрочитанное
+ * число — ошибка, а не «ноль»: иначе упавшее чтение показало бы продавцу, что
+ * у него нет товаров и оплаты. Вызывающий превращает ошибку в «карточку не
+ * показываем».
+ */
+export async function loadFirstWeek(ctx: TenantContext): Promise<FirstWeekState> {
+  const count = async (
+    what: string,
+    q: PromiseLike<{ count: number | null; error: { message: string } | null }>,
+  ) => {
+    const { count: n, error } = await q;
+    if (error) throw serverFailure(`Первые 7 дней, ${what}: ${error.message}`);
+    return n ?? 0;
+  };
+  const { adminRecipients } = await import("@/core/notify/recipients");
+  const sellers = (await adminRecipients(ctx)).map(Number).filter((n) => Number.isSafeInteger(n));
+  const [activeProducts, methods, buyers, sellerRows, paidOrders, done] = await Promise.all([
+    count(
+      "товары",
+      ctx.db.from("products").select("id", { count: "exact", head: true }).eq("is_active", true),
+    ),
+    count("оплата", ctx.db.from("payment_methods").select("id", { count: "exact", head: true })),
+    count(
+      "покупатели",
+      ctx.db.from("bot_users").select("user_key", { count: "exact", head: true }),
+    ),
+    sellers.length
+      ? count(
+          "продавец среди покупателей",
+          ctx.db
+            .from("bot_users")
+            .select("user_key", { count: "exact", head: true })
+            .in("telegram_id", sellers),
+        )
+      : Promise.resolve(0),
+    count(
+      "оплаченные заказы",
+      ctx.db.from("orders").select("id", { count: "exact", head: true }).gt("paid_amount", 0),
+    ),
+    trialDoneAt(ctx),
+  ]);
+  return firstWeekState({
+    activeProducts,
+    paymentReady: methods > 0 || Boolean(ctx.tenant.modules.robokassa),
+    buyersBesideSeller: Math.max(0, buyers - sellerRows),
+    trialPassed: Boolean(done),
+    paidOrders,
+  });
 }

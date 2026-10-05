@@ -53,6 +53,9 @@ const FEW = "список из позиций одного заказа или �
 const ALLOWED: Record<string, string[]> = {
   "src/app/admin/admin.functions.ts": [`${PAGE} (заказы из «Не доставлено», ≤ 200)`],
   "src/app/admin/invoice.server.ts": [FEW],
+  "src/app/admin/onboarding.server.ts": [
+    "получатели служебных сообщений: владелец и менеджеры магазина, не больше 21",
+  ],
   "src/app/operator/ai-topup.server.ts": ["счета пополнения одного клиента — единицы"],
   "src/app/operator/health-alerts.server.ts": [FIXED, FIXED],
   "src/app/operator/invites.server.ts": ["два магазина: приглашённый и пригласивший"],
