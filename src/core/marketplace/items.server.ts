@@ -1,10 +1,11 @@
 import { serviceDb, type Db } from "@/core/db/client.server";
 import { getSettingStrict, trySetSetting } from "@/core/settings/settings";
 import { serverFailure } from "@/lib/server-failure";
+import { cleanLabel, tally } from "./shops";
 import { storeCatalogPage } from "@/core/storefront/catalog";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Tenant } from "@/core/tenant/types";
-import { shownOnMarketplace } from "./consent";
+import { marketplaceCategory, shownOnMarketplace } from "./consent";
 import {
   ITEMS_PER_SHOP_MAX,
   MARKET_ITEMS_PAGE,
@@ -129,14 +130,14 @@ export async function removeMarketplaceItems(
   return { action: "removed" };
 }
 
-type ShopCard = { slug: string; name: string };
+type ShopCard = { slug: string; name: string; category?: string };
 
 /** Магазины, показываемые сейчас: id → адрес и название (из справочника арендаторов). */
 export function shownShops(tenants: Tenant[]): Map<string, ShopCard> {
   const out = new Map<string, ShopCard>();
   for (const t of tenants)
     if (shownOnMarketplace(t) && t.settings.slug)
-      out.set(t.id, { slug: t.settings.slug, name: t.name });
+      out.set(t.id, { slug: t.settings.slug, name: t.name, category: marketplaceCategory(t) });
   return out;
 }
 
@@ -164,11 +165,13 @@ const SCAN_BATCHES = 10;
  * Страница — не больше MARKET_ITEMS_PAGE; `next` — смещение для «Показать ещё», null — конец.
  */
 export async function searchMarketItems(
-  q: { search?: string; offset?: number },
+  q: { search?: string; category?: string; offset?: number },
   deps: { svc?: Db; shown?: () => Promise<Map<string, ShopCard>> } = {},
 ): Promise<{ items: MarketItem[]; next: number | null; words: string[] }> {
   const words = searchWords(q.search);
-  if (words.length === 0) return { items: [], next: null, words };
+  const category = cleanLabel(q.category);
+  // Без слов и без категории искать нечего; с одной категорией показываем её товары (П1).
+  if (words.length === 0 && !category) return { items: [], next: null, words };
   const svc = deps.svc ?? serviceDb();
   const shops = await (deps.shown ?? directoryShops)();
   const out: MarketItem[] = [];
@@ -187,6 +190,7 @@ export async function searchMarketItems(
       offset++;
       const shop = shops.get(r.bot_id);
       if (!shop) continue;
+      if (category && shop.category !== category) continue;
       out.push({
         id: r.product_id,
         shopId: r.bot_id,
@@ -203,4 +207,12 @@ export async function searchMarketItems(
     if (rows.length < SCAN_BATCH) return { items: out, next: null, words };
   }
   return { items: out, next: offset, words };
+}
+
+/** Категории показываемых магазинов для фильтра на странице «Все товары» (П1). */
+export async function itemFacets(
+  deps: { shown?: () => Promise<Map<string, ShopCard>> } = {},
+): Promise<Array<{ value: string; count: number }>> {
+  const shops = await (deps.shown ?? directoryShops)();
+  return tally([...shops.values()].map((s) => s.category ?? ""));
 }

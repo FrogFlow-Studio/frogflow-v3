@@ -268,6 +268,30 @@ describe("поиск по площадке", () => {
     ).toHaveLength(2);
   });
 
+  it("категория (П1): только товары магазинов этой категории; одна категория без слов показывает её товары", async () => {
+    svc.tables.marketplace_items = [
+      row(1),
+      row(2, { bot_id: "b2", search_text: "торт с орехами" }),
+      row(3, { bot_id: "hidden" }),
+    ];
+    const two = async () =>
+      new Map([
+        [BOT, { slug: "cakes", name: "Лавка", category: "Торты" }],
+        ["b2", { slug: "flowers", name: "Цветы", category: "Цветы" }],
+      ]);
+    const byCat = await searchMarketItems({ category: "Торты" }, { svc: as(svc), shown: two });
+    expect(byCat.items.map((i) => i.shopSlug)).toEqual(["cakes"]);
+    const both = await searchMarketItems({ search: "торт" }, { svc: as(svc), shown: two });
+    expect(both.items.map((i) => i.shopSlug).sort()).toEqual(["cakes", "flowers"]);
+    const narrowed = await searchMarketItems(
+      { search: "торт", category: "Цветы" },
+      { svc: as(svc), shown: two },
+    );
+    expect(narrowed.items.map((i) => i.shopSlug)).toEqual(["flowers"]);
+    // скрытый магазин (нет в показанных) не попадает ни в одну категорию
+    expect([...byCat.items, ...both.items].some((i) => i.shopId === "hidden")).toBe(false);
+  });
+
   it("пустой и слишком короткий запрос ничего не ищет", async () => {
     svc.tables.marketplace_items = [row(1)];
     for (const q of [undefined, "", " ", "т"])

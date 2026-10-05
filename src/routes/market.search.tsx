@@ -11,16 +11,32 @@ export const Route = createFileRoute("/market/search")({
   validateSearch: z.object({
     lang: z.enum(SUPPORTED_LOCALES).optional().catch(undefined),
     q: z.string().max(80).optional().catch(undefined),
+    category: z.string().max(60).optional().catch(undefined),
     offset: z.number().int().min(0).optional().catch(undefined),
   }),
   loaderDeps: ({ search }) => search,
-  loader: ({ deps }) => marketSearchFn({ data: { q: deps.q, offset: deps.offset } }),
+  loader: ({ deps }) =>
+    marketSearchFn({ data: { q: deps.q, category: deps.category, offset: deps.offset } }),
   head: ({ match }) => {
     const t = marketT(match.search.lang ?? "ru");
     return { meta: [{ title: t("items.meta") }, { name: "robots", content: "noindex" }] };
   },
   component: MarketSearchPage,
 });
+
+/** «в магазине {имя}»: имя автора ведёт в его витрину, остальной текст по языку (П1). */
+function ItemAuthor({ text, slug, name }: { text: string; slug: string; name: string }) {
+  const [before = "", after = ""] = text.split("\u0000");
+  return (
+    <>
+      {before}
+      <Link to="/s/$slug" params={{ slug }} className="underline">
+        {name}
+      </Link>
+      {after}
+    </>
+  );
+}
 
 function MarketSearchPage() {
   const data = Route.useLoaderData();
@@ -75,11 +91,22 @@ function MarketSearchPage() {
                 className="input mt-1"
               />
             </label>
+            <label className="text-sm">
+              <span className="block text-muted">{t("filter.category")}</span>
+              <select name="category" defaultValue={search.category ?? ""} className="input mt-1">
+                <option value="">{t("filter.all")}</option>
+                {data.categories.map((c) => (
+                  <option key={c.value} value={c.value}>
+                    {c.value} ({c.count})
+                  </option>
+                ))}
+              </select>
+            </label>
             <button type="submit" className="btn">
               {t("search.button")}
             </button>
           </form>
-          {data.words.length === 0 ? (
+          {data.words.length === 0 && !search.category ? (
             <p className="mt-6 text-sm text-muted">{t("items.hint")}</p>
           ) : data.items.length === 0 ? (
             <p className="mt-6 text-sm text-muted">{t("items.empty")}</p>
@@ -101,7 +128,11 @@ function MarketSearchPage() {
                       {new Intl.NumberFormat(locale).format(i.price)} {i.currency}
                     </p>
                     <p className="mt-0.5 text-xs text-muted">
-                      {t("items.in", { shop: i.shopName })}
+                      <ItemAuthor
+                        text={t("items.in", { shop: "\u0000" })}
+                        slug={i.shopSlug}
+                        name={i.shopName}
+                      />
                     </p>
                     <Link
                       to="/s/$slug"

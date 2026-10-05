@@ -9,7 +9,7 @@ const I = F.MARKET19_ITEMS;
 test("поиск товаров: медовик найден в показанном магазине, у скрытого — нет", async ({ page }) => {
   const errors = await watch(page);
   await page.goto("/market");
-  await page.getByRole("link", { name: "Товары", exact: true }).click();
+  await page.getByRole("link", { name: "Все товары", exact: true }).click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Поиск товаров на FrogFlow");
   await expect(page.getByText("Введите слово или несколько")).toBeVisible();
   await page.getByRole("textbox", { name: "Что ищете", exact: true }).fill("медовик");
