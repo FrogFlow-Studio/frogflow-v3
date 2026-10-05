@@ -6,6 +6,7 @@ import {
   saveMarketplaceListingFn,
 } from "@/app/admin/marketplace.functions";
 import { adminT } from "@/app/i18n/admin";
+import { AsBuyerButton } from "./as-buyer";
 import { settingsRoute } from "./route";
 
 type View = Awaited<ReturnType<typeof marketplaceFn>>;
@@ -106,6 +107,7 @@ export function MarketplaceCard() {
             {clicks && <p className="text-xs text-muted">{t("settings.market.clicksHint")}</p>}
           </div>
         )}
+        <AsBuyerButton slug={shop.slug} locale={shop.locale} />
         {!owner && <p className="text-xs text-muted">{t("settings.market.ownerOnly")}</p>}
         {saved && <span className="text-sm text-ok">{t("settings.saved")}</span>}
         <ErrorBox error={save.error} />

@@ -9,6 +9,8 @@ export const ru = {
   "settings.market.terms":
     "Включая, вы соглашаетесь с правилами площадки. Новый магазин появляется на площадке после одобрения оператором; оператор может скрыть магазин.",
   "settings.market.rules": "Правила площадки",
+  "settings.asBuyer": "Моя витрина как покупатель",
+  "settings.asBuyer.hint": "Откроется ваша витрина в новой вкладке так, как её видят покупатели.",
   "settings.market.state.off": "Выключено: магазина нет на площадке.",
   "settings.market.state.hidden":
     "Оператор платформы скрыл магазин с площадки. Остальное работает.",
@@ -31,6 +33,8 @@ export const kk: SectionDict<typeof ru> = {
   "settings.market.terms":
     "Қосу арқылы алаң ережелерімен келісесіз. Жаңа дүкен оператор мақұлдағаннан кейін алаңда пайда болады; оператор дүкенді жасыра алады.",
   "settings.market.rules": "Алаң ережелері",
+  "settings.asBuyer": "Менің витринам сатып алушы көзімен",
+  "settings.asBuyer.hint": "Витринаңыз жаңа бетте сатып алушылар көретіндей ашылады.",
   "settings.market.state.off": "Өшірулі: дүкен алаңда жоқ.",
   "settings.market.state.hidden":
     "Платформа операторы дүкенді алаңнан жасырды. Қалғаны жұмыс істейді.",
@@ -53,6 +57,8 @@ export const en: SectionDict<typeof ru> = {
   "settings.market.terms":
     "By switching on you accept the marketplace rules. A new shop appears after the operator approves it; the operator may hide a shop.",
   "settings.market.rules": "Marketplace rules",
+  "settings.asBuyer": "My storefront as a buyer",
+  "settings.asBuyer.hint": "Your storefront opens in a new tab the way buyers see it.",
   "settings.market.state.off": "Off: the shop is not on the marketplace.",
   "settings.market.state.hidden":
     "The platform operator has hidden the shop from the marketplace. Everything else works.",
@@ -75,6 +81,8 @@ export const uz: SectionDict<typeof ru> = {
   "settings.market.terms":
     "Yoqish orqali maydoncha qoidalariga rozilik bildirasiz. Yangi do‘kon operator tasdiqlagach paydo bo‘ladi; operator do‘konni yashirishi mumkin.",
   "settings.market.rules": "Maydon qoidalari",
+  "settings.asBuyer": "Vitrinam xaridor ko‘zi bilan",
+  "settings.asBuyer.hint": "Vitrinangiz yangi oynada xaridorlar ko‘radigandek ochiladi.",
   "settings.market.state.off": "O‘chirilgan: do‘kon maydonchada yo‘q.",
   "settings.market.state.hidden":
     "Platforma operatori do‘konni maydonchadan yashirdi. Qolgani ishlaydi.",

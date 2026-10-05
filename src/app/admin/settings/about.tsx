@@ -3,6 +3,7 @@ import { Card, ErrorBox, Field, useAction } from "@/app/ui";
 import { saveStoreAboutFn, storeAboutFn } from "@/app/admin/about.functions";
 import { adminT } from "@/app/i18n/admin";
 import { ABOUT_LIMITS, EMPTY_ABOUT, type StoreAbout } from "@/core/storefront/about";
+import { AsBuyerButton } from "./as-buyer";
 import { settingsRoute } from "./route";
 
 const FIELDS = ["description", "delivery", "payment"] as const;
@@ -33,6 +34,9 @@ export function AboutCard() {
   };
   return (
     <Card title={t("settings.about.title")}>
+      <div className="mb-4">
+        <AsBuyerButton slug={shop.slug} locale={shop.locale} />
+      </div>
       <form
         className="space-y-3"
         onSubmit={(e) => {
