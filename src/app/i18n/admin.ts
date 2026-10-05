@@ -75,6 +75,7 @@ import * as shop19Bell from "./admin/shop19-bell";
 import * as shop19Settings from "./admin/shop19-settings";
 import * as shop19Reports from "./admin/shop19-reports";
 import * as shop21Home from "./admin/shop21-home";
+import * as shop22RKinds from "./admin/shop22-r-kinds";
 import * as shop22R from "./admin/shop22-r";
 import * as shop22Growth from "./admin/shop22-growth";
 import * as shop19Segments from "./admin/shop19-segments";
@@ -497,6 +498,7 @@ const ru = {
   ...shop19Settings.ru,
   ...shop19Reports.ru,
   ...shop21Home.ru,
+  ...shop22RKinds.ru,
   ...shop22R.ru,
   ...shop22Growth.ru,
   ...shop19Segments.ru,
@@ -1654,6 +1656,7 @@ const kk: Dict = {
   ...shop19Settings.kk,
   ...shop19Reports.kk,
   ...shop21Home.kk,
+  ...shop22RKinds.kk,
   ...shop22R.kk,
   ...shop22Growth.kk,
   ...shop19Segments.kk,
@@ -1742,6 +1745,7 @@ const en: Dict = {
   ...shop19Settings.en,
   ...shop19Reports.en,
   ...shop21Home.en,
+  ...shop22RKinds.en,
   ...shop22R.en,
   ...shop22Growth.en,
   ...shop19Segments.en,
@@ -1830,6 +1834,7 @@ const uz: Dict = {
   ...shop19Settings.uz,
   ...shop19Reports.uz,
   ...shop21Home.uz,
+  ...shop22RKinds.uz,
   ...shop22R.uz,
   ...shop22Growth.uz,
   ...shop19Segments.uz,

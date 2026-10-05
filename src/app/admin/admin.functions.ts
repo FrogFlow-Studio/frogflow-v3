@@ -576,6 +576,15 @@ export const applyNicheTemplateFn = createServerFn({ method: "POST" }).handler(a
   return applyNicheTemplate(ctx);
 });
 
+/** Шаблон магазина по типу (Р2): категории, тексты «О магазине», выдача и оплата — только в пустой магазин. */
+export const applyShopKindFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ kind: z.enum(["digital", "goods", "services"]) }).parse(d))
+  .handler(async ({ data }) => {
+    const ctx = await adminWrite();
+    const { applyShopKind } = await import("@/core/templates/shop-kind.server");
+    return applyShopKind(ctx, data.kind);
+  });
+
 /** «Убрать примеры»: удаляет только созданное стартовым набором (core/templates). */
 export const removeStarterFn = createServerFn({ method: "POST" }).handler(async () => {
   const ctx = await adminWrite();
@@ -840,7 +849,14 @@ export const productsFn = createServerFn({ method: "GET" })
         .map((p) => ({ id: p.id, name: p.name, stock: p.stock_quantity })),
     );
     const products = page.rows.map((p) => ({ ...p, days_left: days[p.id] ?? null }));
-    return { products, total: page.total, hasMore: page.hasMore, categories };
+    // Шаблон магазина по типу предлагаем, пока нет ни товаров, ни категорий (и фильтров).
+    const kindTemplate =
+      page.total === 0 &&
+      categories.length === 0 &&
+      !data.q &&
+      !data.categoryId &&
+      !data.onlyInactive;
+    return { products, total: page.total, hasMore: page.hasMore, categories, kindTemplate };
   });
 
 /**
