@@ -9,7 +9,10 @@ import { marketplaceCategory, shownOnMarketplace } from "./consent";
 import {
   ITEMS_PER_SHOP_MAX,
   MARKET_ITEMS_PAGE,
+  FUZZY_MIN_LENGTH,
   itemRow,
+  matchesAll,
+  nearWord,
   searchWords,
   type MarketItem,
 } from "./items";
@@ -150,35 +153,67 @@ type ItemRow = {
   bot_id: string;
   product_id: string;
   name: string;
+  search_text: string | null;
   price: number;
   currency: string;
   image: string | null;
   updated_at: string;
 };
-const ITEM_COLS = "bot_id, product_id, name, price, currency, image, updated_at";
+const ITEM_COLS = "bot_id, product_id, name, search_text, price, currency, image, updated_at";
 const SCAN_BATCH = 50;
 const SCAN_BATCHES = 10;
+const SHOP_IN_MAX = 200;
+const STEM = 3;
+
+const shopTextOf = (s: ShopCard) => `${s.name} ${s.category ?? ""}`.toLowerCase();
 
 /**
- * Поиск товаров по всей площадке: каждое слово запроса должно встретиться в названии или
- * начале описания. Строки магазинов, которые сейчас не вправе показываться, пропускаются.
- * Страница — не больше MARKET_ITEMS_PAGE; `next` — смещение для «Показать ещё», null — конец.
+ * Поиск товаров по всей площадке (Л1): каждое слово запроса должно встретиться в названии,
+ * начале описания, названии магазина (автора) или его категории. Если точных совпадений нет,
+ * ищем с опечатками (`fuzzy`: допуск 1–2 знака у слов от пяти букв) и сообщаем об этом.
+ * Строки магазинов, которые сейчас не вправе показываться, пропускаются. Страница — не больше
+ * MARKET_ITEMS_PAGE; `next` — смещение для «Показать ещё», null — конец; в режиме с опечатками
+ * его передают вместе с `fuzzy: true`.
  */
 export async function searchMarketItems(
-  q: { search?: string; category?: string; offset?: number },
+  q: { search?: string; category?: string; offset?: number; fuzzy?: boolean },
   deps: { svc?: Db; shown?: () => Promise<Map<string, ShopCard>> } = {},
-): Promise<{ items: MarketItem[]; next: number | null; words: string[] }> {
+): Promise<{ items: MarketItem[]; next: number | null; words: string[]; fuzzy: boolean }> {
   const words = searchWords(q.search);
   const category = cleanLabel(q.category);
   // Без слов и без категории искать нечего; с одной категорией показываем её товары (П1).
-  if (words.length === 0 && !category) return { items: [], next: null, words };
+  if (words.length === 0 && !category) return { items: [], next: null, words, fuzzy: false };
   const svc = deps.svc ?? serviceDb();
   const shops = await (deps.shown ?? directoryShops)();
+  const start = Math.max(0, Math.floor(q.offset ?? 0));
+  const exact = q.fuzzy ? null : await scan(svc, shops, words, category, start, false);
+  if (exact && (exact.items.length > 0 || start > 0 || words.length === 0))
+    return { ...exact, words, fuzzy: false };
+  const near = await scan(svc, shops, words, category, start, true);
+  return { ...near, words, fuzzy: near.items.length > 0 };
+}
+
+async function scan(
+  svc: Db,
+  shops: Map<string, ShopCard>,
+  words: string[],
+  category: string,
+  start: number,
+  fuzzy: boolean,
+): Promise<{ items: MarketItem[]; next: number | null }> {
+  const shopTexts = [...shops.values()].map(shopTextOf);
+  // Слово, которое где-то совпало с магазином, в базе не фильтруем: решает проверка в коде.
+  const inShop = (w: string) => shopTexts.some((t) => t.includes(w) || (fuzzy && nearWord(w, t)));
+  const filters = words
+    .filter((w) => !inShop(w))
+    .map((w) => (fuzzy && w.length >= FUZZY_MIN_LENGTH ? w.slice(0, STEM) : w));
   const out: MarketItem[] = [];
-  let offset = Math.max(0, Math.floor(q.offset ?? 0));
+  let offset = start;
   for (let i = 0; i < SCAN_BATCHES; i++) {
     let query = svc.from("marketplace_items").select(ITEM_COLS);
-    for (const w of words) query = query.ilike("search_text", `%${w}%`);
+    for (const w of filters) query = query.ilike("search_text", `%${w}%`);
+    if (shops.size > 0 && shops.size <= SHOP_IN_MAX)
+      query = query.in("bot_id", [...shops.keys()].slice(0, SHOP_IN_MAX));
     const { data, error } = await query
       .order("name", { ascending: true })
       .order("bot_id", { ascending: true })
@@ -191,6 +226,7 @@ export async function searchMarketItems(
       const shop = shops.get(r.bot_id);
       if (!shop) continue;
       if (category && shop.category !== category) continue;
+      if (!matchesAll(words, r.search_text ?? r.name, shopTextOf(shop), fuzzy)) continue;
       out.push({
         id: r.product_id,
         shopId: r.bot_id,
@@ -202,11 +238,11 @@ export async function searchMarketItems(
         image: r.image,
         at: r.updated_at,
       });
-      if (out.length >= MARKET_ITEMS_PAGE) return { items: out, next: offset, words };
+      if (out.length >= MARKET_ITEMS_PAGE) return { items: out, next: offset };
     }
-    if (rows.length < SCAN_BATCH) return { items: out, next: null, words };
+    if (rows.length < SCAN_BATCH) return { items: out, next: null };
   }
-  return { items: out, next: offset, words };
+  return { items: out, next: offset };
 }
 
 /** Категории показываемых магазинов для фильтра на странице «Все товары» (П1). */

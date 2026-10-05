@@ -1,6 +1,6 @@
 import { FilterForm } from "@/app/market/filter-form";
 import { publicHeaders } from "@/app/cache-policy";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
 import { z } from "zod";
 import { rememberMarketBack } from "@/app/market/back";
 import { marketT } from "@/app/market/i18n";
@@ -15,16 +15,32 @@ export const Route = createFileRoute("/market/search")({
     q: z.string().max(80).optional().catch(undefined),
     category: z.string().max(60).optional().catch(undefined),
     offset: z.number().int().min(0).optional().catch(undefined),
+    fuzzy: z.boolean().optional().catch(undefined),
   }),
   loaderDeps: ({ search }) => search,
   loader: ({ deps }) =>
-    marketSearchFn({ data: { q: deps.q, category: deps.category, offset: deps.offset } }),
+    marketSearchFn({
+      data: { q: deps.q, category: deps.category, offset: deps.offset, fuzzy: deps.fuzzy },
+    }),
   head: ({ match }) => {
     const t = marketT(match.search.lang ?? "ru");
     return { meta: [{ title: t("items.meta") }, { name: "robots", content: "noindex" }] };
   },
   component: MarketSearchPage,
+  errorComponent: SearchFailed,
 });
+
+/** Чтение упало: честно «не удалось загрузить», а не «ничего не нашли» (Л1). */
+function SearchFailed() {
+  const { lang } = useSearch({ strict: false }) as { lang?: Locale };
+  return (
+    <main className="mx-auto max-w-4xl px-4 py-10">
+      <p role="alert" className="text-sm">
+        {marketT(lang ?? "ru")("items.failed")}
+      </p>
+    </main>
+  );
+}
 
 /** «в магазине {имя}»: имя автора ведёт в его витрину, остальной текст по языку (П1). */
 function ItemAuthor({
@@ -123,48 +139,55 @@ function MarketSearchPage() {
           ) : data.items.length === 0 ? (
             <p className="mt-6 text-sm text-muted">{t("items.empty")}</p>
           ) : (
-            <ul className="mt-6 grid gap-3 sm:grid-cols-2">
-              {data.items.map((i) => (
-                <li key={`${i.shopId}:${i.id}`} className="card flex gap-3 p-4">
-                  {i.image && (
-                    <img
-                      src={i.image}
-                      alt=""
-                      loading="lazy"
-                      className="h-16 w-16 rounded object-cover"
-                    />
-                  )}
-                  <div className="min-w-0">
-                    <h2 className="font-medium">{i.name}</h2>
-                    <p className="text-sm">
-                      {new Intl.NumberFormat(locale).format(i.price)} {i.currency}
-                    </p>
-                    <p className="mt-0.5 text-xs text-muted">
-                      <ItemAuthor
-                        text={t("items.in", { shop: "\u0000" })}
-                        slug={i.shopSlug}
-                        name={i.shopName}
-                        onOpen={() => rememberMarketBack(i.shopSlug, "/market/search", search)}
+            <>
+              {data.fuzzy && (
+                <p className="mt-6 text-sm text-muted" data-testid="items-fuzzy">
+                  {t("items.fuzzy")}
+                </p>
+              )}
+              <ul className="mt-6 grid gap-3 sm:grid-cols-2">
+                {data.items.map((i) => (
+                  <li key={`${i.shopId}:${i.id}`} className="card flex gap-3 p-4">
+                    {i.image && (
+                      <img
+                        src={i.image}
+                        alt=""
+                        loading="lazy"
+                        className="h-16 w-16 rounded object-cover"
                       />
-                    </p>
-                    <Link
-                      to="/s/$slug"
-                      params={{ slug: i.shopSlug }}
-                      className="mt-2 inline-block text-sm font-medium underline"
-                      onClick={() => rememberMarketBack(i.shopSlug, "/market/search", search)}
-                    >
-                      {t("items.open")}
-                    </Link>
-                  </div>
-                </li>
-              ))}
-            </ul>
+                    )}
+                    <div className="min-w-0">
+                      <h2 className="font-medium">{i.name}</h2>
+                      <p className="text-sm">
+                        {new Intl.NumberFormat(locale).format(i.price)} {i.currency}
+                      </p>
+                      <p className="mt-0.5 text-xs text-muted">
+                        <ItemAuthor
+                          text={t("items.in", { shop: "\u0000" })}
+                          slug={i.shopSlug}
+                          name={i.shopName}
+                          onOpen={() => rememberMarketBack(i.shopSlug, "/market/search", search)}
+                        />
+                      </p>
+                      <Link
+                        to="/s/$slug"
+                        params={{ slug: i.shopSlug }}
+                        className="mt-2 inline-block text-sm font-medium underline"
+                        onClick={() => rememberMarketBack(i.shopSlug, "/market/search", search)}
+                      >
+                        {t("items.open")}
+                      </Link>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </>
           )}
           {data.next != null && (
             <div className="mt-6 text-sm">
               <Link
                 to="/market/search"
-                search={{ ...search, offset: data.next }}
+                search={{ ...search, offset: data.next, fuzzy: data.fuzzy || undefined }}
                 className="underline"
               >
                 {t("next")}

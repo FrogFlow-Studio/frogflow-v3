@@ -335,6 +335,95 @@ describe("поиск по площадке", () => {
     expect(new Set(ids).size).toBe(n);
   });
 
+  describe("поиск по автору, категории и с опечатками (Л1)", () => {
+    const two = async () =>
+      new Map([
+        [BOT, { slug: "cakes", name: "Сладкая лавка", category: "Торты" }],
+        ["b2", { slug: "flowers", name: "Розовый сад", category: "Цветы" }],
+      ]);
+    const seed = () => {
+      svc.tables.marketplace_items = [
+        row(1, { name: "Медовик", search_text: "медовик с орехами" }),
+        row(2, { bot_id: "b2", name: "Букет", search_text: "букет из роз" }),
+      ];
+    };
+
+    it("находит по названию автора и по категории магазина, в том числе вместе со словом товара", async () => {
+      seed();
+      const byAuthor = await searchMarketItems({ search: "лавка" }, { svc: as(svc), shown: two });
+      expect(byAuthor.items.map((i) => i.shopSlug)).toEqual(["cakes"]);
+      const byCategory = await searchMarketItems({ search: "цветы" }, { svc: as(svc), shown: two });
+      expect(byCategory.items.map((i) => i.shopSlug)).toEqual(["flowers"]);
+      const both = await searchMarketItems(
+        { search: "сладкая медовик" },
+        { svc: as(svc), shown: two },
+      );
+      expect(both.items.map((i) => i.name)).toEqual(["Медовик"]);
+      const wrong = await searchMarketItems(
+        { search: "лавка букет" },
+        { svc: as(svc), shown: two },
+      );
+      expect(wrong.items).toEqual([]);
+    });
+
+    it("опечатка: «медовк» и «клубнику» находят, об этом сказано; точное совпадение не «с опечаткой»", async () => {
+      seed();
+      const typo = await searchMarketItems({ search: "медовк" }, { svc: as(svc), shown: two });
+      expect(typo).toMatchObject({ fuzzy: true });
+      expect(typo.items.map((i) => i.name)).toEqual(["Медовик"]);
+      const exactHit = await searchMarketItems({ search: "медовик" }, { svc: as(svc), shown: two });
+      expect(exactHit.fuzzy).toBe(false);
+      const author = await searchMarketItems({ search: "розавый" }, { svc: as(svc), shown: two });
+      expect(author.items.map((i) => i.shopSlug)).toEqual(["flowers"]);
+    });
+
+    it("короткое слово с опечаткой не угадывается, ничего не находится без ошибки", async () => {
+      seed();
+      const r = await searchMarketItems({ search: "торх" }, { svc: as(svc), shown: two });
+      expect(r).toMatchObject({ items: [], next: null, fuzzy: false });
+    });
+
+    it("скрытый магазин и клиент прежней платформы не находятся ни точно, ни с опечаткой", async () => {
+      const t = (id: string, name: string, settings: TenantSettings) =>
+        ({ id, name, vertical: "shop", settings }) as unknown as Tenant;
+      const map = shownShops([
+        t(BOT, "Сладкая лавка", OPEN),
+        t("b2", "Розовый сад", { ...OPEN, slug: "flowers", served_by: "v1" }),
+        t("b3", "Тайный сад", {
+          ...OPEN,
+          slug: "secret",
+          marketplace: { listed: true, approved: true, hidden: true },
+        }),
+      ]);
+      svc.tables.marketplace_items = [
+        row(1, { name: "Медовик", search_text: "медовик" }),
+        row(2, { bot_id: "b2", name: "Медовик розовый", search_text: "медовик розовый" }),
+        row(3, { bot_id: "b3", name: "Медовик тайный", search_text: "медовик тайный" }),
+      ];
+      const shownMap = async () => map;
+      for (const search of ["медовик", "медовк", "розовый", "сад"]) {
+        const r = await searchMarketItems({ search }, { svc: as(svc), shown: shownMap });
+        expect(r.items.every((i) => i.shopId === BOT)).toBe(true);
+      }
+    });
+
+    it("постранично в режиме с опечатками: смещение и fuzzy продолжают поиск без дублей", async () => {
+      const n = MARKET_ITEMS_PAGE + 5;
+      svc.tables.marketplace_items = Array.from({ length: n }, (_, i) =>
+        row(i + 1, { search_text: "клубничный торт" }),
+      );
+      const first = await searchMarketItems({ search: "клубничнй" }, { svc: as(svc), shown });
+      expect(first.fuzzy).toBe(true);
+      expect(first.items).toHaveLength(MARKET_ITEMS_PAGE);
+      const second = await searchMarketItems(
+        { search: "клубничнй", offset: first.next!, fuzzy: true },
+        { svc: as(svc), shown },
+      );
+      expect(second.items).toHaveLength(5);
+      expect(new Set([...first.items, ...second.items].map((i) => i.id)).size).toBe(n);
+    });
+  });
+
   it("сбой чтения — ошибка, а не «ничего не нашли»", async () => {
     svc.tables.marketplace_items = [row(1)];
     const broken = withBrokenReads(svc, ["marketplace_items"]);

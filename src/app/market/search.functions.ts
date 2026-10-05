@@ -5,6 +5,7 @@ const input = z.object({
   q: z.string().max(80).optional().catch(undefined),
   category: z.string().max(60).optional().catch(undefined),
   offset: z.number().int().min(0).max(100_000).optional().catch(undefined),
+  fuzzy: z.boolean().optional().catch(undefined),
 });
 
 /**
@@ -18,7 +19,12 @@ export const marketSearchFn = createServerFn({ method: "GET" })
     const { MarketplaceNotReady } = await import("@/core/marketplace/not-ready");
     try {
       const [page, categories] = await Promise.all([
-        searchMarketItems({ search: data.q, category: data.category, offset: data.offset }),
+        searchMarketItems({
+          search: data.q,
+          category: data.category,
+          offset: data.offset,
+          fuzzy: data.fuzzy,
+        }),
         itemFacets(),
       ]);
       return { ready: true as const, ...page, categories };
