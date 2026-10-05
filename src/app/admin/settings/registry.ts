@@ -101,6 +101,12 @@ export const SETTINGS_REGISTRY: readonly SettingsEntry[] = [
     title: "settings.autoV3.title",
     keys: ["auto_messages_v3"],
   }),
+  E({
+    id: "service-notices",
+    theme: "shop",
+    title: "settings.svcNotice.title",
+    keys: ["notify_photo_not_receipt", "notify_bot_pause"],
+  }),
   E({ id: "payment-methods", theme: "payment", title: "settings.pay.title" }),
   E({
     id: "fulfillment",

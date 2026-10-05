@@ -263,6 +263,40 @@ export function AutoMessagesCard({ settings }: { settings: Record<string, string
   );
 }
 
+/** Служебные уведомления продавцу из Instagram и WhatsApp (core/notify/service-notices): по умолчанию включены. */
+export function ServiceNoticesCard({ settings }: { settings: Record<string, string> }) {
+  const router = useRouter();
+  const { shop } = settingsRoute.useRouteContext();
+  const t = adminT(shop.locale);
+  const toggle = useAction(async (key: string, v: boolean) => {
+    await saveSettingsFn({ data: { [key]: v ? "true" : "false" } });
+    await router.invalidate();
+  });
+  const rows = [
+    { key: "notify_photo_not_receipt", label: "settings.svcNotice.photo" },
+    { key: "notify_bot_pause", label: "settings.svcNotice.pause" },
+  ] as const;
+  return (
+    <Card title={t("settings.svcNotice.title")}>
+      <p className="mb-3 text-sm text-muted">{t("settings.svcNotice.intro")}</p>
+      <div className="space-y-3">
+        {rows.map((r) => (
+          <div key={r.key} className="flex items-center gap-3">
+            <Switch
+              checked={settings[r.key] !== "false"}
+              disabled={toggle.busy || shop.role !== "owner"}
+              onChange={(v) => void toggle.run(r.key, v).catch(() => {})}
+              label={t(r.label)}
+            />
+            <span className="text-sm">{t(r.label)}</span>
+          </div>
+        ))}
+      </div>
+      <ErrorBox error={toggle.error} />
+    </Card>
+  );
+}
+
 /** Напоминание об оплате заказов из бота, Instagram и WhatsApp (core/orders/pay-remind). */
 export function PayReminderCard({ settings }: { settings: Record<string, string> }) {
   const router = useRouter();

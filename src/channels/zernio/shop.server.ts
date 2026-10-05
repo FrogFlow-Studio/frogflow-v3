@@ -1042,11 +1042,13 @@ async function handleNonText(s: Shop, msg: ParsedZernioMessage): Promise<ShopOut
       ? `@${s.customer.username}`
       : s.customer.firstName || s.customer.userKey;
     const urls = msg.attachments.map((a) => a.url).filter((u): u is string => Boolean(u));
-    await notifyAdminsHtml(
-      s.ctx,
-      SELLER_PHOTO[locale](escapeHtml(who), PLATFORM_LABEL[s.platform]),
-      { kind: "question", photos: urls.slice(0, 10) },
-    ).catch(() => 0);
+    const { serviceNoticeEnabled } = await import("@/core/notify/service-notices");
+    if (await serviceNoticeEnabled(s.ctx, "photoNotReceipt"))
+      await notifyAdminsHtml(
+        s.ctx,
+        SELLER_PHOTO[locale](escapeHtml(who), PLATFORM_LABEL[s.platform]),
+        { kind: "question", photos: urls.slice(0, 10) },
+      ).catch(() => 0);
     if (inDialog(s) && (await claimNonTextReply(s)))
       await reply(s, PHOTO_FORWARDED[s.locale], { force: true });
     return "handled";

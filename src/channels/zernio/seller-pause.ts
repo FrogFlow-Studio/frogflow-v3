@@ -87,6 +87,9 @@ async function noteSellerReply(
     return { ...cur, seller_at: known > at ? sec.seller_at : iso, seller_noted: iso };
   });
   if (!claimed || !announce) return claimed ?? customer;
+  // Пауза в диалоге остаётся, выключено только уведомление продавцу.
+  const { serviceNoticeEnabled } = await import("@/core/notify/service-notices");
+  if (!(await serviceNoticeEnabled(ctx, "botPause"))) return claimed;
   const { notifyAdminsHtml } = await import("@/channels/telegram/notify");
   const { sellerLocale } = await import("@/core/catalog/low-stock");
   const locale = await sellerLocale(ctx).catch(() => ctx.tenant.settings.default_locale ?? "ru");

@@ -153,4 +153,14 @@ describe("голосовое, стикер и фото вне оплаты (Б6)
     expect(notifySeller).toHaveBeenCalledTimes(1);
     expect(sent).toEqual([]);
   });
+
+  it("уведомление «фото, не чек» выключено — продавцу тихо, покупателю одно «передал»", async () => {
+    notifySeller.mockClear();
+    const { send, sent } = setup(talking(), [
+      { bot_id: "bot-1", key: "notify_photo_not_receipt", value: "false" },
+    ]);
+    expect((await send(photo)).outcome).toBe("handled");
+    expect(notifySeller).not.toHaveBeenCalled();
+    expect(sent).toEqual(["Передал ваше фото продавцу. Если нужен каталог — напишите «каталог»."]);
+  });
 });

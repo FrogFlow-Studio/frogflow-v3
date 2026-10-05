@@ -95,6 +95,14 @@ describe("явные команды, которые бот понимает и �
 });
 
 describe("пауза перед ответом бота", () => {
+  it("уведомление о паузе выключено — пауза есть, продавцу тихо", async () => {
+    const { db, ctx, customer, transport, tail, msg } = setup();
+    db.tables.app_settings = [{ bot_id: BOT, key: "notify_bot_pause", value: "false" }];
+    tail.mockResolvedValue([seller(10)]);
+    const r = await sellerPauseActive(ctx, customer, msg(), transport, "30", NOW);
+    expect(r.paused).toBe(true);
+    expect(notify).not.toHaveBeenCalled();
+  });
   it("продавец писал 10 минут назад — пауза, продавцу одна строка", async () => {
     const { ctx, customer, transport, tail, msg } = setup();
     tail.mockResolvedValue([seller(10)]);

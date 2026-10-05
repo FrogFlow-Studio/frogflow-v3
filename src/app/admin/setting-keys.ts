@@ -28,6 +28,8 @@ export const SETTING_KEYS = [
   "weekly_report_enabled",
   "weekly_report_sections",
   "auto_messages_v3",
+  "notify_photo_not_receipt",
+  "notify_bot_pause",
   "receipt_ocr_usage",
   "consultant_enabled",
   "consultant_profile",
