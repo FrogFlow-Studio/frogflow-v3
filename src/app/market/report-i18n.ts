@@ -28,6 +28,7 @@ const ru = {
   "err.failed": "Не удалось отправить жалобу. Попробуйте позже.",
   "missing.title": "Магазин не найден",
   "missing.text": "Жалобу можно отправить только на магазин, который виден на площадке.",
+  "rules.link": "Как рассматривается жалоба",
   back: "К магазинам",
 } as const;
 
@@ -59,6 +60,7 @@ const kk: Record<Key, string> = {
   "err.failed": "Шағымды жіберу мүмкін болмады. Кейінірек қайталап көріңіз.",
   "missing.title": "Дүкен табылмады",
   "missing.text": "Шағымды тек алаңда көрінетін дүкенге жіберуге болады.",
+  "rules.link": "Шағым қалай қаралады",
   back: "Дүкендерге",
 };
 
@@ -88,6 +90,7 @@ const en: Record<Key, string> = {
   "err.failed": "Could not send the report. Please try later.",
   "missing.title": "Shop not found",
   "missing.text": "You can only report a shop that is visible on the marketplace.",
+  "rules.link": "How a report is handled",
   back: "Back to shops",
 };
 
@@ -117,6 +120,7 @@ const uz: Record<Key, string> = {
   "err.failed": "Shikoyatni yuborib bo‘lmadi. Keyinroq urinib ko‘ring.",
   "missing.title": "Do‘kon topilmadi",
   "missing.text": "Shikoyatni faqat maydonda ko‘rinadigan do‘konga yuborish mumkin.",
+  "rules.link": "Shikoyat qanday ko‘rib chiqiladi",
   back: "Do‘konlarga",
 };
 

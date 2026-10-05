@@ -29,6 +29,9 @@ const ru = {
   "s6.title": "Если что-то не так",
   "s6.text":
     "По товару или заказу напишите магазину: на витрине есть «Написать магазину». Если магазин или товар нарушает правила, нажмите «Пожаловаться» в карточке магазина в каталоге или «Пожаловаться на товар» на странице товара: жалобу видит оператор FrogFlow, магазин её не видит. На один магазин или товар с одного адреса и устройства принимается одна жалоба в сутки. Можно также написать в поддержку FrogFlow, контакты на главной странице.",
+  "s7.title": "Как рассматривается жалоба",
+  "s7.text":
+    "Причины жалобы: мошенничество или обман, заказ оплачен, но не получен, запрещённый товар или услуга, чужие материалы без разрешения, другое. Жалобу читает оператор FrogFlow и решает сам: скрыть магазин с площадки или отклонить жалобу. Ответ жалобщику не отправляется: контакты в форме не запрашиваются. С одного адреса принимается не более 5 жалоб в сутки. Жалоба не возвращает деньги и не отменяет заказ: площадка не принимает платежи, вопросы оплаты и доставки решайте с магазином. Скрытие с площадки не закрывает витрину магазина.",
   "link.market": "К каталогу магазинов",
   "link.home": "На главную",
 } as const;
@@ -59,6 +62,9 @@ const kk: Record<Key, string> = {
   "s6.title": "Бірдеңе дұрыс болмаса",
   "s6.text":
     "Тауар немесе тапсырыс бойынша дүкенге жазыңыз: витринада «Дүкенге жазу» бар. Дүкен немесе тауар ережелерді бұзса, каталогтағы дүкен карточкасында «Шағымдану» немесе тауар бетінде «Тауар туралы шағымдану» батырмасын басыңыз: шағымды FrogFlow операторы көреді, дүкен көрмейді. Бір дүкенге немесе тауарға бір мекенжайдан және құрылғыдан тәулігіне бір шағым қабылданады. FrogFlow қолдауына да жазуға болады, байланыстар басты бетте.",
+  "s7.title": "Шағым қалай қаралады",
+  "s7.text":
+    "Шағым себептері: алаяқтық немесе алдау, тапсырыс төленген, бірақ алынбаған, тыйым салынған тауар немесе қызмет, рұқсатсыз пайдаланылған басқа біреудің материалдары, басқа. Шағымды FrogFlow операторы оқып, өзі шешеді: дүкенді алаңнан жасыру немесе шағымды қабылдамау. Шағым берушіге жауап жіберілмейді: пішінде байланыс деректері сұралмайды. Бір мекенжайдан тәулігіне 5 шағымнан артық қабылданбайды. Шағым ақшаны қайтармайды және тапсырысты тоқтатпайды: алаң төлем қабылдамайды, төлем мен жеткізу мәселелерін дүкенмен шешіңіз. Алаңнан жасыру дүкен витринасын жаппайды.",
   "link.market": "Дүкендер каталогына",
   "link.home": "Басты бетке",
 };
@@ -87,6 +93,9 @@ const en: Record<Key, string> = {
   "s6.title": "If something is wrong",
   "s6.text":
     "For a product or an order, write to the shop: the storefront has “Message the shop”. If a shop or a product breaks the rules, press “Report” on the shop card in the catalogue or “Report this product” on the product page: the FrogFlow operator sees the report, the shop does not. One report per shop or product from one address and device is accepted per day. You can also write to FrogFlow support; the contacts are on the home page.",
+  "s7.title": "How a report is handled",
+  "s7.text":
+    "Reasons for a report: fraud or deception, paid but did not receive the order, a prohibited product or service, someone else’s materials without permission, other. A FrogFlow operator reads the report and decides: hide the shop from the marketplace or dismiss the report. No reply is sent to the person who reported: the form asks for no contact details. No more than 5 reports a day are accepted from one address. A report does not refund money or cancel an order: the marketplace does not take payments, so settle payment and delivery questions with the shop. Hiding a shop from the marketplace does not close its storefront.",
   "link.market": "Back to the shop catalogue",
   "link.home": "Home",
 };
@@ -115,6 +124,9 @@ const uz: Record<Key, string> = {
   "s6.title": "Biror narsa noto‘g‘ri bo‘lsa",
   "s6.text":
     "Mahsulot yoki buyurtma bo‘yicha do‘konga yozing: vitrinada «Do‘konga yozish» bor. Do‘kon yoki mahsulot qoidalarni buzsa, katalogdagi do‘kon kartochkasida «Shikoyat qilish» yoki mahsulot sahifasida «Mahsulot ustidan shikoyat qilish» tugmasini bosing: shikoyatni FrogFlow operatori ko‘radi, do‘kon ko‘rmaydi. Bitta do‘kon yoki mahsulotga bitta manzil va qurilmadan sutkada bitta shikoyat qabul qilinadi. FrogFlow yordamiga ham yozish mumkin, aloqa ma’lumotlari bosh sahifada.",
+  "s7.title": "Shikoyat qanday ko‘rib chiqiladi",
+  "s7.text":
+    "Shikoyat sabablari: firibgarlik yoki aldov, buyurtma uchun to‘langan, lekin olinmagan, taqiqlangan mahsulot yoki xizmat, ruxsatsiz birovning materiallari, boshqa. Shikoyatni FrogFlow operatori o‘qiydi va o‘zi hal qiladi: do‘konni maydondan yashirish yoki shikoyatni rad etish. Shikoyat qiluvchiga javob yuborilmaydi: shaklda aloqa ma’lumotlari so‘ralmaydi. Bitta manzildan sutkada 5 tadan ortiq shikoyat qabul qilinmaydi. Shikoyat pulni qaytarmaydi va buyurtmani bekor qilmaydi: maydon to‘lovlarni qabul qilmaydi, to‘lov va yetkazib berish masalalarini do‘kon bilan hal qiling. Maydondan yashirish do‘kon vitrinasini yopmaydi.",
   "link.market": "Do‘konlar katalogiga",
   "link.home": "Bosh sahifaga",
 };
@@ -122,7 +134,7 @@ const uz: Record<Key, string> = {
 const DICTS: Record<Locale, Record<Key, string>> = { ru, kk, en, uz };
 
 export const RULES_KEYS = Object.keys(ru) as Key[];
-export const RULES_SECTIONS = ["s1", "s2", "s3", "s4", "s5", "s6"] as const;
+export const RULES_SECTIONS = ["s1", "s2", "s3", "s4", "s5", "s6", "s7"] as const;
 
 export function rulesT(locale: Locale) {
   const d = DICTS[locale] ?? ru;

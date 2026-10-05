@@ -118,10 +118,28 @@ function ReportPage() {
             <div className="card mt-6 p-5" role="status">
               <h2 className="font-medium">{t("done.title")}</h2>
               <p className="mt-2 text-sm text-muted">{t("done.text")}</p>
+              <Link
+                to="/market/rules"
+                search={search.lang ? { lang: search.lang } : {}}
+                hash="s7"
+                className="mt-3 inline-block text-sm underline"
+              >
+                {t("rules.link")}
+              </Link>
             </div>
           ) : (
             <>
               <p className="mt-2 text-sm text-muted">{t("lead")}</p>
+              <p className="mt-1 text-sm">
+                <Link
+                  to="/market/rules"
+                  search={search.lang ? { lang: search.lang } : {}}
+                  hash="s7"
+                  className="underline"
+                >
+                  {t("rules.link")}
+                </Link>
+              </p>
               <form
                 className="card mt-6 space-y-5 p-5"
                 onSubmit={(e: FormEvent<HTMLFormElement>) => {

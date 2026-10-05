@@ -50,7 +50,7 @@ function RulesPage() {
       <p className="mt-2 text-sm text-muted">{t("lead")}</p>
       <ol className="mt-6 space-y-5">
         {RULES_SECTIONS.map((k, i) => (
-          <li key={k}>
+          <li key={k} id={k} className="scroll-mt-4">
             <h2 className="font-medium">
               {i + 1}. {t(`${k}.title`)}
             </h2>
