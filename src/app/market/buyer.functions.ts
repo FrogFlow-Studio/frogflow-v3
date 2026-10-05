@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import type { Locale } from "@/core/i18n/locale";
+import type { FavoritesList } from "@/core/marketplace/favorites.server";
 
 const input = z.object({ lang: z.enum(["ru", "kk", "en", "uz"]).optional().catch(undefined) });
 
@@ -34,7 +35,18 @@ export const marketAccountFn = createServerFn({ method: "GET" })
           return label === key ? status : label;
         },
       });
-      return { ready: true as const, signedIn: true as const, ...account };
+      // Избранное площадки (К1): таблицы нет — блок «скоро», остальной кабинет работает.
+      let favorites: { ready: false } | ({ ready: true } & FavoritesList) = { ready: false };
+      try {
+        const { listFavorites } = await import("@/core/marketplace/favorites.server");
+        favorites = {
+          ready: true,
+          ...(await listFavorites(buyerId, { tenants: [...byId.values()] })),
+        };
+      } catch (e) {
+        if (!(e instanceof MarketplaceNotReady)) throw e;
+      }
+      return { ready: true as const, signedIn: true as const, ...account, favorites };
     } catch (e) {
       if (e instanceof MarketplaceNotReady) return { ready: false as const };
       throw e;
@@ -47,3 +59,49 @@ export const marketLogoutFn = createServerFn({ method: "POST" }).handler(async (
   endMarketSession();
   return { ok: true as const };
 });
+
+/**
+ * Что человек уже отметил (К1): ключи «магазин:товар» для сердечек в поиске. Страница поиска
+ * публичная и кэшируется, поэтому сердечки подгружает браузер отдельным запросом по cookie.
+ * Без входа или без таблицы — пусто, без ошибки.
+ */
+export const marketFavoriteKeysFn = createServerFn({ method: "GET" }).handler(async () => {
+  const { marketBuyerId } = await import("./buyer.server");
+  const { MarketplaceNotReady } = await import("@/core/marketplace/not-ready");
+  const buyerId = marketBuyerId();
+  if (!buyerId) return { signedIn: false as const, keys: [] as string[] };
+  try {
+    const { favoriteKeys } = await import("@/core/marketplace/favorites.server");
+    return { signedIn: true as const, keys: await favoriteKeys(buyerId) };
+  } catch (e) {
+    if (e instanceof MarketplaceNotReady) return { signedIn: false as const, keys: [] as string[] };
+    throw e;
+  }
+});
+
+const favInput = z.object({
+  shopId: z.string().uuid(),
+  productId: z.string().uuid(),
+  on: z.boolean(),
+});
+
+/** Отметить или снять сердечко (К1). Человек — только из подписанной cookie площадки. */
+export const marketFavoriteFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => favInput.parse(d))
+  .handler(async ({ data }) => {
+    const { marketBuyerId } = await import("./buyer.server");
+    const { MarketplaceNotReady } = await import("@/core/marketplace/not-ready");
+    const buyerId = marketBuyerId();
+    if (!buyerId) return { status: "signin" as const };
+    try {
+      const { addFavorite, removeFavorite } = await import("@/core/marketplace/favorites.server");
+      if (!data.on) return removeFavorite(buyerId, data.shopId, data.productId);
+      const { tenantDirectory } = await import("@/core/tenant/resolve.server");
+      return await addFavorite(buyerId, data.shopId, data.productId, {
+        tenants: await tenantDirectory(),
+      });
+    } catch (e) {
+      if (e instanceof MarketplaceNotReady) return { status: "soon" as const };
+      throw e;
+    }
+  });

@@ -45,3 +45,11 @@ describe("удостоверение по ключу профиля", () => {
       expect(identityFromUserKey(key, "code")).toBeNull();
   });
 });
+
+describe("почта без подтверждения не даёт удостоверения (К1)", () => {
+  it("ключ покупателя сайта по почте или Instagram удостоверением площадки не становится", () => {
+    expect(identityFromUserKey("em_anna@example.com", "code")).toBeNull();
+    expect(identityFromUserKey("ig_12345", "code")).toBeNull();
+    expect(identityFromUserKey("web_anna@example.com", "telegram_login")).toBeNull();
+  });
+});

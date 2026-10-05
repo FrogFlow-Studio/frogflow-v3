@@ -2,6 +2,7 @@ import { FilterForm } from "@/app/market/filter-form";
 import { publicHeaders } from "@/app/cache-policy";
 import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
 import { z } from "zod";
+import { FavoriteHeart, useFavorites } from "@/app/market/favorite-heart";
 import { rememberMarketBack } from "@/app/market/back";
 import { marketT } from "@/app/market/i18n";
 import { marketSearchFn } from "@/app/market/search.functions";
@@ -72,6 +73,7 @@ function MarketSearchPage() {
   const locale: Locale = search.lang ?? "ru";
   const t = marketT(locale);
   const lang = search.lang;
+  const fav = useFavorites();
   return (
     <main className="mx-auto max-w-4xl px-4 py-10">
       <div className="flex items-center justify-between gap-3">
@@ -156,7 +158,7 @@ function MarketSearchPage() {
                         className="h-16 w-16 rounded object-cover"
                       />
                     )}
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <h2 className="font-medium">{i.name}</h2>
                       <p className="text-sm">
                         {new Intl.NumberFormat(locale).format(i.price)} {i.currency}
@@ -178,6 +180,15 @@ function MarketSearchPage() {
                         {t("items.open")}
                       </Link>
                     </div>
+                    {fav.ready && (
+                      <FavoriteHeart
+                        shopId={i.shopId}
+                        productId={i.id}
+                        locale={locale}
+                        keys={fav.keys}
+                        setKeys={fav.setKeys}
+                      />
+                    )}
                   </li>
                 ))}
               </ul>

@@ -196,6 +196,42 @@ export type Database = {
           },
         ];
       };
+      buyer_favorites: {
+        Row: {
+          buyer_id: string;
+          bot_id: string;
+          product_id: string;
+          created_at: string;
+        };
+        Insert: {
+          buyer_id: string;
+          bot_id: string;
+          product_id: string;
+          created_at?: string;
+        };
+        Update: {
+          buyer_id?: string;
+          bot_id?: string;
+          product_id?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "buyer_favorites_buyer_id_fkey";
+            columns: ["buyer_id"];
+            isOneToOne: false;
+            referencedRelation: "marketplace_buyers";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "buyer_favorites_bot_id_fkey";
+            columns: ["bot_id"];
+            isOneToOne: false;
+            referencedRelation: "bots";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       marketplace_buyers: {
         Row: {
           id: string;

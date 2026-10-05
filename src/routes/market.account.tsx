@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { z } from "zod";
 import { marketAccountFn, marketLogoutFn } from "@/app/market/buyer.functions";
+import { favoriteT } from "@/app/market/favorite-i18n";
 import { marketT } from "@/app/market/i18n";
 import { SUPPORTED_LOCALES, type Locale } from "@/core/i18n/locale";
 
@@ -22,6 +23,7 @@ function AccountPage() {
   const router = useRouter();
   const locale: Locale = search.lang ?? "ru";
   const t = marketT(locale);
+  const ft = favoriteT(locale);
   const lang = search.lang;
   const date = new Intl.DateTimeFormat(locale, { dateStyle: "medium" });
   return (
@@ -108,6 +110,54 @@ function AccountPage() {
               </li>
             ))}
           </ul>
+          <section className="card mt-6 p-4" aria-labelledby="fav-title">
+            <h2 id="fav-title" className="font-medium">
+              {ft("title")}
+            </h2>
+            {!data.favorites.ready ? (
+              <p className="mt-2 text-sm text-muted">{ft("soon")}</p>
+            ) : (
+              <>
+                <p className="mt-1 text-xs text-muted">{ft("hint")}</p>
+                {data.favorites.items.length === 0 ? (
+                  <p className="mt-2 text-sm text-muted">{ft("empty")}</p>
+                ) : (
+                  <ul className="mt-3 grid gap-3 sm:grid-cols-2">
+                    {data.favorites.items.map((f) => (
+                      <li key={`${f.shopId}:${f.id}`} className="flex gap-3 text-sm">
+                        {f.image && (
+                          <img
+                            src={f.image}
+                            alt=""
+                            loading="lazy"
+                            className="h-12 w-12 rounded object-cover"
+                          />
+                        )}
+                        <div className="min-w-0">
+                          <Link
+                            to="/s/$slug/p/$id"
+                            params={{ slug: f.shopSlug, id: f.id }}
+                            className="font-medium underline"
+                          >
+                            {f.name}
+                          </Link>
+                          <p>
+                            {new Intl.NumberFormat(locale).format(f.price)} {f.currency}
+                          </p>
+                          <p className="text-xs text-muted">{f.shopName}</p>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {data.favorites.gone > 0 && (
+                  <p className="mt-2 text-xs text-muted">
+                    {ft("gone", { n: data.favorites.gone })}
+                  </p>
+                )}
+              </>
+            )}
+          </section>
           {data.addresses.length > 0 && (
             <section className="card mt-6 p-4">
               <h2 className="font-medium">{t("acc.addresses")}</h2>
