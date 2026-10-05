@@ -297,6 +297,31 @@ describe("отзывы витрины: страницы, фильтры, оце�
     });
   });
 
+  it("пометка «покупка подтверждена»: только выданный заказ этого магазина с этим товаром", async () => {
+    for (const id of [R1, R2]) {
+      db.tables.app_settings!.push({
+        bot_id: BOT,
+        key: reviewMetaKey(id),
+        value: JSON.stringify({ status: "approved", photos: [] }),
+      });
+    }
+    db.tables.orders = [
+      { id: 1, bot_id: BOT, telegram_id: 1, status: "delivered" },
+      { id: 2, bot_id: BOT, telegram_id: 2, status: "cancelled" },
+      { id: 3, bot_id: "other", telegram_id: 2, status: "delivered" },
+    ];
+    db.tables.order_items = [
+      { order_id: 1, product_id: P },
+      { order_id: 2, product_id: P },
+      { order_id: 3, product_id: P },
+    ];
+    const { items } = await approvedReviewsPage(ctx, P);
+    expect(items.map((r) => [r.id, r.confirmed])).toEqual([
+      [R2, false],
+      [R1, true],
+    ]);
+  });
+
   it("оценка: пакетно по товарам и поштучно — одно число; скрытые и без решения не в счёт", async () => {
     seed25();
     db.tables.products!.push({ id: Q, name: "Пазл 2" });

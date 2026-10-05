@@ -103,4 +103,6 @@ export type PublicReview = {
   photos: string[];
   /** Публичный ответ продавца; нет — null. */
   reply: string | null;
+  /** Покупка подтверждена: у автора есть выданный заказ с этим товаром (П3). */
+  confirmed: boolean;
 };

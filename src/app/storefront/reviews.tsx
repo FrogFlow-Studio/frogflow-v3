@@ -105,6 +105,11 @@ export function ProductReviews({ slug, productId }: { slug: string; productId: s
             {r.comment && (
               <p className="mt-2 text-sm leading-relaxed whitespace-pre-line">{r.comment}</p>
             )}
+            {r.confirmed && (
+              <p className="mt-1 text-xs text-ok" data-testid="review-confirmed">
+                ✓ {t("review.confirmed")}
+              </p>
+            )}
             {r.photos.length > 0 && (
               <div className="mt-2 flex flex-wrap gap-2">
                 {r.photos.map((src) => (

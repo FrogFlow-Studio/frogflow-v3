@@ -1,3 +1,4 @@
+import { confirmedPurchases } from "./recent.server";
 import { serverFailure } from "@/lib/server-failure";
 import { randomUUID } from "node:crypto";
 import type { TenantContext } from "@/core/tenant/resolve.server";
@@ -329,6 +330,10 @@ export async function approvedReviewsPage(
   const names = new Map(
     (users ?? []).map((u) => [Number(u.telegram_id), publicBuyerName(u.first_name, u.last_name)]),
   );
+  const confirmed = await confirmedPurchases(
+    ctx,
+    shown.map((r) => ({ telegramId: Number(r.telegram_id), productId })),
+  );
   const items = shown.map((r) => ({
     id: r.id,
     rating: Number(r.rating),
@@ -339,6 +344,7 @@ export async function approvedReviewsPage(
       .filter((p) => isReviewPhotoPath(r.id, p))
       .map((p) => imagePath(ctx.tenant.id, p)),
     reply: r.meta.reply ?? null,
+    confirmed: confirmed.has(`${Number(r.telegram_id)}:${productId}`),
   }));
   return { items, hasMore };
 }
