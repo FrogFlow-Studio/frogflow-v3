@@ -5,7 +5,7 @@ import type { Db } from "@/core/db/client.server";
 import { syncServerFavorites } from "@/core/storefront/favorites-sync";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Tenant } from "@/core/tenant/types";
-import { buildAccount, FAVORITES_PER_SHOP } from "./account.server";
+import { buildAccount, FAVORITES_PER_SHOP, reorderFromAccount } from "./account.server";
 
 /** «Мои заказы» площадки: только профили из связей человека, избранное и адреса — из его заказов. */
 let shopA: FakeDb;
@@ -172,5 +172,56 @@ describe("избранное при двух входах одного поку�
     // чужое состояние профиля (rev секции избранного) повышается, остальное не затёрто
     const row = shopA.tables.bot_users!.find((u) => u.user_key === "tg_2002")!;
     expect(row.loyalty_points).toBe(777);
+  });
+});
+
+describe("«Заказать снова» из «Мои заказы» (К3)", () => {
+  const link = [{ botId: "A", userKey: "tg_1001" }];
+  const item = (orderId: number, productId: string, qty: number, extra = {}) => ({
+    id: `i${orderId}-${productId}`,
+    order_id: orderId,
+    product_id: productId,
+    product_variant_id: null,
+    name_snapshot: "Торт",
+    quantity: qty,
+    ...extra,
+  });
+  beforeEach(() => {
+    // подставная база не раскрывает вложенные строки: позиции лежат в самом заказе
+    const items = (orderId: number, rows: ReturnType<typeof item>[]) => {
+      const o = shopA.tables.orders!.find((x) => x.id === orderId)!;
+      o.order_items = rows;
+    };
+    items(1, [item(1, pid(1), 2), item(1, pid(2), 1), item(1, pid(3), 1)]);
+    items(3, [item(3, pid(2), 1)]);
+    shopA.tables.app_settings = [];
+  });
+
+  it("цена берётся сегодняшняя, снятый товар и нулевой остаток помечены, заказ не оформляется", async () => {
+    TENANTS.set("A", { ...tenant("A"), modules: { stock: true } } as unknown as Tenant);
+    shopA.tables.products = [
+      prod(1, "A", { price: 1750 }),
+      prod(2, "A", { stock_quantity: 0 }),
+      prod(3, "A", { is_active: false }),
+    ];
+    const before = JSON.stringify(shopA.tables.orders);
+    const plan = await reorderFromAccount(link, TENANTS, "a", 1, deps);
+    expect(plan!.lines.map((l) => [l.productId, l.price, l.qty])).toEqual([[pid(1), 1750, 2]]);
+    expect(plan!.skipped.map((s) => [s.name, s.reason]).sort()).toEqual([
+      ["Торт", "gone"],
+      ["Торт", "out_of_stock"],
+    ]);
+    expect(JSON.stringify(shopA.tables.orders)).toBe(before);
+  });
+
+  it("чужой заказ, чужой магазин и магазин прежней платформы — null", async () => {
+    // заказ 3 принадлежит другому покупателю того же магазина
+    expect(await reorderFromAccount(link, TENANTS, "a", 3, deps)).toBeNull();
+    // магазин B не в связях человека
+    expect(await reorderFromAccount(link, TENANTS, "b", 7, deps)).toBeNull();
+    // несуществующий номер
+    expect(await reorderFromAccount(link, TENANTS, "a", 999, deps)).toBeNull();
+    TENANTS.set("A", tenant("A", "v1"));
+    expect(await reorderFromAccount(link, TENANTS, "a", 1, deps)).toBeNull();
   });
 });

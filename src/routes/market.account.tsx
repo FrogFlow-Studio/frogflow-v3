@@ -3,6 +3,7 @@ import { z } from "zod";
 import { marketAccountFn, marketLogoutFn } from "@/app/market/buyer.functions";
 import { favoriteT } from "@/app/market/favorite-i18n";
 import { marketT } from "@/app/market/i18n";
+import { MarketReorderButton } from "@/app/market/reorder-button";
 import { SUPPORTED_LOCALES, type Locale } from "@/core/i18n/locale";
 
 /** «Мои заказы во всех магазинах» (В17): вход только через магазин, площадка его запоминает. */
@@ -72,6 +73,7 @@ function AccountPage() {
                         {t("acc.order", { no: o.no })} · {o.status} ·{" "}
                         {new Intl.NumberFormat(locale).format(o.total)} {o.currency} ·{" "}
                         {date.format(new Date(o.at))}
+                        <MarketReorderButton slug={s.slug} orderId={o.id} locale={locale} />
                       </li>
                     ))}
                   </ul>

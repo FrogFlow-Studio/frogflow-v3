@@ -105,3 +105,33 @@ export const marketFavoriteFn = createServerFn({ method: "POST" })
       throw e;
     }
   });
+
+/**
+ * «Заказать снова» (К3): план по заказу человека в одном из его магазинов. Человек — только из
+ * подписанной cookie площадки; магазин и заказ проверяются по его связям (account.server).
+ * Чужое или недоступное — `notfound`, без подробностей. Ничего не пишет.
+ */
+export const marketReorderFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z.object({ slug: z.string().min(1).max(64), orderId: z.number().int().positive() }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const { marketBuyerId } = await import("./buyer.server");
+    const { buyerShops } = await import("@/core/marketplace/buyers.server");
+    const { MarketplaceNotReady } = await import("@/core/marketplace/not-ready");
+    const buyerId = marketBuyerId();
+    if (!buyerId) return { status: "notfound" as const };
+    try {
+      const links = await buyerShops(buyerId);
+      const { tenantDirectory, tenantContext } = await import("@/core/tenant/resolve.server");
+      const { reorderFromAccount } = await import("@/core/marketplace/account.server");
+      const byId = new Map((await tenantDirectory()).map((x) => [x.id, x]));
+      const plan = await reorderFromAccount(links, byId, data.slug, data.orderId, {
+        ctxFor: tenantContext,
+      });
+      return plan ? { status: "ok" as const, plan } : { status: "notfound" as const };
+    } catch (e) {
+      if (e instanceof MarketplaceNotReady) return { status: "notfound" as const };
+      throw e;
+    }
+  });

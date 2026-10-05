@@ -141,3 +141,20 @@ export async function planReorderForBuyer(
   }
   return planReorder(ctx, order);
 }
+
+/**
+ * План повтора из «Мои заказы» площадки (К3): профиль покупателя в магазине уже подтверждён
+ * входом и привязан к человеку. Заказ должен принадлежать этому профилю (тот же признак, что у
+ * списка заказов: `telegram_id`); чужой или несуществующий номер — null, как «не найден».
+ * Цена и остаток берутся сегодняшние (planReorder), заказ не оформляется.
+ */
+export async function planReorderForCustomer(
+  ctx: TenantContext,
+  customer: { telegramId: number },
+  orderId: number,
+): Promise<ReorderPlan | null> {
+  const { getOrder } = await import("@/core/orders/orders");
+  const order = await getOrder(ctx, orderId);
+  if (!order || order.telegram_id !== customer.telegramId) return null;
+  return planReorder(ctx, order);
+}

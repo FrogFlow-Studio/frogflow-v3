@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { STOREFRONT_KEYS, storefrontT } from "./storefront";
 import { SUPPORTED_LOCALES, type Locale } from "@/core/i18n/locale";
 import { MARKET_KEYS, marketT } from "@/app/market/i18n";
+import { REORDER_KEYS, reorderT } from "@/app/market/reorder-i18n";
 import { FAVORITE_KEYS, favoriteT } from "@/app/market/favorite-i18n";
 import { OPEN_KEYS, openT } from "@/app/market/open-i18n";
 import { REPORT_KEYS, reportT } from "@/app/market/report-i18n";
@@ -17,6 +18,7 @@ const DICTS: Dict[] = [
   { name: "витрина", keys: STOREFRONT_KEYS, t: (l) => storefrontT(l) as never },
   { name: "площадка", keys: MARKET_KEYS, t: (l) => marketT(l) as never },
   { name: "«Открыть магазин»", keys: OPEN_KEYS, t: (l) => openT(l) as never },
+  { name: "заказать снова", keys: REORDER_KEYS, t: (l) => reorderT(l) as never },
   { name: "избранное площадки", keys: FAVORITE_KEYS, t: (l) => favoriteT(l) as never },
   { name: "жалоба", keys: REPORT_KEYS, t: (l) => reportT(l) as never },
   { name: "правила", keys: RULES_KEYS, t: (l) => rulesT(l) as never },

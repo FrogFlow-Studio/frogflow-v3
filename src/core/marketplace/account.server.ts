@@ -3,6 +3,7 @@ import { listCustomerOrders } from "@/core/orders/orders";
 import { displayNo } from "@/core/orders/pure";
 import { parseFavorites } from "@/core/storefront/favorites";
 import { storeProductsByIds } from "@/core/storefront/catalog";
+import type { ReorderPlan } from "@/core/storefront/reorder";
 import { servedByV2 } from "@/core/tenant/directory";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Tenant } from "@/core/tenant/types";
@@ -22,7 +23,7 @@ export const ADDRESSES_MAX = 5;
 export type AccountShop = {
   name: string;
   slug: string;
-  orders: { no: number; status: string; total: number; currency: string; at: string }[];
+  orders: { id: number; no: number; status: string; total: number; currency: string; at: string }[];
   favorites: { id: string; name: string; price: number; currency: string }[];
   moreFavorites: number;
 };
@@ -69,6 +70,7 @@ export async function buildAccount(
         name: tenant.name,
         slug: tenant.settings.slug!,
         orders: rows.map((o) => ({
+          id: o.id,
           no: displayNo(o),
           status: deps.statusLabel(o.status),
           total: Number(o.total),
@@ -100,4 +102,30 @@ export async function buildAccount(
     addresses: unique.slice(0, ADDRESSES_MAX),
     moreAddresses: Math.max(0, unique.length - ADDRESSES_MAX),
   };
+}
+
+/**
+ * «Заказать снова» из «Мои заказы» площадки (К3): план для заказа, который принадлежит
+ * профилю человека в этом магазине. Магазин берётся только из связей человека и только
+ * если он на v2 и не в архиве; чужой номер, чужой магазин, магазин прежней платформы — null.
+ * Заказ не оформляется и ничего не списывает: корзина витрины живёт у покупателя в браузере,
+ * сервер лишь отдаёт сегодняшние цены и остатки (planReorder).
+ */
+export async function reorderFromAccount(
+  links: readonly BuyerShop[],
+  tenants: ReadonlyMap<string, Tenant>,
+  slug: string,
+  orderId: number,
+  deps: Pick<Deps, "ctxFor">,
+): Promise<ReorderPlan | null> {
+  for (const l of links) {
+    const t = tenants.get(l.botId);
+    if (!t || t.archived || !servedByV2(t) || t.settings.slug !== slug) continue;
+    const ctx = deps.ctxFor(t);
+    const customer = await getCustomer(ctx, l.userKey);
+    if (!customer) return null;
+    const { planReorderForCustomer } = await import("@/core/storefront/reorder");
+    return planReorderForCustomer(ctx, customer, orderId);
+  }
+  return null;
 }
