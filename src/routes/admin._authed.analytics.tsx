@@ -259,7 +259,7 @@ function AnalyticsPage() {
         </div>
       )}
 
-      <div className="mt-6 grid gap-4 lg:grid-cols-2">
+      <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2 [&>*]:min-w-0">
         <ChartCard
           className="lg:col-span-2"
           title={t("analytics.funnel.title")}
@@ -613,7 +613,7 @@ function CustomersCard({
         )}
         <p className="mt-2 text-xs text-muted">{t("growth.returning.hint")}</p>
       </div>
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2 [&>*]:min-w-0">
         <div>
           <h3 className="mb-2 text-sm font-medium">{t("analytics.customers.weeks")}</h3>
           <DataTable
@@ -821,7 +821,7 @@ function PromoteCard({
       ) : hints.quality.length === 0 && hints.stock.length === 0 ? (
         <p className="text-sm text-muted">{t("growth.promote.empty")}</p>
       ) : (
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid gap-4 lg:grid-cols-2 [&>*]:min-w-0">
           {hints.quality.length > 0 && (
             <div>
               <h3 className="mb-2 text-sm font-medium">{t("growth.promote.quality")}</h3>

@@ -242,27 +242,29 @@ export function BarList({
 
 export function DataTable({ head, rows }: { head: string[]; rows: Array<Array<ReactNode>> }) {
   return (
-    <table className="table">
-      <thead>
-        <tr>
-          {head.map((h, i) => (
-            <th key={h} className={i ? "text-right" : ""}>
-              {h}
-            </th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((r, i) => (
-          <tr key={i}>
-            {r.map((c, j) => (
-              <td key={j} className={j ? "text-right tabular-nums" : ""}>
-                {c}
-              </td>
+    <div className="max-w-full overflow-x-auto">
+      <table className="table">
+        <thead>
+          <tr>
+            {head.map((h, i) => (
+              <th key={h} className={i ? "text-right" : ""}>
+                {h}
+              </th>
             ))}
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => (
+            <tr key={i}>
+              {r.map((c, j) => (
+                <td key={j} className={j ? "text-right tabular-nums" : ""}>
+                  {c}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
