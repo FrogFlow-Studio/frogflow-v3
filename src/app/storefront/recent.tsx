@@ -5,6 +5,7 @@ import { useStorefrontLocale } from "@/app/storefront/locale";
 import { formatMoney } from "@/core/money/money";
 import type { StoreProduct } from "@/core/storefront/catalog";
 import { orderRecent, parseRecent, pushRecent } from "@/core/storefront/recent";
+import { MARKET_RECENT_KEY, parseViews, pushView } from "@/core/marketplace/views";
 
 /** «Недавно смотрели»: список лежит в браузере по магазину (core/storefront/recent), сервер его не хранит. */
 const key = (slug: string) => `ff-recent-${slug}`;
@@ -22,6 +23,13 @@ export function useRememberViewed(slug: string, productId: string) {
   useEffect(() => {
     try {
       localStorage.setItem(key(slug), JSON.stringify(pushRecent(readRecent(slug), productId)));
+      // Общий список для площадки (Л2): тоже только в браузере.
+      localStorage.setItem(
+        MARKET_RECENT_KEY,
+        JSON.stringify(
+          pushView(parseViews(localStorage.getItem(MARKET_RECENT_KEY)), { slug, id: productId }),
+        ),
+      );
     } catch {
       /* приватный режим */
     }

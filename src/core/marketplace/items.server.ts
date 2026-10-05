@@ -144,7 +144,7 @@ export function shownShops(tenants: Tenant[]): Map<string, ShopCard> {
   return out;
 }
 
-async function directoryShops(): Promise<Map<string, ShopCard>> {
+export async function directoryShops(): Promise<Map<string, ShopCard>> {
   const { tenantDirectory } = await import("@/core/tenant/resolve.server");
   return shownShops(await tenantDirectory());
 }

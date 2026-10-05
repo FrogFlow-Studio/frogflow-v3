@@ -27,7 +27,12 @@ export const marketSearchFn = createServerFn({ method: "GET" })
         }),
         itemFacets(),
       ]);
-      return { ready: true as const, ...page, categories };
+      // Без запроса и категории вместо подсказки — ленты «Новинки» и «Часто покупают» (Л2).
+      const idle = page.words.length === 0 && !data.category;
+      const feeds = idle
+        ? await (await import("@/core/marketplace/feeds.server")).marketFeeds()
+        : { fresh: [], popular: [] };
+      return { ready: true as const, ...page, categories, feeds };
     } catch (e) {
       if (e instanceof MarketplaceNotReady) return { ready: false as const };
       throw e;

@@ -4,6 +4,7 @@ import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
 import { z } from "zod";
 import { FavoriteHeart, useFavorites } from "@/app/market/favorite-heart";
 import { rememberMarketBack } from "@/app/market/back";
+import { MarketFeeds } from "@/app/market/feeds";
 import { marketT } from "@/app/market/i18n";
 import { marketSearchFn } from "@/app/market/search.functions";
 import { SUPPORTED_LOCALES, type Locale } from "@/core/i18n/locale";
@@ -137,7 +138,10 @@ function MarketSearchPage() {
             </button>
           </FilterForm>
           {data.words.length === 0 && !search.category ? (
-            <p className="mt-6 text-sm text-muted">{t("items.hint")}</p>
+            <>
+              <p className="mt-6 text-sm text-muted">{t("items.hint")}</p>
+              <MarketFeeds fresh={data.feeds.fresh} popular={data.feeds.popular} locale={locale} />
+            </>
           ) : data.items.length === 0 ? (
             <p className="mt-6 text-sm text-muted">{t("items.empty")}</p>
           ) : (
