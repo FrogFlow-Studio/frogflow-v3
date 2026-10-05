@@ -9,7 +9,8 @@ import { PROMOTE } from "@/core/analytics/promote";
 import { canEdit } from "@/core/auth/roles";
 import { BarList, ChartCard, DataTable, LineChart } from "@/app/ui/charts";
 import { compactNumber, shortDay } from "@/core/analytics/pure";
-import { FUNNEL_STAGES, stageRate } from "@/core/analytics/funnel";
+import { FUNNEL_STAGES } from "@/core/analytics/funnel";
+import { growthFunnel } from "@/core/analytics/growth-funnel";
 import { autoShare, type SpeedRow } from "@/core/analytics/speed";
 import { revenueParts, SOURCE_TAG_GROUP } from "@/core/analytics/source-funnel";
 import {
@@ -165,6 +166,7 @@ function Tile({ label, value, delta }: { label: string; value: string; delta: nu
 
 function AnalyticsPage() {
   const a = Route.useLoaderData();
+  const funnel = growthFunnel(a.funnel, null);
   const { days } = Route.useSearch();
   const { shop } = Route.useRouteContext();
   const t = adminT(shop.locale);
@@ -260,19 +262,20 @@ function AnalyticsPage() {
           title={t("analytics.funnel.title")}
           chart={
             <>
-              <BarList
-                rows={FUNNEL_STAGES.map((st, i) => {
-                  const all = a.funnel[0]!;
-                  const rate = i ? stageRate(all[FUNNEL_STAGES[i - 1]!], all[st]) : null;
-                  return {
-                    label: t(`analytics.funnel.${st}`),
-                    value: all[st],
-                    hint: rate === null ? undefined : t("analytics.funnel.rate", { pct: rate }),
-                  };
-                })}
-                format={num}
-                color="var(--chart-2)"
-              />
+              {funnel.empty ? (
+                <p className="text-sm text-muted">{t("growth.funnel.empty")}</p>
+              ) : (
+                <BarList
+                  rows={funnel.stages.map((st) => ({
+                    label: t(`growth.funnel.${st.key}`),
+                    value: st.value,
+                    hint:
+                      st.rate === null ? undefined : t("analytics.funnel.rate", { pct: st.rate }),
+                  }))}
+                  format={num}
+                  color="var(--chart-2)"
+                />
+              )}
               <p className="mt-2 text-xs text-muted">{t("analytics.funnel.hint")}</p>
             </>
           }

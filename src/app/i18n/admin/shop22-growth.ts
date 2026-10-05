@@ -34,6 +34,13 @@ export const ru = {
   "growth.card.same": "без изменений",
   "growth.card.noBase": "не с чем сравнить",
   "growth.card.more": "Подробнее в «Аналитике»",
+  "growth.funnel.empty": "За этот период пока нет данных для воронки.",
+  "growth.funnel.visit": "Визиты",
+  "growth.funnel.product": "Смотрели товар",
+  "growth.funnel.arrived": "Пришли",
+  "growth.funnel.cart": "Корзина",
+  "growth.funnel.ordered": "Заказ",
+  "growth.funnel.paid": "Оплата",
 };
 
 export const kk: SectionDict<typeof ru> = {
@@ -70,6 +77,13 @@ export const kk: SectionDict<typeof ru> = {
   "growth.card.same": "өзгеріссіз",
   "growth.card.noBase": "салыстыратын ештеңе жоқ",
   "growth.card.more": "«Аналитикада» толығырақ",
+  "growth.funnel.empty": "Бұл кезеңде воронка үшін деректер әзірге жоқ.",
+  "growth.funnel.visit": "Кіру саны",
+  "growth.funnel.product": "Тауарды қарады",
+  "growth.funnel.arrived": "Келді",
+  "growth.funnel.cart": "Себет",
+  "growth.funnel.ordered": "Тапсырыс",
+  "growth.funnel.paid": "Төлем",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -105,6 +119,13 @@ export const en: SectionDict<typeof ru> = {
   "growth.card.same": "no change",
   "growth.card.noBase": "nothing to compare with",
   "growth.card.more": "More in Analytics",
+  "growth.funnel.empty": "No funnel data for this period yet.",
+  "growth.funnel.visit": "Visits",
+  "growth.funnel.product": "Viewed a product",
+  "growth.funnel.arrived": "Arrived",
+  "growth.funnel.cart": "Cart",
+  "growth.funnel.ordered": "Order",
+  "growth.funnel.paid": "Payment",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -141,4 +162,11 @@ export const uz: SectionDict<typeof ru> = {
   "growth.card.same": "o‘zgarishsiz",
   "growth.card.noBase": "solishtirish uchun ma’lumot yo‘q",
   "growth.card.more": "«Analitika»da batafsil",
+  "growth.funnel.empty": "Bu davr uchun voronka ma’lumotlari hali yo‘q.",
+  "growth.funnel.visit": "Tashriflar",
+  "growth.funnel.product": "Mahsulotni ko‘rdi",
+  "growth.funnel.arrived": "Keldi",
+  "growth.funnel.cart": "Savat",
+  "growth.funnel.ordered": "Buyurtma",
+  "growth.funnel.paid": "To‘lov",
 };

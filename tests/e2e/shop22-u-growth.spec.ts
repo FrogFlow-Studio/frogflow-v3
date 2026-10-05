@@ -51,3 +51,10 @@ test("бухгалтер: «Рост» есть, источников в ана�
   await expect(page.getByText("Вернулись покупатели", { exact: true })).toBeVisible();
   await expect(page.getByText("Воронка по источникам", { exact: true })).toHaveCount(0);
 });
+
+/** У2: воронка на странице аналитики видна; пустой период — не ряд нулей. */
+test("аналитика: воронка покупателя показана", async ({ page }) => {
+  await login(page, F.ZH21_SELLER_LOGIN, F.ZH21_SELLER_PASSWORD);
+  await page.goto("/admin/analytics");
+  await expect(page.getByText("Воронка покупателя", { exact: true })).toBeVisible();
+});
