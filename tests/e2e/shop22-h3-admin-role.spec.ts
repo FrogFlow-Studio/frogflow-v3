@@ -43,9 +43,13 @@ test("приглашение администратора: настройки е
   await gp.locator('input[name="password"]').fill("admin-pass-12345");
   await gp.getByRole("button", { name: "Войти", exact: true }).click();
   await expect(gp).toHaveURL(/\/admin$/);
-  // Настройки и журнал открыты; тариф, комиссия и история оплат — нет.
-  await expect(gp.locator('a[href="/admin/settings"]').first()).toBeAttached();
-  await expect(gp.locator('a[href="/admin/log"]').first()).toBeAttached();
+  // Настройки и журнал открываются (ссылки в меню могут быть в свёрнутой группе или за кнопкой телефона —
+  // поэтому заходим по адресу); тариф, комиссия и история оплат в меню не появляются.
+  await gp.goto("/admin/settings");
+  await expect(gp.locator('[data-settings-section="shop"]')).toBeVisible();
+  await gp.goto("/admin/log");
+  await expect(gp).toHaveURL(/\/admin\/log/);
+  await expect(gp.locator("body")).not.toContainText("только владелец");
   for (const href of ["/admin/billing", "/admin/commission", "/admin/ai-balance", "/admin/modules"])
     await expect(gp.locator(`a[href="${href}"]`)).toHaveCount(0);
   await guest.close();

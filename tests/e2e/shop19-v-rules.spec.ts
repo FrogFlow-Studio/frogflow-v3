@@ -13,7 +13,7 @@ test("правила площадки открываются на четырёх
   for (const [lang, title] of Object.entries(titles)) {
     await page.goto(`/market/rules?lang=${lang}`);
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(title);
-    await expect(page.getByRole("heading", { level: 2 })).toHaveCount(6);
+    await expect(page.getByRole("heading", { level: 2 })).toHaveCount(7);
   }
   expect(errors).toEqual([]);
 });
