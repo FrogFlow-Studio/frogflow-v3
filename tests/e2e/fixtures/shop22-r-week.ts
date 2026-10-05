@@ -5,7 +5,7 @@
 export const WEEK22_SHOPS = [
   {
     project: "desktop",
-    id: "e2e22054-0000-4000-8000-000000000001",
+    id: "e2e22056-0000-4000-8000-000000000001",
     name: "Неделя Р22 десктоп",
     slug: "e2e-week22-d",
     login: "e2e_week22_d",
@@ -14,7 +14,7 @@ export const WEEK22_SHOPS = [
   },
   {
     project: "phone",
-    id: "e2e22054-0000-4000-8000-000000000002",
+    id: "e2e22056-0000-4000-8000-000000000002",
     name: "Неделя Р22 телефон",
     slug: "e2e-week22-p",
     login: "e2e_week22_p",

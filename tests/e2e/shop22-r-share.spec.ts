@@ -29,7 +29,7 @@ test("поделиться: ссылки, QR, тексты и ссылки с м
   const wa = page.getByRole("textbox", { name: "WhatsApp", exact: true });
   await expect(wa).toHaveValue(/utm_source=whatsapp/);
   // Язык текста переключается независимо от языка админки.
-  await page.getByRole("combobox").first().selectOption("en");
+  await page.locator('select[name="share-lang"]').selectOption("en");
   await expect(ig).toHaveValue(/Order online/);
 
   // Своя метка: кириллица переводится в латиницу, ссылки на бота и витрину получают её.

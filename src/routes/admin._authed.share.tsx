@@ -79,6 +79,7 @@ function SharePage() {
         <Card title={t("share.texts")}>
           <Field label={t("share.textLang")}>
             <select
+              name="share-lang"
               className="input w-full max-w-xs"
               value={lang}
               onChange={(e) => setLang(e.target.value as Locale)}
