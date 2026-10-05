@@ -222,6 +222,15 @@ export const ru = {
   "product.card.variants": "Варианты",
   "product.card.stock": "Остаток и продажа",
   "product.unsaved": "Есть несохранённые изменения. Уйти без сохранения?",
+  "product.ready.title": "Готовность карточки",
+  "product.ready.ok": "Всё на месте: карточку удобно покупать",
+  "product.ready.missing": "Не хватает: {list}",
+  "product.ready.k.name": "название",
+  "product.ready.k.description": "описание",
+  "product.ready.k.price": "цена",
+  "product.ready.k.category": "категория",
+  "product.ready.k.file": "файл для выдачи",
+  "product.ready.k.photos": "{n} фото",
 } as const;
 
 export const kk: SectionDict<typeof ru> = {
@@ -442,6 +451,15 @@ export const kk: SectionDict<typeof ru> = {
   "product.card.variants": "Нұсқалар",
   "product.card.stock": "Қалдық және сату",
   "product.unsaved": "Сақталмаған өзгерістер бар. Сақтамай шығу керек пе?",
+  "product.ready.title": "Карточка дайындығы",
+  "product.ready.ok": "Бәрі дайын: картадан сатып алу ыңғайлы",
+  "product.ready.missing": "Жетіспейді: {list}",
+  "product.ready.k.name": "атауы",
+  "product.ready.k.description": "сипаттама",
+  "product.ready.k.price": "баға",
+  "product.ready.k.category": "санат",
+  "product.ready.k.file": "беретін файл",
+  "product.ready.k.photos": "{n} фото",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -662,6 +680,15 @@ export const en: SectionDict<typeof ru> = {
   "product.card.variants": "Variants",
   "product.card.stock": "Stock and sale",
   "product.unsaved": "You have unsaved changes. Leave without saving?",
+  "product.ready.title": "Card readiness",
+  "product.ready.ok": "All set: the card is ready for buyers",
+  "product.ready.missing": "Missing: {list}",
+  "product.ready.k.name": "name",
+  "product.ready.k.description": "description",
+  "product.ready.k.price": "price",
+  "product.ready.k.category": "category",
+  "product.ready.k.file": "delivery file",
+  "product.ready.k.photos": "{n} more photos",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -881,4 +908,13 @@ export const uz: SectionDict<typeof ru> = {
   "product.card.variants": "Variantlar",
   "product.card.stock": "Qoldiq va sotuv",
   "product.unsaved": "Saqlanmagan o‘zgarishlar bor. Saqlamasdan chiqasizmi?",
+  "product.ready.title": "Karta tayyorligi",
+  "product.ready.ok": "Hammasi tayyor: kartadan xarid qilish qulay",
+  "product.ready.missing": "Yetishmaydi: {list}",
+  "product.ready.k.name": "nomi",
+  "product.ready.k.description": "tavsif",
+  "product.ready.k.price": "narx",
+  "product.ready.k.category": "kategoriya",
+  "product.ready.k.file": "yetkaziladigan fayl",
+  "product.ready.k.photos": "yana {n} ta rasm",
 };
