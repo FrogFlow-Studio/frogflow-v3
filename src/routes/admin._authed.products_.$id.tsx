@@ -1,6 +1,9 @@
 import { createFileRoute, Link, useBlocker, useNavigate } from "@tanstack/react-router";
 import { ProductSearch } from "@/app/admin/product-picker";
 import { useEffect, useRef, useState } from "react";
+import { ReadinessCard } from "@/app/admin/product-readiness";
+import { ProductToc, SaveBar, SectionHeading, useActiveSection } from "@/app/admin/product-layout";
+import { productReadiness } from "@/core/catalog/readiness";
 import { BundleCard } from "@/app/admin/bundle-card";
 import { saveUpsellFn, upsellForProductFn } from "@/app/admin/upsell.functions";
 import {
@@ -142,7 +145,13 @@ function CategoryPicker({
 
 type ProductTab = "main" | "price" | "photos" | "variants" | "bundle" | "promo";
 
+/** Обёртка: «Отменить» пересоздаёт редактор, поля и списки возвращаются к сохранённому. */
 function ProductEditor() {
+  const [version, setVersion] = useState(0);
+  return <ProductEditorBody key={version} onReset={() => setVersion((v) => v + 1)} />;
+}
+
+function ProductEditorBody({ onReset }: { onReset: () => void }) {
   const {
     product: p,
     waiting,
@@ -272,8 +281,38 @@ function ProductEditor() {
     ...(shop.modules.bundles && p?.id && kind === "physical" ? (["bundle"] as const) : []),
     ...(shop.modules.upsell && p?.id ? (["promo"] as const) : []),
   ];
-  const [tab, setTab] = useState<ProductTab>("main");
-  const cur = tabs.includes(tab) ? tab : "main";
+  // Поля формы для «Готовности»: неуправляемые, поэтому читаем их из формы на каждый ввод.
+  const [live, setLive] = useState({
+    name: p?.name ?? "",
+    description: p?.description ?? "",
+    price: p ? Number(p.price) : (null as number | null),
+    categories: Array.isArray(p?.category_ids) ? p.category_ids.length : 0,
+  });
+  const readLive = (form: HTMLFormElement) => {
+    const f = new FormData(form);
+    const price = String(f.get("price") ?? "").trim();
+    setLive({
+      name: String(f.get("name") ?? ""),
+      description: String(f.get("description") ?? ""),
+      price: price === "" ? null : Number(price),
+      categories: f.getAll("categoryIds").length,
+    });
+  };
+  const readiness = productReadiness({
+    ...live,
+    variants: variants.length,
+    photos: images.length,
+    kind,
+    files: materials.length,
+    isCourse,
+  });
+  // Новый вид: все разделы идут подряд в порядке работы над карточкой, вкладок нет.
+  const newOrder: ProductTab[] = ["main", "photos", "price", "variants", "bundle", "promo"];
+  const panel = (k: ProductTab) => ({
+    className: "space-y-4",
+    style: { order: newOrder.indexOf(k) },
+  });
+  const activeSection = useActiveSection(tabs);
   // Несохранённые изменения: предупреждение при уходе со страницы и из карточки.
   const [dirty, setDirty] = useState(false);
   const saved = useRef(false);
@@ -299,11 +338,7 @@ function ProductEditor() {
   return (
     <form
       onChange={() => setDirty(true)}
-      onInvalidCapture={(e) => {
-        // Обязательное поле на скрытой вкладке: открыть её, чтобы продавец увидел, что не заполнено.
-        const k = (e.target as HTMLElement).closest("[data-tab]")?.getAttribute("data-tab");
-        if (k && k !== cur) setTab(k as ProductTab);
-      }}
+      onInput={(e) => readLive(e.currentTarget)}
       onSubmit={(e) => {
         e.preventDefault();
         void save.run(new FormData(e.currentTarget)).catch(() => {});
@@ -343,34 +378,26 @@ function ProductEditor() {
                 {t("common.delete")}
               </button>
             )}
-            <button className="btn-primary" disabled={save.busy || Boolean(uploading)}>
-              {t("common.save")}
-            </button>
           </>
         }
       />
       <ErrorBox error={save.error ?? del.error ?? copy.error ?? uploadError} />
-      <div className="mt-3 max-w-4xl">
-        <div
-          role="tablist"
-          aria-label={t("product.tabs")}
-          className="mb-4 flex gap-2 overflow-x-auto pb-1 [&>button]:shrink-0 [&>button]:whitespace-nowrap"
-        >
-          {tabs.map((k) => (
-            <button
-              key={k}
-              type="button"
-              role="tab"
-              aria-selected={cur === k}
-              className={`badge cursor-pointer ${cur === k ? "border-accent bg-accent/10 text-accent" : ""}`}
-              onClick={() => setTab(k)}
-            >
-              {t(`product.tab.${k}`)}
-            </button>
-          ))}
-        </div>
-        <div className="space-y-4">
-          <div data-tab="main" className={cur === "main" ? "space-y-4" : "hidden"}>
+      <div className="mt-3 max-w-6xl lg:grid lg:grid-cols-[13rem_minmax(0,1fr)] lg:items-start lg:gap-6">
+        <aside className="mb-4 min-w-0 lg:mb-0">
+          <div className="space-y-4 lg:sticky lg:top-4">
+            <ProductToc
+              sections={tabs.map((k) => ({ key: k, label: t(`product.tab.${k}`) }))}
+              active={activeSection}
+              t={t}
+            />
+            <ReadinessCard r={readiness} t={t} />
+          </div>
+        </aside>
+        <div className="flex min-w-0 flex-col gap-6">
+          <div data-tab="main" {...panel("main")}>
+            {tabs.includes("main") && (
+              <SectionHeading id="main">{t("product.tab.main")}</SectionHeading>
+            )}
             {school && isNew && (
               <p className="rounded-md border border-accent/40 bg-accent/5 p-3 text-sm">
                 {t("product.courseSaveFirst")}
@@ -521,7 +548,10 @@ function ProductEditor() {
               <CourseCard productId={p.id} t={t} />
             )}
           </div>
-          <div data-tab="price" className={cur === "price" ? "space-y-4" : "hidden"}>
+          <div data-tab="price" {...panel("price")}>
+            {tabs.includes("price") && (
+              <SectionHeading id="price">{t("product.tab.price")}</SectionHeading>
+            )}
             <Card title={t("product.card.price")}>
               <div className="grid gap-3 sm:grid-cols-3">
                 <Field label={t("product.basePrice")}>
@@ -683,7 +713,10 @@ function ProductEditor() {
               <StockHistoryCard productId={p.id} locale={shop.locale} t={t} />
             )}
           </div>
-          <div data-tab="photos" className={cur === "photos" ? "space-y-4" : "hidden"}>
+          <div data-tab="photos" {...panel("photos")}>
+            {tabs.includes("photos") && (
+              <SectionHeading id="photos">{t("product.tab.photos")}</SectionHeading>
+            )}
             <Card title={t("product.card.photos")}>
               <div className="grid grid-cols-3 gap-2">
                 {images.map((img, i) => (
@@ -743,7 +776,10 @@ function ProductEditor() {
               <p className="mt-1 text-xs text-muted">{t("product.firstIsCover")}</p>
             </Card>
           </div>
-          <div data-tab="variants" className={cur === "variants" ? "space-y-4" : "hidden"}>
+          <div data-tab="variants" {...panel("variants")}>
+            {tabs.includes("variants") && (
+              <SectionHeading id="variants">{t("product.tab.variants")}</SectionHeading>
+            )}
             <Card title={t(school ? "product.variantsCourse" : "product.card.variants")}>
               <div>
                 <p className="mb-2 text-sm text-muted">
@@ -796,16 +832,33 @@ function ProductEditor() {
               </div>
             </Card>
           </div>
-          <div data-tab="bundle" className={cur === "bundle" ? "space-y-4" : "hidden"}>
+          <div data-tab="bundle" {...panel("bundle")}>
+            {tabs.includes("bundle") && (
+              <SectionHeading id="bundle">{t("product.tab.bundle")}</SectionHeading>
+            )}
             {shop.modules.bundles && p?.id && kind === "physical" && (
               <BundleCard productId={p.id} t={t} />
             )}
           </div>
-          <div data-tab="promo" className={cur === "promo" ? "space-y-4" : "hidden"}>
+          <div data-tab="promo" {...panel("promo")}>
+            {tabs.includes("promo") && (
+              <SectionHeading id="promo">{t("product.tab.promo")}</SectionHeading>
+            )}
             {shop.modules.upsell && p?.id && <UpsellCard productId={p.id} t={t} />}
           </div>
         </div>
       </div>
+      <SaveBar
+        dirty={dirty}
+        busy={save.busy || Boolean(uploading)}
+        onCancel={() => {
+          if (confirm(t("product.unsaved"))) {
+            saved.current = true;
+            onReset();
+          }
+        }}
+        t={t}
+      />
     </form>
   );
 }

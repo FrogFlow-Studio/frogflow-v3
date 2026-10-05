@@ -52,4 +52,5 @@ export * from "./fixtures/shop20-sh.ts";
 export * from "./fixtures/shop19-a-notify.ts";
 export * from "./fixtures/shop19-a-reports.ts";
 export * from "./fixtures/shop19-a-a11y.ts";
+export * from "./fixtures/shop21-t-product.ts";
 export * from "./fixtures/shop19-a-team.ts";
