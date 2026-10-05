@@ -276,7 +276,7 @@ export type CuratorSetting = {
 export type AdminInvite = {
   id: string;
   hash: string;
-  role: "manager" | "viewer" | "accountant";
+  role: "admin" | "manager" | "viewer" | "accountant";
   name?: string;
   created_at: string;
   expires_at: string;
@@ -287,8 +287,8 @@ export type AdminInvite = {
 export type AdminUser = {
   username: string;
   password_hash: string;
-  /** manager | viewer | accountant (core/auth/roles, STAFF_ROLES). */
-  role: "manager" | "viewer" | "accountant";
+  /** admin | manager | viewer | accountant (core/auth/roles, STAFF_ROLES). */
+  role: "admin" | "manager" | "viewer" | "accountant";
   name?: string;
   created_at?: string;
 };

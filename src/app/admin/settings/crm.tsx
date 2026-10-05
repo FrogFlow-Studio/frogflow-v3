@@ -10,6 +10,7 @@ import {
 } from "@/app/admin/crm.functions";
 import { adminT, intlLocale, type AdminT } from "@/app/i18n/admin";
 import { settingsRoute } from "./route";
+import { roleAllows } from "@/core/auth/roles";
 
 /** Интеграция с CRM и Таблицами: события заказа POST-запросом на адрес продавца. */
 export function CrmCard() {
@@ -34,7 +35,7 @@ export function CrmCard() {
     });
     loadLog();
   }, []);
-  const owner = shop.role === "owner";
+  const owner = roleAllows(shop.role, "admin");
   const save = useAction(async () => {
     await saveCrmFn({ data: { url, secret: secret ? secret : null, events } });
     setSecret("");

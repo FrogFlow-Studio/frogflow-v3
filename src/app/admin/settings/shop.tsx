@@ -17,6 +17,7 @@ import {
   parsePayRemindHours,
 } from "@/core/orders/pay-remind-settings";
 import { settingsRoute } from "./route";
+import { roleAllows } from "@/core/auth/roles";
 
 export function LegalCard({ settings }: { settings: Record<string, string> }) {
   const router = useRouter();
@@ -203,7 +204,7 @@ export function WeeklyReportCard({ settings }: { settings: Record<string, string
       <div className="flex items-center gap-3">
         <Switch
           checked={enabled}
-          disabled={toggle.busy || shop.role !== "owner"}
+          disabled={toggle.busy || !roleAllows(shop.role, "admin")}
           onChange={(v) => void toggle.run(v).catch(() => {})}
           label={t("settings.weekly.title")}
         />
@@ -212,7 +213,7 @@ export function WeeklyReportCard({ settings }: { settings: Record<string, string
         </span>
       </div>
       <ErrorBox error={toggle.error} />
-      <fieldset className="mt-4" disabled={pick.busy || shop.role !== "owner"}>
+      <fieldset className="mt-4" disabled={pick.busy || !roleAllows(shop.role, "admin")}>
         <legend className="mb-2 text-sm text-muted">{t("weekly.sections.intro")}</legend>
         {WEEKLY_SECTIONS.map((x) => (
           <label key={x} className="flex items-center gap-2 py-1 text-sm">
@@ -250,7 +251,7 @@ export function AutoMessagesCard({ settings }: { settings: Record<string, string
       <div className="flex items-center gap-3">
         <Switch
           checked={enabled}
-          disabled={toggle.busy || shop.role !== "owner"}
+          disabled={toggle.busy || !roleAllows(shop.role, "admin")}
           onChange={(v) => void toggle.run(v).catch(() => {})}
           label={t("settings.autoV3.title")}
         />
@@ -284,7 +285,7 @@ export function ServiceNoticesCard({ settings }: { settings: Record<string, stri
           <div key={r.key} className="flex items-center gap-3">
             <Switch
               checked={settings[r.key] !== "false"}
-              disabled={toggle.busy || shop.role !== "owner"}
+              disabled={toggle.busy || !roleAllows(shop.role, "admin")}
               onChange={(v) => void toggle.run(r.key, v).catch(() => {})}
               label={t(r.label)}
             />
@@ -314,7 +315,7 @@ export function PayReminderCard({ settings }: { settings: Record<string, string>
         className="input"
         aria-label={t("settings.payRemind.title")}
         value={current}
-        disabled={save.busy || shop.role !== "owner"}
+        disabled={save.busy || !roleAllows(shop.role, "admin")}
         onChange={(e) => void save.run(e.target.value).catch(() => {})}
       >
         <option value="">{t("settings.payRemind.off")}</option>

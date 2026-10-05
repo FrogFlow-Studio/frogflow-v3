@@ -10,6 +10,7 @@ import {
   type StoreTheme,
 } from "@/core/storefront/design";
 import { settingsRoute } from "./route";
+import { roleAllows } from "@/core/auth/roles";
 
 /**
  * Оформление витрины: тема, обложка и порядок блоков главной. Внизу — живой
@@ -31,7 +32,7 @@ export function DesignCard() {
       setReady(true);
     });
   }, []);
-  const owner = shop.role === "owner";
+  const owner = roleAllows(shop.role, "admin");
   const locked = !owner || !ready;
   const save = useAction(async () => {
     await saveStoreDesignFn({ data: { theme, cover, blocks } });

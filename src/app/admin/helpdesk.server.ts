@@ -5,13 +5,13 @@ import { logFailure } from "@/lib/log-failure";
 
 export type TeamMember = { username: string; name: string | null };
 
-/** Кому можно назначить обращение: владелец и сотрудники с правом изменений (не «просмотр»). */
+/** Кому можно назначить обращение: владелец и сотрудники с правом изменений (администратор, менеджер; не «просмотр»). */
 export function helpdeskTeam(tenant: Pick<Tenant, "settings">): TeamMember[] {
   const admin = tenant.settings.admin;
   const out: TeamMember[] = [];
   if (admin?.username) out.push({ username: admin.username, name: null });
   for (const u of admin?.users ?? [])
-    if (u.role === "manager" && u.username)
+    if ((u.role === "manager" || u.role === "admin") && u.username)
       out.push({ username: u.username, name: u.name ?? null });
   return out;
 }

@@ -6,7 +6,7 @@ import { z } from "zod";
  * direct-bot-settings). Читает любой сотрудник, меняет владелец.
  */
 const admin = async () => (await import("@/app/auth/guards.server")).requireAdmin();
-const adminOwner = async () => (await import("@/app/auth/guards.server")).requireAdminRole("owner");
+const adminLevel = async () => (await import("@/app/auth/guards.server")).requireAdminRole("admin");
 const platform = z.enum(["instagram", "whatsapp"]);
 
 export const directBotSettingsFn = createServerFn({ method: "GET" })
@@ -39,7 +39,7 @@ export const saveDirectBotSettingsFn = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data }) => {
-    const ctx = await adminOwner();
+    const ctx = await adminLevel();
     const { parseTriggerWords, saveDirectBotSettings } =
       await import("@/core/instagram/direct-bot-settings");
     await saveDirectBotSettings(ctx, data.platform, {
@@ -89,7 +89,7 @@ export const saveIceBreakersFn = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data }) => {
-    const ctx = await adminOwner();
+    const ctx = await adminLevel();
     const { saveIceBreakers } = await import("@/core/instagram/ice-breakers");
     await saveIceBreakers(ctx, data);
     const { refreshIceBreakers } = await import("@/channels/zernio/ice-breakers.server");
@@ -109,7 +109,7 @@ export const checkBotFn = createServerFn({ method: "GET" }).handler(async () => 
 });
 
 export const repairBotFn = createServerFn({ method: "POST" }).handler(async () => {
-  const ctx = await adminOwner();
+  const ctx = await adminLevel();
   const { repairBot } = await import("@/channels/telegram/bot-check.server");
   return repairBot(ctx.tenant.id, "admin");
 });

@@ -10,6 +10,7 @@ import {
 import { NOTIFY_KINDS, URGENT_KINDS, type NotifyPrefs } from "@/core/notify/prefs";
 import { adminT } from "@/app/i18n/admin";
 import { settingsRoute } from "./route";
+import { roleAllows } from "@/core/auth/roles";
 
 /**
  * Уведомления продавцу: что и куда приходит, тихие часы, утренний дайджест.
@@ -29,7 +30,7 @@ export function NotifyCard() {
       setQuietOn(Boolean(r.prefs.quiet));
     });
   }, []);
-  const owner = shop.role === "owner";
+  const owner = roleAllows(shop.role, "admin");
   const save = useAction(async () => {
     if (!p) return;
     await saveNotifyPrefsFn({
@@ -244,7 +245,7 @@ export function LowStockCard() {
       setShowBuyer(r.showToBuyer);
     });
   }, []);
-  const owner = shop.role === "owner";
+  const owner = roleAllows(shop.role, "admin");
   const save = useAction(async () => {
     await saveLowStockFn({ data: { threshold: Number(value) || 0, showToBuyer: showBuyer } });
     setSaved(true);

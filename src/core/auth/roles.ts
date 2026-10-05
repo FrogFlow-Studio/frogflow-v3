@@ -4,6 +4,9 @@
  * Логин уникален на всей платформе: по нему находится и магазин, и роль.
  *
  *   owner   — всё, включая настройки, оплату, модули и команду;
+ *   admin   — администратор: всё, что владелец, кроме тарифа, платежей (способы оплаты,
+ *             ключи платёжных систем, комиссия, ИИ-баланс), команды, ключа API,
+ *             выгрузки данных и удаления магазина; роль выдаёт только владелец;
  *   manager — заказы, товары, покупатели, чат, рассылки, скидки;
  *   viewer  — только смотреть (аналитик): любое изменение отклоняется;
  *   accountant — бухгалтер: только заказы, оплаты, чеки, выручка, аналитика и
@@ -12,9 +15,9 @@
  */
 import type { Tenant } from "@/core/tenant/types";
 
-export const ADMIN_ROLES = ["owner", "manager", "viewer", "accountant"] as const;
+export const ADMIN_ROLES = ["owner", "admin", "manager", "viewer", "accountant"] as const;
 /** Роли, которые владелец выдаёт сотрудникам. */
-export const STAFF_ROLES = ["manager", "viewer", "accountant"] as const;
+export const STAFF_ROLES = ["admin", "manager", "viewer", "accountant"] as const;
 export type StaffRole = (typeof STAFF_ROLES)[number];
 export type AdminRole = (typeof ADMIN_ROLES)[number];
 
@@ -25,7 +28,13 @@ export type AdminRole = (typeof ADMIN_ROLES)[number];
  */
 export const CONTACTS_MIN_ROLE = "manager" as const;
 
-const RANK: Record<AdminRole, number> = { accountant: 0, viewer: 0, manager: 1, owner: 2 };
+const RANK: Record<AdminRole, number> = {
+  accountant: 0,
+  viewer: 0,
+  manager: 1,
+  admin: 2,
+  owner: 3,
+};
 
 /** Достаточно ли роли для действия, требующего `min`. */
 export function roleAllows(role: AdminRole | undefined, min: AdminRole): boolean {
@@ -34,6 +43,7 @@ export function roleAllows(role: AdminRole | undefined, min: AdminRole): boolean
 
 export const ROLE_TITLES: Record<AdminRole, string> = {
   owner: "владелец",
+  admin: "администратор",
   manager: "менеджер",
   viewer: "просмотр",
   accountant: "бухгалтер",

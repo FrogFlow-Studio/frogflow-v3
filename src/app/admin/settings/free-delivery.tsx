@@ -3,6 +3,7 @@ import { Card, ErrorBox, Field, useAction } from "@/app/ui";
 import { freeDeliveryFn, saveFreeDeliveryFn } from "@/app/admin/free-delivery.functions";
 import { adminT } from "@/app/i18n/admin";
 import { settingsRoute } from "./route";
+import { roleAllows } from "@/core/auth/roles";
 
 const num = (v: string) => Number(v.replace(",", ".")) || 0;
 
@@ -26,7 +27,7 @@ export function FreeDeliveryCard() {
       setCurrency(r.currency);
     });
   }, []);
-  const owner = shop.role === "owner";
+  const owner = roleAllows(shop.role, "admin");
   const save = useAction(async () => {
     await saveFreeDeliveryFn({
       data: {

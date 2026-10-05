@@ -441,6 +441,8 @@ export const ru = {
   "settings.team.name": "Имя",
   "settings.team.role": "Роль",
   "settings.team.roleManager": "Менеджер — заказы, товары, чат, рассылки",
+  "settings.team.roleAdmin":
+    "Администратор — всё, кроме тарифа, платежей, команды и удаления магазина",
   "settings.team.roleViewer": "Просмотр — только смотреть и выгружать",
   "settings.team.roleAccountant":
     "Бухгалтер — заказы, оплаты, чеки, выручка и выгрузка заказов без контактов покупателей",
@@ -914,6 +916,8 @@ export const kk: SectionDict<typeof ru> = {
   "settings.team.name": "Аты",
   "settings.team.role": "Рөлі",
   "settings.team.roleManager": "Менеджер — тапсырыстар, тауарлар, чат, хабарламалар",
+  "settings.team.roleAdmin":
+    "Әкімші — тариф, төлемдер, команда және дүкенді жоюдан басқасының бәрі",
   "settings.team.roleViewer": "Қарау — тек қарау және жүктеп алу",
   "settings.team.roleAccountant":
     "Бухгалтер — тапсырыстар, төлемдер, чектер, түсім және сатып алушы байланыстарынсыз тапсырыстарды жүктеу",
@@ -1384,6 +1388,8 @@ export const en: SectionDict<typeof ru> = {
   "settings.team.name": "Name",
   "settings.team.role": "Role",
   "settings.team.roleManager": "Manager — orders, products, chat, broadcasts",
+  "settings.team.roleAdmin":
+    "Administrator — everything except the plan, payments, the team and deleting the shop",
   "settings.team.roleViewer": "Viewer — view and export only",
   "settings.team.roleAccountant":
     "Accountant — orders, payments, receipts, revenue and order export without customer contacts",
@@ -1860,6 +1866,8 @@ export const uz: SectionDict<typeof ru> = {
   "settings.team.name": "Ism",
   "settings.team.role": "Rol",
   "settings.team.roleManager": "Menejer — buyurtmalar, mahsulotlar, chat, xabarnomalar",
+  "settings.team.roleAdmin":
+    "Administrator — tarif, to‘lovlar, jamoa va do‘konni o‘chirishdan tashqari hammasi",
   "settings.team.roleViewer": "Faqat ko‘rish — faqat ko‘rish va yuklab olish",
   "settings.team.roleAccountant":
     "Buxgalter — buyurtmalar, to‘lovlar, cheklar, tushum va xaridor kontaktlarisiz buyurtmalarni yuklab olish",

@@ -22,6 +22,6 @@ export const saveStoreAboutFn = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data }) => {
-    const ctx = await (await import("@/app/auth/guards.server")).requireAdminRole("owner");
+    const ctx = await (await import("@/app/auth/guards.server")).requireAdminRole("admin");
     return (await import("@/core/storefront/about.server")).saveAbout(ctx, data);
   });

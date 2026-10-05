@@ -29,7 +29,7 @@ export const saveFreeDeliveryFn = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data }) => {
-    const ctx = await (await import("@/app/auth/guards.server")).requireAdminRole("owner");
+    const ctx = await (await import("@/app/auth/guards.server")).requireAdminRole("admin");
     const { saveFreeDeliveryRules } = await import("@/core/fulfillment/free-delivery");
     const { activeDeliveryZones } = await import("@/core/fulfillment/fulfillment");
     const zoneIds = (await activeDeliveryZones(ctx)).map((z) => z.id);

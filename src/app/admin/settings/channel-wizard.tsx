@@ -3,6 +3,7 @@ import { wizardCheckFn, wizardStartFn, wizardStateFn } from "@/app/admin/admin.f
 import { Badge, Card, ErrorBox, useAction } from "@/app/ui";
 import { adminT, type AdminKey } from "@/app/i18n/admin";
 import { settingsRoute } from "./route";
+import { roleAllows } from "@/core/auth/roles";
 
 type State = Awaited<ReturnType<typeof wizardCheckFn>>;
 type Platform = State["platform"];
@@ -27,7 +28,7 @@ function WizardPanel({
   const { shop } = settingsRoute.useRouteContext();
   const t = adminT(shop.locale);
   const channel = CHANNEL_LABEL[platform];
-  const owner = shop.role === "owner";
+  const owner = roleAllows(shop.role, "admin");
   const [state, setState] = useState<State | null>(initial);
   const check = useAction(async () => {
     setState(await wizardCheckFn({ data: { platform } }));

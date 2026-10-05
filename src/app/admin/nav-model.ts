@@ -4,6 +4,7 @@
  * Разделы выключенных модулей не рисуются совсем (не «серые»).
  */
 import type { AdminKey } from "@/app/i18n/admin";
+import { roleAllows, type AdminRole } from "@/core/auth/roles";
 import type { ModuleKey } from "@/core/modules/registry";
 
 export type NavItem = {
@@ -52,6 +53,8 @@ function compact<T>(xs: (T | false | null | undefined)[]): T[] {
 export function buildAdminNav(shop: NavShop): AdminNav {
   const m = shop.modules;
   const owner = shop.role === "owner";
+  // Настройки, тексты бота и журнал — владельцу и администратору; тариф и платежи — только владельцу.
+  const admin = roleAllows(shop.role as AdminRole, "admin");
   const school = shop.vertical === "courses";
   const physical = PHYSICAL.has(shop.vertical);
   const overview: NavItem = { to: "/admin", label: "nav.overview", exact: true };
@@ -181,7 +184,7 @@ export function buildAdminNav(shop: NavShop): AdminNav {
     id: "settings",
     label: "nav.groupSettings",
     items: compact<NavItem>([
-      owner && {
+      admin && {
         to: "/admin/settings",
         label: physical ? "nav.settingsPhysical" : "nav.settings",
       },
@@ -190,9 +193,9 @@ export function buildAdminNav(shop: NavShop): AdminNav {
       owner && { to: "/admin/commission", label: "commission.nav" },
       owner && { to: "/admin/ai-balance", label: "nav.aiBalance" },
       { to: "/admin/bot-preview", label: "nav.botPreview" },
-      owner && { to: "/admin/bot-texts", label: "botTexts.nav" },
+      admin && { to: "/admin/bot-texts", label: "botTexts.nav" },
       { to: "/admin/community", label: "nav.community" },
-      owner && { to: "/admin/log", label: "audit.nav" },
+      admin && { to: "/admin/log", label: "audit.nav" },
       {
         to: "/admin/support",
         label: "support.nav",

@@ -4,6 +4,7 @@
  * По нему работают темы и поиск (А13); `registry.test.ts` не даёт новой
  * настройке или карточке остаться без записи.
  */
+import { roleAllows, type AdminRole } from "@/core/auth/roles";
 import type { AdminKey } from "@/app/i18n/admin";
 import type { ModuleKey } from "@/core/modules/registry";
 
@@ -34,7 +35,10 @@ export type SettingsEntry = {
   module?: ModuleKey;
   /** …или при включённом любом из этих. */
   anyModule?: readonly ModuleKey[];
+  /** Раздел виден только владельцу (тариф, платежи, команда, ключ API, выгрузка, удаление). */
   ownerOnly?: boolean;
+  /** …или владельцу и администратору. */
+  adminOnly?: boolean;
   /** Карточка на две колонки. */
   wide?: boolean;
 };
@@ -161,6 +165,7 @@ export const SETTINGS_REGISTRY: readonly SettingsEntry[] = [
     theme: "payment",
     title: "settings.stars.title",
     module: "telegram_stars",
+    ownerOnly: true,
     keys: ["stars_rate"],
   }),
   E({
@@ -168,6 +173,7 @@ export const SETTINGS_REGISTRY: readonly SettingsEntry[] = [
     theme: "payment",
     title: "settings.rk.title",
     module: "robokassa",
+    ownerOnly: true,
     wide: true,
     keys: [
       "robokassa_enabled",
@@ -289,8 +295,14 @@ export const SETTINGS_REGISTRY: readonly SettingsEntry[] = [
     to: "/admin/discounts",
     keys: ["referral_discount_percent"],
   }),
-  E({ id: "team", theme: "team", title: "settings.team.title", module: "admin_roles" }),
-  E({ id: "invite", theme: "team", title: "invite.title", ownerOnly: true }),
+  E({
+    id: "team",
+    theme: "team",
+    title: "settings.team.title",
+    module: "admin_roles",
+    ownerOnly: true,
+  }),
+  E({ id: "invite", theme: "team", title: "invite.title", adminOnly: true }),
   E({
     id: "crm",
     theme: "advanced",
@@ -346,6 +358,7 @@ export function entryVisible(
   shop: { role: string; modules: Partial<Record<string, boolean>> },
 ): boolean {
   if (e.ownerOnly && shop.role !== "owner") return false;
+  if (e.adminOnly && !roleAllows(shop.role as AdminRole, "admin")) return false;
   if (e.anyModule && !e.anyModule.some((m) => shop.modules[m])) return false;
   return !e.module || Boolean(shop.modules[e.module]);
 }

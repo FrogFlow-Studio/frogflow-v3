@@ -97,8 +97,8 @@ describe("серверные функции команды и оплаты", () 
       expect(body("team-invite.functions.ts", n)).toContain('"admin_roles", "owner"');
   });
 
-  it("история оплат тарифа закрыта менеджеру и «просмотру»", () => {
+  it("история оплат тарифа закрыта администратору, менеджеру и «просмотру»", () => {
     const b = body("admin.functions.ts", "billingHistoryFn");
-    expect(b).toContain('role === "manager" || role === "viewer"');
+    expect(b).toContain('role === "admin" || role === "manager" || role === "viewer"');
   });
 });

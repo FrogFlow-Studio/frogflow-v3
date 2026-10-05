@@ -157,7 +157,15 @@ export async function requireAdminRole(min: AdminRole): Promise<TenantContext> {
   if (!roleAllows(role, min))
     throw min === "owner"
       ? new UserError("err.auth.ownerOnly", "Это может изменить только владелец магазина.")
-      : new UserError("err.auth.viewOnly", "У вашей роли нет прав на изменения — только просмотр.");
+      : min === "admin"
+        ? new UserError(
+            "err.auth.adminOnly",
+            "Это может изменить только владелец или администратор магазина.",
+          )
+        : new UserError(
+            "err.auth.viewOnly",
+            "У вашей роли нет прав на изменения — только просмотр.",
+          );
   return ctx;
 }
 

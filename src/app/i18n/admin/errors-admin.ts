@@ -4,6 +4,7 @@ import type { SectionDict } from "../section";
 export const ru = {
   // права и модули (app/auth/guards.server)
   "err.auth.ownerOnly": "Это может изменить только владелец магазина.",
+  "err.auth.adminOnly": "Это может изменить только владелец или администратор магазина.",
   "err.auth.viewOnly": "У вашей роли нет прав на изменения — только просмотр.",
   "err.auth.accountantDenied": "Бухгалтеру этот раздел недоступен.",
   "err.auth.moduleOff": "Модуль «{module}» не подключён к вашему тарифу.",
@@ -225,6 +226,7 @@ export const ru = {
 
 export const kk: SectionDict<typeof ru> = {
   "err.auth.ownerOnly": "Мұны тек дүкен иесі өзгерте алады.",
+  "err.auth.adminOnly": "Мұны тек дүкен иесі немесе әкімшісі өзгерте алады.",
   "err.auth.viewOnly": "Сіздің рөліңізге өзгерту құқығы берілмеген — тек қарау.",
   "err.auth.accountantDenied": "Бұл бөлім бухгалтерге қолжетімсіз.",
   "err.auth.moduleOff": "«{module}» модулі тарифіңізге қосылмаған.",
@@ -442,6 +444,7 @@ export const kk: SectionDict<typeof ru> = {
 
 export const en: SectionDict<typeof ru> = {
   "err.auth.ownerOnly": "Only the shop owner can change this.",
+  "err.auth.adminOnly": "Only the shop owner or administrator can change this.",
   "err.auth.viewOnly": "Your role cannot make changes — view only.",
   "err.auth.accountantDenied": "This section is not available to the accountant.",
   "err.auth.moduleOff": "The “{module}” module is not included in your plan.",
@@ -663,6 +666,7 @@ export const en: SectionDict<typeof ru> = {
 
 export const uz: SectionDict<typeof ru> = {
   "err.auth.ownerOnly": "Buni faqat doʻkon egasi oʻzgartira oladi.",
+  "err.auth.adminOnly": "Buni faqat doʻkon egasi yoki administratori oʻzgartira oladi.",
   "err.auth.viewOnly": "Sizning rolingizda oʻzgartirish huquqi yoʻq — faqat koʻrish.",
   "err.auth.accountantDenied": "Bu boʻlim buxgalter uchun yopiq.",
   "err.auth.moduleOff": "«{module}» moduli tarifingizga ulanmagan.",

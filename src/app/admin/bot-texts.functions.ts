@@ -8,7 +8,7 @@ import { BOT_TEXT_CHANNELS, BOT_TEXT_KEYS, BOT_TEXT_MAX } from "@/core/bot-texts
  * только владельцу. В Telegram ничего не отправляется.
  */
 const admin = async () => (await import("@/app/auth/guards.server")).requireAdmin();
-const owner = async () => (await import("@/app/auth/guards.server")).requireAdminRole("owner");
+const adminLevel = async () => (await import("@/app/auth/guards.server")).requireAdminRole("admin");
 
 export const botTextsFn = createServerFn({ method: "GET" }).handler(async () => {
   const ctx = await admin();
@@ -37,7 +37,7 @@ export const saveBotTextFn = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data }) => {
-    const ctx = await owner();
+    const ctx = await adminLevel();
     const { saveBotText } = await import("./bot-texts.server");
     await saveBotText(ctx, data);
     return { ok: true };
@@ -54,7 +54,7 @@ export const saveWorkHoursFn = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data }) => {
-    const ctx = await owner();
+    const ctx = await adminLevel();
     const { saveWorkHours } = await import("./bot-texts.server");
     return { ok: true, hours: await saveWorkHours(ctx, data.hours) };
   });

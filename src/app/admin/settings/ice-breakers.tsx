@@ -4,6 +4,7 @@ import { iceBreakersFn, saveIceBreakersFn } from "@/app/admin/channels.functions
 import { ICE_BREAKER_QUESTION_MAX, type IceBreakersConfig } from "@/core/instagram/ice-breakers";
 import { adminT } from "@/app/i18n/admin";
 import { settingsRoute } from "./route";
+import { roleAllows } from "@/core/auth/roles";
 
 /**
  * Быстрые вопросы Instagram (core/instagram/ice-breakers): тумблер, по
@@ -22,7 +23,7 @@ export function IceBreakersCard() {
     const r = await saveIceBreakersFn({ data: s });
     setSaved(r.applied ? "ok" : "pending");
   });
-  const owner = shop.role === "owner";
+  const owner = roleAllows(shop.role, "admin");
   const setItem = (i: number, patch: Partial<IceBreakersConfig["items"][number]>) =>
     s && setS({ ...s, items: s.items.map((x, j) => (j === i ? { ...x, ...patch } : x)) });
   return (

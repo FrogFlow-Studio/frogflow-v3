@@ -4,7 +4,7 @@
  * те, кто может править (`canEdit`); бухгалтеру и «только просмотр» — ничего.
  */
 import type { AdminKey } from "@/app/i18n/admin";
-import { canEdit, type AdminRole } from "@/core/auth/roles";
+import { canEdit, roleAllows, type AdminRole } from "@/core/auth/roles";
 import type { AdminNav } from "./nav-model";
 
 export type CreateKey = "order" | "product" | "broadcast" | "promo" | "reply";
@@ -37,8 +37,8 @@ export function createActions(
     });
   if (inMenu("/admin/broadcasts"))
     out.push({ key: "broadcast", label: "create.broadcast", to: "/admin/broadcasts" });
-  // Акции создаёт владелец: менеджеру в меню «Скидки» есть, но «Создать» её не предлагает.
-  if (role === "owner" && inMenu("/admin/discounts"))
+  // Акции создаёт владелец или администратор: менеджеру в меню «Скидки» есть, но «Создать» её не предлагает.
+  if (roleAllows(role, "admin") && inMenu("/admin/discounts"))
     out.push({ key: "promo", label: "create.promo", to: "/admin/discounts" });
   if (inMenu("/admin/chat")) out.push({ key: "reply", label: "create.reply", to: "/admin/chat" });
   return out;

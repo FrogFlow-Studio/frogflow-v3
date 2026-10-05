@@ -1,3 +1,4 @@
+import { roleAllows } from "@/core/auth/roles";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import {
@@ -32,7 +33,7 @@ function HomeworkPage() {
   const t = adminT(shop.locale);
   const router = useRouter();
   const [tab, setTab] = useState<"waiting" | "all">("waiting");
-  const canEdit = shop.role === "owner" || shop.role === "manager";
+  const canEdit = roleAllows(shop.role, "manager");
   const [mine, setMine] = useState(false);
   // «Мои» — работы, закреплённые за куратором с логином текущего пользователя.
   const items = mine ? all.filter((h) => h.curator?.username === shop.username) : all;

@@ -3,6 +3,7 @@ import { Card, ErrorBox, Field, useAction } from "@/app/ui";
 import { giftWrapFn, saveGiftWrapFn } from "@/app/admin/gift-wrap.functions";
 import { adminT } from "@/app/i18n/admin";
 import { settingsRoute } from "./route";
+import { roleAllows } from "@/core/auth/roles";
 
 /**
  * Подарочная упаковка: включить и поставить цену в валюте магазина. Покупатель,
@@ -25,7 +26,7 @@ export function GiftWrapCard() {
       setAsk(r.ask);
     });
   }, []);
-  const owner = shop.role === "owner";
+  const owner = roleAllows(shop.role, "admin");
   const save = useAction(async () => {
     const r = await saveGiftWrapFn({
       data: { on, price: Number((price ?? "").replace(",", ".")) || 0, ask },

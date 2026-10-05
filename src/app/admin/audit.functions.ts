@@ -5,7 +5,7 @@ import { z } from "zod";
 export const shopAuditFn = createServerFn({ method: "GET" })
   .validator((d: unknown) => z.object({ who: z.string().max(40).optional() }).parse(d ?? {}))
   .handler(async ({ data }) => {
-    const ctx = await (await import("@/app/auth/guards.server")).requireAdminRole("owner");
+    const ctx = await (await import("@/app/auth/guards.server")).requireAdminRole("admin");
     const { listShopActions } = await import("./audit.server");
     const { normalizeLogin } = await import("@/core/auth/roles");
     const rows = await listShopActions(

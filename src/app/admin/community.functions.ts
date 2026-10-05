@@ -22,7 +22,7 @@ export const saveCommunityProfileFn = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data }) => {
-    const ctx = await (await import("@/app/auth/guards.server")).requireAdminRole("owner");
+    const ctx = await (await import("@/app/auth/guards.server")).requireAdminRole("admin");
     return (await import("@/core/community/settings.server")).saveCommunityProfile(ctx, data);
   });
 
@@ -151,6 +151,6 @@ export const recommendViewFn = createServerFn({ method: "GET" }).handler(async (
 export const saveRecommendFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ ids: z.array(z.string().uuid()).max(20) }).parse(d))
   .handler(async ({ data }) => {
-    const ctx = await (await import("@/app/auth/guards.server")).requireAdminRole("owner");
+    const ctx = await (await import("@/app/auth/guards.server")).requireAdminRole("admin");
     return (await import("@/core/community/recommend.server")).saveRecommend(ctx, data.ids);
   });

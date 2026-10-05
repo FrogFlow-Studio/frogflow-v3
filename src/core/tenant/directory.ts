@@ -138,8 +138,8 @@ export function settingsFromJson(json: unknown): TenantSettings {
               password_hash: String(u.password_hash ?? ""),
               // Неизвестная роль — самая узкая (просмотр), а не менеджер.
               role:
-                u.role === "manager" || u.role === "accountant"
-                  ? (u.role as "manager" | "accountant")
+                u.role === "admin" || u.role === "manager" || u.role === "accountant"
+                  ? (u.role as "admin" | "manager" | "accountant")
                   : ("viewer" as const),
               name: str(u.name),
               created_at: str(u.created_at),
@@ -617,7 +617,8 @@ function parseInvites(v: unknown): AdminInvite[] | undefined {
     out.push({
       id,
       hash,
-      role: i.role === "manager" || i.role === "accountant" ? i.role : "viewer",
+      role:
+        i.role === "admin" || i.role === "manager" || i.role === "accountant" ? i.role : "viewer",
       name: str(i.name),
       created_at: created,
       expires_at: expires,

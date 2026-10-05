@@ -28,6 +28,7 @@ import {
   type ThemeChoice,
 } from "@/app/admin/settings/nav";
 import { lazyCard } from "@/app/admin/settings/lazy-card";
+import { roleAllows } from "@/core/auth/roles";
 import type { Locale } from "@/core/i18n/locale";
 import { DELIVERY_NOTE_MAX } from "@/core/delivery/note";
 import { adminT, type AdminKey } from "@/app/i18n/admin";
@@ -587,7 +588,7 @@ function SettingsPage() {
                   <ApiKeyCard />
                 </SettingsSection>
               )}
-              {shop.modules.admin_roles && (
+              {shop.modules.admin_roles && shop.role === "owner" && (
                 <SettingsSection id="team">
                   <TeamCard />
                 </SettingsSection>
@@ -597,7 +598,7 @@ function SettingsPage() {
                   <TakeoutCard />
                 </SettingsSection>
               )}
-              {shop.role === "owner" && (
+              {roleAllows(shop.role, "admin") && (
                 <SettingsSection id="invite">
                   <InviteCard />
                 </SettingsSection>

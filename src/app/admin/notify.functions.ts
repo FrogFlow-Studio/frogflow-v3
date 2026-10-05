@@ -28,7 +28,7 @@ export const saveNotifyPrefsFn = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const ctx = await (
       await import("@/app/auth/guards.server")
-    ).requireAdminModule("notify_in_bot", "owner");
+    ).requireAdminModule("notify_in_bot", "admin");
     const { NOTIFY_KINDS, defaultNotifyPrefs, saveNotifyPrefs, urgentWithoutTelegram } =
       await import("@/core/notify/prefs");
     // Срочное (заказ, сбой выдачи, жалоба) всегда идёт в Telegram: «только почта» его теряла бы.
@@ -65,7 +65,7 @@ export const saveLowStockFn = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const ctx = await (
       await import("@/app/auth/guards.server")
-    ).requireAdminModule("stock", "owner");
+    ).requireAdminModule("stock", "admin");
     const { saveShopThreshold, saveShowToBuyer } = await import("@/core/catalog/low-stock");
     await saveShopThreshold(ctx, data.threshold);
     await saveShowToBuyer(ctx, data.showToBuyer);
@@ -76,7 +76,7 @@ export const saveLowStockFn = createServerFn({ method: "POST" })
 export const checkNotifyFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ locale: z.enum(["ru", "kk", "en", "uz"]) }).parse(d))
   .handler(async ({ data }) => {
-    const ctx = await (await import("@/app/auth/guards.server")).requireAdminRole("owner");
+    const ctx = await (await import("@/app/auth/guards.server")).requireAdminRole("admin");
     // Не чаще раза в 20 с на магазин (общая запись в базе): проверка шлёт настоящие сообщения.
     if (!(await (await import("@/core/notify/check")).claimNotifyCheck(ctx)))
       throw new UserError(

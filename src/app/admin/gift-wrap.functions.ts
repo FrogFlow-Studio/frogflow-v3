@@ -27,7 +27,7 @@ export const saveGiftWrapFn = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const ctx = await (
       await import("@/app/auth/guards.server")
-    ).requireAdminModule("bundles", "owner");
+    ).requireAdminModule("bundles", "admin");
     const { saveGiftWrap, loadGiftWrap } = await import("@/core/orders/gift-wrap");
     // Включить упаковку без цены нельзя: покупателю предложили бы её за 0.
     if (data.on && !(data.price > 0)) {

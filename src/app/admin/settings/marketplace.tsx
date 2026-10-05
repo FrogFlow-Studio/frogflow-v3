@@ -8,6 +8,7 @@ import {
 import { adminT } from "@/app/i18n/admin";
 import { AsBuyerButton } from "./as-buyer";
 import { settingsRoute } from "./route";
+import { roleAllows } from "@/core/auth/roles";
 
 type View = Awaited<ReturnType<typeof marketplaceFn>>;
 
@@ -21,7 +22,7 @@ export function MarketplaceCard() {
   const [view, setView] = useState<View | null>(null);
   const [clicks, setClicks] = useState<{ days: number; clicks: number } | null | undefined>();
   const [saved, setSaved] = useState(false);
-  const owner = shop.role === "owner";
+  const owner = roleAllows(shop.role, "admin");
   const [listed, setListed] = useState(false);
   const [category, setCategory] = useState("");
   const [city, setCity] = useState("");

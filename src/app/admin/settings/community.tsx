@@ -5,6 +5,7 @@ import { communityProfileFn, saveCommunityProfileFn } from "@/app/admin/communit
 import { adminT } from "@/app/i18n/admin";
 import { CommunityRecommend } from "./community-recommend";
 import { settingsRoute } from "./route";
+import { roleAllows } from "@/core/auth/roles";
 
 type View = Awaited<ReturnType<typeof communityProfileFn>>;
 
@@ -35,7 +36,7 @@ export function CommunityCard() {
   useEffect(() => {
     void communityProfileFn().then(fill);
   }, []);
-  const owner = shop.role === "owner";
+  const owner = roleAllows(shop.role, "admin");
   const save = useAction(async () => {
     fill(
       await saveCommunityProfileFn({

@@ -110,6 +110,31 @@ const OWNER_ONLY_READ = [
   "stripe_webhook_secret",
 ] as const;
 
+/**
+ * Платежи магазина: ключи и режимы платёжных систем. Пишет только владелец; администратор
+ * получает отказ на сервере (admin.functions saveSettingsFn), раздел ему не показывается.
+ */
+export const PAYMENT_SETTING_KEYS: ReadonlySet<string> = new Set([
+  "robokassa_enabled",
+  "robokassa_test_mode",
+  "robokassa_login",
+  "robokassa_pass1",
+  "robokassa_pass2",
+  "robokassa_pass1_test",
+  "robokassa_pass2_test",
+  "robokassa_region",
+  "robokassa_receipt",
+  "robokassa_sno",
+  "robokassa_tax",
+  "crypto_enabled",
+  "nowpayments_api_key",
+  "nowpayments_ipn_secret",
+  "stripe_enabled",
+  "stripe_secret_key",
+  "stripe_webhook_secret",
+  "stars_rate",
+]);
+
 export function settingsForRole<T extends Partial<Record<string, string>>>(
   settings: T,
   role: AdminRole,

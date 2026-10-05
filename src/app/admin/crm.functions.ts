@@ -3,7 +3,7 @@ import { z } from "zod";
 import { UserError } from "@/core/i18n/user-error";
 
 /** Интеграция с CRM и Таблицами (модуль crm_integration): адрес, секрет, события, проверка. */
-const moduleAdmin = async (min?: "owner") =>
+const moduleAdmin = async (min?: "admin") =>
   (await import("@/app/auth/guards.server")).requireAdminModule("crm_integration", min);
 
 export const crmFn = createServerFn({ method: "GET" }).handler(async () => {
@@ -30,7 +30,7 @@ export const saveCrmFn = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data }) => {
-    const ctx = await moduleAdmin("owner");
+    const ctx = await moduleAdmin("admin");
     const { loadCrm, parseCrm, saveCrm, safeWebhookUrl } = await import("@/core/crm/webhook");
     if (!data.url.trim()) {
       await saveCrm(ctx, null);
@@ -54,7 +54,7 @@ export const saveCrmFn = createServerFn({ method: "POST" })
   });
 
 export const testCrmFn = createServerFn({ method: "POST" }).handler(async () => {
-  const ctx = await moduleAdmin("owner");
+  const ctx = await moduleAdmin("admin");
   const { sendCrmPing } = await import("./crm.server");
   const r = await sendCrmPing(ctx);
   return r.ok
@@ -66,7 +66,7 @@ export const testCrmFn = createServerFn({ method: "POST" }).handler(async () => 
 export const retryCrmDeliveryFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ outboxId: z.string().uuid() }).parse(d))
   .handler(async ({ data }) => {
-    const ctx = await moduleAdmin("owner");
+    const ctx = await moduleAdmin("admin");
     const { retryCrmEvent } = await import("@/core/crm/retry");
     const r = await retryCrmEvent(ctx, data.outboxId);
     if (r === "not_found")

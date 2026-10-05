@@ -19,6 +19,7 @@ import { type DirectBotSettings } from "@/core/instagram/direct-bot-settings";
 import type { InstallError } from "@/channels/telegram/bot-check";
 import { adminT, intlLocale, type AdminKey } from "@/app/i18n/admin";
 import { settingsRoute } from "./route";
+import { roleAllows } from "@/core/auth/roles";
 
 type TelegramState = Awaited<ReturnType<typeof telegramStateFn>>;
 type BotCheckState = Awaited<ReturnType<typeof checkBotFn>>;
@@ -216,7 +217,7 @@ export function ChannelsCard({
     );
     await router.invalidate();
   });
-  const owner = shop.role === "owner";
+  const owner = roleAllows(shop.role, "admin");
   const disconnect = useAction(async (id: string, name: string) => {
     if (!window.confirm(t("settings.ch.disconnectConfirm", { name }))) return;
     await disconnectZernioAccountFn({ data: { accountId: id } });
@@ -378,7 +379,7 @@ export function DirectBotCard({ platform }: { platform: "instagram" | "whatsapp"
     });
     setSaved(true);
   });
-  const owner = shop.role === "owner";
+  const owner = roleAllows(shop.role, "admin");
   const feature = (k: keyof DirectBotSettings["features"], label: string) => (
     <label className="flex items-center gap-2 text-sm">
       <input

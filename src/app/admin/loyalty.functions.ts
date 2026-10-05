@@ -79,7 +79,7 @@ export const saveLoyaltyTiersFn = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const ctx = await (
       await import("@/app/auth/guards.server")
-    ).requireAdminModule("loyalty", "owner");
+    ).requireAdminModule("loyalty", "admin");
     const tiers = validateTiers(data.tiers);
     const { setSetting } = await import("@/core/settings/settings");
     await setSetting(ctx, LOYALTY_TIERS_KEY, tiers.length ? JSON.stringify(tiers) : "");

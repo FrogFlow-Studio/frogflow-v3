@@ -172,6 +172,7 @@ export function TeamCard() {
           </Field>
           <Field label={t("settings.team.role")}>
             <select className="input" name="role" defaultValue="manager">
+              <option value="admin">{t("settings.team.roleAdmin")}</option>
               <option value="manager">{t("settings.team.roleManager")}</option>
               <option value="viewer">{t("settings.team.roleViewer")}</option>
               <option value="accountant">{t("settings.team.roleAccountant")}</option>
@@ -244,6 +245,7 @@ export function TeamCard() {
           </Field>
           <Field label={t("settings.team.role")}>
             <select className="input" name="role" defaultValue={current?.role ?? "manager"}>
+              <option value="admin">{t("settings.team.roleAdmin")}</option>
               <option value="manager">{t("settings.team.roleManager")}</option>
               <option value="viewer">{t("settings.team.roleViewer")}</option>
               <option value="accountant">{t("settings.team.roleAccountant")}</option>

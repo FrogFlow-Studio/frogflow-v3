@@ -3,6 +3,7 @@ import { ErrorBox, useAction } from "@/app/ui";
 import { recommendViewFn, saveRecommendFn } from "@/app/admin/community.functions";
 import { adminT } from "@/app/i18n/admin";
 import { settingsRoute } from "./route";
+import { roleAllows } from "@/core/auth/roles";
 
 type View = Awaited<ReturnType<typeof recommendViewFn>>;
 
@@ -23,7 +24,7 @@ export function CommunityRecommend({ slug }: { slug: string | null }) {
   useEffect(() => {
     void recommendViewFn().then(fill);
   }, []);
-  const owner = shop.role === "owner";
+  const owner = roleAllows(shop.role, "admin");
   const save = useAction(async () => {
     fill(await saveRecommendFn({ data: { ids: chosen } }));
     setSaved(true);

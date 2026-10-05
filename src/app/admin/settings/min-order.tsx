@@ -3,6 +3,7 @@ import { Card, ErrorBox, Field, useAction } from "@/app/ui";
 import { minOrderFn, saveMinOrderFn } from "@/app/admin/min-order.functions";
 import { adminT } from "@/app/i18n/admin";
 import { settingsRoute } from "./route";
+import { roleAllows } from "@/core/auth/roles";
 
 /**
  * Минимальная сумма заказа в валюте магазина: бот, сайт и Instagram/WhatsApp не
@@ -21,7 +22,7 @@ export function MinOrderCard() {
       setCurrency(r.currency);
     });
   }, []);
-  const owner = shop.role === "owner";
+  const owner = roleAllows(shop.role, "admin");
   const save = useAction(async () => {
     await saveMinOrderFn({ data: { amount: Number((value ?? "").replace(",", ".")) || 0 } });
     setSaved(true);

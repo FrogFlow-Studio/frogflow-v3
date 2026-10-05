@@ -5,6 +5,7 @@ import { adminT } from "@/app/i18n/admin";
 import { ABOUT_LIMITS, EMPTY_ABOUT, type StoreAbout } from "@/core/storefront/about";
 import { AsBuyerButton } from "./as-buyer";
 import { settingsRoute } from "./route";
+import { roleAllows } from "@/core/auth/roles";
 
 const FIELDS = ["description", "delivery", "payment"] as const;
 const LINES = ["phone", "address", "hours"] as const;
@@ -22,7 +23,7 @@ export function AboutCard() {
       setReady(true);
     });
   }, []);
-  const owner = shop.role === "owner";
+  const owner = roleAllows(shop.role, "admin");
   const locked = !owner || !ready;
   const save = useAction(async () => {
     setV(await saveStoreAboutFn({ data: v }));
