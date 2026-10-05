@@ -164,6 +164,67 @@ export async function notifyCustomer(
   return ok;
 }
 
+/**
+ * Трек-номер из админки (Х5): заказ с доставкой отмечается отправленным (из
+ * «собран»), покупателю уходит номер и ссылка — один раз на номер. «Один раз»:
+ * событие `tracking` пишется до отправки, шлёт только выигравшая запись; сбой
+ * отправки не повторяем (сообщение могло дойти). Исправленный номер — новое
+ * сообщение. Заказ другого магазина читается как «не найден».
+ */
+export async function runOrderTracking(
+  ctx: TenantContext,
+  id: number,
+  text: string,
+  actor = "admin",
+): Promise<{ ok: boolean; message: string }> {
+  const t = await adminTFor(ctx);
+  const order = await getOrder(ctx, id);
+  if (!order) return { ok: false, message: t("err.admin.orderNotFound") };
+  const { trackingFromText, trackingKey, trackingMessage, trackingPayload } =
+    await import("@/core/orders/tracking");
+  const track = trackingFromText(text);
+  if (!track) return { ok: false, message: t("msg.orders.trackBad") };
+  if (
+    order.fulfillment_kind !== "physical" ||
+    order.fulfillment_type === "pickup" ||
+    (order.status !== "ready" && order.status !== "delivered")
+  )
+    return { ok: false, message: t("msg.orders.trackNeedReady") };
+  const no = displayNo(order);
+  const { recordOrderEvent, claimOrderEvent } = await import("@/core/orders/events");
+  if (order.status === "ready") {
+    const { setPhysicalStatus } = await import("@/core/orders/admin");
+    if (await setPhysicalStatus(ctx, id, "ready", "delivered")) {
+      await recordOrderEvent(ctx, id, "status", { to: "delivered", step: "shipped" }, actor);
+      const { rewardReferrerIfFirstDelivery } = await import("@/core/referrals/referrals");
+      // Статус уже сменён: сбой награды не должен выглядеть как сбой отправки.
+      const grant = await rewardReferrerIfFirstDelivery(ctx, order.telegram_id).catch((e) => {
+        console.error(`[admin] награда пригласившему, заказ #${no}: ${String(e)}`);
+        return null;
+      });
+      await notifyReferralGrant(ctx, grant);
+    }
+  }
+  const label = track.number ?? track.url ?? "";
+  const claimed = await claimOrderEvent(
+    ctx,
+    id,
+    "tracking",
+    trackingKey(track),
+    trackingPayload(track),
+    actor,
+  );
+  if (!claimed) return { ok: false, message: t("msg.orders.trackAlready") };
+  const sent = await notifyCustomer(
+    ctx,
+    order,
+    trackingMessage(await orderBuyerLocale(ctx, order), no, track),
+  );
+  return sent
+    ? { ok: true, message: t("msg.orders.trackSent", { label }) }
+    : { ok: false, message: t("msg.orders.trackNotSent") };
+}
+
 export type OrderAction = "confirm" | "reject" | "next" | "prev" | "remind";
 
 /** Название статуса заказа на языке админки; неизвестный статус — как есть. */

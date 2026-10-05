@@ -37,6 +37,7 @@ const NOT_AUDITED = new Set([
   // заказы
   "orderActionFn",
   "orderNoteFn",
+  "orderTrackingFn",
   "createManualOrderFn",
   "recordPaymentFn",
   "refundOrderFn",

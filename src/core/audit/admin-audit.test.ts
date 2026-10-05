@@ -19,6 +19,7 @@ describe("журнал действий админки: что пишем", () =
     for (const name of [
       "orderActionFn",
       "orderNoteFn",
+      "orderTrackingFn",
       "createManualOrderFn",
       "recordPaymentFn",
       "refundOrderFn",

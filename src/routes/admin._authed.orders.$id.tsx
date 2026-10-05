@@ -1,7 +1,7 @@
 import { canEdit } from "@/core/auth/roles";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
-import { orderActionFn, orderFn, orderNoteFn } from "@/app/admin/admin.functions";
+import { orderActionFn, orderFn, orderNoteFn, orderTrackingFn } from "@/app/admin/admin.functions";
 import { adminT, intlLocale, type AdminKey } from "@/app/i18n/admin";
 import { Badge, Card, ErrorBox, Field, useAction } from "@/app/ui";
 import { describeOrderEvent } from "@/core/orders/events";
@@ -57,6 +57,11 @@ function OrderPage() {
   });
   const note = useAction(async (text: string) => {
     await orderNoteFn({ data: { id: o.id, note: text || null } });
+    await router.invalidate();
+  });
+  const track = useAction(async (text: string) => {
+    const r = await orderTrackingFn({ data: { id: o.id, text } });
+    setMsg(r.message);
     await router.invalidate();
   });
   const no = displayNo(o);
@@ -408,6 +413,35 @@ function OrderPage() {
               />
             )}
           </Card>
+          {editable &&
+            physical &&
+            o.fulfillment_type !== "pickup" &&
+            (o.status === "ready" || o.status === "delivered") && (
+              <Card title={t("order.track.title")}>
+                <form
+                  className="space-y-2"
+                  data-testid="order-track-form"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const text = String(new FormData(e.currentTarget).get("track") ?? "");
+                    void track.run(text).catch(() => {});
+                  }}
+                >
+                  <Field label={t("order.track.hint")}>
+                    <input
+                      className="input"
+                      name="track"
+                      maxLength={300}
+                      required
+                      placeholder={t("order.track.placeholder")}
+                    />
+                  </Field>
+                  <button className="btn-secondary" disabled={track.busy}>
+                    {t("order.track.send")}
+                  </button>
+                </form>
+              </Card>
+            )}
           {blocks.note && (
             <Card title={t("order.note")}>
               <form

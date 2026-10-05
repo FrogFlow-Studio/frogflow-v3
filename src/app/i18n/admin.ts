@@ -84,6 +84,7 @@ import * as shop19Segments from "./admin/shop19-segments";
 import * as shop19Orders from "./admin/shop19-orders";
 import * as shop19Order from "./admin/shop19-order";
 import * as shop21ZOrders from "./admin/shop21-z-orders";
+import * as shop22XTracking from "./admin/shop22-x-tracking";
 import * as shop19States from "./admin/shop19-states";
 import * as shop19Search from "./admin/shop19-search";
 import * as shop18Forecast from "./admin/shop18-forecast";
@@ -511,6 +512,7 @@ const ru = {
   ...shop19Orders.ru,
   ...shop19Order.ru,
   ...shop21ZOrders.ru,
+  ...shop22XTracking.ru,
   ...shop19States.ru,
   ...shop19Search.ru,
   ...shop18Forecast.ru,
@@ -1677,6 +1679,7 @@ const kk: Dict = {
   ...shop19Orders.kk,
   ...shop19Order.kk,
   ...shop21ZOrders.kk,
+  ...shop22XTracking.kk,
   ...shop19States.kk,
   ...shop19Search.kk,
   ...shop18Forecast.kk,
@@ -1768,6 +1771,7 @@ const en: Dict = {
   ...shop19Orders.en,
   ...shop19Order.en,
   ...shop21ZOrders.en,
+  ...shop22XTracking.en,
   ...shop19States.en,
   ...shop19Search.en,
   ...shop18Forecast.en,
@@ -1859,6 +1863,7 @@ const uz: Dict = {
   ...shop19Orders.uz,
   ...shop19Order.uz,
   ...shop21ZOrders.uz,
+  ...shop22XTracking.uz,
   ...shop19States.uz,
   ...shop19Search.uz,
   ...shop18Forecast.uz,

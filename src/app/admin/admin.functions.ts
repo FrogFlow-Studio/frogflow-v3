@@ -1463,6 +1463,20 @@ export const orderActionFn = createServerFn({ method: "POST" })
     );
   });
 
+export const orderTrackingFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z.object({ id: z.number().int(), text: z.string().trim().min(1).max(300) }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await adminWrite();
+    return (await import("./admin.server")).runOrderTracking(
+      ctx,
+      data.id,
+      data.text,
+      await actor(),
+    );
+  });
+
 export const orderNoteFn = createServerFn({ method: "POST" })
   .validator((d: unknown) =>
     z.object({ id: z.number().int(), note: z.string().max(2000).nullable() }).parse(d),
