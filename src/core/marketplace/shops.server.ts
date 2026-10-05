@@ -35,6 +35,8 @@ export type RefreshResult = {
   items?: ItemsResult;
   /** Цифры доверия автора (П3): «updated» — записаны, «failed» — прежние остались. */
   trust?: "updated" | "failed";
+  /** «Часто покупают» (Л5): «skipped» — этот автор уже посчитан в последние полчаса. */
+  popular?: "updated" | "skipped" | "failed";
 };
 
 /**
@@ -115,10 +117,19 @@ export async function refreshMarketplaceShop(
           return "failed" as const;
         },
       );
+    // «Часто покупают» (Л5): один проход на автора за окно, сбой не мешает каталогу.
+    const popular = await import("./popular.server")
+      .then((m) => m.refreshPopularOnce(ctx))
+      .catch(async (e) => {
+        const { logFailure } = await import("@/lib/log-failure");
+        logFailure("marketplace.popular", e, { botId: t.id });
+        return "failed" as const;
+      });
     return {
       action: "listed",
       items: await syncMarketplaceItems(ctx, svc, new Date(), opts),
       trust,
+      popular,
     };
   } catch (e) {
     if (e instanceof MarketplaceNotReady) return { action: "not-ready" };

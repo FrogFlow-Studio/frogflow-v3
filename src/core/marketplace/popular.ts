@@ -7,6 +7,9 @@
  */
 export const POPULAR_KEY = "marketplace_popular";
 export const POPULAR_WINDOW_DAYS = 90;
+/** Метка последнего прохода крона по автору и окно, в котором повторный проход не нужен. */
+export const POPULAR_RUN_KEY = "marketplace_popular_run";
+export const POPULAR_RUN_MIN_GAP_MS = 30 * 60_000;
 /** Меньше стольких разных покупателей — это не «часто покупают». */
 export const POPULAR_MIN_BUYERS = 2;
 /** Сколько товаров магазина храним. */
