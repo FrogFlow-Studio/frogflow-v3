@@ -32,6 +32,15 @@ export const aiBalanceFn = createServerFn({ method: "GET" }).handler(async () =>
   };
 });
 
+/** Карточка баланса на главной: только владельцу, без журнала и курса. */
+export const aiBalanceCardFn = createServerFn({ method: "GET" }).handler(async () => {
+  const ctx = await adminOwner();
+  const { aiBalancePeek } = await import("@/core/ai/balance");
+  const { AI_START_USD } = await import("@/core/ai/pure");
+  const balance = await aiBalancePeek(ctx);
+  return { usd: balance?.usd ?? AI_START_USD, started: Boolean(balance) };
+});
+
 export const aiTopupFn = createServerFn({ method: "POST" })
   .validator((d: unknown) =>
     z.object({ usd: z.number().min(AI_TOPUP_MIN_USD).max(AI_TOPUP_MAX_USD) }).parse(d),

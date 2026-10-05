@@ -23,6 +23,7 @@ import { useLiveOrders } from "@/app/admin/live-orders";
 import { waitingTiles } from "@/app/admin/waiting";
 import { WaitingCard } from "@/app/admin/waiting-card";
 import { PaceCard } from "@/app/admin/pace-card";
+import { AiBalanceCard } from "@/app/admin/ai-balance-card";
 import { buildAdminNav } from "@/app/admin/nav-model";
 
 export const Route = createFileRoute("/admin/_authed/")({
@@ -61,253 +62,263 @@ function Dashboard() {
         title={t("overview.title")}
         subtitle={`${t(verticalTitleKey(shop.vertical))}${shop.telegram ? ` · @${shop.telegram}` : ""}`}
       />
-      <WaitingCard
-        tiles={waitingTiles(buildAdminNav(shop), shop, d.counts.awaiting_confirmation ?? 0)}
-        t={t}
-      />
-      {d.pace && <PaceCard pace={d.pace} t={t} />}
-      {shop.role !== "accountant" && (
-        <TodayCard
-          // «Ждёт вас» уже показывает чеки, диалоги и обращения: здесь их нет.
-          tasks={d.today.filter((x) => !["receipts", "dialogs", "tickets"].includes(x.key))}
-          t={t}
-          modules={shop.modules}
-        />
-      )}
-      {shop.role !== "accountant" && d.setup.starter > 0 && (
-        <div className="mb-6 flex flex-wrap items-center gap-3 rounded-md border border-line p-3 text-sm">
-          <span className="min-w-0 flex-1">{t("overview.starter.banner")}</span>
-          <Link to="/admin/products" className="btn-secondary text-sm">
-            {t("overview.starter.open")}
-          </Link>
-          <button
-            className="btn-ghost text-sm"
-            disabled={removeStarter.busy}
-            onClick={() => void removeStarter.run().catch(() => {})}
-          >
-            {t("overview.starter.remove")}
-          </button>
-          <ErrorBox error={removeStarter.error} />
+      <div className="grid lg:grid-cols-[2fr_1fr] lg:gap-x-4 lg:[&:has(>aside:empty)]:grid-cols-1 [&>*]:min-w-0">
+        <div className="lg:col-start-1">
+          <WaitingCard
+            tiles={waitingTiles(buildAdminNav(shop), shop, d.counts.awaiting_confirmation ?? 0)}
+            t={t}
+          />
+          {d.pace && <PaceCard pace={d.pace} t={t} />}
+          {shop.role !== "accountant" && (
+            <TodayCard
+              // «Ждёт вас» уже показывает чеки, диалоги и обращения: здесь их нет.
+              tasks={d.today.filter((x) => !["receipts", "dialogs", "tickets"].includes(x.key))}
+              t={t}
+              modules={shop.modules}
+            />
+          )}
         </div>
-      )}
-      {d.limits.length > 0 && <LimitsCard limits={d.limits} t={t} loc={loc} />}
-      {shop.role !== "accountant" && d.setup.moved && (
-        <MovedWelcome
-          t={t}
-          modules={shop.modules}
-          payment={d.setup.payment}
-          notifications={d.setup.notifications}
-          testOrder={d.setup.testOrder}
-        />
-      )}
-      {shop.vertical === "courses" && shop.modules.courses && <LaunchCard t={t} />}
-      {shop.vertical === "courses" && shop.modules.courses && <SchoolCard t={t} loc={loc} />}
-      {shop.role !== "accountant" && !d.setup.hidden && progress.percent < 100 && (
-        <Card
-          title={`${t("launch.title")} · ${t("launch.percent", { n: progress.percent })}`}
-          className="mb-6"
-          actions={
-            <button
-              className="btn-ghost text-xs"
-              disabled={hide.busy}
-              onClick={() => void hide.run().catch(() => {})}
-            >
-              {t("common.hide")}
-            </button>
-          }
-        >
-          <div className="mb-3 h-1.5 overflow-hidden rounded-full bg-line">
-            <div
-              className="h-full bg-accent transition-all"
-              style={{ width: `${progress.percent}%` }}
-            />
-          </div>
-          <p className="mb-3 text-sm text-muted">{t("overview.stepsIntro")}</p>
-          <ol className="space-y-2 text-sm">
-            {progress.rows
-              .filter((r) => !r.skipped)
-              .map((r) => (
-                <Step
-                  key={r.step}
-                  current={next === r.step ? t("overview.next") : null}
-                  done={r.done}
-                  to={STEP_LINKS[r.step]}
-                  title={stepTitle(r.step, t)}
-                  onSkip={() => void skip.run(r.step, true).catch(() => {})}
-                  skipLabel={t("launch.skip")}
-                >
-                  {r.step === "firstOrder" ? (
-                    "url" in d.setup.testOrder ? (
-                      <>
-                        <a
-                          href={d.setup.testOrder.url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="btn-secondary my-1 inline-block text-sm"
-                        >
-                          {t("overview.testOrder.open")}
-                        </a>
-                        <span className="block">{t("overview.testOrder.how")}</span>
-                      </>
-                    ) : d.setup.testOrder.missing === "telegram" ? (
-                      t("overview.testOrder.needTelegram")
-                    ) : (
-                      t("overview.testOrder.needProducts")
-                    )
-                  ) : r.step === "products" ? (
-                    t("launch.productsHint", { n: d.setup.productsCount })
-                  ) : (
-                    t(STEP_HINTS[r.step])
-                  )}
-                </Step>
-              ))}
-          </ol>
-          {progress.rows.some((r) => r.skipped) && (
-            <div className="mt-3 text-xs text-muted">
-              {t("launch.skipped")}:{" "}
-              {progress.rows
-                .filter((r) => r.skipped)
-                .map((r) => (
-                  <button
-                    key={r.step}
-                    className="mr-2 underline"
-                    onClick={() => void skip.run(r.step, false).catch(() => {})}
-                  >
-                    {stepTitle(r.step, t)} · {t("launch.restore")}
-                  </button>
-                ))}
-            </div>
-          )}
-          <ErrorBox error={skip.error} />
-          {d.setup.template && (
-            <div className="mt-4 rounded-md border border-line p-3">
-              <p className="text-sm font-medium">{t("overview.template.title")}</p>
-              <p className="mb-2 text-xs text-muted">{t("overview.template.hint")}</p>
+        {/* Узкая колонка (Ж2): на телефоне идёт сразу после «Сегодня». */}
+        <aside className="lg:col-start-2 lg:row-span-2 lg:row-start-1">
+          {shop.role !== "accountant" && d.setup.starter > 0 && (
+            <div className="mb-6 flex flex-wrap items-center gap-3 rounded-md border border-line p-3 text-sm">
+              <span className="min-w-0 flex-1">{t("overview.starter.banner")}</span>
+              <Link to="/admin/products" className="btn-secondary text-sm">
+                {t("overview.starter.open")}
+              </Link>
               <button
-                className="btn-secondary text-sm"
-                disabled={template.busy}
-                onClick={() => void template.run().catch(() => {})}
+                className="btn-ghost text-sm"
+                disabled={removeStarter.busy}
+                onClick={() => void removeStarter.run().catch(() => {})}
               >
-                {t("overview.template.apply")}
+                {t("overview.starter.remove")}
               </button>
-              <ErrorBox error={template.error} />
+              <ErrorBox error={removeStarter.error} />
             </div>
           )}
-          {d.setup.slug && (
-            <p className="mt-3 text-xs text-muted">
-              {t("overview.storefront")} <span className="font-mono">/s/{d.setup.slug}</span>
-              {shop.telegram && (
-                <>
-                  {" "}
-                  · {t("overview.bot")} <span className="font-mono">t.me/{shop.telegram}</span>
-                </>
-              )}
-            </p>
-          )}
-        </Card>
-      )}
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        {shop.role !== "accountant" && (
-          <>
-            <Stat label={t("today.rev1")} value={formatMoney(d.rev1.total, d.rev1.currency)} />
-            <Stat
-              label={t("today.rev7")}
-              value={formatMoney(d.rev7.total, d.rev7.currency)}
-              hint={t("overview.paidOrders", { n: d.rev7.orders })}
+          {d.limits.length > 0 && <LimitsCard limits={d.limits} t={t} loc={loc} />}
+          {shop.role !== "accountant" && d.setup.moved && (
+            <MovedWelcome
+              t={t}
+              modules={shop.modules}
+              payment={d.setup.payment}
+              notifications={d.setup.notifications}
+              testOrder={d.setup.testOrder}
             />
-          </>
-        )}
-        <Stat
-          label={t("overview.revenue30")}
-          value={formatMoney(d.rev30.total, d.rev30.currency)}
-          hint={t("overview.paidOrders", { n: d.rev30.orders })}
-        />
-        <Stat label={t("overview.productsOnSale")} value={d.products} />
-        <Stat label={t("overview.customers")} value={d.customers.toLocaleString(loc)} />
-      </div>
-      <div className="mt-6 grid gap-4 lg:grid-cols-[2fr_1fr] [&>*]:min-w-0">
-        <Card
-          title={t("overview.recentOrders")}
-          actions={
-            <Link to="/admin/orders" className="text-xs text-accent hover:underline">
-              {t("overview.allOrders")}
-            </Link>
-          }
-        >
-          {d.recent.length === 0 ? (
-            <Empty>{t("overview.noOrders")}</Empty>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>{t("orders.col.no")}</th>
-                    <th>{t("orders.col.customer")}</th>
-                    <th>{t("orders.col.total")}</th>
-                    <th>{t("orders.col.status")}</th>
-                    <th>{t("orders.col.when")}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {d.recent.map((o) => (
-                    <tr key={o.id}>
-                      <td>
-                        <Link
-                          to="/admin/orders/$id"
-                          params={{ id: String(o.id) }}
-                          className="font-medium hover:underline"
-                        >
-                          #{displayNo(o)}
-                        </Link>
-                      </td>
-                      <td>{o.display_name}</td>
-                      <td className="tabular-nums">{formatMoney(o.total, o.currency)}</td>
-                      <td>
-                        <OrderStatus status={o.status} />
-                      </td>
-                      <td className="text-muted">
-                        {new Date(o.created_at).toLocaleDateString(loc)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
           )}
-        </Card>
-        <Card title={t("overview.byStatus")}>
-          <ul className="space-y-2 text-sm">
-            {(
-              [
-                "awaiting_payment",
-                "awaiting_confirmation",
-                "delivering",
-                "delivered",
-                "accepted",
-                "in_production",
-                "ready",
-                "rejected",
-              ] as const
-            )
-              .filter((s) => d.counts[s])
-              .map((s) => (
-                <li key={s} className="flex items-center justify-between">
-                  <Link to="/admin/orders" search={{ status: s }} className="hover:underline">
-                    <OrderStatus status={s} />
-                  </Link>
-                  <span className="tabular-nums">{d.counts[s]}</span>
-                </li>
-              ))}
-            {(d.counts.unpaid ?? 0) > 0 && (
-              <li className="flex items-center justify-between">
-                <Link to="/admin/orders" search={{ unpaid: true }} className="hover:underline">
-                  <Badge tone="warn">{t("physical.unpaid")}</Badge>
-                </Link>
-                <span className="tabular-nums">{d.counts.unpaid}</span>
-              </li>
+          {shop.vertical === "courses" && shop.modules.courses && <LaunchCard t={t} />}
+          {shop.vertical === "courses" && shop.modules.courses && <SchoolCard t={t} loc={loc} />}
+          {shop.role !== "accountant" && !d.setup.hidden && progress.percent < 100 && (
+            <Card
+              title={`${t("launch.title")} · ${t("launch.percent", { n: progress.percent })}`}
+              className="mb-6"
+              actions={
+                <button
+                  className="btn-ghost text-xs"
+                  disabled={hide.busy}
+                  onClick={() => void hide.run().catch(() => {})}
+                >
+                  {t("common.hide")}
+                </button>
+              }
+            >
+              <div className="mb-3 h-1.5 overflow-hidden rounded-full bg-line">
+                <div
+                  className="h-full bg-accent transition-all"
+                  style={{ width: `${progress.percent}%` }}
+                />
+              </div>
+              <p className="mb-3 text-sm text-muted">{t("overview.stepsIntro")}</p>
+              <ol className="space-y-2 text-sm">
+                {progress.rows
+                  .filter((r) => !r.skipped)
+                  .map((r) => (
+                    <Step
+                      key={r.step}
+                      current={next === r.step ? t("overview.next") : null}
+                      done={r.done}
+                      to={STEP_LINKS[r.step]}
+                      title={stepTitle(r.step, t)}
+                      onSkip={() => void skip.run(r.step, true).catch(() => {})}
+                      skipLabel={t("launch.skip")}
+                    >
+                      {r.step === "firstOrder" ? (
+                        "url" in d.setup.testOrder ? (
+                          <>
+                            <a
+                              href={d.setup.testOrder.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="btn-secondary my-1 inline-block text-sm"
+                            >
+                              {t("overview.testOrder.open")}
+                            </a>
+                            <span className="block">{t("overview.testOrder.how")}</span>
+                          </>
+                        ) : d.setup.testOrder.missing === "telegram" ? (
+                          t("overview.testOrder.needTelegram")
+                        ) : (
+                          t("overview.testOrder.needProducts")
+                        )
+                      ) : r.step === "products" ? (
+                        t("launch.productsHint", { n: d.setup.productsCount })
+                      ) : (
+                        t(STEP_HINTS[r.step])
+                      )}
+                    </Step>
+                  ))}
+              </ol>
+              {progress.rows.some((r) => r.skipped) && (
+                <div className="mt-3 text-xs text-muted">
+                  {t("launch.skipped")}:{" "}
+                  {progress.rows
+                    .filter((r) => r.skipped)
+                    .map((r) => (
+                      <button
+                        key={r.step}
+                        className="mr-2 underline"
+                        onClick={() => void skip.run(r.step, false).catch(() => {})}
+                      >
+                        {stepTitle(r.step, t)} · {t("launch.restore")}
+                      </button>
+                    ))}
+                </div>
+              )}
+              <ErrorBox error={skip.error} />
+              {d.setup.template && (
+                <div className="mt-4 rounded-md border border-line p-3">
+                  <p className="text-sm font-medium">{t("overview.template.title")}</p>
+                  <p className="mb-2 text-xs text-muted">{t("overview.template.hint")}</p>
+                  <button
+                    className="btn-secondary text-sm"
+                    disabled={template.busy}
+                    onClick={() => void template.run().catch(() => {})}
+                  >
+                    {t("overview.template.apply")}
+                  </button>
+                  <ErrorBox error={template.error} />
+                </div>
+              )}
+              {d.setup.slug && (
+                <p className="mt-3 text-xs text-muted">
+                  {t("overview.storefront")} <span className="font-mono">/s/{d.setup.slug}</span>
+                  {shop.telegram && (
+                    <>
+                      {" "}
+                      · {t("overview.bot")} <span className="font-mono">t.me/{shop.telegram}</span>
+                    </>
+                  )}
+                </p>
+              )}
+            </Card>
+          )}
+          {shop.role === "owner" && <AiBalanceCard t={t} />}
+        </aside>
+        <div className="lg:col-start-1">
+          <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+            {shop.role !== "accountant" && (
+              <>
+                <Stat label={t("today.rev1")} value={formatMoney(d.rev1.total, d.rev1.currency)} />
+                <Stat
+                  label={t("today.rev7")}
+                  value={formatMoney(d.rev7.total, d.rev7.currency)}
+                  hint={t("overview.paidOrders", { n: d.rev7.orders })}
+                />
+              </>
             )}
-          </ul>
-        </Card>
+            <Stat
+              label={t("overview.revenue30")}
+              value={formatMoney(d.rev30.total, d.rev30.currency)}
+              hint={t("overview.paidOrders", { n: d.rev30.orders })}
+            />
+            <Stat label={t("overview.productsOnSale")} value={d.products} />
+            <Stat label={t("overview.customers")} value={d.customers.toLocaleString(loc)} />
+          </div>
+          <div className="mt-6 grid gap-4 [&>*]:min-w-0">
+            <Card
+              title={t("overview.recentOrders")}
+              actions={
+                <Link to="/admin/orders" className="text-xs text-accent hover:underline">
+                  {t("overview.allOrders")}
+                </Link>
+              }
+            >
+              {d.recent.length === 0 ? (
+                <Empty>{t("overview.noOrders")}</Empty>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="table">
+                    <thead>
+                      <tr>
+                        <th>{t("orders.col.no")}</th>
+                        <th>{t("orders.col.customer")}</th>
+                        <th>{t("orders.col.total")}</th>
+                        <th>{t("orders.col.status")}</th>
+                        <th>{t("orders.col.when")}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {d.recent.map((o) => (
+                        <tr key={o.id}>
+                          <td>
+                            <Link
+                              to="/admin/orders/$id"
+                              params={{ id: String(o.id) }}
+                              className="font-medium hover:underline"
+                            >
+                              #{displayNo(o)}
+                            </Link>
+                          </td>
+                          <td>{o.display_name}</td>
+                          <td className="tabular-nums">{formatMoney(o.total, o.currency)}</td>
+                          <td>
+                            <OrderStatus status={o.status} />
+                          </td>
+                          <td className="text-muted">
+                            {new Date(o.created_at).toLocaleDateString(loc)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </Card>
+            <Card title={t("overview.byStatus")}>
+              <ul className="space-y-2 text-sm">
+                {(
+                  [
+                    "awaiting_payment",
+                    "awaiting_confirmation",
+                    "delivering",
+                    "delivered",
+                    "accepted",
+                    "in_production",
+                    "ready",
+                    "rejected",
+                  ] as const
+                )
+                  .filter((s) => d.counts[s])
+                  .map((s) => (
+                    <li key={s} className="flex items-center justify-between">
+                      <Link to="/admin/orders" search={{ status: s }} className="hover:underline">
+                        <OrderStatus status={s} />
+                      </Link>
+                      <span className="tabular-nums">{d.counts[s]}</span>
+                    </li>
+                  ))}
+                {(d.counts.unpaid ?? 0) > 0 && (
+                  <li className="flex items-center justify-between">
+                    <Link to="/admin/orders" search={{ unpaid: true }} className="hover:underline">
+                      <Badge tone="warn">{t("physical.unpaid")}</Badge>
+                    </Link>
+                    <span className="tabular-nums">{d.counts.unpaid}</span>
+                  </li>
+                )}
+              </ul>
+            </Card>
+          </div>
+        </div>
       </div>
     </>
   );

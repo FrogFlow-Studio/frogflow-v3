@@ -81,3 +81,40 @@ test("менеджеру нет «Новой акции», бухгалтеру 
   expect(await noHorizontalScroll(ap)).toBe(false);
   await acc.close();
 });
+
+test("Ж2: узкая колонка — ИИ-баланс владельцу, на телефоне после «Сегодня»", async ({
+  page,
+}, info) => {
+  await login(page, F.ZH21_SELLER_LOGIN, F.ZH21_SELLER_PASSWORD);
+  const today = page.getByText("Что сделать сегодня", { exact: true });
+  const balance = page.getByRole("link", { name: /Осталось/ });
+  await expect(today).toBeVisible();
+  await expect(balance).toContainText("$5.00");
+  const t = (await today.boundingBox())!;
+  const b = (await balance.boundingBox())!;
+  if (info.project.name === "phone") {
+    // одна колонка: карточка ниже «Сегодня» и не правее неё
+    expect(b.y).toBeGreaterThan(t.y);
+    expect(Math.abs(b.x - t.x)).toBeLessThan(40);
+  } else {
+    // две колонки: баланс справа от «Сегодня»
+    expect(b.x).toBeGreaterThan(t.x + t.width);
+  }
+  expect(await noHorizontalScroll(page)).toBe(false);
+});
+
+test("Ж2: менеджеру и бухгалтеру ИИ-баланс на главной не показывается", async ({
+  page,
+  browser,
+  baseURL,
+}) => {
+  await login(page, F.ZH21_MANAGER_LOGIN, F.ZH21_MANAGER_PASSWORD);
+  await expect(page.getByText("Что сделать сегодня", { exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Осталось/ })).toHaveCount(0);
+  const acc = await browser.newContext({ baseURL });
+  const ap = await acc.newPage();
+  await login(ap, F.ZH21_ACC_LOGIN, F.ZH21_ACC_PASSWORD);
+  await expect(ap.getByText("Ждёт вас", { exact: true })).toBeVisible();
+  await expect(ap.getByRole("link", { name: /Осталось/ })).toHaveCount(0);
+  await acc.close();
+});
