@@ -8,7 +8,7 @@ import type { MarketItem } from "@/core/marketplace/items";
 import { MARKET_RECENT_KEY, parseViews } from "@/core/marketplace/views";
 
 /** Лента карточек: на телефоне в один столбец, дальше в два; без горизонтальной прокрутки. */
-function FeedList({
+export function FeedList({
   title,
   items,
   locale,

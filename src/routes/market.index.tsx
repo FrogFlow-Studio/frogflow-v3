@@ -7,6 +7,7 @@ import { trackMarketFn } from "@/app/market/track.functions";
 import { marketFn } from "@/app/market/market.functions";
 import { marketHeadLinks } from "@/app/market/seo";
 import { rememberMarketBack } from "@/app/market/back";
+import { FeedList } from "@/app/market/feeds";
 import { marketT } from "@/app/market/i18n";
 import { SUPPORTED_LOCALES, type Locale } from "@/core/i18n/locale";
 
@@ -23,7 +24,13 @@ export const Route = createFileRoute("/market/")({
   loaderDeps: ({ search }) => search,
   loader: ({ deps }) =>
     marketFn({
-      data: { category: deps.category, city: deps.city, q: deps.q, offset: deps.offset },
+      data: {
+        category: deps.category,
+        city: deps.city,
+        q: deps.q,
+        offset: deps.offset,
+        lang: deps.lang,
+      },
     }),
   head: ({ match }) => {
     const t = marketT(match.search.lang ?? "ru");
@@ -88,6 +95,15 @@ function MarketPage() {
       ) : (
         <>
           <p className="mt-1 text-sm text-muted">{t("lead")}</p>
+          {data.collections.map((c) => (
+            <FeedList
+              key={c.id}
+              title={c.title}
+              items={c.items}
+              locale={locale}
+              testId={`collection-${c.id}`}
+            />
+          ))}
           <FilterForm action="/market" openLabel={t("filter.open")} closeLabel={t("filter.apply")}>
             {lang && <input type="hidden" name="lang" value={lang} />}
             <label className="text-sm">

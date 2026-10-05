@@ -336,6 +336,39 @@ export type Database = {
           },
         ];
       };
+      market_collections: {
+        Row: {
+          id: string;
+          title: Json;
+          items: Json;
+          position: number;
+          published: boolean;
+          rev: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          title?: Json;
+          items?: Json;
+          position?: number;
+          published?: boolean;
+          rev?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          title?: Json;
+          items?: Json;
+          position?: number;
+          published?: boolean;
+          rev?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       marketplace_shops: {
         Row: {
           bot_id: string;

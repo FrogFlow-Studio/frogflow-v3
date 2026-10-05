@@ -27,13 +27,15 @@ function check(what: string, error: DbErr): void {
 }
 
 /** Кандидаты → товары из снимка в том же порядке; без строки снимка (скрыт, закончился) — выпадают. */
-async function confirmed(
+export async function confirmed(
   svc: Db,
   shops: Map<string, Shop>,
   cands: Cand[],
   perShop: number = FEED_PER_SHOP,
+  size: number = FEED_SIZE,
+  window: number = CANDIDATES,
 ): Promise<MarketItem[]> {
-  const top = cands.slice(0, CANDIDATES);
+  const top = cands.slice(0, window);
   const rows = new Map<string, Record<string, unknown>>();
   for (let i = 0; i < top.length; i += CHUNK) {
     const { data, error } = await svc
@@ -63,7 +65,7 @@ async function confirmed(
       at: String(r.updated_at),
     });
   }
-  return capPerShop(out, perShop, FEED_SIZE);
+  return capPerShop(out, perShop, size);
 }
 
 /** «Новинки»: самые новые товары показываемых магазинов (по дате создания товара). */

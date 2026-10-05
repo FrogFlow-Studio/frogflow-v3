@@ -6,6 +6,7 @@ const input = z.object({
   city: z.string().max(60).optional().catch(undefined),
   q: z.string().max(60).optional().catch(undefined),
   offset: z.number().int().min(0).max(100_000).optional().catch(undefined),
+  lang: z.enum(["ru", "kk", "en", "uz"]).optional().catch(undefined),
 });
 
 /**
@@ -27,9 +28,24 @@ export const marketFn = createServerFn({ method: "GET" })
         }),
         marketFacets(),
       ]);
-      return { ready: true as const, ...page, ...facets };
+      // Подборки оператора — на первой странице без фильтров (Л3); нет таблицы — просто без них.
+      const plain = !data.category && !data.city && !data.q && !data.offset;
+      const collections = plain ? await readCollections(data.lang ?? "ru") : [];
+      return { ready: true as const, ...page, ...facets, collections };
     } catch (e) {
       if (e instanceof MarketplaceNotReady) return { ready: false as const };
       throw e;
     }
   });
+
+async function readCollections(locale: "ru" | "kk" | "en" | "uz") {
+  const { publicCollections } = await import("@/core/marketplace/collections.server");
+  const { directoryShops } = await import("@/core/marketplace/items.server");
+  const { MarketplaceNotReady } = await import("@/core/marketplace/not-ready");
+  try {
+    return await publicCollections(await directoryShops(), locale);
+  } catch (e) {
+    if (e instanceof MarketplaceNotReady) return [];
+    throw e;
+  }
+}

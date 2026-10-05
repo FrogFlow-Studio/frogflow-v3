@@ -99,6 +99,7 @@ import { Route as OperatorAuthedCronsRouteImport } from './routes/operator._auth
 import { Route as OperatorAuthedHealthRouteImport } from './routes/operator._authed.health'
 import { Route as OperatorAuthedLeadsRouteImport } from './routes/operator._authed.leads'
 import { Route as OperatorAuthedLogRouteImport } from './routes/operator._authed.log'
+import { Route as OperatorAuthedMarketCollectionsRouteImport } from './routes/operator._authed.market-collections'
 import { Route as OperatorAuthedMarketReportsRouteImport } from './routes/operator._authed.market-reports'
 import { Route as OperatorAuthedMarketStatsRouteImport } from './routes/operator._authed.market-stats'
 import { Route as OperatorAuthedMigrationRouteImport } from './routes/operator._authed.migration'
@@ -601,6 +602,12 @@ const OperatorAuthedLogRoute = OperatorAuthedLogRouteImport.update({
   path: '/log',
   getParentRoute: () => OperatorAuthedRoute,
 } as any)
+const OperatorAuthedMarketCollectionsRoute =
+  OperatorAuthedMarketCollectionsRouteImport.update({
+    id: '/market-collections',
+    path: '/market-collections',
+    getParentRoute: () => OperatorAuthedRoute,
+  } as any)
 const OperatorAuthedMarketReportsRoute =
   OperatorAuthedMarketReportsRouteImport.update({
     id: '/market-reports',
@@ -963,6 +970,7 @@ export interface FileRoutesByFullPath {
   '/operator/health': typeof OperatorAuthedHealthRoute
   '/operator/leads': typeof OperatorAuthedLeadsRoute
   '/operator/log': typeof OperatorAuthedLogRoute
+  '/operator/market-collections': typeof OperatorAuthedMarketCollectionsRoute
   '/operator/market-reports': typeof OperatorAuthedMarketReportsRoute
   '/operator/market-stats': typeof OperatorAuthedMarketStatsRoute
   '/operator/migration': typeof OperatorAuthedMigrationRoute
@@ -1103,6 +1111,7 @@ export interface FileRoutesByTo {
   '/operator/health': typeof OperatorAuthedHealthRoute
   '/operator/leads': typeof OperatorAuthedLeadsRoute
   '/operator/log': typeof OperatorAuthedLogRoute
+  '/operator/market-collections': typeof OperatorAuthedMarketCollectionsRoute
   '/operator/market-reports': typeof OperatorAuthedMarketReportsRoute
   '/operator/market-stats': typeof OperatorAuthedMarketStatsRoute
   '/operator/migration': typeof OperatorAuthedMigrationRoute
@@ -1246,6 +1255,7 @@ export interface FileRoutesById {
   '/operator/_authed/health': typeof OperatorAuthedHealthRoute
   '/operator/_authed/leads': typeof OperatorAuthedLeadsRoute
   '/operator/_authed/log': typeof OperatorAuthedLogRoute
+  '/operator/_authed/market-collections': typeof OperatorAuthedMarketCollectionsRoute
   '/operator/_authed/market-reports': typeof OperatorAuthedMarketReportsRoute
   '/operator/_authed/market-stats': typeof OperatorAuthedMarketStatsRoute
   '/operator/_authed/migration': typeof OperatorAuthedMigrationRoute
@@ -1390,6 +1400,7 @@ export interface FileRouteTypes {
     | '/operator/health'
     | '/operator/leads'
     | '/operator/log'
+    | '/operator/market-collections'
     | '/operator/market-reports'
     | '/operator/market-stats'
     | '/operator/migration'
@@ -1530,6 +1541,7 @@ export interface FileRouteTypes {
     | '/operator/health'
     | '/operator/leads'
     | '/operator/log'
+    | '/operator/market-collections'
     | '/operator/market-reports'
     | '/operator/market-stats'
     | '/operator/migration'
@@ -1672,6 +1684,7 @@ export interface FileRouteTypes {
     | '/operator/_authed/health'
     | '/operator/_authed/leads'
     | '/operator/_authed/log'
+    | '/operator/_authed/market-collections'
     | '/operator/_authed/market-reports'
     | '/operator/_authed/market-stats'
     | '/operator/_authed/migration'
@@ -2403,6 +2416,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OperatorAuthedLogRouteImport
       parentRoute: typeof OperatorAuthedRoute
     }
+    '/operator/_authed/market-collections': {
+      id: '/operator/_authed/market-collections'
+      path: '/market-collections'
+      fullPath: '/operator/market-collections'
+      preLoaderRoute: typeof OperatorAuthedMarketCollectionsRouteImport
+      parentRoute: typeof OperatorAuthedRoute
+    }
     '/operator/_authed/market-reports': {
       id: '/operator/_authed/market-reports'
       path: '/market-reports'
@@ -2940,6 +2960,7 @@ interface OperatorAuthedRouteChildren {
   OperatorAuthedHealthRoute: typeof OperatorAuthedHealthRoute
   OperatorAuthedLeadsRoute: typeof OperatorAuthedLeadsRoute
   OperatorAuthedLogRoute: typeof OperatorAuthedLogRoute
+  OperatorAuthedMarketCollectionsRoute: typeof OperatorAuthedMarketCollectionsRoute
   OperatorAuthedMarketReportsRoute: typeof OperatorAuthedMarketReportsRoute
   OperatorAuthedMarketStatsRoute: typeof OperatorAuthedMarketStatsRoute
   OperatorAuthedMigrationRoute: typeof OperatorAuthedMigrationRoute
@@ -2963,6 +2984,7 @@ const OperatorAuthedRouteChildren: OperatorAuthedRouteChildren = {
   OperatorAuthedHealthRoute: OperatorAuthedHealthRoute,
   OperatorAuthedLeadsRoute: OperatorAuthedLeadsRoute,
   OperatorAuthedLogRoute: OperatorAuthedLogRoute,
+  OperatorAuthedMarketCollectionsRoute: OperatorAuthedMarketCollectionsRoute,
   OperatorAuthedMarketReportsRoute: OperatorAuthedMarketReportsRoute,
   OperatorAuthedMarketStatsRoute: OperatorAuthedMarketStatsRoute,
   OperatorAuthedMigrationRoute: OperatorAuthedMigrationRoute,
