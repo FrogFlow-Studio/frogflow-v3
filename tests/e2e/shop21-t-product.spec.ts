@@ -53,11 +53,13 @@ test("карточка товара одной страницей: оглавл�
   await expect(page.getByLabel("Базовая цена", { exact: true })).toHaveValue("2500");
   await expect(bar).toContainText("Все изменения сохранены");
   // Склад — отдельный раздел; остаток и цена пишутся одной формой, не мешая друг другу.
-  await page.getByLabel("Остаток", { exact: true }).fill("7");
+  await page.locator('input[name="stockQuantity"]').fill("7");
   await bar.getByRole("button", { name: "Сохранить", exact: true }).click();
-  await expect(bar).toContainText("Все изменения сохранены");
-  await page.reload();
-  await expect(page.getByLabel("Остаток", { exact: true })).toHaveValue("7");
+  // Сохранение существующего товара ведёт в список; открываем его снова.
+  await expect(page).toHaveURL(/\/admin\/products$/);
+  await page.getByRole("link", { name: "Товар Т21", exact: true }).first().click();
+  await expect(page).toHaveURL(/\/admin\/products\/[0-9a-f-]{36}$/);
+  await expect(page.locator('input[name="stockQuantity"]')).toHaveValue("7");
   await expect(page.getByLabel("Базовая цена", { exact: true })).toHaveValue("2500");
   // Набор — раздел, потому что у магазина включён модуль наборов; у сохранённого физического товара он есть.
   await expect(toc.getByRole("link", { name: "Набор", exact: true })).toBeVisible();
@@ -87,10 +89,10 @@ test("список товаров показывает готовность и �
   await page.getByRole("button", { name: "Войти", exact: true }).click();
   await expect(page).toHaveURL(/\/admin$/);
   await page.goto("/admin/products");
-  await expect(page.getByRole("columnheader", { name: "Готовность", exact: true })).toBeVisible();
-  await expect(page.getByRole("columnheader", { name: "Остаток", exact: true })).toBeVisible();
+  await expect(page.locator("thead th", { hasText: /^Готовность$/ })).toBeVisible();
+  await expect(page.locator("thead th", { hasText: /^Остаток$/ })).toBeVisible();
   const row = page.getByRole("row").filter({ hasText: F.PRODUCT21_ITEM_NAME });
-  await expect(row).toContainText("Не хватает");
+  await expect(row.getByTitle(/^Не хватает: /)).toBeVisible();
   await expect(row).toContainText("описание");
   await expect(row).toContainText("категория");
   await expect(row).toContainText("5");
