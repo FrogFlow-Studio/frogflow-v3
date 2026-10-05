@@ -23,6 +23,7 @@ import { useLiveOrders } from "@/app/admin/live-orders";
 import { waitingTiles } from "@/app/admin/waiting";
 import { WaitingCard } from "@/app/admin/waiting-card";
 import { PaceCard } from "@/app/admin/pace-card";
+import { GrowthCard } from "@/app/admin/growth-card";
 import { AiBalanceCard } from "@/app/admin/ai-balance-card";
 import { buildAdminNav } from "@/app/admin/nav-model";
 
@@ -69,6 +70,13 @@ function Dashboard() {
             t={t}
           />
           {d.pace && <PaceCard pace={d.pace} t={t} />}
+          <GrowthCard
+            growth={d.growth}
+            analytics={buildAdminNav(shop).groups.some((g) =>
+              g.items.some((i) => i.to === "/admin/analytics"),
+            )}
+            t={t}
+          />
           {shop.role !== "accountant" && (
             <TodayCard
               // «Ждёт вас» уже показывает чеки, диалоги и обращения: здесь их нет.

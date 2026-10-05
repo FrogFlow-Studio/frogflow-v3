@@ -289,40 +289,45 @@ function AnalyticsPage() {
             />
           }
         />
-        <ChartCard
-          className="lg:col-span-2"
-          title={t("analytics.sources.title")}
-          chart={
-            <>
-              <BarList
-                rows={a.sources.slice(1).map((r) => ({
-                  label: sourceLabel(r.source, t),
-                  value: r.ordered,
-                  hint: moneyAll(r.revenue),
-                }))}
-                format={num}
-                color="var(--chart-1)"
-              />
-              <p className="mt-2 text-xs text-muted">{t("analytics.sources.hint")}</p>
-              <p className="mt-1 text-xs text-muted">{t("analytics.sources.allNote")}</p>
-            </>
-          }
-          table={
-            <DataTable
-              head={[
-                t("analytics.sources.col"),
-                ...FUNNEL_STAGES.map((st) => t(`analytics.funnel.${st}`)),
-                t("analytics.col.revenue"),
-              ]}
-              rows={a.sources.map((r) => [
-                sourceLabel(r.source, t),
-                ...FUNNEL_STAGES.map((st) => num(r[st])),
-                moneyAll(r.revenue),
-              ])}
+        {/* Источники — продавцу; бухгалтер получает отчёты, но не их (У5). */}
+        {a.sources.length > 0 && (
+          <>
+            <ChartCard
+              className="lg:col-span-2"
+              title={t("analytics.sources.title")}
+              chart={
+                <>
+                  <BarList
+                    rows={a.sources.slice(1).map((r) => ({
+                      label: sourceLabel(r.source, t),
+                      value: r.ordered,
+                      hint: moneyAll(r.revenue),
+                    }))}
+                    format={num}
+                    color="var(--chart-1)"
+                  />
+                  <p className="mt-2 text-xs text-muted">{t("analytics.sources.hint")}</p>
+                  <p className="mt-1 text-xs text-muted">{t("analytics.sources.allNote")}</p>
+                </>
+              }
+              table={
+                <DataTable
+                  head={[
+                    t("analytics.sources.col"),
+                    ...FUNNEL_STAGES.map((st) => t(`analytics.funnel.${st}`)),
+                    t("analytics.col.revenue"),
+                  ]}
+                  rows={a.sources.map((r) => [
+                    sourceLabel(r.source, t),
+                    ...FUNNEL_STAGES.map((st) => num(r[st])),
+                    moneyAll(r.revenue),
+                  ])}
+                />
+              }
             />
-          }
-        />
-        <SourceLinksCard bot={a.links.bot} store={a.links.store} />
+            <SourceLinksCard bot={a.links.bot} store={a.links.store} />
+          </>
+        )}
         {canEdit(shop.role) && <ExplainCard days={days} />}
         {a.promote && <PromoteCard hints={a.promote} />}
         <SpeedCard rows={a.speed} />

@@ -24,6 +24,16 @@ export const ru = {
   "growth.promote.more": "Показаны первые {shown}, всего подходит {total}.",
   "growth.promote.hint":
     "Это арифметика по прошлым продажам и одобренным отзывам, а не прогноз: проверьте товар сами, прежде чем запускать акцию или пополнять склад.",
+  "growth.card.title": "Рост",
+  "growth.card.caption": "Последние 30 дней к предыдущим 30",
+  "growth.card.revenue": "Выручка",
+  "growth.card.orders": "Оплаченные заказы",
+  "growth.card.buyers": "Новые покупатели",
+  "growth.card.up": "▲ {n} %",
+  "growth.card.down": "▼ {n} %",
+  "growth.card.same": "без изменений",
+  "growth.card.noBase": "не с чем сравнить",
+  "growth.card.more": "Подробнее в «Аналитике»",
 };
 
 export const kk: SectionDict<typeof ru> = {
@@ -50,6 +60,16 @@ export const kk: SectionDict<typeof ru> = {
   "growth.promote.more": "Алғашқы {shown} көрсетілген, барлығы {total}.",
   "growth.promote.hint":
     "Бұл болжам емес, өткен сатылым мен мақұлданған пікірлер бойынша есеп: акция бастамас бұрын немесе қойманы толтырмас бұрын тауарды өзіңіз тексеріңіз.",
+  "growth.card.title": "Өсу",
+  "growth.card.caption": "Соңғы 30 күн алдыңғы 30 күнмен салыстырғанда",
+  "growth.card.revenue": "Түсім",
+  "growth.card.orders": "Төленген тапсырыстар",
+  "growth.card.buyers": "Жаңа сатып алушылар",
+  "growth.card.up": "▲ {n} %",
+  "growth.card.down": "▼ {n} %",
+  "growth.card.same": "өзгеріссіз",
+  "growth.card.noBase": "салыстыратын ештеңе жоқ",
+  "growth.card.more": "«Аналитикада» толығырақ",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -75,6 +95,16 @@ export const en: SectionDict<typeof ru> = {
   "growth.promote.more": "Showing the first {shown} of {total}.",
   "growth.promote.hint":
     "This is arithmetic on past sales and approved reviews, not a forecast: check the product yourself before running a promotion or restocking.",
+  "growth.card.title": "Growth",
+  "growth.card.caption": "Last 30 days vs the previous 30",
+  "growth.card.revenue": "Revenue",
+  "growth.card.orders": "Paid orders",
+  "growth.card.buyers": "New customers",
+  "growth.card.up": "▲ {n}%",
+  "growth.card.down": "▼ {n}%",
+  "growth.card.same": "no change",
+  "growth.card.noBase": "nothing to compare with",
+  "growth.card.more": "More in Analytics",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -101,4 +131,14 @@ export const uz: SectionDict<typeof ru> = {
   "growth.promote.more": "Dastlabki {shown} ta ko‘rsatilgan, jami {total} ta.",
   "growth.promote.hint":
     "Bu bashorat emas, o‘tgan savdo va tasdiqlangan sharhlar bo‘yicha hisob: aksiya boshlashdan yoki omborni to‘ldirishdan oldin mahsulotni o‘zingiz tekshiring.",
+  "growth.card.title": "O‘sish",
+  "growth.card.caption": "So‘nggi 30 kun oldingi 30 kunga nisbatan",
+  "growth.card.revenue": "Tushum",
+  "growth.card.orders": "To‘langan buyurtmalar",
+  "growth.card.buyers": "Yangi xaridorlar",
+  "growth.card.up": "▲ {n} %",
+  "growth.card.down": "▼ {n} %",
+  "growth.card.same": "o‘zgarishsiz",
+  "growth.card.noBase": "solishtirish uchun ma’lumot yo‘q",
+  "growth.card.more": "«Analitika»da batafsil",
 };

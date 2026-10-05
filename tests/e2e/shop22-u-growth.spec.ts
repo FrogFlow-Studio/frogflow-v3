@@ -30,3 +30,24 @@ test("аналитика: бухгалтеру «Что продвигать» �
   await expect(page.getByText("Вернулись покупатели", { exact: true })).toBeVisible();
   await expect(page.getByText("Что продвигать", { exact: true })).toHaveCount(0);
 });
+
+/** У5: блок «Рост» на главной; бухгалтер видит отчёты, но не источники. */
+test("главная: блок «Рост» и ссылка в «Аналитику», без горизонтальной прокрутки", async ({
+  page,
+}) => {
+  await login(page, F.ZH21_SELLER_LOGIN, F.ZH21_SELLER_PASSWORD);
+  await expect(page.getByText("Рост", { exact: true })).toBeVisible();
+  await expect(page.locator("[data-growth]")).toBeVisible();
+  expect(await noHorizontalScroll(page)).toBe(false);
+  await page.getByRole("link", { name: /Подробнее в «Аналитике»/ }).click();
+  await expect(page).toHaveURL(/\/admin\/analytics/);
+  await expect(page.getByText("Воронка по источникам", { exact: true })).toBeVisible();
+});
+
+test("бухгалтер: «Рост» есть, источников в аналитике нет", async ({ page }) => {
+  await login(page, F.ZH21_ACC_LOGIN, F.ZH21_ACC_PASSWORD);
+  await expect(page.locator("[data-growth]")).toBeVisible();
+  await page.goto("/admin/analytics");
+  await expect(page.getByText("Вернулись покупатели", { exact: true })).toBeVisible();
+  await expect(page.getByText("Воронка по источникам", { exact: true })).toHaveCount(0);
+});

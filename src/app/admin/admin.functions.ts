@@ -489,6 +489,14 @@ export const dashboardFn = createServerFn({ method: "GET" }).handler(async () =>
   let rev7 = rev30;
   // Продажи к этому же времени вчера и по часам (Ж3): сбой чтения — «не удалось загрузить», страница живёт.
   let pace: import("@/core/overview/pace").SalesPace | "failed" | null = null;
+  // Блок «Рост» (У5): три числа за 30 суток против прежних; видят все роли, сбой чтения — «не удалось загрузить».
+  const growth: import("@/core/overview/growth").Growth | "failed" =
+    await import("@/core/overview/growth.server")
+      .then((m) => m.loadGrowth(ctx))
+      .catch((e): "failed" => {
+        console.error(`[admin:${ctx.tenant.id}] рост`, e instanceof Error ? e.message : e);
+        return "failed";
+      });
   if (!accountant) {
     [today, rev1, rev7, pace] = await Promise.all([
       (await import("@/core/overview/today")).todayTasks(ctx),
@@ -511,6 +519,7 @@ export const dashboardFn = createServerFn({ method: "GET" }).handler(async () =>
     rev1,
     rev7,
     pace,
+    growth,
     today,
     limits,
     recent: accountant ? redactOrders(recent) : recent,
@@ -2719,11 +2728,12 @@ export const analyticsFn = createServerFn({ method: "GET" })
     const now = new Date();
     const from = new Date(now.getTime() - data.days * 86_400_000);
     const funnels = await import("@/core/analytics/funnel.server");
+    const { accountantView } = await import("@/core/analytics/role-view");
     const [a, funnel, sources, cohorts, customers, speed, sales, giftsBundles, promote] =
       await Promise.all([
         (await import("@/core/analytics/analytics")).analytics(ctx, data.days),
         funnels.buyerFunnel(ctx, from, now),
-        funnels.sourceFunnel(ctx, from, now),
+        accountant ? Promise.resolve([]) : funnels.sourceFunnel(ctx, from, now),
         (await import("@/core/analytics/cohorts.server")).cohorts(ctx, now),
         (await import("@/core/analytics/customers.server")).customersBlock(ctx, data.days, now),
         (await import("@/core/analytics/speed.server")).speedStats(ctx, from, now),
@@ -2752,19 +2762,22 @@ export const analyticsFn = createServerFn({ method: "GET" })
           ? storefrontBase(ctx.tenant, ctx.appUrl)
           : null,
     };
-    return {
-      ...a,
-      funnel,
-      sources,
-      links,
-      cohorts,
-      customers,
-      speed,
-      sales,
-      giftsBundles,
-      promote,
-      timezone: ctx.timezone,
-    };
+    return accountantView(
+      {
+        ...a,
+        funnel,
+        sources,
+        links,
+        cohorts,
+        customers,
+        speed,
+        sales,
+        giftsBundles,
+        promote,
+        timezone: ctx.timezone,
+      },
+      accountant,
+    );
   });
 
 /* ── чат с менеджером ────────────────────────────────────────────── */
