@@ -94,3 +94,18 @@ test("настройки: тема «Деньги» со ссылками на �
     await expect(page.locator(`a[href="${href}"]`).filter({ hasText: "Открыть" })).toBeVisible();
   expect(errors).toEqual([]);
 });
+
+/** Н3: «Удалить магазин» — в самом низу темы «Расширенное». */
+test("настройки: «Удалить магазин» последним в теме «Расширенное»", async ({ page }) => {
+  const errors = await watch(page);
+  await page.goto("/admin/login");
+  await page.locator('input[name="username"]').fill(F.SELLER_LOGIN);
+  await page.locator('input[name="password"]').fill(F.SELLER_PASSWORD);
+  await page.getByRole("button", { name: "Войти", exact: true }).click();
+  await expect(page).toHaveURL(/\/admin$/);
+  await page.goto("/admin/settings");
+  await page.getByRole("button", { name: "Расширенное", exact: true }).click();
+  const shown = page.locator("[data-settings-section]:not([hidden])");
+  await expect(shown.last()).toHaveAttribute("data-settings-section", "delete");
+  expect(errors).toEqual([]);
+});

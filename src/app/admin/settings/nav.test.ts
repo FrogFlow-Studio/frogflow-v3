@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { DEFAULT_THEME, themeForHash, themeShows, visibleThemes } from "./nav";
 import { entryVisible, SETTINGS_REGISTRY } from "./registry";
@@ -46,5 +47,18 @@ describe("темы настроек в новом виде", () => {
       "/admin/billing",
       "/admin/ai-balance",
     ]);
+  });
+});
+
+describe("«Удалить магазин» — в самом низу темы «Расширенное»", () => {
+  it("последняя запись темы в реестре и последняя карточка на странице; не поднимается как «недавняя»", () => {
+    const advanced = SETTINGS_REGISTRY.filter((e) => e.theme === "advanced");
+    expect(advanced.at(-1)?.id).toBe("delete");
+    expect(advanced.find((e) => e.id === "delete")?.keys).toBeUndefined();
+    const page = readFileSync("src/routes/admin._authed.settings.tsx", "utf8");
+    const onPage = [...page.matchAll(/<SettingsSection id="([^"]+)"/g)].map((m) => m[1]);
+    expect(onPage.at(-1)).toBe("delete");
+    // и подтверждение прежнее: та же карточка с вводом названия магазина
+    expect(page).toContain("<DeleteShopCard locale={shop.locale} shopName={shop.name} />");
   });
 });
