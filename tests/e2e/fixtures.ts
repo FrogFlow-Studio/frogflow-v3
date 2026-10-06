@@ -61,3 +61,4 @@ export * from "./fixtures/shop22-r-start.ts";
 export * from "./fixtures/shop22-r-week.ts";
 export * from "./fixtures/shop19-a-team.ts";
 export * from "./fixtures/bovi-stories.ts";
+export * from "./fixtures/bovi-plan.ts";

@@ -55,6 +55,9 @@ export function PlanCard({ c, onDone }: { c: C; onDone: () => Promise<void> }) {
     if (!v) return;
     setPeriod(v.billing.period ?? "month");
     setAddons(v.billing.addons ?? []);
+    // У ниши без тарифов (консультант BOVI) в списке только «Индивидуальный»:
+    // без этого список показывал его, а сохранялся невидимый «basic» (06.10).
+    if (!v.niche) setTier("custom");
   }, [v]);
   const save = useAction(async () => {
     if (
