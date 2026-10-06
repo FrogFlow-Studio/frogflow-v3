@@ -48,10 +48,12 @@ const DESCRIPTIONS: Record<Locale, Record<BotCommand, string>> = {
 
 /**
  * Какие команды у этого бота: /invite — только с модулем «Рефералы»,
- * /language — только с модулем «Несколько языков».
+ * /language — только с модулем «Несколько языков»; /catalog, /cart, /orders —
+ * только когда клиент продаёт (`sells`, core/tenant/sells): консультанту без
+ * товаров (BOVI) звать в пустой каталог незачем.
  */
-export function botCommandNames(tenant: Tenant): BotCommand[] {
-  const out: BotCommand[] = ["catalog", "cart", "orders"];
+export function botCommandNames(tenant: Tenant, sells = true): BotCommand[] {
+  const out: BotCommand[] = sells ? ["catalog", "cart", "orders"] : [];
   if (tenant.modules.referral) out.push("invite");
   if (tenant.modules.multi_language) out.push("language");
   out.push("stop");
@@ -61,8 +63,9 @@ export function botCommandNames(tenant: Tenant): BotCommand[] {
 export function botCommandList(
   tenant: Tenant,
   locale: Locale,
+  sells = true,
 ): Array<{ command: string; description: string }> {
-  return botCommandNames(tenant).map((c) => ({
+  return botCommandNames(tenant, sells).map((c) => ({
     command: c,
     description: DESCRIPTIONS[locale][c],
   }));
@@ -70,10 +73,11 @@ export function botCommandList(
 
 /**
  * Отпечаток набора: крон ensure-webhook переставляет меню, когда он другой
- * (новые команды в коде или включили/выключили «Несколько языков»).
+ * (новые команды в коде, включили/выключили «Несколько языков», у консультанта
+ * появились или кончились товары).
  */
-export function botCommandsVersion(tenant: Tenant): string {
-  return `1:${botCommandNames(tenant).join(",")}:${tenant.settings.default_locale ?? "ru"}`;
+export function botCommandsVersion(tenant: Tenant, sells = true): string {
+  return `1:${botCommandNames(tenant, sells).join(",")}:${tenant.settings.default_locale ?? "ru"}`;
 }
 
 /** Текст сообщения → команда меню; «/catalog@shop_bot» из групп тоже. */
@@ -91,12 +95,16 @@ export function botCommandFor(text: string | null | undefined): BotCommand | nul
 }
 
 /** Поставить меню команд на всех языках. Любой отказ Telegram — ошибка. */
-export async function syncBotCommands(tenant: Tenant, api: TelegramApi): Promise<void> {
+export async function syncBotCommands(
+  tenant: Tenant,
+  api: TelegramApi,
+  sells = true,
+): Promise<void> {
   const fallback = tenant.settings.default_locale ?? "ru";
   const calls: Array<Record<string, unknown>> = [
-    { commands: botCommandList(tenant, fallback) },
+    { commands: botCommandList(tenant, fallback, sells) },
     ...SUPPORTED_LOCALES.map((l) => ({
-      commands: botCommandList(tenant, l),
+      commands: botCommandList(tenant, l, sells),
       language_code: l,
     })),
   ];

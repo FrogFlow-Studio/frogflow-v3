@@ -45,4 +45,11 @@ describe("первые 7 дней: пункты закрываются по да
     const s = firstWeekState({ ...none, paidOrders: 1 });
     expect(s).toMatchObject({ percent: 100, visible: false, sold: true });
   });
+
+  it("консультант без продаж (BOVI): карточки нет — закрыть её он не может", () => {
+    expect(firstWeekState({ ...none, sells: false }).visible).toBe(false);
+    expect(firstWeekState({ ...none, sells: true }).visible).toBe(true);
+    // Без значения — как раньше, продаёт.
+    expect(firstWeekState(none).visible).toBe(true);
+  });
 });

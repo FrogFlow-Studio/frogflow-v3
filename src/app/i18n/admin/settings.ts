@@ -398,6 +398,8 @@ export const ru = {
     "По понедельникам в 9:00 бот магазина присылает итоги прошлой недели: выручку, скорость оплаты и выдачи, вернувшихся покупателей, одну строку «что изменилось», воронку покупателя, лучший канал и топ товаров. Отчёт приходит на языке админки.",
   "settings.weekly.on": "Включён",
   "settings.weekly.off": "Выключен",
+  "settings.weekly.noSales":
+    "Пока у вас нет включённых товаров, отчёт не отправляется: в нём были бы одни нули.",
   "settings.autoV3.title": "Новые автосообщения",
   "settings.autoV3.intro":
     "Просьба об оценке через несколько дней после выдачи заказа, напоминание «акция кончается завтра» и напоминание о корзине в Instagram и WhatsApp. Работают только у тех покупателей, кому магазин может писать, и учитываются в потолке «одно маркетинговое сообщение в сутки». Раз в час также дошлёт «Товар появился» тем, кто в листе ожидания и кому сообщение не ушло сразу (не хватило времени или за сутки уже было маркетинговое сообщение). Пока выключено, покупателям это не отправляется. Каждая функция дополнительно зависит от своего модуля.",
@@ -874,6 +876,8 @@ export const kk: SectionDict<typeof ru> = {
     "Дүйсенбі сайын 9:00-де дүкен боты өткен аптаның қорытындысын жібереді: түсім, төлем мен беру жылдамдығы, қайта оралған сатып алушылар, «не өзгерді» деген бір жол, сатып алушы воронкасы, үздік арна және топ тауарлар. Есеп әкімшілік тілінде келеді.",
   "settings.weekly.on": "Қосулы",
   "settings.weekly.off": "Өшірулі",
+  "settings.weekly.noSales":
+    "Қосулы тауарларыңыз болмаса, есеп жіберілмейді: онда тек нөлдер болар еді.",
   "settings.autoV3.title": "Жаңа автохабарламалар",
   "settings.autoV3.intro":
     "Тапсырыс берілгеннен кейін бірнеше күннен соң баға сұрау, «акция ертең аяқталады» еске салуы және Instagram мен WhatsApp-тағы себет туралы еске салу. Тек дүкен жаза алатын сатып алушыларға жіберіледі және тәулігіне бір маркетингтік хабарлама лимитіне кіреді. Сағат сайын «Тауар пайда болды» хабарламасын да жібереді: күту тізіміндегі, бірақ хабарлама бірден жетпегендерге (уақыт жетпеді немесе тәулік ішінде маркетингтік хабарлама болды). Өшірулі болса, сатып алушыларға жіберілмейді. Әр функция өз модуліне де байланысты.",
@@ -1346,6 +1350,8 @@ export const en: SectionDict<typeof ru> = {
     "Every Monday at 9:00 the shop bot sends last week’s results: revenue, payment and delivery speed, returning customers, one “what changed” line, the buyer funnel, the best channel and top products. The report comes in the admin language.",
   "settings.weekly.on": "On",
   "settings.weekly.off": "Off",
+  "settings.weekly.noSales":
+    "While you have no active products, the report is not sent: it would be all zeros.",
   "settings.autoV3.title": "New automatic messages",
   "settings.autoV3.intro":
     "A request for a rating a few days after an order is handed over, the “sale ends tomorrow” reminder, and the cart reminder in Instagram and WhatsApp. They go only to buyers the shop can message and count toward the “one marketing message per day” cap. Once an hour it also sends “Back in stock” to people on the waiting list who did not get it right away (time ran out or they had a marketing message within a day). While off, buyers receive none of them. Each one also depends on its own module.",
@@ -1824,6 +1830,8 @@ export const uz: SectionDict<typeof ru> = {
     "Har dushanba 9:00 da do‘kon boti o‘tgan hafta natijalarini yuboradi: tushum, to‘lov va topshirish tezligi, qaytgan xaridorlar, «nima o‘zgardi» degan bitta qator, xaridor voronkasi, eng yaxshi kanal va top mahsulotlar. Hisobot admin tilida keladi.",
   "settings.weekly.on": "Yoqilgan",
   "settings.weekly.off": "O‘chirilgan",
+  "settings.weekly.noSales":
+    "Faol mahsulotlaringiz bo‘lmaguncha hisobot yuborilmaydi: unda faqat nollar bo‘lardi.",
   "settings.autoV3.title": "Yangi avtomatik xabarlar",
   "settings.autoV3.intro":
     "Buyurtma topshirilgandan bir necha kun keyin baho so‘rash, «aksiya ertaga tugaydi» eslatmasi va Instagram hamda WhatsApp’dagi savat eslatmasi. Faqat do‘kon yoza oladigan xaridorlarga yuboriladi va kuniga bitta marketing xabari chegarasiga kiradi. Har soatda kutish ro‘yxatidagi, lekin xabar darhol yetib bormagan xaridorlarga («Mahsulot paydo bo‘ldi») ham yuboradi (vaqt yetmadi yoki sutka ichida marketing xabari bo‘lgan). O‘chiq bo‘lsa, xaridorlarga yuborilmaydi. Har bir funksiya o‘z moduliga ham bog‘liq.",

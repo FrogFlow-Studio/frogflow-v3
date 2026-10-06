@@ -17,17 +17,25 @@ export type SetupStep = (typeof SETUP_STEPS)[number];
 /** Сколько товаров нужно для «магазин наполнен» (шаг «Товары»). */
 export const PRODUCTS_TARGET = 5;
 
+/** Шаги про продажу: консультанту, который не продаёт (`sellsNow`), их нет. */
+const SALES_STEPS: readonly SetupStep[] = ["products", "payment", "delivery", "firstOrder"];
+
 /**
  * Какие шаги вообще относятся к магазину. Доставка нужна только физическому
  * магазину с включённой витриной заказов: у онлайн-школы и без модуля «shop»
- * строки «Доставка» в списке нет совсем.
+ * строки «Доставка» в списке нет совсем. Консультант без продаж (BOVI: модуль
+ * магазина из v1, товаров нет) товары, оплату, доставку и первый заказ не
+ * настраивает. `sells` не передан — продаёт.
  */
 export function relevantSetupSteps(shop: {
   modules: Partial<Record<string, boolean>>;
   vertical: string;
+  sells?: boolean;
 }): SetupStep[] {
   return SETUP_STEPS.filter(
-    (s) => s !== "delivery" || (shop.modules.shop && shop.vertical !== "courses"),
+    (s) =>
+      (shop.sells !== false || !SALES_STEPS.includes(s)) &&
+      (s !== "delivery" || (shop.modules.shop && shop.vertical !== "courses")),
   );
 }
 
@@ -142,7 +150,14 @@ export const MOVED_MAP = [
 ] as const;
 export type MovedFrom = (typeof MOVED_MAP)[number]["from"];
 
-/** Строки «что где теперь» для модулей этого магазина. */
-export function movedRows(modules: Record<string, boolean | undefined>) {
-  return MOVED_MAP.filter((r) => !("modules" in r) || r.modules.some((m) => modules[m]));
+/** Строки про продажу: консультанту без продаж заказы, каталог и оплата не нужны. */
+const MOVED_SALES: readonly MovedFrom[] = ["orders", "catalog", "payment"];
+
+/** Строки «что где теперь» для модулей этого магазина; `sells: false` — без заказов, каталога и оплаты. */
+export function movedRows(modules: Record<string, boolean | undefined>, sells = true) {
+  return MOVED_MAP.filter(
+    (r) =>
+      (sells || !MOVED_SALES.includes(r.from)) &&
+      (!("modules" in r) || r.modules.some((m) => modules[m])),
+  );
 }

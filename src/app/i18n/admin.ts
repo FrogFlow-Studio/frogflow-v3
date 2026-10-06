@@ -242,6 +242,9 @@ const baseRu = {
   "overview.moved.from.vip": "VIP-группа",
   "overview.moved.from.settings": "Настройки: уведомления, магазин, бот",
   "overview.moved.check": "Проверьте перед первыми заказами",
+  "overview.moved.introNoSales":
+    "Покупатели, консультант и настройки перенесены, бот у покупателей тот же. Проверьте две вещи.",
+  "overview.moved.checkNoSales": "Проверьте перед первыми вопросами",
   "overview.moved.check.payment": "Реквизиты оплаты по странам — те же, что были в прежней панели.",
   "overview.moved.check.texts":
     "Тексты бота: название, инструкция покупателю, приписка к выдаче. Как их видит покупатель — в «Предпросмотре бота».",
@@ -699,6 +702,9 @@ const baseKk: Dict = {
   "overview.moved.from.vip": "VIP-топ",
   "overview.moved.from.settings": "Баптаулар: хабарламалар, дүкен, бот",
   "overview.moved.check": "Алғашқы тапсырыстарға дейін тексеріңіз",
+  "overview.moved.introNoSales":
+    "Сатып алушылар, кеңесші мен баптаулар көшірілді, сатып алушылардағы бот сол күйі. Екі нәрсені тексеріңіз.",
+  "overview.moved.checkNoSales": "Алғашқы сұрақтарға дейін тексеріңіз",
   "overview.moved.check.payment": "Елдер бойынша төлем деректемелері — бұрынғы панельдегідей.",
   "overview.moved.check.texts":
     "Бот мәтіндері: атауы, сатып алушыға нұсқаулық, беру хабарламасының соңы. Сатып алушыға қалай көрінетінін — «Ботты алдын ала қарау» бөлімінде.",
@@ -1055,6 +1061,9 @@ const baseEn: Dict = {
   "overview.moved.from.vip": "VIP group",
   "overview.moved.from.settings": "Settings: notifications, shop, bot",
   "overview.moved.check": "Check before the first orders",
+  "overview.moved.introNoSales":
+    "Customers, the consultant and settings have been moved, and buyers keep using the same bot. Check two things.",
+  "overview.moved.checkNoSales": "Check before the first questions",
   "overview.moved.check.payment": "Payment details by country are the same as in the old panel.",
   "overview.moved.check.texts":
     "Bot texts: name, buyer instructions, the note on delivery messages. See how buyers get them in «Bot preview».",
@@ -1413,6 +1422,9 @@ const baseUz: Dict = {
   "overview.moved.from.vip": "VIP-guruh",
   "overview.moved.from.settings": "Sozlamalar: bildirishnomalar, do‘kon, bot",
   "overview.moved.check": "Birinchi buyurtmalardan oldin tekshiring",
+  "overview.moved.introNoSales":
+    "Xaridorlar, maslahatchi va sozlamalar ko‘chirildi, xaridorlardagi bot o‘sha-o‘sha. Ikki narsani tekshiring.",
+  "overview.moved.checkNoSales": "Birinchi savollardan oldin tekshiring",
   "overview.moved.check.payment":
     "Mamlakatlar bo‘yicha to‘lov rekvizitlari — avvalgi paneldagidek.",
   "overview.moved.check.texts":

@@ -131,6 +131,18 @@ describe("предпросмотр бота", () => {
     expect(v.menu.keyboard[0]![0]!.text).toBe("📚 Catalog");
   });
 
+  it("консультант без товаров (BOVI): меню без каталога и корзины — как шлёт бот", async () => {
+    const s = setup({ shop: true, dm_shop: true });
+    (s.ctx.tenant as { vertical: string }).vertical = "consultant";
+    s.db.tables.products = [];
+    const view = await botPreview(s.ctx, {});
+    const [welcome] = await botSends(s, "/start");
+    expect(view.menu).toEqual(welcome!.reply_markup);
+    const texts = JSON.stringify(view.menu);
+    expect(texts).not.toContain("📚");
+    expect(texts).not.toContain("🛒");
+  });
+
   it("скрытый товар в предпросмотр не попадает", async () => {
     const s = setup({});
     const v = await botPreview(s.ctx, { productId: "33333333-3333-4333-8333-333333333333" });

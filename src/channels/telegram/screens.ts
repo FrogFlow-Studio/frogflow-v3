@@ -30,15 +30,24 @@ import type { InlineButton, InlineKeyboard } from "./types";
 export type MenuButton = { text: string; web_app?: { url: string } };
 export type MainMenu = { keyboard: MenuButton[][]; resize_keyboard: true };
 
-export function mainMenu(tenant: Tenant, locale: Locale, appUrl: string): MainMenu {
+/**
+ * Нижнее меню бота. `sells` — продаёт ли клиент сейчас (core/tenant/sells):
+ * консультант без товаров (BOVI) не видит каталога, поиска, корзины, заказов
+ * и витрины — на вопросы отвечает консультант.
+ */
+export function mainMenu(tenant: Tenant, locale: Locale, appUrl: string, sells = true): MainMenu {
   const def = verticalDef(tenant.vertical);
   const m = COPY[locale];
   // Онлайн-школа: «Мои курсы» — первая кнопка, каталог — «Все курсы».
   const school = tenant.vertical === "courses" && tenant.modules.courses;
   const keyboard: MenuButton[][] = [
     ...(school ? [[{ text: m.myCourses }]] : []),
-    [{ text: school ? m.catalogCourses : m.catalog }, { text: m.search }],
-    [{ text: m.cart }, { text: m.myOrders }],
+    ...(sells
+      ? [
+          [{ text: school ? m.catalogCourses : m.catalog }, { text: m.search }],
+          [{ text: m.cart }, { text: m.myOrders }],
+        ]
+      : []),
     // «Информация» ведёт на юр. страницы — только при модуле legal_docs.
     tenant.modules.legal_docs
       ? [{ text: m.instruction }, { text: m.information }]
@@ -53,8 +62,8 @@ export function mainMenu(tenant: Tenant, locale: Locale, appUrl: string): MainMe
   // Онлайн-школа: уроки, задания и канал курса — отдельной кнопкой под заказами.
   if (tenant.modules.courses && !school)
     keyboard.splice(keyboard.length - 2, 0, [{ text: m.myCourses }]);
-  if (tenant.modules.telegram_mini_app && tenant.modules.shop) {
-    keyboard.unshift([{ text: "🛍 Магазин", web_app: { url: storefrontBase(tenant, appUrl) } }]);
+  if (sells && tenant.modules.telegram_mini_app && tenant.modules.shop) {
+    keyboard.unshift([{ text: m.shopAppBtn, web_app: { url: storefrontBase(tenant, appUrl) } }]);
   }
   return { keyboard, resize_keyboard: true };
 }

@@ -4,7 +4,7 @@
  * не по клику: есть включённый товар, есть способ оплаты, в магазине появился
  * первый покупатель кроме продавца, пробный заказ прошёл целиком. Настоящая
  * оплаченная продажа доказывает все четыре сразу. Когда закрыто всё, карточка
- * уходит с «Обзора».
+ * уходит с «Обзора». Консультанту без продаж её не показываем вовсе.
  */
 export const FIRST_WEEK_STEPS = ["product", "payment", "link", "trial"] as const;
 export type FirstWeekStep = (typeof FIRST_WEEK_STEPS)[number];
@@ -18,6 +18,12 @@ export type FirstWeekFacts = {
   trialPassed: boolean;
   /** Заказов с подтверждённой оплатой. */
   paidOrders: number;
+  /**
+   * Продаёт ли клиент (`sellsInBot`). Консультант без продаж (BOVI: модуль
+   * магазина из v1, товаров нет) чек-лист до первой продажи закрыть не может —
+   * карточки нет совсем. Нет значения — продаёт.
+   */
+  sells?: boolean;
 };
 
 export type FirstWeekState = {
@@ -26,7 +32,7 @@ export type FirstWeekState = {
   percent: number;
   /** Первый несделанный шаг; null — всё сделано. */
   next: FirstWeekStep | null;
-  /** Карточку показываем, пока не закрыто всё. */
+  /** Карточку показываем, пока не закрыто всё (и только тому, кто продаёт). */
   visible: boolean;
   sold: boolean;
 };
@@ -47,7 +53,7 @@ export function firstWeekState(f: FirstWeekFacts): FirstWeekState {
     doneCount,
     percent: Math.round((doneCount / rows.length) * 100),
     next: rows.find((r) => !r.done)?.step ?? null,
-    visible: doneCount < rows.length,
+    visible: f.sells !== false && doneCount < rows.length,
     sold,
   };
 }

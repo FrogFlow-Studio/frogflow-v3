@@ -49,4 +49,18 @@ describe("syncMenuButton: кнопка меню бота", () => {
       ],
     ]);
   });
+
+  it("кнопка на языке магазина; консультант без товаров — стандартная", async () => {
+    const kk = {
+      id: "bot-1",
+      modules: { shop: true, telegram_mini_app: true },
+      settings: { slug: "shop", default_locale: "kk" },
+    } as unknown as Tenant;
+    const a = apiSpy();
+    await syncMenuButton(kk, a.api);
+    expect(a.calls[0]![1]).toMatchObject({ menu_button: { text: "🛍 Дүкен" } });
+    const b = apiSpy();
+    await syncMenuButton(kk, b.api, false);
+    expect(b.calls).toEqual([["setChatMenuButton", { menu_button: { type: "default" } }]]);
+  });
 });

@@ -7,7 +7,8 @@ import { Card, ErrorBox, useAction } from "@/app/ui";
 /**
  * Карточка на «Обзоре» для продавца, которого перевели с прежней панели:
  * что где теперь, что проверить и тестовый заказ на себя. Показывается,
- * пока продавец её не закроет (showMovedWelcome в setup.ts).
+ * пока продавец её не закроет (showMovedWelcome в setup.ts). Консультанту
+ * без продаж (`sells: false`) — без заказов, каталога, оплаты и тестового заказа.
  */
 export function MovedWelcome({
   t,
@@ -15,28 +16,33 @@ export function MovedWelcome({
   payment,
   notifications,
   testOrder,
+  sells = true,
 }: {
   t: AdminT;
   modules: Record<string, boolean | undefined>;
   payment: boolean;
   notifications: boolean;
   testOrder: { url: string } | { missing: "telegram" | "products" };
+  sells?: boolean;
 }) {
   const router = useRouter();
   const hide = useAction(async () => {
     await hideMovedWelcomeFn();
     await router.invalidate();
   });
-  const rows = movedRows(modules);
+  const rows = movedRows(modules, sells);
   const checks = [
     { key: "payment", to: "/admin/settings", ok: payment },
     { key: "texts", to: "/admin/bot-preview", ok: null },
     { key: "chat", to: "/admin/settings", ok: notifications },
   ] as const;
+  const shown = sells ? checks : checks.filter((c) => c.key !== "payment");
   return (
     <div data-testid="moved-welcome" className="mb-6">
       <Card title={t("overview.moved.title")}>
-        <p className="mb-4 text-sm text-muted">{t("overview.moved.intro")}</p>
+        <p className="mb-4 text-sm text-muted">
+          {t(sells ? "overview.moved.intro" : "overview.moved.introNoSales")}
+        </p>
         <div className="grid gap-6 lg:grid-cols-2">
           <div>
             <p className="mb-2 text-sm font-medium">{t("overview.moved.where")}</p>
@@ -53,9 +59,11 @@ export function MovedWelcome({
             </ul>
           </div>
           <div>
-            <p className="mb-2 text-sm font-medium">{t("overview.moved.check")}</p>
+            <p className="mb-2 text-sm font-medium">
+              {t(sells ? "overview.moved.check" : "overview.moved.checkNoSales")}
+            </p>
             <ol className="space-y-2 text-sm">
-              {checks.map((c) => (
+              {shown.map((c) => (
                 <li key={c.key} className="flex gap-2">
                   <span className={c.ok === false ? "text-warn" : "text-muted"} aria-hidden>
                     {c.ok ? "✓" : c.ok === false ? "!" : "•"}
@@ -69,29 +77,31 @@ export function MovedWelcome({
                 </li>
               ))}
             </ol>
-            <div className="mt-4">
-              {"url" in testOrder ? (
-                <>
-                  <a
-                    href={testOrder.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="btn-secondary inline-block text-sm"
-                  >
-                    {t("overview.testOrder.open")}
-                  </a>
-                  <p className="mt-1 text-xs text-muted">{t("overview.testOrder.how")}</p>
-                </>
-              ) : (
-                <p className="text-sm text-muted">
-                  {t(
-                    testOrder.missing === "telegram"
-                      ? "overview.testOrder.needTelegram"
-                      : "overview.testOrder.needProducts",
-                  )}
-                </p>
-              )}
-            </div>
+            {sells && (
+              <div className="mt-4">
+                {"url" in testOrder ? (
+                  <>
+                    <a
+                      href={testOrder.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="btn-secondary inline-block text-sm"
+                    >
+                      {t("overview.testOrder.open")}
+                    </a>
+                    <p className="mt-1 text-xs text-muted">{t("overview.testOrder.how")}</p>
+                  </>
+                ) : (
+                  <p className="text-sm text-muted">
+                    {t(
+                      testOrder.missing === "telegram"
+                        ? "overview.testOrder.needTelegram"
+                        : "overview.testOrder.needProducts",
+                    )}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         </div>
         <div className="mt-4 flex justify-end">

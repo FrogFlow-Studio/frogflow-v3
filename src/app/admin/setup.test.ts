@@ -86,6 +86,14 @@ describe("карточка продавцу, переехавшему с v1", ()
     expect(all).toHaveLength(MOVED_MAP.length);
     expect(movedRows({ gift_certificates: true }).map((r) => r.from)).toContain("promo");
   });
+
+  it("консультант без продаж: без заказов, каталога и оплаты", () => {
+    expect(movedRows({ instagram: true }, false).map((r) => r.from)).toEqual([
+      "instagram",
+      "settings",
+    ]);
+    expect(movedRows({}, true).map((r) => r.from)).toContain("orders");
+  });
 });
 
 describe("запуск магазина: процент и список шагов", () => {
@@ -107,6 +115,22 @@ describe("запуск магазина: процент и список шаго
     expect(all).toContain("delivery");
     const school = relevantSetupSteps({ modules: { shop: true }, vertical: "courses" });
     expect(setupProgress(none, school, []).total).toBe(7);
+  });
+
+  it("консультант без продаж (BOVI): без товаров, оплаты, доставки и первого заказа", () => {
+    const bovi = relevantSetupSteps({
+      modules: { shop: true, dm_shop: true },
+      vertical: "consultant",
+      sells: false,
+    });
+    expect(bovi).toEqual(["telegram", "notifications", "legal", "botTexts"]);
+    // Консультант с товарами — шаги магазина на месте.
+    expect(
+      relevantSetupSteps({ modules: { shop: true }, vertical: "consultant", sells: true }),
+    ).toEqual(relevantSetupSteps({ modules: { shop: true }, vertical: "consultant" }));
+    expect(relevantSetupSteps({ modules: { shop: true }, vertical: "consultant" })).toContain(
+      "products",
+    );
   });
 
   it("скрытый шаг не входит в процент, а сделанный скрытым не считается", () => {

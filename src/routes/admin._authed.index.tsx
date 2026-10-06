@@ -44,6 +44,8 @@ function Dashboard() {
   // «Первые 7 дней» (Р3): пока не закрыты все четыре пункта, они стоят вместо общего «Запуска».
   const firstWeek =
     d.firstWeek && d.firstWeek !== "failed" && d.firstWeek.visible ? d.firstWeek : null;
+  // Консультант без продаж (BOVI): без темпа продаж, выручки, товаров и заказов.
+  const sells = d.sells;
   const progress = setupProgress(d.setup, d.setup.relevant, d.setup.skipped);
   const next = nextSetupStep(d.setup, d.setup.relevant, d.setup.skipped);
   const skip = useAction(async (step: SetupStep, hide: boolean) => {
@@ -74,14 +76,16 @@ function Dashboard() {
             tiles={waitingTiles(buildAdminNav(shop), shop, d.counts.awaiting_confirmation ?? 0)}
             t={t}
           />
-          {d.pace && <PaceCard pace={d.pace} t={t} />}
-          <GrowthCard
-            growth={d.growth}
-            analytics={buildAdminNav(shop).groups.some((g) =>
-              g.items.some((i) => i.to === "/admin/analytics"),
-            )}
-            t={t}
-          />
+          {sells && d.pace && <PaceCard pace={d.pace} t={t} />}
+          {sells && (
+            <GrowthCard
+              growth={d.growth}
+              analytics={buildAdminNav(shop).groups.some((g) =>
+                g.items.some((i) => i.to === "/admin/analytics"),
+              )}
+              t={t}
+            />
+          )}
           {shop.role !== "accountant" && (
             <TodayCard
               // «Ждёт вас» уже показывает чеки, диалоги и обращения: здесь их нет.
@@ -117,6 +121,7 @@ function Dashboard() {
               payment={d.setup.payment}
               notifications={d.setup.notifications}
               testOrder={d.setup.testOrder}
+              sells={sells}
             />
           )}
           {shop.vertical === "courses" && shop.modules.courses && <LaunchCard t={t} />}
@@ -237,7 +242,7 @@ function Dashboard() {
         </aside>
         <div className="lg:col-start-1">
           <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-            {shop.role !== "accountant" && (
+            {sells && shop.role !== "accountant" && (
               <>
                 <Stat label={t("today.rev1")} value={formatMoney(d.rev1.total, d.rev1.currency)} />
                 <Stat
@@ -247,64 +252,70 @@ function Dashboard() {
                 />
               </>
             )}
-            <Stat
-              label={t("overview.revenue30")}
-              value={formatMoney(d.rev30.total, d.rev30.currency)}
-              hint={t("overview.paidOrders", { n: d.rev30.orders })}
-            />
-            <Stat label={t("overview.productsOnSale")} value={d.products} />
+            {sells && (
+              <>
+                <Stat
+                  label={t("overview.revenue30")}
+                  value={formatMoney(d.rev30.total, d.rev30.currency)}
+                  hint={t("overview.paidOrders", { n: d.rev30.orders })}
+                />
+                <Stat label={t("overview.productsOnSale")} value={d.products} />
+              </>
+            )}
             <Stat label={t("overview.customers")} value={d.customers.toLocaleString(loc)} />
           </div>
           <div className="mt-6 grid gap-4 [&>*]:min-w-0">
-            <Card
-              title={t("overview.recentOrders")}
-              actions={
-                <Link to="/admin/orders" className="text-xs text-accent hover:underline">
-                  {t("overview.allOrders")}
-                </Link>
-              }
-            >
-              {d.recent.length === 0 ? (
-                <Empty>{t("overview.noOrders")}</Empty>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="table">
-                    <thead>
-                      <tr>
-                        <th>{t("orders.col.no")}</th>
-                        <th>{t("orders.col.customer")}</th>
-                        <th>{t("orders.col.total")}</th>
-                        <th>{t("orders.col.status")}</th>
-                        <th>{t("orders.col.when")}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {d.recent.map((o) => (
-                        <tr key={o.id}>
-                          <td>
-                            <Link
-                              to="/admin/orders/$id"
-                              params={{ id: String(o.id) }}
-                              className="font-medium hover:underline"
-                            >
-                              #{displayNo(o)}
-                            </Link>
-                          </td>
-                          <td>{o.display_name}</td>
-                          <td className="tabular-nums">{formatMoney(o.total, o.currency)}</td>
-                          <td>
-                            <OrderStatus status={o.status} />
-                          </td>
-                          <td className="text-muted">
-                            {new Date(o.created_at).toLocaleDateString(loc)}
-                          </td>
+            {sells && (
+              <Card
+                title={t("overview.recentOrders")}
+                actions={
+                  <Link to="/admin/orders" className="text-xs text-accent hover:underline">
+                    {t("overview.allOrders")}
+                  </Link>
+                }
+              >
+                {d.recent.length === 0 ? (
+                  <Empty>{t("overview.noOrders")}</Empty>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="table">
+                      <thead>
+                        <tr>
+                          <th>{t("orders.col.no")}</th>
+                          <th>{t("orders.col.customer")}</th>
+                          <th>{t("orders.col.total")}</th>
+                          <th>{t("orders.col.status")}</th>
+                          <th>{t("orders.col.when")}</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </Card>
+                      </thead>
+                      <tbody>
+                        {d.recent.map((o) => (
+                          <tr key={o.id}>
+                            <td>
+                              <Link
+                                to="/admin/orders/$id"
+                                params={{ id: String(o.id) }}
+                                className="font-medium hover:underline"
+                              >
+                                #{displayNo(o)}
+                              </Link>
+                            </td>
+                            <td>{o.display_name}</td>
+                            <td className="tabular-nums">{formatMoney(o.total, o.currency)}</td>
+                            <td>
+                              <OrderStatus status={o.status} />
+                            </td>
+                            <td className="text-muted">
+                              {new Date(o.created_at).toLocaleDateString(loc)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </Card>
+            )}
           </div>
         </div>
       </div>

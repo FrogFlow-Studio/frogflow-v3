@@ -201,6 +201,10 @@ export function WeeklyReportCard({ settings }: { settings: Record<string, string
   return (
     <Card title={t("settings.weekly.title")}>
       <p className="mb-3 text-sm text-muted">{t("settings.weekly.intro")}</p>
+      {/* Консультант без продаж (sellsNow): крон отчёт не шлёт — говорим об этом прямо. */}
+      {shop.sells === false && (
+        <p className="mb-3 text-sm text-warn">{t("settings.weekly.noSales")}</p>
+      )}
       <div className="flex items-center gap-3">
         <Switch
           checked={enabled}

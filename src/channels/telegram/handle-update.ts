@@ -149,6 +149,7 @@ import { closedRules, describeClosed, hasClosedDays } from "@/core/fulfillment/c
 import { dateAvailability, freeSlotsOnDate } from "@/core/fulfillment/capacity";
 import { isoToDisplay, matchFulfillmentType, parseDateInput } from "@/core/fulfillment/pure";
 import { serverFailure } from "@/lib/server-failure";
+import { sellsNowOrShop } from "@/core/tenant/sells.server";
 
 const PAGE = 5;
 const DEFAULT_PAUSED = "Бот временно недоступен. Загляните чуть позже — мы уже разбираемся.";
@@ -193,6 +194,11 @@ type Bot = {
   customer: Customer;
   locale: Locale;
   m: Msg;
+  /**
+   * Продаёт ли клиент сейчас (core/tenant/sells): консультант без товаров (BOVI) —
+   * нет. Тогда меню без каталога и корзины, а вопросы — консультанту.
+   */
+  sells: boolean;
 };
 
 function localeOf(ctx: TenantContext, customer: Customer): Locale {
@@ -217,7 +223,7 @@ function contactLabels(ctx: TenantContext): string[] {
 }
 
 function mainMenu(b: Bot) {
-  return screenMainMenu(b.ctx.tenant, b.locale, b.ctx.appUrl);
+  return screenMainMenu(b.ctx.tenant, b.locale, b.ctx.appUrl, b.sells);
 }
 
 async function sendMain(b: Bot, text?: string) {
@@ -231,7 +237,16 @@ export async function sendCartMessage(
   customer: Customer,
 ): Promise<void> {
   const locale = localeOf(ctx, customer);
-  await showCart({ ctx, api, chatId: customer.telegramId, customer, locale, m: COPY[locale] });
+  const sells = await sellsNowOrShop(ctx);
+  await showCart({
+    ctx,
+    api,
+    chatId: customer.telegramId,
+    customer,
+    locale,
+    m: COPY[locale],
+    sells,
+  });
 }
 
 // ── входящие сообщения ────────────────────────────────────────────────
@@ -291,7 +306,15 @@ async function handleMessage(
     languageCode: from.language_code,
   });
   const locale = localeOf(ctx, customer);
-  const b: Bot = { ctx, api, chatId, customer, locale, m: COPY[locale] };
+  const b: Bot = {
+    ctx,
+    api,
+    chatId,
+    customer,
+    locale,
+    m: COPY[locale],
+    sells: await sellsNowOrShop(ctx),
+  };
   const text = msg.text?.trim();
 
   // Чат с менеджером: реплика в лог; если менеджер подключён — бот молчит.
@@ -375,7 +398,10 @@ async function handleMessage(
     if (orderId) return receiveProof(b, msg, orderId);
   }
 
-  const action = menuActionFor(text, contactLabels(ctx));
+  // Консультант без товаров: «Каталог», «Поиск», «Корзина» со старого нижнего
+  // меню — не в пустой каталог, а вопросом консультанту.
+  const pressed = menuActionFor(text, contactLabels(ctx));
+  const action = pressed && !b.sells && SHOP_ACTIONS.has(pressed) ? undefined : pressed;
 
   if (text && !action) {
     const mode = customer.state.mode;
@@ -583,16 +609,44 @@ async function handleMessage(
     (!customer.state.mode || customer.state.mode === "idle" || customer.state.mode === "search")
   )
     await offHoursReply(b);
-  if (customer.state.mode === "search" && text) return showSearch(b, text);
+  if (customer.state.mode === "search" && text && b.sells) return showSearch(b, text);
   // «Как в прошлый раз» словом: последний оплаченный заказ в корзину (Б11).
-  if (text && isReorderWord(text) && (await reorderLast(b))) return;
+  if (text && b.sells && isReorderWord(text) && (await reorderLast(b))) return;
   if (text && (await consultantReply(b, text))) return;
+  // Консультант без товаров не ответил: не поиск по пустому каталогу, а вопрос менеджеру.
+  if (text && !b.sells) return questionToManager(b, text);
   const word = menuWordFor(text);
   if (word) return menuAction(b, word);
   if (text && isFreeTextQuery(text)) return freeTextSearch(b, text);
   // Консультант по прайсу видит фото покупателя (не чек — чеки разобраны выше).
   if (msg.photo?.length && !text && (await pricelistPhoto(b, msg))) return;
   await sendMain(b, notUnderstoodHtml(ctx.tenant, b.locale));
+}
+
+/** Кнопки и команды магазина: у консультанта без товаров их нет. */
+const SHOP_ACTIONS = new Set<ReturnType<typeof menuActionFor>>(["catalog", "search", "cart"]);
+
+/**
+ * Консультант без товаров не ответил (выключен продавцом, нет ключа ИИ): вопрос
+ * уходит продавцу в Telegram, покупателю — «передам менеджеру» и меню без каталога.
+ */
+async function questionToManager(b: Bot, text: string) {
+  const { handoffReply, unansweredQuestionTitle } = await import("@/core/consultant/messages");
+  const { sellerLocale } = await import("@/core/catalog/low-stock");
+  const title = unansweredQuestionTitle(await sellerLocale(b.ctx).catch(() => "ru" as const));
+  const who =
+    [b.customer.firstName, b.customer.lastName].filter(Boolean).join(" ") ||
+    (b.customer.username ? `@${b.customer.username}` : `id ${b.customer.telegramId}`);
+  await notifyAdminsHtml(
+    b.ctx,
+    [
+      `🙋 <b>${escapeHtml(title)}</b>`,
+      `👤 ${escapeHtml(who)}${b.customer.username ? ` · @${escapeHtml(b.customer.username)}` : ""}`,
+      `💬 ${escapeHtml(text.slice(0, 1000))}`,
+    ].join("\n"),
+    { kind: "question" },
+  ).catch(() => 0);
+  await sendMain(b, escapeHtml(handoffReply(b.locale)));
 }
 
 /** Не чаще раза в 6 часов одному покупателю: «вне часов работы» не должно сыпаться на каждую реплику. */
@@ -841,6 +895,8 @@ async function applyLocale(b: Bot, locale: Locale) {
 }
 
 async function menuAction(b: Bot, action: ReturnType<typeof menuActionFor>) {
+  // Консультант без товаров: каталог, поиск и корзина — пусты; свежее меню без них.
+  if (!b.sells && SHOP_ACTIONS.has(action)) return sendMain(b);
   switch (action) {
     case "quiz":
       return b.ctx.tenant.modules.quiz ? quizAsk(b, 0, true) : showCategories(b, null, 0);
@@ -2357,7 +2413,15 @@ async function handleCallback(
     languageCode: from.language_code,
   });
   const locale = localeOf(ctx, customer);
-  const b: Bot = { ctx, api, chatId, customer, locale, m: COPY[locale] };
+  const b: Bot = {
+    ctx,
+    api,
+    chatId,
+    customer,
+    locale,
+    m: COPY[locale],
+    sells: await sellsNowOrShop(ctx),
+  };
 
   // Кнопка «Отписаться» под рассылкой — до перехвата чатом с менеджером.
   if (data === "unsub") return optOutReply(b, "unsubscribe");

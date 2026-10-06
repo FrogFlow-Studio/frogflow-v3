@@ -22,7 +22,7 @@ vi.mock("./api", () => ({
 let current: Tenant;
 const reinstall = vi.fn();
 vi.mock("@/core/tenant/resolve.server", () => ({
-  tenantContext: () => ({ secrets: { telegramToken: () => "t" } }),
+  tenantContext: (tenant: Tenant) => ({ tenant, secrets: { telegramToken: () => "t" } }),
   requireTenant: async () => current,
 }));
 vi.mock("@/app/operator/operator.server", () => ({
@@ -36,6 +36,7 @@ const WANT = "https://app.test/api/telegram/b1";
 const make = (over: Record<string, unknown> = {}): Tenant => {
   const t = {
     id: "b1",
+    vertical: "digital",
     modules: {},
     telegramTokenEnc: "enc",
     settings: { served_by: "v2", telegram: {} },

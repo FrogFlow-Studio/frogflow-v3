@@ -13,6 +13,8 @@ import {
 } from "./message";
 import { PLATFORM_LABEL } from "./platform";
 import { makeReason } from "@/core/chat/reason";
+import { sellsNowOrShop } from "@/core/tenant/sells.server";
+import { isLocale } from "@/core/i18n/locale";
 
 /**
  * Входящее из Instagram Direct или WhatsApp. Адаптер разбирает событие,
@@ -84,6 +86,12 @@ export async function handleZernioMessage(
   });
   if (await isBlocked(ctx, customer.telegramId)) return ignored("покупатель заблокирован");
 
+  // Продаёт ли клиент сейчас (core/tenant/sells): консультант без товаров (BOVI)
+  // с модулем магазина из v1 — нет, тогда сценарий магазина пропускаем и отвечает
+  // консультант. Считается один раз на сообщение и только когда нужен.
+  let sellsMemo: Promise<boolean> | null = null;
+  const sells = () => (sellsMemo ??= sellsNowOrShop(ctx));
+
   // Двухшаговая Comment-to-DM: покупатель написал первым после комментария —
   // отдаём обещанное второе сообщение с кнопками; «+»/«да» дальше не разбираем.
   if (m.platform === "instagram" && m.senderUsername && ctx.tenant.modules.instagram) {
@@ -98,7 +106,7 @@ export async function handleZernioMessage(
     // Второй быстрый «+» после уже отданного второго сообщения тоже не разбираем.
     // Только набранный ответ: нажатие кнопки второго сообщения и фото чека идут дальше.
     const typedOnly = !m.postbackPayload && m.attachments.length === 0 && !m.nativeOrder;
-    const toShop = ctx.tenant.modules.dm_shop && isShopStartWord(m.text);
+    const toShop = ctx.tenant.modules.dm_shop && isShopStartWord(m.text) && (await sells());
     if (
       !toShop &&
       isTwoStepAcknowledgement(m.text) &&
@@ -190,7 +198,8 @@ export async function handleZernioMessage(
     const proofStep =
       ["awaiting_proof", "awaiting_payment", "choose_pay"].includes(customer.state.mode ?? "") &&
       m.attachments.length > 0;
-    if (!isShopStartWord(m.text) && !proofStep) return processed("менеджер ведёт диалог в панели");
+    const toShop = isShopStartWord(m.text) && (await sells());
+    if (!toShop && !proofStep) return processed("менеджер ведёт диалог в панели");
   }
   // Магазин на паузе (неоплата, удаление по запросу владельца): переписка
   // сохранена в «Чате», автоответы молчат — как бот Telegram на паузе.
@@ -263,10 +272,13 @@ export async function handleZernioMessage(
     const gate = await sellerPauseActive(ctx, customer, m, transport, bot.sellerPause);
     customer = gate.customer;
     if (gate.paused) return processed("продавец ведёт диалог — бот на паузе");
-    const { handleShopMessage } = await import("./shop.server");
-    const r = await handleShopMessage(ctx, customer, m, transport, bot);
-    customerNow = r.customer;
-    if (r.outcome === "handled") return processed("магазин");
+    // Консультант без товаров: каталог пуст — сразу консультанту.
+    if (await sells()) {
+      const { handleShopMessage } = await import("./shop.server");
+      const r = await handleShopMessage(ctx, customer, m, transport, bot);
+      customerNow = r.customer;
+      if (r.outcome === "handled") return processed("магазин");
+    } else customerNow = customer;
   } else if (m.nativeOrder) {
     // Корзина из каталога Meta без магазина в переписке — продавцу текстом, как в v1.
     const { describeNativeCart } = await import("@/core/whatsapp/native-cart");
@@ -289,7 +301,8 @@ export async function handleZernioMessage(
   if (!(await consultant.consultantEnabled(ctx))) {
     // Модуль «Поддержка»: вопрос в Direct/WhatsApp — обращение с номером.
     const ticket = m.text ? await directTicket(ctx, customerNow, m.platform, m.text) : null;
-    if (shopOn && m.text) await forwardedToSeller(ctx, customerNow, m, transport, bot, ticket);
+    if (shopOn && m.text)
+      await forwardedToSeller(ctx, customerNow, m, transport, bot, ticket, await sells());
     return processed(
       ticket
         ? `${ticket.created ? "новое обращение" : "дополнение к обращению"} #${ticket.number}`
@@ -453,6 +466,7 @@ async function forwardedToSeller(
   transport: ZernioTransport,
   bot: import("@/core/instagram/direct-bot-settings").DirectBotSettings,
   ticket: { number: number; created: boolean } | null = null,
+  sells = true,
 ) {
   // «Только по заказам»: вне сценария покупки бот молчит, чтобы диалог
   // остался непрочитанным для продавца в приложении (решение из v1).
@@ -464,6 +478,8 @@ async function forwardedToSeller(
   const at = Date.parse(String(mem.forwarded_at ?? ""));
   if (Number.isFinite(at) && Date.now() - at < 3600_000) return;
   const locale = customer.state.locale ?? ctx.tenant.settings.default_locale ?? "ru";
+  // Консультант без товаров: «напишите «каталог»» звал бы в пустой каталог.
+  const { handoffReply } = await import("@/core/consultant/messages");
   const text =
     bot.script ||
     // Открытое обращение — и через час покупатель видит его номер, а не общий ответ.
@@ -471,8 +487,10 @@ async function forwardedToSeller(
       ? (ticket.created
           ? (COPY[locale] ?? COPY.ru).ticketCreated(ticket.number)
           : (COPY[locale] ?? COPY.ru).ticketAppended(ticket.number)) +
-        (locale === "ru" ? ` ${ORDER_HINT_RU}` : "")
-      : `Передал ваш вопрос продавцу — он ответит здесь. ${ORDER_HINT_RU}`);
+        (locale === "ru" && sells ? ` ${ORDER_HINT_RU}` : "")
+      : sells
+        ? `Передал ваш вопрос продавцу — он ответит здесь. ${ORDER_HINT_RU}`
+        : handoffReply(isLocale(locale) ? locale : "ru"));
   const r = await transport.send(m.conversationId!, m.accountId!, text, { platform: m.platform });
   if (!r.ok) return;
   const { setState } = await import("@/core/customers/customers");

@@ -27,8 +27,18 @@ vi.mock("./api", () => ({
 }));
 
 const patches: Array<Record<string, unknown>> = [];
+/** Сколько включённых товаров у клиента (sellsNow считает их запросом). */
+let activeProducts = 0;
 vi.mock("@/core/tenant/resolve.server", () => ({
-  tenantContext: () => ({ secrets: { telegramToken: () => "t" } }),
+  tenantContext: (tenant: Tenant) => ({
+    tenant,
+    secrets: { telegramToken: () => "t" },
+    db: {
+      from: () => ({
+        select: () => ({ eq: async () => ({ count: activeProducts, error: null }) }),
+      }),
+    },
+  }),
   patchTenantSettings: vi.fn(async (_id: string, patch: Record<string, unknown>) => {
     patches.push(patch);
   }),
@@ -38,14 +48,23 @@ const { ensureTelegramWebhook, releaseTelegramToV1 } = await import("./webhook-s
 const { botCommandsVersion } = await import("./commands");
 const { telegramWebhookUrl } = await import("./secret");
 
-function tenant(settings: Record<string, unknown>): Tenant {
+function tenant(settings: Record<string, unknown>, over: Record<string, unknown> = {}): Tenant {
   return {
     id: "bot-1",
+    vertical: "digital",
     telegramTokenEnc: "enc",
     modules: {},
     settings: { default_locale: "ru", ...settings },
+    ...over,
   } as unknown as Tenant;
 }
+
+const commandsOf = (lang?: string) =>
+  (
+    calls.find(([m, p]) => m === "setMyCommands" && p.language_code === lang)?.[1].commands as
+      Array<{ command: string }> | undefined
+  )?.map((c) => c.command);
+const buttonOf = () => calls.find(([m]) => m === "setChatMenuButton")?.[1].menu_button;
 
 const methods = () => calls.map(([m]) => m);
 
@@ -53,6 +72,7 @@ beforeEach(() => {
   calls.length = 0;
   patches.length = 0;
   webhookUrl = null;
+  activeProducts = 0;
 });
 
 describe("меню команд при включении v2", () => {
@@ -88,5 +108,31 @@ describe("меню команд при включении v2", () => {
     await releaseTelegramToV1(tenant({ served_by: "v1" }));
     expect(methods().filter((m) => m === "deleteMyCommands")).toHaveLength(5);
     expect(patches).toContainEqual({ telegram: { commands_v: "" } });
+  });
+
+  it("консультант без товаров (BOVI) — без /catalog, /cart, /orders и без кнопки витрины", async () => {
+    const consultant = { vertical: "consultant", modules: { shop: true, telegram_mini_app: true } };
+    const t = tenant({ served_by: "v2" }, consultant);
+    await ensureTelegramWebhook(t, true);
+    expect(commandsOf()).toEqual(["stop"]);
+    expect(commandsOf("kk")).toEqual(["stop"]);
+    expect(buttonOf()).toEqual({ type: "default" });
+    expect(patches).toContainEqual({ telegram: { commands_v: botCommandsVersion(t, false) } });
+    expect(botCommandsVersion(t, false)).not.toBe(botCommandsVersion(t, true));
+  });
+
+  it("у консультанта появились товары — крон переставляет меню с каталогом и витриной", async () => {
+    webhookUrl = telegramWebhookUrl("https://app.test", "bot-1");
+    const consultant = { vertical: "consultant", modules: { shop: true, telegram_mini_app: true } };
+    const before = tenant({ served_by: "v2" }, consultant);
+    const t = tenant(
+      { served_by: "v2", telegram: { commands_v: botCommandsVersion(before, false) } },
+      consultant,
+    );
+    activeProducts = 3;
+    await ensureTelegramWebhook(t);
+    expect(commandsOf()).toEqual(["catalog", "cart", "orders", "stop"]);
+    await ensureTelegramWebhook(t, true);
+    expect(buttonOf()).toMatchObject({ type: "web_app", text: "🛍 Магазин" });
   });
 });

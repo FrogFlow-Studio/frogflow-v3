@@ -5,6 +5,7 @@ import { tenantContext } from "@/core/tenant/resolve.server";
 import type { Tenant } from "@/core/tenant/types";
 import { servedByV2 } from "@/core/tenant/directory";
 import { botCommandNames, botCommandsVersion } from "./commands";
+import { sellsNowOrShop } from "@/core/tenant/sells.server";
 import { allowedUpdatesFor } from "./webhook-setup.server";
 import type { BotCheck, CheckItem, InstallError } from "./bot-check";
 
@@ -129,9 +130,14 @@ export async function checkBot(
     if (!cmds.ok) items.push({ key: "commands", status: "unknown", code: "noReply" });
     else {
       const have = (cmds.result ?? []).map((c) => c.command).join(",");
-      const want = botCommandNames(tenant).join(",");
+      // Консультант без товаров — без /catalog, /cart, /orders (как ставит webhook-setup).
+      const sells = await sellsNowOrShop(tenantContext(tenant));
+      const want = botCommandNames(tenant, sells).join(",");
       if (!have) items.push({ key: "commands", status: "fail", code: "none" });
-      else if (have !== want || tenant.settings.telegram?.commands_v !== botCommandsVersion(tenant))
+      else if (
+        have !== want ||
+        tenant.settings.telegram?.commands_v !== botCommandsVersion(tenant, sells)
+      )
         items.push({ key: "commands", status: "fail", code: "stale" });
       else items.push({ key: "commands", status: "ok", code: "ok" });
     }

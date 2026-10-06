@@ -43,6 +43,19 @@ vi.mock("@/core/notify/recipients", () => ({
   adminRecipients: async () => ["900"],
   shopAdminIds: async () => ["900"],
 }));
+// Модель консультанта подменена ответом сценария (`consultant`); маршрут до неё — настоящий.
+const consultantStub: { reply: string | null | undefined } = { reply: undefined };
+vi.mock("@/core/consultant/engine.server", async (orig) => {
+  const real = await orig<typeof import("@/core/consultant/engine.server")>();
+  return {
+    ...real,
+    runConsultant: async (...args: Parameters<typeof real.runConsultant>) => {
+      if (consultantStub.reply === undefined) return real.runConsultant(...args);
+      if (consultantStub.reply === null) return null;
+      return { reply: consultantStub.reply, usage: { inputTokens: 0, outputTokens: 0, usd: 0 } };
+    },
+  };
+});
 vi.mock("@/core/catalog/low-stock", async (orig) => ({
   ...(await orig<typeof import("@/core/catalog/low-stock")>()),
   sellerLocale: async () => "ru",
@@ -51,6 +64,7 @@ vi.mock("@/core/catalog/low-stock", async (orig) => ({
 beforeEach(() => {
   setEnvForTests({});
   notices.count = 0;
+  consultantStub.reply = undefined;
 });
 afterEach(() => setEnvForTests(undefined));
 
@@ -68,6 +82,11 @@ describe("набор золотых диалогов", () => {
 describe("золотые диалоги", () => {
   for (const s of SCENARIOS)
     it(`${s.id}: ${s.title} (${s.origin})`, async () => {
+      if (s.consultant !== undefined) {
+        // Консультант включён: ключ ИИ есть, ответ модели — из сценария.
+        setEnvForTests({ ANTHROPIC_API_KEY: "sk-test" });
+        consultantStub.reply = s.consultant;
+      }
       const r = room(s);
       s.arrange?.(r);
       const c = COPY[s.locale];
@@ -87,6 +106,10 @@ describe("золотые диалоги", () => {
         for (const x of e.notSays ?? [])
           expect(has(all, x), `${where}: лишнее «${String(x)}» в «${all}»`).toBe(false);
         for (const b of e.buttons ?? []) expect(r.buttons(), where).toContain(b);
+        for (const b of e.noButtons ?? [])
+          expect(has(r.buttons().join("\n"), b), `${where}: лишняя кнопка «${String(b)}»`).toBe(
+            false,
+          );
         if (e.cart !== undefined) expect(r.cart().length, `${where}: корзина`).toBe(e.cart);
         if (e.state) expect(r.state(), `${where}: состояние`).toMatchObject(e.state);
         const seen = r.sellerReplies().join("\n");

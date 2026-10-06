@@ -881,7 +881,7 @@ exports[`приветствие и меню по /start > mini_app, en 1`] = `
       "keyboard": [
         [
           {
-            "text": "🛍 Магазин",
+            "text": "🛍 Shop",
             "web_app": {
               "url": "https://app.test/s/bot-1",
             },
@@ -937,7 +937,7 @@ exports[`приветствие и меню по /start > mini_app, kk 1`] = `
       "keyboard": [
         [
           {
-            "text": "🛍 Магазин",
+            "text": "🛍 Дүкен",
             "web_app": {
               "url": "https://app.test/s/bot-1",
             },
@@ -1049,7 +1049,7 @@ exports[`приветствие и меню по /start > mini_app, uz 1`] = `
       "keyboard": [
         [
           {
-            "text": "🛍 Магазин",
+            "text": "🛍 Do‘kon",
             "web_app": {
               "url": "https://app.test/s/bot-1",
             },

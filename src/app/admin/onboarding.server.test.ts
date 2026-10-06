@@ -21,14 +21,22 @@ const { withBrokenReads } = await import("../../../tests/broken-db");
 
 let db: FakeDb;
 const NOW = Date.parse("2026-10-05T10:00:00Z");
-function ctx(over: { token?: boolean; owner?: number | null; robokassa?: boolean } = {}) {
+function ctx(
+  over: {
+    token?: boolean;
+    owner?: number | null;
+    robokassa?: boolean;
+    vertical?: string;
+    modules?: Record<string, boolean>;
+  } = {},
+) {
   return {
     tenant: {
       id: BOT,
-      vertical: "digital",
+      vertical: over.vertical ?? "digital",
       telegramTokenEnc: over.token === false ? null : "enc:x",
       ownerTelegramId: over.owner === undefined ? 500000221 : over.owner,
-      modules: { robokassa: over.robokassa ?? false },
+      modules: { robokassa: over.robokassa ?? false, ...over.modules },
       settings: { default_locale: "ru", telegram: { username: "shop_bot" } },
     },
     timezone: "Asia/Almaty",
@@ -218,6 +226,19 @@ describe("первые 7 дней: факты из базы", () => {
     db.tables.orders = [{ id: 2, bot_id: BOT, status: "paid", paid_amount: 1500, total: 1500 }];
     const s = await loadFirstWeek(ctx());
     expect(s).toMatchObject({ percent: 100, visible: false, sold: true });
+  });
+
+  it("консультант с модулем магазина из v1 без товаров (BOVI) — карточки нет; с товаром — есть", async () => {
+    empty();
+    const bovi = ctx({ vertical: "consultant", modules: { shop: true, dm_shop: true } });
+    expect((await loadFirstWeek(bovi)).visible).toBe(false);
+    db.tables.products = [product({ is_active: false })];
+    expect((await loadFirstWeek(bovi)).visible).toBe(false);
+    db.tables.products = [product({ is_active: true })];
+    expect((await loadFirstWeek(bovi)).visible).toBe(true);
+    // Магазин без товаров — карточка, как раньше.
+    empty();
+    expect((await loadFirstWeek(ctx())).visible).toBe(true);
   });
 
   it("не прочиталось — ошибка, а не «ничего не сделано»", async () => {

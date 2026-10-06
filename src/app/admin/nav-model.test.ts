@@ -45,6 +45,37 @@ describe("меню админки", () => {
     expect(chat.map((i) => i.to)).toContain("/admin/chat");
   });
 
+  it("консультант без продаж (BOVI): внизу консультант и прайс, не заказы и товары", () => {
+    const bovi = shop({
+      vertical: "consultant",
+      modules: { shop: true, dm_shop: true, manager_chat: true },
+      pricelist: {},
+      sells: false,
+    });
+    expect(buildAdminNav(bovi).primary.map((i) => i.to)).toEqual([
+      "/admin",
+      "/admin/consultant",
+      "/admin/pricelist",
+      "/admin/chat",
+    ]);
+    // Без прайса и чата — покупатели.
+    const bare = buildAdminNav(shop({ vertical: "consultant", sells: false })).primary;
+    expect(bare.map((i) => i.to)).toEqual(["/admin", "/admin/consultant", "/admin/customers"]);
+    // Комиссия с продаж — не ему; группы меню на месте.
+    expect(labels(bovi)).not.toContain("/admin/commission");
+    expect(labels(bovi)).toContain("/admin/orders");
+    // Продаёт или не сказано — как раньше.
+    for (const sells of [true, undefined]) {
+      const n = buildAdminNav(shop({ vertical: "consultant", sells }));
+      expect(n.primary.map((i) => i.to).slice(0, 3)).toEqual([
+        "/admin",
+        "/admin/orders",
+        "/admin/products",
+      ]);
+      expect(labels(shop({ vertical: "consultant", sells }))).toContain("/admin/commission");
+    }
+  });
+
   it("бухгалтер видит только заказы, аналитику и оплату", () => {
     const l = labels(
       shop({ role: "accountant", modules: { dashboard: true, profit: true, broadcasts: true } }),

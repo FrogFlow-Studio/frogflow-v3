@@ -27,6 +27,11 @@ export type NavShop = {
   vertical: string;
   modules: Partial<Record<ModuleKey, boolean>>;
   pricelist?: unknown;
+  /**
+   * Продаёт ли клиент (`sellsNow`). Консультант без продаж (BOVI) не начинает
+   * с заказов и товаров: внизу — консультант и прайс. Нет значения — продаёт.
+   */
+  sells?: boolean;
   chatUnread?: number | null;
   ticketsOpen: number;
   /** Непрочитанные новости платформы — бейдж «Что нового». */
@@ -57,6 +62,7 @@ export function buildAdminNav(shop: NavShop): AdminNav {
   const admin = roleAllows(shop.role as AdminRole, "admin");
   const school = shop.vertical === "courses";
   const physical = PHYSICAL.has(shop.vertical);
+  const sells = shop.sells !== false;
   const overview: NavItem = { to: "/admin", label: "nav.overview", exact: true };
   const orders: NavItem = { to: "/admin/orders", label: "nav.orders" };
 
@@ -102,6 +108,8 @@ export function buildAdminNav(shop: NavShop): AdminNav {
     label: school ? "nav.courses" : "nav.products",
   };
   const customers: NavItem = { to: "/admin/customers", label: "nav.customers" };
+  const consultant: NavItem = { to: "/admin/consultant", label: "nav.consultant" };
+  const pricelist: NavItem = { to: "/admin/pricelist", label: "pricelist.nav" };
 
   const sales: NavGroup = {
     id: "sales",
@@ -144,7 +152,7 @@ export function buildAdminNav(shop: NavShop): AdminNav {
       { to: "/admin/categories", label: "nav.categories" },
       m.web_storefront && { to: "/admin/collections", label: "collections.nav" },
       m.warehouse && { to: "/admin/warehouse", label: "warehouse.nav" },
-      Boolean(shop.pricelist) && { to: "/admin/pricelist", label: "pricelist.nav" },
+      Boolean(shop.pricelist) && pricelist,
     ]),
   };
 
@@ -166,7 +174,7 @@ export function buildAdminNav(shop: NavShop): AdminNav {
       m.instagram && { to: "/admin/posts", label: "nav.posts" },
       m.vip && { to: "/admin/vip", label: "nav.vip" },
       m.quiz && { to: "/admin/quiz", label: "nav.quiz" },
-      { to: "/admin/consultant", label: "nav.consultant" },
+      consultant,
     ]),
   };
 
@@ -190,7 +198,7 @@ export function buildAdminNav(shop: NavShop): AdminNav {
       },
       owner && { to: "/admin/modules", label: "nav.modules" },
       owner && { to: "/admin/billing", label: "billing.nav" },
-      owner && { to: "/admin/commission", label: "commission.nav" },
+      owner && sells && { to: "/admin/commission", label: "commission.nav" },
       owner && { to: "/admin/ai-balance", label: "nav.aiBalance" },
       { to: "/admin/bot-preview", label: "nav.botPreview" },
       admin && { to: "/admin/bot-texts", label: "botTexts.nav" },
@@ -217,5 +225,16 @@ export function buildAdminNav(shop: NavShop): AdminNav {
     .concat([marketing, analytics, settings])
     .filter((g) => g.items.length > 0);
   const fourth = m.manager_chat ? chat : customers;
+  if (!sells) {
+    // Консультанту без продаж заказы и товары пусты: внизу — то, с чем он работает.
+    const primary = compact<NavItem>([
+      overview,
+      consultant,
+      Boolean(shop.pricelist) && pricelist,
+      m.manager_chat && chat,
+      customers,
+    ]).slice(0, 4);
+    return { overview, groups, primary };
+  }
   return { overview, groups, primary: [overview, orders, products, fourth] };
 }

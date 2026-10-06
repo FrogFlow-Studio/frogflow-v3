@@ -314,3 +314,31 @@ describe("«Мои обращения» в боте", () => {
     expect(shown.reply_markup).toBeUndefined();
   });
 });
+
+describe("главное меню консультанта без товаров (BOVI 06.10)", () => {
+  const consultant = {
+    vertical: "consultant",
+    settings: {},
+    modules: { shop: true, telegram_mini_app: true, helpdesk: true },
+  } as unknown as Tenant;
+  it("не продаёт — без каталога, поиска, корзины, заказов и витрины; на всех языках", async () => {
+    const { mainMenu } = await import("./screens");
+    const { COPY } = await import("./copy");
+    for (const l of ["ru", "kk", "en", "uz"] as const) {
+      const texts = mainMenu(consultant, l, "https://a.test", false)
+        .keyboard.flat()
+        .map((b) => b.text);
+      const m = COPY[l];
+      for (const gone of [m.catalog, m.search, m.cart, m.myOrders, m.shopAppBtn])
+        expect(texts, l).not.toContain(gone);
+      expect(texts, l).toContain(m.instruction);
+      expect(texts, l).toContain(m.myTicketsBtn);
+    }
+  });
+  it("продаёт — меню прежнее, витрина подписана на языке покупателя", async () => {
+    const { mainMenu } = await import("./screens");
+    const buttons = mainMenu(consultant, "uz", "https://a.test").keyboard.flat();
+    expect(buttons[0]).toMatchObject({ text: "🛍 Do‘kon", web_app: { url: expect.any(String) } });
+    expect(buttons.map((b) => b.text)).toContain("📚 Katalog");
+  });
+});

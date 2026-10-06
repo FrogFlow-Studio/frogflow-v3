@@ -2,6 +2,7 @@ import { serverFailure } from "@/lib/server-failure";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { getProduct, PRODUCT_SELECT, searchProducts, type Product } from "@/core/catalog/catalog";
 import { getSetting } from "@/core/settings/settings";
+import { sellsNowOrShop } from "@/core/tenant/sells.server";
 import { SUPPORTED_LOCALES, type Locale } from "@/core/i18n/locale";
 import { COPY } from "@/channels/telegram/copy";
 import {
@@ -59,7 +60,8 @@ export async function botPreview(
       ? { text: COPY[fallback].chooseLanguage, buttons: languageChoice() }
       : null,
     welcome: welcomeHtml(t, shopName, locale),
-    menu: mainMenu(t, locale, ctx.appUrl),
+    // Консультант без товаров (BOVI): меню без каталога и корзины, как в боте.
+    menu: mainMenu(t, locale, ctx.appUrl, await sellsNowOrShop(ctx)),
     product: p ? { id: p.id, name: p.name, ...(await productCard(ctx, p, locale, null)) } : null,
   };
 }

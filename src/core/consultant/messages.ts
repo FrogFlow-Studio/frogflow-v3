@@ -65,3 +65,13 @@ export const leadDoneReply = (locale: Locale): string => LEAD_DONE[locale];
 export const dialogHandoffReply = (locale: Locale): string => DIALOG_HANDOFF[locale];
 /** Модель ничего не ответила: просим уточнить. */
 export const clarifyReply = (locale: Locale): string => CLARIFY[locale];
+
+const UNANSWERED_TITLE: Record<Locale, string> = {
+  ru: "Вопрос покупателя: консультант не ответил — ответьте сами",
+  kk: "Сатып алушының сұрағы: кеңесші жауап бермеді — өзіңіз жауап беріңіз",
+  en: "Customer question: the consultant didn't reply — please answer it yourself",
+  uz: "Xaridor savoli: maslahatchi javob bermadi — o‘zingiz javob bering",
+};
+
+/** Продавцу (на его языке): вопрос остался без ответа консультанта. */
+export const unansweredQuestionTitle = (locale: Locale): string => UNANSWERED_TITLE[locale];

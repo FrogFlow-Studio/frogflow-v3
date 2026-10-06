@@ -71,6 +71,8 @@ export interface RoomOptions {
   /** Начальное состояние покупателя (шаг, страна, …). */
   state?: Record<string, unknown>;
   modules?: Record<string, boolean>;
+  /** Ниша клиента; по умолчанию digital (магазин). */
+  vertical?: string;
   /**
    * Instagram/WhatsApp: реплика идёт через весь разбор входящего (handleZernioMessage),
    * а не только через магазин: так работают слова «позови человека» и пауза.
@@ -159,7 +161,7 @@ function baseDb(o: RoomOptions, key: string, platform: string, telegramId: numbe
       id: BOT,
       name: "Тест-магазин",
       status: "active",
-      vertical: "digital",
+      vertical: o.vertical ?? "digital",
       modules: {
         ...(o.full ? { instagram: true, whatsapp: true, dm_shop: true, wa_shop: true } : {}),
         ...(o.modules ?? {}),
@@ -351,13 +353,18 @@ function telegramRoom(o: RoomOptions): Room {
   } as unknown as TelegramApi;
   let updateId = 0;
   let lastUpdate: Record<string, unknown> | null = null;
-  const buttonsOf = (p: Record<string, unknown>) =>
-    (
-      (p.reply_markup as { inline_keyboard?: Array<Array<{ text: string }>> } | undefined)
-        ?.inline_keyboard ?? []
-    )
+  // Кнопки под сообщением и кнопки нижнего меню (reply keyboard).
+  const buttonsOf = (p: Record<string, unknown>) => {
+    const markup = p.reply_markup as
+      | {
+          inline_keyboard?: Array<Array<{ text: string }>>;
+          keyboard?: Array<Array<{ text: string }>>;
+        }
+      | undefined;
+    return [...(markup?.inline_keyboard ?? []), ...(markup?.keyboard ?? [])]
       .flat()
       .map((b) => b.text);
+  };
   const messages = () => calls.slice(mark).filter(([m]) => m === "sendMessage");
   let sellerLines: string[] = [];
   return {

@@ -6,6 +6,8 @@ import type { Tenant } from "@/core/tenant/types";
 import { storefrontBase } from "@/core/tenant/custom-domain";
 import { servedByV2 } from "@/core/tenant/directory";
 import { botCommandsVersion, clearBotCommands, syncBotCommands } from "./commands";
+import { sellsNowOrShop } from "@/core/tenant/sells.server";
+import { COPY } from "./copy";
 
 /** Что бот получает от Telegram; pre_checkout_query — подтверждение оплаты Stars. */
 export const ALLOWED_UPDATES = ["message", "callback_query", "pre_checkout_query"];
@@ -31,7 +33,10 @@ export async function ensureTelegramWebhook(tenant: Tenant, force = false): Prom
     return { ok: false, url: null, pending: 0, error: "клиент не на v2 или без токена" };
   }
   const { APP_URL, WEBHOOK_SECRET, TELEGRAM_API_BASE } = env();
-  const api = telegramApi(tenantContext(tenant).secrets.telegramToken(), TELEGRAM_API_BASE);
+  const ctx = tenantContext(tenant);
+  const api = telegramApi(ctx.secrets.telegramToken(), TELEGRAM_API_BASE);
+  // Консультант без товаров (BOVI) — без /catalog, /cart, /orders и кнопки витрины.
+  const sells = await sellsNowOrShop(ctx);
   const wantUrl = telegramWebhookUrl(APP_URL, tenant.id);
 
   const info = await api.call<{
@@ -47,8 +52,8 @@ export async function ensureTelegramWebhook(tenant: Tenant, force = false): Prom
   const sameUpdates = want.every((u) => have.has(u));
   if (!force && current === wantUrl && sameUpdates) {
     // Вебхук на месте, но меню команд старое (или его ещё не ставили).
-    if (tenant.settings.telegram?.commands_v !== botCommandsVersion(tenant))
-      await applyBotCommands(tenant, api);
+    if (tenant.settings.telegram?.commands_v !== botCommandsVersion(tenant, sells))
+      await applyBotCommands(tenant, api, sells);
     return { ok: true, url: current, pending };
   }
 
@@ -61,8 +66,8 @@ export async function ensureTelegramWebhook(tenant: Tenant, force = false): Prom
   if (!set.ok) return { ok: false, url: current, pending, error: set.description };
 
   await patchTenantSettings(tenant.id, { telegram: { webhook_ok: true } });
-  await syncMenuButton(tenant, api).catch(() => {});
-  await applyBotCommands(tenant, api);
+  await syncMenuButton(tenant, api, sells).catch(() => {});
+  await applyBotCommands(tenant, api, sells);
   return { ok: true, url: wantUrl, pending };
 }
 
@@ -75,29 +80,35 @@ export async function ensureTelegramWebhook(tenant: Tenant, force = false): Prom
 async function applyBotCommands(
   tenant: Tenant,
   api: ReturnType<typeof telegramApi>,
+  sells: boolean,
 ): Promise<void> {
   try {
-    await syncBotCommands(tenant, api);
+    await syncBotCommands(tenant, api, sells);
     await patchTenantSettings(tenant.id, {
-      telegram: { commands_v: botCommandsVersion(tenant) },
+      telegram: { commands_v: botCommandsVersion(tenant, sells) },
     });
   } catch (e) {
     console.warn(`[telegram-webhook:${tenant.id}] меню команд:`, e);
   }
 }
 
-/** Кнопка меню бота: «Магазин» (Mini App) при включённом модуле, иначе стандартная. */
+/**
+ * Кнопка меню бота: «Магазин» (Mini App) при включённом модуле, иначе стандартная.
+ * Кнопка одна на бота — на языке магазина по умолчанию. Консультант без товаров
+ * (`sells` false) витрину не показывает.
+ */
 export async function syncMenuButton(
   tenant: Tenant,
   api: ReturnType<typeof telegramApi>,
+  sells = true,
 ): Promise<void> {
   const { APP_URL } = env();
-  const on = tenant.modules.telegram_mini_app && tenant.modules.shop;
+  const on = sells && tenant.modules.telegram_mini_app && tenant.modules.shop;
   await api.call("setChatMenuButton", {
     menu_button: on
       ? {
           type: "web_app",
-          text: "🛍 Магазин",
+          text: COPY[tenant.settings.default_locale ?? "ru"].shopAppBtn,
           web_app: { url: storefrontBase(tenant, APP_URL) },
         }
       : { type: "default" },
@@ -111,8 +122,9 @@ export async function syncMenuButton(
 export async function refreshMenuButton(tenant: Tenant): Promise<void> {
   if (!tenant.telegramTokenEnc || !servedByV2(tenant) || tenant.archived) return;
   const { TELEGRAM_API_BASE } = env();
-  const api = telegramApi(tenantContext(tenant).secrets.telegramToken(), TELEGRAM_API_BASE);
-  await syncMenuButton(tenant, api);
+  const ctx = tenantContext(tenant);
+  const api = telegramApi(ctx.secrets.telegramToken(), TELEGRAM_API_BASE);
+  await syncMenuButton(tenant, api, await sellsNowOrShop(ctx));
 }
 
 /**

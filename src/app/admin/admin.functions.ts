@@ -265,6 +265,25 @@ async function subscriptionAlert(
   return sub && sub.state !== "ok" ? sub : null;
 }
 
+/**
+ * Продаёт ли клиент (`sellsNow`) — для «Обзора» и меню. Сбой чтения — как
+ * раньше (магазин): лучше лишняя карточка про продажи, чем пустая админка.
+ */
+async function sellsOrAsBefore(
+  ctx: import("@/core/tenant/resolve.server").TenantContext,
+  where: string,
+): Promise<boolean> {
+  try {
+    return await (await import("@/core/tenant/sells.server")).sellsNow(ctx);
+  } catch (e) {
+    console.error(
+      `[admin:${ctx.tenant.id}] продаёт ли, ${where}`,
+      e instanceof Error ? e.message : e,
+    );
+    return true;
+  }
+}
+
 export const adminShopFn = createServerFn({ method: "GET" }).handler(async () => {
   const { appSession } = await import("@/app/auth/session.server");
   const s = await appSession();
@@ -306,6 +325,8 @@ export const adminShopFn = createServerFn({ method: "GET" }).handler(async () =>
           : 0,
       /** Консультант по прайсу (BOVI) — пункт «Прайс консультанта» в меню. */
       pricelist: (await import("@/core/consultant/pricelist/mode")).pricelistMode(ctx.tenant),
+      /** Продаёт ли клиент (`sellsNow`): консультант без продаж — нижняя панель без заказов и товаров. */
+      sells: await sellsOrAsBefore(ctx, "меню"),
       status: ctx.tenant.status,
       /** Пробный период на виду: до какого дня, сколько осталось и что будет после (плашка в шапке). */
       trial,
@@ -423,6 +444,8 @@ export const dashboardFn = createServerFn({ method: "GET" }).handler(async () =>
   ]);
   const { listPaymentMethods } = await import("@/core/settings/payment-methods");
   const { getSettings } = await import("@/core/settings/settings");
+  // Консультант без продаж (BOVI): без карточек про товары, оплату, заказы и выручку.
+  const sells = await sellsOrAsBefore(ctx, "обзор");
   const [
     { count: products },
     { count: customers },
@@ -539,6 +562,7 @@ export const dashboardFn = createServerFn({ method: "GET" }).handler(async () =>
     recent: accountant ? redactOrders(recent) : recent,
     products: products ?? 0,
     customers: customers ?? 0,
+    sells,
     firstWeek,
     // Чек-лист первых шагов на «Обзоре» для только что открытого магазина.
     setup: {
@@ -555,6 +579,7 @@ export const dashboardFn = createServerFn({ method: "GET" }).handler(async () =>
       relevant: relevantSetupSteps({
         modules: ctx.tenant.modules,
         vertical: ctx.tenant.vertical,
+        sells,
       }),
       skipped: parseSkippedSteps(settings.setup_skipped),
       payment: methods.length > 0 || ctx.tenant.modules.robokassa,
@@ -578,6 +603,7 @@ export const dashboardFn = createServerFn({ method: "GET" }).handler(async () =>
       starter,
       // Пустой магазин может начать с примеров своей ниши (core/templates).
       template:
+        sells &&
         (products ?? 0) === 0 &&
         (await (await import("@/core/templates/apply.server")).templateAvailable(ctx)),
     },

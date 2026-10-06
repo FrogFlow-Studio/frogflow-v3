@@ -11,6 +11,7 @@ import { serverFailure } from "@/lib/server-failure";
 import { getSettingsStrict, setSetting, updateSettingAtomic } from "@/core/settings/settings";
 import { trialIssues, trialPassed, type TrialResult } from "@/core/orders/trial";
 import { firstWeekState, type FirstWeekState } from "@/core/launch/first-week";
+import { sellsInBot } from "@/core/tenant/preflight";
 import { adminTFor } from "./locale.server";
 
 export const TRIAL_STAMP_KEY = "trial_order_stamp";
@@ -188,5 +189,6 @@ export async function loadFirstWeek(ctx: TenantContext): Promise<FirstWeekState>
     buyersBesideSeller: Math.max(0, buyers - sellerRows),
     trialPassed: Boolean(done),
     paidOrders,
+    sells: sellsInBot(ctx.tenant, activeProducts),
   });
 }

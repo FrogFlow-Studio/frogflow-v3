@@ -32,6 +32,29 @@ describe("консультант по прайсу и баллы", () => {
     expect(run({ paymentMethods: 0, sells: true }).ready).toBe(false);
   });
 
+  it("консультант без продаж: товары и заказы не нужны, а Zernio обязателен и без заказов из каналов", () => {
+    const p = run({ paymentMethods: 0, sells: false, products: 0 });
+    expect(check({ paymentMethods: 0, sells: false, products: 0 }, "products")).toMatchObject({
+      level: "info",
+    });
+    expect(p.ready).toBe(true);
+    // Магазин без товаров — по-прежнему предупреждение.
+    expect(check({ products: 0 }, "products")).toMatchObject({ level: "warn" });
+    // Консультант в Direct: без аккаунта Zernio и без секрета вебхука не переезжает.
+    const dm = { sells: false, paymentMethods: 0, consultantDm: true, channelOrders30d: 0 };
+    expect(preflightBlockers(run({ ...dm, zernioAccounts: 0, zernioSecret: true }))).toContain(
+      "Instagram и WhatsApp не подключены",
+    );
+    expect(preflightBlockers(run({ ...dm, zernioAccounts: 1, zernioSecret: false }))).toContain(
+      "Не задан секрет вебхука Zernio",
+    );
+    expect(run({ ...dm, zernioAccounts: 1, zernioProfile: true, zernioSecret: true }).ready).toBe(
+      true,
+    );
+    // Магазин без заказов из каналов — как раньше, Zernio не требуется.
+    expect(run({ channelOrders30d: 0, zernioAccounts: 0, zernioSecret: false }).ready).toBe(true);
+  });
+
   it("продаёт ли клиент: магазин — да, консультант — только с продажей товаров или курсами", () => {
     const shop = (vertical: string, modules: Record<string, boolean>, products = 5) =>
       sellsInBot({ vertical, modules } as unknown as Parameters<typeof sellsInBot>[0], products);

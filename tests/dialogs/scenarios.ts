@@ -3,10 +3,14 @@
  * (откуда — в `origin`). Новая найденная поломка диалога сначала становится
  * сценарием здесь, потом чинится (CLAUDE.md, «Перед PR»).
  */
-import type { Msg } from "@/channels/telegram/copy";
+import { COPY, type Msg } from "@/channels/telegram/copy";
 import type { Locale } from "@/core/i18n/locale";
 import type { Channel, Input, Product, Room } from "./harness";
 import { BOTS_20 } from "./scenarios-bots";
+import { handoffReply } from "@/core/consultant/messages";
+
+/** Ответ подменённой модели консультанта в сценариях. */
+const CONSULTANT_SAYS = "Консультант: кирпич М150 есть, 95 ₸ за штуку.";
 
 /** Строка, регулярка или функция от текстов выбранного языка (COPY[locale]). */
 export type Says = string | RegExp | ((c: Msg) => string);
@@ -22,6 +26,8 @@ export interface Expect {
   notSays?: Says[];
   /** Эти кнопки есть в последнем ответе. */
   buttons?: string[];
+  /** Этих кнопок в последнем ответе нет (и в нижнем меню Telegram). */
+  noButtons?: Says[];
   /** Товаров в корзине. */
   cart?: number;
   /** Подмножество состояния покупателя. */
@@ -44,6 +50,14 @@ export interface Scenario {
   products?: Product[];
   state?: Record<string, unknown>;
   modules?: Record<string, boolean>;
+  /** Ниша клиента; по умолчанию digital (магазин). */
+  vertical?: string;
+  /**
+   * ИИ-консультант: строка — его ответ (модель подменена, маршрут до неё настоящий),
+   * null — консультант включён, но не ответил (нет ключа ИИ, сбой до вызова).
+   * Не задано — консультант не настроен, как раньше.
+   */
+  consultant?: string | null;
   /** Direct/WhatsApp: реплика идёт через весь разбор входящего (слова «позови человека», пауза). */
   full?: boolean;
   /** Подготовка до первой реплики (например, «продавец ответил руками»). */
@@ -403,5 +417,128 @@ export const SCENARIOS: Scenario[] = [
       { say: { text: "каталог" }, expect: {} },
       { say: { text: "1" }, expect: { notSays: ["Ваша корзина"] } },
     ],
+  },
+  // ───── Консультант, который не продаёт (BOVI 06.10) ─────
+  // Модуль магазина из v1 включён, товаров нет: бот не ведёт в пустой каталог,
+  // отвечает консультант.
+  ...everyLocale(
+    () => ({
+      id: "consultant-no-shop",
+      title: "консультант без товаров: «каталог» и вопрос о товаре — ответ консультанта",
+      origin: "BOVI 06.10: модуль dm_shop из v1, 0 товаров — пустой каталог вместо ответа",
+      channel: "instagram",
+      full: true,
+      vertical: "consultant",
+      modules: { shop: true },
+      consultant: CONSULTANT_SAYS,
+      steps: [
+        {
+          say: { text: "каталог" },
+          expect: {
+            says: [CONSULTANT_SAYS],
+            notSays: [(c) => c.emptyHere, (c) => c.catalogHeader],
+          },
+        },
+        {
+          say: { text: "Есть кирпич М150?" },
+          expect: { says: [CONSULTANT_SAYS], notSays: [(c) => c.emptyHere] },
+        },
+        { say: { text: "старт" }, expect: { says: [CONSULTANT_SAYS] } },
+      ],
+    }),
+    ["instagram", "whatsapp"],
+  ),
+  ...everyLocale(
+    (l) => ({
+      id: "consultant-no-shop-menu",
+      title:
+        "консультант без товаров: меню без каталога и корзины, /catalog не ведёт в пустой каталог",
+      origin: "BOVI 06.10: меню бота звало в каталог, где нет товаров",
+      channel: "telegram",
+      vertical: "consultant",
+      modules: { shop: true, telegram_mini_app: true },
+      consultant: CONSULTANT_SAYS,
+      steps: [
+        {
+          say: { text: "/start" },
+          expect: {
+            buttons: [COPY[l].instruction],
+            noButtons: [(c) => c.catalog, (c) => c.search, (c) => c.cart, (c) => c.myOrders],
+          },
+        },
+        {
+          say: { text: "/catalog" },
+          expect: {
+            notSays: [(c) => c.emptyHere, (c) => c.catalogHeader],
+            noButtons: [(c) => c.catalog, (c) => c.cart],
+          },
+        },
+        // Старое нижнее меню у покупателя ещё с кнопкой «Каталог».
+        {
+          say: { text: "📚 Каталог" },
+          expect: { says: [CONSULTANT_SAYS], notSays: [(c) => c.emptyHere] },
+        },
+      ],
+    }),
+    ["telegram"],
+  ),
+  ...everyLocale(
+    () => ({
+      id: "consultant-no-shop-search",
+      title:
+        "консультант без товаров: текст в режиме поиска — консультанту, не «ничего не найдено»",
+      origin: "BOVI 06.10: поиск по пустому каталогу раньше консультанта",
+      channel: "telegram",
+      vertical: "consultant",
+      modules: { shop: true },
+      state: { mode: "search" },
+      consultant: CONSULTANT_SAYS,
+      steps: [
+        {
+          say: { text: "Есть кирпич М150?" },
+          expect: {
+            says: [CONSULTANT_SAYS],
+            notSays: [(c) => c.searchNothing("Есть кирпич М150?")],
+          },
+        },
+      ],
+    }),
+    ["telegram"],
+  ),
+  ...everyLocale(
+    (l) => ({
+      id: "consultant-no-shop-silent",
+      title: "консультант без товаров не ответил — вопрос менеджеру, а не «ничего не найдено»",
+      origin: "BOVI 06.10: при сбое консультанта бот искал по пустому каталогу",
+      channel: "telegram",
+      vertical: "consultant",
+      modules: { shop: true },
+      consultant: null,
+      steps: [
+        {
+          say: { text: "Есть кирпич М150?" },
+          expect: {
+            says: [handoffReply(l)],
+            notSays: [(c) => c.searchNothing("Есть кирпич М150?")],
+            noButtons: [(c) => c.catalog],
+            sellerNotices: 1,
+          },
+        },
+      ],
+    }),
+    ["telegram"],
+  ),
+  // Консультант с товарами продаёт как раньше: каталог в меню остаётся.
+  {
+    id: "consultant-sells-menu-tg-ru",
+    title: "консультант с товарами — каталог и корзина в меню на месте",
+    origin: "BOVI 06.10: продающий консультант не меняется",
+    channel: "telegram",
+    locale: "ru",
+    vertical: "consultant",
+    modules: { shop: true },
+    products: PRODUCTS,
+    consultant: CONSULTANT_SAYS,
+    steps: [{ say: { text: "/start" }, expect: { buttons: ["📚 Каталог", "🛒 Корзина"] } }],
   },
 ];

@@ -50,6 +50,8 @@ export type Msg = {
   ticketRateAlready: string;
   /** «Мои обращения» покупателя. */
   myTicketsBtn: string;
+  /** Кнопка Mini App витрины в нижнем меню и у поля ввода. */
+  shopAppBtn: string;
   myTicketsTitle: string;
   myTicketsEmpty: string;
   ticketStatus: (s: "open" | "waiting" | "closed") => string;
@@ -505,6 +507,7 @@ const ru: Msg = {
   ticketRateThanks: (n) => `Спасибо за оценку: ${"⭐".repeat(n)}! Нам это важно.`,
   ticketRateAlready: "Оценка уже принята, спасибо!",
   myTicketsBtn: "🆘 Мои обращения",
+  shopAppBtn: "🛍 Магазин",
   myTicketsTitle: "Ваши обращения",
   myTicketsEmpty: "У вас пока нет обращений. Чтобы задать вопрос, нажмите кнопку связи в меню.",
   ticketStatus: (s) => ({ open: "Открыто", waiting: "Ждём вас", closed: "Решено" })[s],
@@ -867,6 +870,7 @@ const kk: Msg = {
   ticketRateThanks: (n) => `Бағаңызға рахмет: ${"⭐".repeat(n)}! Бұл біз үшін маңызды.`,
   ticketRateAlready: "Баға қабылданған, рахмет!",
   myTicketsBtn: "🆘 Өтініштерім",
+  shopAppBtn: "🛍 Дүкен",
   myTicketsTitle: "Сіздің өтініштеріңіз",
   myTicketsEmpty: "Әзірге өтініштер жоқ. Сұрақ қою үшін мәзірдегі байланыс батырмасын басыңыз.",
   ticketStatus: (s) => ({ open: "Ашық", waiting: "Сізді күтудеміз", closed: "Шешілді" })[s],
@@ -1137,6 +1141,7 @@ const en: Msg = {
   ticketRateThanks: (n) => `Thanks for your rating: ${"⭐".repeat(n)}! It matters to us.`,
   ticketRateAlready: "Your rating is already recorded, thank you!",
   myTicketsBtn: "🆘 My requests",
+  shopAppBtn: "🛍 Shop",
   myTicketsTitle: "Your requests",
   myTicketsEmpty:
     "You have no requests yet. To ask a question, use the contact button in the menu.",
@@ -1452,6 +1457,7 @@ const uz: Msg = {
   ticketRateThanks: (n) => `Bahoyingiz uchun rahmat: ${"⭐".repeat(n)}! Bu biz uchun muhim.`,
   ticketRateAlready: "Baho qabul qilingan, rahmat!",
   myTicketsBtn: "🆘 Murojaatlarim",
+  shopAppBtn: "🛍 Do‘kon",
   myTicketsTitle: "Murojaatlaringiz",
   myTicketsEmpty: "Hozircha murojaatlar yoʻq. Savol berish uchun menyudagi aloqa tugmasini bosing.",
   ticketStatus: (s) => ({ open: "Ochiq", waiting: "Sizni kutmoqdamiz", closed: "Hal qilindi" })[s],

@@ -7,6 +7,7 @@
 import { env } from "@/config/env";
 import { serviceDb } from "@/core/db/client.server";
 import { MODULE_KEYS } from "@/core/modules/registry";
+import { isConsultantVertical } from "@/core/verticals/registry";
 import {
   requireTenant,
   tenantContext,
@@ -239,6 +240,8 @@ export async function preflight(botId: string): Promise<Preflight> {
       (f) => f.id,
     ),
     channelOrders30d: orders30d.channels,
+    consultantDm:
+      isConsultantVertical(t.vertical) && Boolean(t.modules.instagram || t.modules.whatsapp),
     zernioAccounts: zernioAccountIds.length,
     zernioProfile: Boolean(t.settings.zernio?.profile_id?.trim()),
     zernioSecret: Boolean(env().ZERNIO_WEBHOOK_SECRET?.trim()),

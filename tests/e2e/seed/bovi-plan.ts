@@ -1,7 +1,10 @@
-/** Консультант без тарифной сетки (bovi-plan.spec.ts): плана нет, уже на v2. */
+/**
+ * Консультант без тарифной сетки (bovi-plan.spec.ts): плана нет, уже на v2.
+ * Модуль магазина из v1, товаров нет — не продаёт (bovi-overview.spec.ts).
+ */
 import * as F from "../fixtures.ts";
 import type { StubDb } from "../pg-stub.ts";
-import { add, encrypt } from "./util.ts";
+import { add, encrypt, hash } from "./util.ts";
 
 export function seedBoviPlan(db: StubDb, now: string) {
   add(db, "bots", [
@@ -11,7 +14,12 @@ export function seedBoviPlan(db: StubDb, now: string) {
       status: "active",
       vertical: "consultant",
       modules: { instagram: true, shop: true },
-      settings: { served_by: "v2", default_locale: "ru" },
+      settings: {
+        served_by: "v2",
+        default_locale: "ru",
+        consultant_pricelist: { enabled: true },
+        admin: { username: F.BOVI_PLAN_LOGIN, password_hash: hash(F.BOVI_PLAN_PASSWORD) },
+      },
       paused_message: null,
       owner_telegram_id: 500000231,
       owner_name: "Консультант без плана",

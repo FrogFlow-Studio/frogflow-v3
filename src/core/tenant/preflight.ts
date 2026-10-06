@@ -47,6 +47,11 @@ export type PreflightInput = {
   subscription?: { state: SubscriptionState; suspend: boolean };
   /** Заказы из Instagram и WhatsApp за последние 30 дней. */
   channelOrders30d?: number;
+  /**
+   * Консультант в Instagram или WhatsApp: переписка — весь его продукт, поэтому
+   * Zernio обязателен и без заказов из каналов (BOVI заказов не принимает).
+   */
+  consultantDm?: boolean;
   /** Сколько аккаунтов Zernio записано клиенту (settings.zernio.account_ids). */
   zernioAccounts?: number;
   /** Записан ли клиенту профиль Zernio: вебхук v2 получает события только профилей клиентов v2. */
@@ -176,12 +181,20 @@ export function evaluatePreflight(i: PreflightInput): Preflight {
           title: "Товары есть",
           detail: `Активных товаров: ${i.products}.`,
         }
-      : {
-          key: "products",
-          level: "warn",
-          title: "Нет активных товаров",
-          detail: "Каталог в боте будет пустым.",
-        },
+      : i.sells === false
+        ? {
+            key: "products",
+            level: "info",
+            title: "Товары не нужны",
+            detail:
+              "Консультант без продаж в боте: покупателям отвечает консультант, каталога в боте нет.",
+          }
+        : {
+            key: "products",
+            level: "warn",
+            title: "Нет активных товаров",
+            detail: "Каталог в боте будет пустым.",
+          },
   );
   checks.push(
     i.adminLogin
@@ -203,9 +216,11 @@ export function evaluatePreflight(i: PreflightInput): Preflight {
     checks.push({
       key: "seller_chat",
       level: "block",
-      title: "Некому подтверждать заказы",
+      title: i.sells === false ? "Некому передавать диалоги" : "Некому подтверждать заказы",
       detail:
-        "Не задан ни Telegram-id владельца в карточке, ни admin_chat_id в настройках магазина: чеки придут, но нажать «Подтвердить и выдать» будет некому.",
+        i.sells === false
+          ? "Не задан ни Telegram-id владельца в карточке, ни admin_chat_id в настройках магазина: вопросы, на которые консультант не ответит, некому будет передать."
+          : "Не задан ни Telegram-id владельца в карточке, ни admin_chat_id в настройках магазина: чеки придут, но нажать «Подтвердить и выдать» будет некому.",
     });
   if (i.deliveringOrders)
     checks.push({
@@ -245,12 +260,15 @@ export function evaluatePreflight(i: PreflightInput): Preflight {
       title: "Аккаунт Zernio числится у двух клиентов",
       detail: `Ключ Zernio один на платформу, и события аккаунта ${i.zernioConflicts.join(", ")} не уйдут никому. Уберите его у одного из клиентов.`,
     });
-  if (i.channelOrders30d && i.zernioAccounts === 0)
+  const dmNeeded = Boolean(i.channelOrders30d) || i.consultantDm === true;
+  if (dmNeeded && i.zernioAccounts === 0)
     checks.push({
       key: "zernio_accounts",
       level: "block",
       title: "Instagram и WhatsApp не подключены",
-      detail: `За 30 дней заказов из Instagram и WhatsApp: ${i.channelOrders30d}, а аккаунтов Zernio у клиента в v2 нет. После переезда эти покупатели останутся без ответа. Подключите аккаунты в карточке клиента.`,
+      detail: i.channelOrders30d
+        ? `За 30 дней заказов из Instagram и WhatsApp: ${i.channelOrders30d}, а аккаунтов Zernio у клиента в v2 нет. После переезда эти покупатели останутся без ответа. Подключите аккаунты в карточке клиента.`
+        : "Консультант отвечает в Instagram или WhatsApp, а аккаунтов Zernio у клиента в v2 нет. После переезда консультант замолчит. Подключите аккаунты в карточке клиента.",
     });
   if (i.zernioAccounts && i.zernioProfile === false)
     checks.push({
@@ -260,7 +278,7 @@ export function evaluatePreflight(i: PreflightInput): Preflight {
       detail:
         "Аккаунты Instagram/WhatsApp записаны, а профиль нет. Вебхук v2 получает события только профилей клиентов v2, поэтому после переезда сообщения этих аккаунтов не дойдут. В карточке клиента нажмите «Привязать профиль v1».",
     });
-  if (i.channelOrders30d && i.zernioSecret === false)
+  if (dmNeeded && i.zernioSecret === false)
     checks.push({
       key: "zernio_secret",
       level: "block",

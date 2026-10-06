@@ -6,12 +6,16 @@ import {
   WeeklySendError,
   type WeeklyOutcome,
 } from "@/core/analytics/weekly.server";
+import { sellsNow } from "@/core/tenant/sells.server";
 import { reportError } from "@/lib/errors";
 import { adminTelegramApi, notifyAdminsHtml } from "./notify";
 
 /**
  * Крон (каждые 15 минут, вместе с дайджестом): недельный отчёт продавцу в
- * бот его магазина. Без бота слать некуда — пропускаем.
+ * бот его магазина. Без бота слать некуда — пропускаем. Консультанту без
+ * продаж (BOVI: модуль магазина из v1, товаров нет) отчёт — одни нули
+ * (выручка, воронка, топ товаров): не шлём. Не удалось понять, продаёт ли, —
+ * в этот прогон не шлём, а не шлём нули.
  */
 export async function sendDueWeeklyReports(
   tenants: readonly Tenant[],
@@ -23,6 +27,18 @@ export async function sendDueWeeklyReports(
     if (!servedByV2(t)) continue;
     if (!t.telegramTokenEnc) continue;
     const ctx = tenantContext(t);
+    let sells: boolean;
+    try {
+      sells = await sellsNow(ctx);
+    } catch (e) {
+      console.error(
+        `[cron:weekly][${t.id}] продаёт ли — не прочиталось, отчёт пропущен:`,
+        e instanceof Error ? e.message : e,
+      );
+      out[t.id] = "skipped: sells unknown";
+      continue;
+    }
+    if (!sells) continue;
     try {
       const r = await sendWeeklyReport(
         ctx,
