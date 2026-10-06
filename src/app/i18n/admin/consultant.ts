@@ -78,6 +78,15 @@ export const ru = {
   "consultant.stories.notesPlaceholder": "Заметка для консультанта",
   "consultant.stories.add": "Добавить тег",
   "consultant.stories.empty": "Тегов пока нет.",
+  "consultant.stories.posts": "Выбрать из публикаций",
+  "consultant.stories.postsEmpty": "Публикаций не нашлось — вставьте ссылку.",
+  "consultant.stories.searchPricelist": "Найти товар в прайсе консультанта",
+  "consultant.stories.searchCatalog": "Найти товар в каталоге",
+  "consultant.stories.fromPricelist":
+    "Товары — из прайса консультанта, те же, что он знает. Новинки появятся здесь после загрузки свежего прайса.",
+  "consultant.stories.addManual": "Добавить",
+  "consultant.stories.remove": "Убрать",
+  "consultant.stories.edit": "Изменить",
 } as const;
 
 export const kk: SectionDict<typeof ru> = {
@@ -158,6 +167,15 @@ export const kk: SectionDict<typeof ru> = {
   "consultant.stories.notesPlaceholder": "Консультантқа ескертпе",
   "consultant.stories.add": "Тег қосу",
   "consultant.stories.empty": "Тегтер әзірге жоқ.",
+  "consultant.stories.posts": "Жарияланымнан таңдау",
+  "consultant.stories.postsEmpty": "Жарияланымдар табылмады — сілтемені қойыңыз.",
+  "consultant.stories.searchPricelist": "Кеңесші прайсынан тауар іздеу",
+  "consultant.stories.searchCatalog": "Каталогтан тауар іздеу",
+  "consultant.stories.fromPricelist":
+    "Тауарлар кеңесші прайсынан алынады — ол білетін тауарлар. Жаңа тауарлар жаңа прайс жүктелгеннен кейін шығады.",
+  "consultant.stories.addManual": "Қосу",
+  "consultant.stories.remove": "Алып тастау",
+  "consultant.stories.edit": "Өзгерту",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -238,6 +256,15 @@ export const en: SectionDict<typeof ru> = {
   "consultant.stories.notesPlaceholder": "Note for the consultant",
   "consultant.stories.add": "Add tag",
   "consultant.stories.empty": "No tags yet.",
+  "consultant.stories.posts": "Pick from posts",
+  "consultant.stories.postsEmpty": "No posts found — paste a link.",
+  "consultant.stories.searchPricelist": "Find a product in the consultant price list",
+  "consultant.stories.searchCatalog": "Find a product in the catalog",
+  "consultant.stories.fromPricelist":
+    "Products come from the consultant price list — the same ones it knows. New items show up here after a fresh price list is uploaded.",
+  "consultant.stories.addManual": "Add",
+  "consultant.stories.remove": "Remove",
+  "consultant.stories.edit": "Edit",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -319,4 +346,13 @@ export const uz: SectionDict<typeof ru> = {
   "consultant.stories.notesPlaceholder": "Konsultant uchun eslatma",
   "consultant.stories.add": "Teg qo‘shish",
   "consultant.stories.empty": "Hozircha teglar yo‘q.",
+  "consultant.stories.posts": "Postlardan tanlash",
+  "consultant.stories.postsEmpty": "Postlar topilmadi — havolani qo‘ying.",
+  "consultant.stories.searchPricelist": "Konsultant narxlar ro‘yxatidan mahsulot qidirish",
+  "consultant.stories.searchCatalog": "Katalogdan mahsulot qidirish",
+  "consultant.stories.fromPricelist":
+    "Mahsulotlar konsultant narxlar ro‘yxatidan olinadi — u biladigan mahsulotlar. Yangi mahsulotlar yangi narxlar ro‘yxati yuklangach chiqadi.",
+  "consultant.stories.addManual": "Qo‘shish",
+  "consultant.stories.remove": "Olib tashlash",
+  "consultant.stories.edit": "O‘zgartirish",
 };

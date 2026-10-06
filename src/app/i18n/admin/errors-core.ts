@@ -49,6 +49,7 @@ export const ru = {
   "err.instagram.variantTooLong":
     "Один из вариантов текста длиннее {limit} символов. Сократите его.",
   "err.stories.idRequired": "Укажите ссылку на сторис или её id.",
+  "err.stories.productRequired": "Выберите товар или впишите его название.",
 } as const;
 
 export const kk: SectionDict<typeof ru> = {
@@ -100,6 +101,7 @@ export const kk: SectionDict<typeof ru> = {
     "Direct хабарламасы — {length} таңба, шегі {limit}. Мәтінді қысқартыңыз.",
   "err.instagram.variantTooLong": "Мәтін нұсқаларының бірі {limit} таңбадан ұзын. Оны қысқартыңыз.",
   "err.stories.idRequired": "Сторис сілтемесін немесе оның id-ін көрсетіңіз.",
+  "err.stories.productRequired": "Тауарды таңдаңыз немесе атауын жазыңыз.",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -151,6 +153,7 @@ export const en: SectionDict<typeof ru> = {
   "err.instagram.variantTooLong":
     "One of the text variations is longer than {limit} characters. Shorten it.",
   "err.stories.idRequired": "Enter the story link or its id.",
+  "err.stories.productRequired": "Pick a product or type its name.",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -204,4 +207,5 @@ export const uz: SectionDict<typeof ru> = {
   "err.instagram.variantTooLong":
     "Matn variantlaridan biri {limit} belgidan uzun. Uni qisqartiring.",
   "err.stories.idRequired": "Stories havolasini yoki uning id raqamini kiriting.",
+  "err.stories.productRequired": "Mahsulotni tanlang yoki nomini yozing.",
 };

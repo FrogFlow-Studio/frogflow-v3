@@ -355,6 +355,42 @@ export const SCENARIOS: Scenario[] = [
     products: PRODUCTS,
     steps: [{ say: { voice: true }, expect: { count: 1, cart: 0, says: ["мәзірден"] } }],
   },
+  // ───── Выбор языка не держит переписку (скрин Якова, BOVI 29.09) ─────
+  {
+    id: "language-then-question-wa-ru",
+    title: "после выбора языка вопрос продавцу — не повтор «Выберите язык»",
+    origin: "скрин Якова, переписка с BOVI 29.09",
+    channel: "whatsapp",
+    locale: "ru",
+    products: PRODUCTS,
+    steps: [
+      { say: { text: "каталог" }, expect: {} },
+      { say: { text: "язык" }, expect: { says: ["Выберите язык"] } },
+      {
+        say: {
+          text: "Добрый день. Сегмент где Инстаграм странно работает. Не совпадает с базой товаров в знаниях",
+        },
+        expect: { notSays: ["Выберите язык"], state: { mode: "idle" } },
+      },
+    ],
+  },
+  {
+    id: "stranger-question-wa-ru",
+    title: "новый человек в WhatsApp с вопросом — бот не спрашивает язык",
+    origin: "скрин Якова, переписка с BOVI 29.09",
+    channel: "whatsapp",
+    locale: "ru",
+    state: {},
+    products: PRODUCTS,
+    steps: [
+      {
+        say: {
+          text: "Вы знаете у меня почему-то в базе отсутствуют новинки,корзинки для белья новые",
+        },
+        expect: { silent: true },
+      },
+    ],
+  },
   // ───── Язык заголовка корзины (uz не должен падать в русский) ─────
   {
     id: "cart-header-wa-uz",

@@ -101,6 +101,26 @@ export const instagramPostsFn = createServerFn({ method: "GET" })
     }
   });
 
+/**
+ * Публикации всех Instagram-аккаунтов магазина — для тегов товаров
+ * консультанта: продавец выбирает пост или рилс картинкой, а не копирует
+ * ссылку (как вкладка «Сторис» в v1). Новые сверху.
+ */
+export const storyPostsFn = createServerFn({ method: "GET" }).handler(async () => {
+  const ctx = await ig();
+  const { instagramAccounts, listPosts } = await import("@/channels/zernio/automations.server");
+  try {
+    const lists = await Promise.all(instagramAccounts(ctx).map((a) => listPosts(ctx, a.id)));
+    const posts = lists
+      .flat()
+      .filter((p) => p.permalink)
+      .sort((a, b) => (b.publishedAt ?? "").localeCompare(a.publishedAt ?? ""));
+    return { posts };
+  } catch (e) {
+    throw await zernioReadError(e);
+  }
+});
+
 export const syncInstagramPostFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ accountId, url: z.string().url().max(500) }).parse(d))
   .handler(async ({ data }) => {

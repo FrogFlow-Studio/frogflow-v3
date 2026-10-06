@@ -100,7 +100,10 @@ describe("перенос тегов сторис v1: сколько допише
     const ctx = { tenant: { id: BOT }, db: failingDb } as unknown as TenantContext;
     await expect(planLegacyStoryTags(ctx, BOT)).rejects.toBeInstanceOf(ServerFailure);
     await expect(
-      upsertStoryTag(ctx, { story: "NEWSTORY1", product_name: "Новый" }),
+      upsertStoryTag(ctx, {
+        story: "NEWSTORY1",
+        products: [{ id: null, name: "Новый", price: null }],
+      }),
     ).rejects.toBeInstanceOf(ServerFailure);
     failTable = null;
     expect(db.tables.app_settings).toEqual([

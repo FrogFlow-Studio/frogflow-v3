@@ -141,7 +141,6 @@ import {
   STEP_PREFIX,
   WA_LIST_MAX_ROWS,
   WA_LIST_PAGE,
-  MAX_LOCALE_MISSES,
   isStepStale,
   MULTI_ADD_COPY,
   ONE_SECTION_HINT,
@@ -655,6 +654,14 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
     }
   }
 
+  // Выбор языка не держит переписку: не язык в ответ — шаг снимается, реплика
+  // разбирается как обычная (вопрос — продавцу). Повтор «Выберите язык» на
+  // вопрос о работе встречал клиента в WhatsApp (скрин Якова, BOVI 29.09).
+  if (mode === "awaiting_locale" && matchLocalePick(text) === null) {
+    await setMode(s, { mode: "idle", locale_misses: undefined });
+    mode = "idle";
+  }
+
   // Строгий режим: на вопрос бота — только похожий ответ; иначе одна подсказка
   // сразу после вопроса, а дальше реплика остаётся продавцу.
   const paymentStep =
@@ -673,22 +680,8 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
   // Шаги сценария — текстом.
   switch (mode) {
     case "awaiting_locale": {
-      const picked = matchLocalePick(text);
-      if (!picked) {
-        const misses = Number(s.customer.state.locale_misses ?? 0) + 1;
-        if (misses < MAX_LOCALE_MISSES) {
-          await setMode(s, { locale_misses: misses });
-          return askLocale(s).then(() => "handled" as const);
-        }
-        // Не упорствуем: дальше отвечаем на языке магазина и показываем каталог.
-        await remember(
-          s,
-          { locale_picked_at: new Date().toISOString() },
-          { mode: "idle", locale: s.locale, locale_misses: undefined },
-        );
-        await showCatalog(s, null, 0, true);
-        return "handled";
-      }
+      // Не язык сюда не доходит: шаг снят выше.
+      const picked = matchLocalePick(text)!;
       await remember(
         s,
         { locale_picked_at: new Date().toISOString() },

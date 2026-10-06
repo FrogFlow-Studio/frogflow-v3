@@ -227,11 +227,13 @@ export function mergeLegacyStoryTags(
 
 export type StoryTagInput = {
   story: string;
-  product_id?: string | null;
-  product_name: string;
-  price?: number | null;
+  /** Все товары публикации; первый — он же product_* (как у v1). */
+  products: StoryProduct[];
   notes?: string | null;
 };
+
+/** Не больше стольких товаров на одну публикацию. */
+export const STORY_PRODUCTS_MAX = 10;
 
 /** Новый тег или замена тега той же сторис. */
 export async function upsertStoryTag(ctx: TenantContext, input: StoryTagInput): Promise<StoryTag> {
@@ -239,6 +241,15 @@ export async function upsertStoryTag(ctx: TenantContext, input: StoryTagInput): 
   const storyId = info.shortcode ?? input.story.trim();
   if (!storyId)
     throw new UserError("err.stories.idRequired", "Укажите ссылку на сторис или её id.");
+  const products = storyProductsOf({
+    product_id: null,
+    product_name: "",
+    price: null,
+    products: input.products,
+  }).slice(0, STORY_PRODUCTS_MAX);
+  const first = products[0];
+  if (!first)
+    throw new UserError("err.stories.productRequired", "Выберите товар или впишите его название.");
   const tags = await readStoryTagsForWrite(ctx);
   const tag: StoryTag = {
     id: tags.find((t) => t.story_id === storyId)?.id ?? `st_${Date.now().toString(36)}`,
@@ -249,9 +260,10 @@ export async function upsertStoryTag(ctx: TenantContext, input: StoryTagInput): 
           ? info.cleanUrl
           : null
         : info.cleanUrl,
-    product_id: input.product_id || null,
-    product_name: input.product_name.trim(),
-    price: input.price ?? null,
+    product_id: first.id,
+    product_name: first.name,
+    price: first.price,
+    products,
     notes: input.notes?.trim() || null,
     created_at: new Date().toISOString(),
   };
