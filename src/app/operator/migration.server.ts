@@ -16,7 +16,7 @@ import {
 import { foreignZernioAccounts } from "@/core/tenant/zernio-accounts";
 import { decryptSecret, isEncryptedSecret } from "@/core/secrets/vault";
 import { launchCourses } from "@/app/admin/school-launch.server";
-import { evaluatePreflight, type Preflight } from "@/core/tenant/preflight";
+import { evaluatePreflight, sellsInBot, type Preflight } from "@/core/tenant/preflight";
 import { withVipChecks, type VipPreflightInput } from "@/core/tenant/preflight-vip";
 import type { Tenant } from "@/core/tenant/types";
 import { telegramApi } from "@/channels/telegram/api";
@@ -223,6 +223,7 @@ export async function preflight(botId: string): Promise<Preflight> {
     tokenOk,
     botUsername,
     paymentMethods,
+    sells: sellsInBot(t),
     products,
     adminLogin: Boolean(t.settings.admin?.username && t.settings.admin?.password_hash),
     appUrl: t.appUrl,

@@ -1,5 +1,7 @@
 import { moduleDef, type ModuleKey } from "@/core/modules/registry";
 import type { SubscriptionState } from "@/core/billing/subscription";
+import type { Tenant } from "@/core/tenant/types";
+import { isConsultantVertical } from "@/core/verticals/registry";
 
 /**
  * Предполётная проверка перед переводом клиента на v2 — чистая часть:
@@ -17,6 +19,12 @@ export type PreflightInput = {
   tokenOk: boolean | null;
   botUsername: string | null;
   paymentMethods: number;
+  /**
+   * Продаёт ли клиент в боте. false — только консультант (BOVI): заказов нет,
+   * реквизиты не нужны, а задать их можно лишь в админке v2 — после переезда.
+   * Не передано — продаёт.
+   */
+  sells?: boolean;
   products: number;
   adminLogin: boolean;
   /** Адрес деплоя v1 — напоминание поставить его крон на паузу. */
@@ -84,6 +92,16 @@ export type PreflightInput = {
   commission?: { enabled: boolean; rate: number | null; start: string; free: number };
 };
 
+/**
+ * Продаёт ли клиент в боте: магазин любой ниши — да; консультант (BOVI) — только
+ * если включена продажа в боте, переписке или на сайте.
+ */
+export function sellsInBot(t: Pick<Tenant, "vertical" | "modules">): boolean {
+  if (!isConsultantVertical(t.vertical)) return true;
+  const m = t.modules;
+  return Boolean(m.shop || m.dm_shop || m.wa_shop || m.web_storefront || m.courses);
+}
+
 export function evaluatePreflight(i: PreflightInput): Preflight {
   const checks: PreflightCheck[] = [];
   const planned = i.modulesOn.filter((k) => moduleDef(k).status === "planned");
@@ -124,19 +142,28 @@ export function evaluatePreflight(i: PreflightInput): Preflight {
       detail: "Токен проверен через getMe.",
     });
   checks.push(
-    i.paymentMethods > 0 || i.modulesOn.includes("robokassa")
+    i.sells === false && i.paymentMethods === 0
       ? {
           key: "payments",
-          level: "ok",
-          title: "Оплата настроена",
-          detail: i.paymentMethods > 0 ? `Реквизитов: ${i.paymentMethods}.` : "Robokassa.",
+          level: "info",
+          title: "Оплата в боте не нужна",
+          detail:
+            "Клиент — консультант без заказов в боте. Начнёт продавать — реквизиты по странам добавит в админке v2.",
         }
-      : {
-          key: "payments",
-          level: "block",
-          title: "Нет реквизитов оплаты",
-          detail: "Покупатель не сможет оформить заказ. Реквизиты по странам — в админке продавца.",
-        },
+      : i.paymentMethods > 0 || i.modulesOn.includes("robokassa")
+        ? {
+            key: "payments",
+            level: "ok",
+            title: "Оплата настроена",
+            detail: i.paymentMethods > 0 ? `Реквизитов: ${i.paymentMethods}.` : "Robokassa.",
+          }
+        : {
+            key: "payments",
+            level: "block",
+            title: "Нет реквизитов оплаты",
+            detail:
+              "Покупатель не сможет оформить заказ. Реквизиты по странам — в админке продавца.",
+          },
   );
   checks.push(
     i.products > 0

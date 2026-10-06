@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { evaluatePreflight, preflightBlockers, releasesTelegramOnSwitch } from "./preflight";
+import {
+  evaluatePreflight,
+  preflightBlockers,
+  releasesTelegramOnSwitch,
+  sellsInBot,
+} from "./preflight";
 
 const base = {
   modulesOn: ["shop", "coupons"] as const,
@@ -16,6 +21,24 @@ describe("консультант по прайсу и баллы", () => {
   const run = (extra: object) =>
     evaluatePreflight({ ...base, modulesOn: [...base.modulesOn], ...extra });
   const check = (extra: object, key: string) => run(extra).checks.find((c) => c.key === key);
+
+  it("консультант без продаж в боте (BOVI): без реквизитов переезд не блокируется", () => {
+    // Реквизиты задаются в админке v2, а в неё не пускают до переезда (BOVI, 06.10).
+    const p = run({ paymentMethods: 0, sells: false });
+    expect(p.ready).toBe(true);
+    expect(p.checks.find((c) => c.key === "payments")).toMatchObject({ level: "info" });
+    // Магазин без реквизитов по-прежнему не переезжает.
+    expect(run({ paymentMethods: 0 }).ready).toBe(false);
+    expect(run({ paymentMethods: 0, sells: true }).ready).toBe(false);
+  });
+
+  it("продаёт ли клиент: магазин — да, консультант — только с продажей в боте или на сайте", () => {
+    const shop = (vertical: string, modules: Record<string, boolean>) =>
+      sellsInBot({ vertical, modules } as unknown as Parameters<typeof sellsInBot>[0]);
+    expect(shop("digital", {})).toBe(true);
+    expect(shop("consultant", { instagram: true })).toBe(false);
+    expect(shop("consultant", { instagram: true, dm_shop: true })).toBe(true);
+  });
 
   it("флаг включён, а прайс пуст — переезд блокируется", () => {
     const p = run({ pricelist: { enabled: true, items: 0, rateFresh: true } });
