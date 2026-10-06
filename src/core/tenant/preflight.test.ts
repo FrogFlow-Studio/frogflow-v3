@@ -32,12 +32,15 @@ describe("консультант по прайсу и баллы", () => {
     expect(run({ paymentMethods: 0, sells: true }).ready).toBe(false);
   });
 
-  it("продаёт ли клиент: магазин — да, консультант — только с продажей в боте или на сайте", () => {
-    const shop = (vertical: string, modules: Record<string, boolean>) =>
-      sellsInBot({ vertical, modules } as unknown as Parameters<typeof sellsInBot>[0]);
-    expect(shop("digital", {})).toBe(true);
+  it("продаёт ли клиент: магазин — да, консультант — только с продажей товаров или курсами", () => {
+    const shop = (vertical: string, modules: Record<string, boolean>, products = 5) =>
+      sellsInBot({ vertical, modules } as unknown as Parameters<typeof sellsInBot>[0], products);
+    expect(shop("digital", {}, 0)).toBe(true);
     expect(shop("consultant", { instagram: true })).toBe(false);
     expect(shop("consultant", { instagram: true, dm_shop: true })).toBe(true);
+    // BOVI: модуль магазина из v1 включён, а активных товаров нет.
+    expect(shop("consultant", { shop: true, dm_shop: true }, 0)).toBe(false);
+    expect(shop("consultant", { courses: true }, 0)).toBe(true);
   });
 
   it("флаг включён, а прайс пуст — переезд блокируется", () => {

@@ -94,12 +94,15 @@ export type PreflightInput = {
 
 /**
  * Продаёт ли клиент в боте: магазин любой ниши — да; консультант (BOVI) — только
- * если включена продажа в боте, переписке или на сайте.
+ * с курсами или с продажей в боте, переписке или на сайте и активными товарами.
+ * Модуль магазина у консультанта v1 часто включён, а товаров нет: продавать
+ * нечего, реквизиты ему до переезда не нужны (BOVI, 06.10).
  */
-export function sellsInBot(t: Pick<Tenant, "vertical" | "modules">): boolean {
+export function sellsInBot(t: Pick<Tenant, "vertical" | "modules">, products: number): boolean {
   if (!isConsultantVertical(t.vertical)) return true;
   const m = t.modules;
-  return Boolean(m.shop || m.dm_shop || m.wa_shop || m.web_storefront || m.courses);
+  if (m.courses) return true;
+  return products > 0 && Boolean(m.shop || m.dm_shop || m.wa_shop || m.web_storefront);
 }
 
 export function evaluatePreflight(i: PreflightInput): Preflight {

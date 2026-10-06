@@ -223,7 +223,7 @@ export async function preflight(botId: string): Promise<Preflight> {
     tokenOk,
     botUsername,
     paymentMethods,
-    sells: sellsInBot(t),
+    sells: sellsInBot(t, products),
     products,
     adminLogin: Boolean(t.settings.admin?.username && t.settings.admin?.password_hash),
     appUrl: t.appUrl,
