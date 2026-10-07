@@ -322,6 +322,9 @@ const ru = {
   "order.payAbroad": "Оплатить иностранной картой / PayPal",
   "order.payAbroadHint":
     "Stripe: карта любой страны или PayPal; после оплаты вы вернётесь на эту страницу.",
+  "order.payRussia": "Оплатить картой РФ или через СБП",
+  "order.payRussiaHint":
+    "Откройте форму Продамуса: карта российского банка или СБП. Заказ подтвердится сам.",
   "order.payAbroadFailed":
     "Не удалось открыть оплату иностранной картой — попробуйте позже или выберите другой способ.",
   "order.courier": "Заказ у курьера: {provider}",
@@ -877,6 +880,9 @@ const kk: Dict = {
   "order.payAbroad": "Шетелдік картамен / PayPal төлеу",
   "order.payAbroadHint":
     "Stripe: кез келген елдің картасы немесе PayPal; төлегеннен кейін осы бетке ораласыз.",
+  "order.payRussia": "РФ картасымен немесе СБП арқылы төлеу",
+  "order.payRussiaHint":
+    "Продамус формасы ашылады: Ресей банкінің картасы немесе СБП. Тапсырыс өзі расталады.",
   "order.payAbroadFailed":
     "Шетелдік картамен төлеуді ашу мүмкін болмады — кейінірек көріңіз немесе басқа тәсілді таңдаңыз.",
   "order.courier": "Тапсырыс курьерде: {provider}",
@@ -1422,6 +1428,9 @@ const en: Dict = {
   "order.payAbroad": "Pay with a foreign card / PayPal",
   "order.payAbroadHint":
     "Stripe: a card from any country or PayPal; after paying you will return to this page.",
+  "order.payRussia": "Pay with a Russian card or SBP",
+  "order.payRussiaHint":
+    "Opens the Prodamus form: Russian bank card or SBP. The order is confirmed automatically.",
   "order.payAbroadFailed":
     "Could not open foreign card payment — try again later or choose another method.",
   "order.courier": "With the courier: {provider}",
@@ -1969,6 +1978,9 @@ const uz: Dict = {
   "order.payAbroad": "Xorijiy karta / PayPal bilan toʻlash",
   "order.payAbroadHint":
     "Stripe: istalgan mamlakat kartasi yoki PayPal; toʻlovdan keyin shu sahifaga qaytasiz.",
+  "order.payRussia": "Rossiya kartasi yoki SBP bilan toʻlash",
+  "order.payRussiaHint":
+    "Prodamus formasi ochiladi: Rossiya banki kartasi yoki SBP. Buyurtma oʻzi tasdiqlanadi.",
   "order.payAbroadFailed":
     "Xorijiy karta bilan toʻlovni ochib boʻlmadi — keyinroq urinib koʻring yoki boshqa usulni tanlang.",
   "order.courier": "Buyurtma kuryerda: {provider}",

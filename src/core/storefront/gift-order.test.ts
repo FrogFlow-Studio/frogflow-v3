@@ -24,6 +24,7 @@ vi.mock("@/core/payments/payment", async (orig) => ({
   robokassaReceipt: (await orig<typeof import("@/core/payments/payment")>()).robokassaReceipt,
   robokassaFor: async () => ({ ready: false }),
   stripeFor: async () => ({ ready: false }),
+  prodamusFor: async () => ({ ready: false }),
 }));
 
 const { placeGiftOrder, giftSaleCountries } = await import("./gift-order");

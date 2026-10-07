@@ -11,6 +11,7 @@ export const SELLING_MODULES: ReadonlySet<ModuleKey> = new Set<ModuleKey>([
   "robokassa",
   "crypto",
   "stripe",
+  "prodamus",
   "kaspi_pay",
   "receipt_ocr",
   "telegram_stars",

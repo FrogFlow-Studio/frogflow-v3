@@ -215,6 +215,7 @@ describe("выгрузка «Оплаты»", () => {
   it("способ оплаты по отметке заказа", () => {
     expect(proofMethod(null)).toBe("без чека");
     expect(proofMethod("Robokassa")).toBe("Robokassa");
+    expect(proofMethod("Продамус")).toBe("Продамус");
     expect(proofMethod("Telegram Stars (50 ⭐, ch_1)")).toBe("Telegram Stars");
     expect(proofMethod("proofs/1/2.jpg")).toBe("перевод по чеку");
   });

@@ -1838,7 +1838,9 @@ async function finishCheckout(b: Bot, countryCode: string) {
   const crypto = await nowpaymentsFor(b.ctx);
   const { stripeFor } = await import("@/core/payments/payment");
   const stripe = await stripeFor(b.ctx);
-  if (rk.ready || stars || crypto.ready || stripe.ready) {
+  const { prodamusFor } = await import("@/core/payments/payment");
+  const prodamus = await prodamusFor(b.ctx, order.currency);
+  if (rk.ready || stars || crypto.ready || stripe.ready || prodamus.ready) {
     b.customer = await setState(b.ctx, b.customer, {
       ...rest,
       mode: "choose_pay",
@@ -1862,6 +1864,9 @@ async function finishCheckout(b: Bot, countryCode: string) {
               : []),
             ...(stripe.ready
               ? [[{ text: b.m.payViaStripeBtn, callback_data: `pay:stripe:${order.id}` }]]
+              : []),
+            ...(prodamus.ready
+              ? [[{ text: b.m.payViaProdamusBtn, callback_data: `pay:pdm:${order.id}` }]]
               : []),
             [{ text: b.m.payManualBtn, callback_data: `pay:manual:${order.id}` }],
           ],
@@ -2709,6 +2714,36 @@ async function handleCallback(
         `${b.m.manualTitleNew(no)}\n\n${b.m.amountToPay(formatMoney(due, order.currency))}\n\n${b.m.stripeHint}`,
         { reply_markup: { inline_keyboard: [[{ text: b.m.payViaStripeBtn, url: session.url }]] } },
       );
+      return;
+    }
+    if (kind === "pdm") {
+      const { prodamusFor, prodamusOrderUrl } = await import("@/core/payments/payment");
+      const cfg = await prodamusFor(ctx, order.currency);
+      if (!cfg.ready) return;
+      const username = ctx.tenant.settings.telegram?.username;
+      const link = await prodamusOrderUrl(ctx, cfg, {
+        orderId: order.id,
+        no,
+        due,
+        currency: order.currency,
+        back: username ? `https://t.me/${username}` : ctx.appUrl,
+        email: order.customer_email,
+      });
+      if (!link) return;
+      // Заказ в тенге, касса в рублях: к оплате — рубли, в скобках — сумма заказа.
+      const sum =
+        link.currency !== order.currency.toUpperCase()
+          ? `${formatMoney(link.amount, link.currency)} (${formatMoney(due, order.currency)})`
+          : formatMoney(due, order.currency);
+      b.customer = await setState(ctx, customer, {
+        ...customer.state,
+        mode: "awaiting_payment",
+        pending_order_id: order.id,
+        pending_display_no: no,
+      });
+      await send(b, `${b.m.manualTitleNew(no)}\n\n${b.m.amountToPay(sum)}\n\n${b.m.prodamusHint}`, {
+        reply_markup: { inline_keyboard: [[{ text: b.m.payViaProdamusBtn, url: link.url }]] },
+      });
       return;
     }
     if (kind === "stars") {

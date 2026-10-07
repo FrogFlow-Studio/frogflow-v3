@@ -74,7 +74,12 @@ import {
 import { closedRules, describeClosed, hasClosedDays } from "@/core/fulfillment/closed-days";
 import { dateAvailability, freeSlotsOnDate } from "@/core/fulfillment/capacity";
 import { isoToDisplay, parseDateInput } from "@/core/fulfillment/pure";
-import { robokassaFor, robokassaReceipt } from "@/core/payments/payment";
+import {
+  prodamusFor,
+  prodamusOrderUrl,
+  robokassaFor,
+  robokassaReceipt,
+} from "@/core/payments/payment";
 import { buildPaymentUrl } from "@/core/payments/robokassa";
 import { formatRatingSummary } from "@/core/reviews/pure";
 import { parseRatingReply } from "@/core/reviews/ask";
@@ -1328,7 +1333,7 @@ async function handlePostback(s: Shop, payload: string): Promise<ShopOutcome> {
       return "handled";
     }
     case "PAY":
-      await choosePayment(s, a === "rk" ? "rk" : "manual");
+      await choosePayment(s, a === "rk" || a === "pdm" ? a : "manual");
       return "handled";
     default:
       // Чужой postback (например, из comment-автоматизации Zernio) — не наш.
@@ -2490,7 +2495,8 @@ async function finishCheckout(s: Shop, countryCode: string) {
   }
   const due = result.amountDue;
   const rk = await robokassaFor(s.ctx, order.currency);
-  if (rk.ready) {
+  const pdm = await prodamusFor(s.ctx, order.currency);
+  if (rk.ready || pdm.ready) {
     s.customer = await setState(s.ctx, s.customer, {
       ...rest,
       mode: "choose_pay",
@@ -2503,7 +2509,24 @@ async function finishCheckout(s: Shop, countryCode: string) {
       {
         force: true,
         buttons: [
-          { type: "postback", title: plain(s.m.payViaRobokassaBtn), payload: "PAY:rk" },
+          ...(rk.ready
+            ? [
+                {
+                  type: "postback" as const,
+                  title: plain(s.m.payViaRobokassaBtn),
+                  payload: "PAY:rk",
+                },
+              ]
+            : []),
+          ...(pdm.ready
+            ? [
+                {
+                  type: "postback" as const,
+                  title: plain(s.m.payViaProdamusBtn),
+                  payload: "PAY:pdm",
+                },
+              ]
+            : []),
           { type: "postback", title: plain(s.m.payManualBtn), payload: "PAY:manual" },
         ],
       },
@@ -2549,7 +2572,7 @@ async function sendManualInstructions(
   await reply(s, text, { force: true, attachmentUrl: await photoFor(s, [p.qr]) });
 }
 
-async function choosePayment(s: Shop, kind: "rk" | "manual") {
+async function choosePayment(s: Shop, kind: "rk" | "pdm" | "manual") {
   const orderId = Number(s.customer.state.pending_order_id);
   const order = orderId ? await getOrder(s.ctx, orderId) : null;
   if (!order || order.telegram_id !== s.customer.telegramId || order.status !== "awaiting_payment")
@@ -2578,6 +2601,37 @@ async function choosePayment(s: Shop, kind: "rk" | "manual") {
       s,
       `${plain(s.m.manualTitleNew(no))}\n\n${plain(s.m.amountToPay(formatMoney(due, order.currency)))}\n\n${plain(s.m.robokassaHint)}\n\n${url}`,
       { force: true, buttons: [{ type: "url", title: plain(s.m.payViaRobokassaBtn), url }] },
+    );
+    return;
+  }
+  if (kind === "pdm") {
+    const cfg = await prodamusFor(s.ctx, order.currency);
+    if (!cfg.ready) return;
+    const { orderPageUrl } = await import("@/core/storefront/web-order");
+    const link = await prodamusOrderUrl(s.ctx, cfg, {
+      orderId: order.id,
+      no,
+      due,
+      currency: order.currency,
+      back: (await orderPageUrl(s.ctx, order.id)) ?? s.ctx.appUrl,
+      email: order.customer_email,
+    });
+    if (!link) return;
+    // Заказ в тенге, касса в рублях: к оплате — рубли, в скобках — сумма заказа.
+    const sum =
+      link.currency !== order.currency.toUpperCase()
+        ? `${formatMoney(link.amount, link.currency)} (${formatMoney(due, order.currency)})`
+        : formatMoney(due, order.currency);
+    const url = link.url;
+    await setMode(s, {
+      mode: "awaiting_payment",
+      pending_order_id: order.id,
+      pending_display_no: no,
+    });
+    await reply(
+      s,
+      `${plain(s.m.manualTitleNew(no))}\n\n${plain(s.m.amountToPay(sum))}\n\n${plain(s.m.prodamusHint)}\n\n${url}`,
+      { force: true, buttons: [{ type: "url", title: plain(s.m.payViaProdamusBtn), url }] },
     );
     return;
   }

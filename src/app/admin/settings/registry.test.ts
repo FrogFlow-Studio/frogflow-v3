@@ -96,6 +96,7 @@ describe("поиск и «изменено недавно»", () => {
       "marketplace",
       "watermark",
       "stripe",
+      "prodamus",
       "robokassa",
       "crypto",
       "stars",

@@ -6,6 +6,7 @@ import {
   webOrderReorderFn,
   webProofFn,
   webStripePayFn,
+  webProdamusPayFn,
 } from "@/app/storefront/checkout.functions";
 import { useStorefrontLocale } from "@/app/storefront/locale";
 import { ReorderButton } from "@/app/storefront/reorder";
@@ -111,6 +112,10 @@ function OrderPage() {
   });
   const abroad = useAction(async () => {
     const r = await webStripePayFn({ data: ref });
+    window.location.assign(r.url);
+  });
+  const russia = useAction(async () => {
+    const r = await webProdamusPayFn({ data: ref });
     window.location.assign(r.url);
   });
   if (noLink) return <p className="text-sm text-muted">{t("order.noLink")}</p>;
@@ -251,6 +256,7 @@ function OrderPage() {
           payment={view.payment}
           card={card}
           abroad={abroad}
+          russia={russia}
           proof={proof}
         />
       )}
@@ -369,13 +375,20 @@ function PayBox(props: {
   due: number;
   currency: string;
   hint: string | null;
-  payment: { instructions: string | null; qr: string | null; card: boolean; abroad?: boolean };
+  payment: {
+    instructions: string | null;
+    qr: string | null;
+    card: boolean;
+    abroad?: boolean;
+    russia?: { amount: number; currency: string } | null;
+  };
   card: Action<[]>;
   abroad?: Action<[]>;
+  russia?: Action<[]>;
   proof: Action<[File]>;
 }) {
   const { t } = useStorefrontLocale();
-  const { payment, card, abroad, proof } = props;
+  const { payment, card, abroad, russia, proof } = props;
   return (
     <section className="card space-y-3 p-5">
       <h2 className="font-semibold">{props.title}</h2>
@@ -409,9 +422,27 @@ function PayBox(props: {
           <ErrorBox error={abroad.error} />
         </div>
       )}
-      {(payment.card || payment.abroad) && (payment.instructions || payment.qr) && (
-        <h3 className="pt-2 text-sm font-medium">{t("order.payTransfer")}</h3>
+      {payment.russia && russia && (
+        <div className="space-y-1">
+          <button
+            className={
+              payment.card || payment.abroad ? "btn-secondary w-full" : "btn-primary w-full"
+            }
+            disabled={russia.busy}
+            onClick={() => void russia.run().catch(() => {})}
+          >
+            {t("order.payRussia")}
+            {payment.russia.currency !== props.currency.toUpperCase() &&
+              ` · ${formatMoney(payment.russia.amount, payment.russia.currency)}`}
+          </button>
+          <p className="text-xs text-muted">{t("order.payRussiaHint")}</p>
+          <ErrorBox error={russia.error} />
+        </div>
       )}
+      {(payment.card || payment.abroad || payment.russia) &&
+        (payment.instructions || payment.qr) && (
+          <h3 className="pt-2 text-sm font-medium">{t("order.payTransfer")}</h3>
+        )}
       {payment.instructions && (
         <p className="text-sm whitespace-pre-line">{payment.instructions}</p>
       )}

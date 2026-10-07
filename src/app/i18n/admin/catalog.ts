@@ -64,6 +64,9 @@ export const ru = {
   "module.kaspi_pay.title": "Оплата Kaspi Pay",
   "module.kaspi_pay.desc":
     "Оплата через Kaspi.kz по QR или ссылке; заказ подтверждается и выдаётся автоматически.",
+  "module.prodamus.title": "Оплата Продамус (Россия)",
+  "module.prodamus.desc":
+    "Покупатели из России платят картой или СБП через форму Продамуса продавца; заказ подтверждается и выдаётся автоматически.",
   "module.stripe.title": "Оплата картой из-за рубежа (Stripe, PayPal)",
   "module.stripe.desc":
     "Покупатели из других стран платят иностранной картой или PayPal; заказ выдаётся после подтверждения платежа.",
@@ -266,6 +269,9 @@ export const kk: SectionDict<typeof ru> = {
   "module.kaspi_pay.title": "Kaspi Pay арқылы төлеу",
   "module.kaspi_pay.desc":
     "Kaspi.kz арқылы QR немесе сілтеме бойынша төлем; тапсырыс автоматты түрде расталып, беріледі.",
+  "module.prodamus.title": "Продамус арқылы төлем (Ресей)",
+  "module.prodamus.desc":
+    "Ресейлік сатып алушылар сатушының Продамус формасы арқылы картамен немесе СБП арқылы төлейді; тапсырыс автоматты түрде расталып, беріледі.",
   "module.stripe.title": "Шетелден картамен төлеу (Stripe, PayPal)",
   "module.stripe.desc":
     "Басқа елдердің сатып алушылары шетелдік картамен немесе PayPal арқылы төлейді; тапсырыс төлем расталғаннан кейін беріледі.",
@@ -436,6 +442,9 @@ export const en: SectionDict<typeof ru> = {
   "module.kaspi_pay.title": "Kaspi Pay payments",
   "module.kaspi_pay.desc":
     "Payment via Kaspi.kz by QR or link; the order is confirmed and delivered automatically.",
+  "module.prodamus.title": "Prodamus payments (Russia)",
+  "module.prodamus.desc":
+    "Buyers from Russia pay by card or SBP through the seller's Prodamus form; the order is confirmed and delivered automatically.",
   "module.stripe.title": "Card payments from abroad (Stripe, PayPal)",
   "module.stripe.desc":
     "Customers from other countries pay with a foreign card or PayPal; the order is delivered once the payment is confirmed.",
@@ -602,6 +611,9 @@ export const uz: SectionDict<typeof ru> = {
   "module.kaspi_pay.title": "Kaspi Pay orqali toʻlov",
   "module.kaspi_pay.desc":
     "Kaspi.kz orqali QR yoki havola boʻyicha toʻlov; buyurtma avtomatik tasdiqlanadi va beriladi.",
+  "module.prodamus.title": "Prodamus orqali toʻlov (Rossiya)",
+  "module.prodamus.desc":
+    "Rossiyalik xaridorlar sotuvchining Prodamus formasi orqali karta yoki SBP bilan toʻlaydi; buyurtma avtomatik tasdiqlanadi va beriladi.",
   "module.stripe.title": "Chet eldan karta orqali toʻlov (Stripe, PayPal)",
   "module.stripe.desc":
     "Boshqa mamlakatlardagi xaridorlar xorijiy karta yoki PayPal orqali toʻlaydi; buyurtma toʻlov tasdiqlangach beriladi.",

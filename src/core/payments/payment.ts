@@ -54,6 +54,54 @@ export async function stripeFor(ctx: TenantContext) {
   return stripeConfig(await getSettingsStrict(ctx, STRIPE_KEYS), ctx.tenant.modules.stripe);
 }
 
+/**
+ * Продамус продавца из России (модуль prodamus, core/payments/prodamus). С
+ * валютой заказа — только в валюте его кассы.
+ */
+export async function prodamusFor(ctx: TenantContext, currency?: string | null) {
+  const { PRODAMUS_KEYS, prodamusConfig, prodamusAccepts } = await import("./prodamus");
+  const cfg = prodamusConfig(
+    await getSettingsStrict(ctx, PRODAMUS_KEYS),
+    ctx.tenant.modules.prodamus,
+  );
+  if (cfg.ready && currency != null && !prodamusAccepts(cfg, currency))
+    return { ready: false as const };
+  return cfg;
+}
+
+/**
+ * Ссылка на форму Продамуса по заказу: сумма к оплате сейчас в валюте кассы
+ * (заказ в тенге — по курсу продавца), уведомление — на
+ * /api/prodamus/<bot_id>, возврат покупателя — `back` (бот или страница
+ * заказа). null — эту валюту касса не примет.
+ */
+export async function prodamusOrderUrl(
+  ctx: TenantContext,
+  cfg: import("./prodamus").ProdamusConfig,
+  p: {
+    orderId: number;
+    no: number;
+    due: number;
+    currency: string;
+    back: string;
+    email?: string | null;
+  },
+): Promise<{ url: string; amount: number; currency: string } | null> {
+  const { buildProdamusLink, prodamusCharge } = await import("./prodamus");
+  const charge = prodamusCharge(cfg, p.due, p.currency);
+  if (!charge || !(charge.amount > 0)) return null;
+  const url = buildProdamusLink(cfg, {
+    amount: charge.amount,
+    orderId: p.orderId,
+    description: `Заказ #${p.no}`,
+    notifyUrl: `${ctx.appUrl}/api/prodamus/${ctx.tenant.id}`,
+    successUrl: p.back,
+    returnUrl: p.back,
+    email: p.email,
+  });
+  return { url, ...charge };
+}
+
 /** Заказ, по которому оплату уже не ждут: отменён, отклонён или возвращён. */
 const CLOSED_ORDER_STATUSES = ["cancelled", "rejected", "refunded"];
 

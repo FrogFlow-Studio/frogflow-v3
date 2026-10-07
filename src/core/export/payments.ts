@@ -67,6 +67,7 @@ export function proofMethod(path: string | null): string {
   if (!path) return "без чека";
   if (path.startsWith("Robokassa")) return "Robokassa";
   if (path.startsWith("Telegram Stars")) return "Telegram Stars";
+  if (path.startsWith("Продамус")) return "Продамус";
   return "перевод по чеку";
 }
 

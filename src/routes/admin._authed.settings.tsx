@@ -49,6 +49,7 @@ import {
   RobokassaCard,
   CryptoCard,
   StripeCard,
+  ProdamusCard,
   StarsCard,
 } from "@/app/admin/settings/payments";
 import {
@@ -533,6 +534,11 @@ function SettingsPage() {
               {shop.modules.stripe && shop.role === "owner" && (
                 <SettingsSection id="stripe">
                   <StripeCard settings={settings} />
+                </SettingsSection>
+              )}
+              {shop.modules.prodamus && shop.role === "owner" && (
+                <SettingsSection id="prodamus">
+                  <ProdamusCard settings={settings} />
                 </SettingsSection>
               )}
               {shop.modules.telegram_stars && (

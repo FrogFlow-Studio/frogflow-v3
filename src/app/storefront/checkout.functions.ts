@@ -414,6 +414,17 @@ export const webCardPayFn = createServerFn({ method: "POST" })
     return { url };
   });
 
+/** Оплата картой РФ или СБП: ссылка на форму Продамуса продавца на этот заказ. */
+export const webProdamusPayFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object(orderRef).parse(d))
+  .handler(async ({ data }) => {
+    const ctx = await orderCtx(data, "card");
+    const { webProdamusPaymentUrl } = await import("@/core/storefront/web-order");
+    const url = await webProdamusPaymentUrl(ctx, data.id);
+    if (!url) throw shownError((await shopT(ctx))("checkout.proof.closed"));
+    return { url };
+  });
+
 /** Оплата иностранной картой: сессия Stripe Checkout продавца на этот заказ. */
 export const webStripePayFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object(orderRef).parse(d))

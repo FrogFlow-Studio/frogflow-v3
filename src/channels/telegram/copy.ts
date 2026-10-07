@@ -207,6 +207,9 @@ export type Msg = {
   payViaStripeBtn: string;
   stripeHint: string;
   stripeUnavailable: string;
+  /** Продамус: карта российского банка или СБП. */
+  payViaProdamusBtn: string;
+  prodamusHint: string;
   payManualBtn: string;
   robokassaHint: string;
   paymentReceived: (no: number) => string;
@@ -670,6 +673,9 @@ const ru: Msg = {
   stripeHint:
     "Откройте ссылку и оплатите картой любой страны. Заказ подтвердится сам сразу после оплаты.",
   stripeUnavailable: "Оплата иностранной картой сейчас недоступна — выберите другой способ.",
+  payViaProdamusBtn: "🇷🇺 Карта РФ / СБП",
+  prodamusHint:
+    "Откройте ссылку и оплатите картой российского банка или через СБП. Заказ подтвердится сам сразу после оплаты.",
   payManualBtn: "🧾 Перевод по реквизитам + чек",
   robokassaHint: "Нажмите кнопку, оплатите картой — после оплаты всё придёт сюда автоматически.",
   paymentReceived: (no) => `✅ Оплата по заказу #${no} получена.`,
@@ -767,6 +773,9 @@ const ru: Msg = {
 
 const kk: Msg = {
   ...ru,
+  payViaProdamusBtn: "🇷🇺 РФ картасы / СБП",
+  prodamusHint:
+    "Сілтемені ашып, Ресей банкінің картасымен немесе СБП арқылы төлеңіз. Тапсырыс төлемнен кейін бірден өзі расталады.",
   phoneNoted: "Нөміріңізді жазып алдым 👍",
   loginCodeMsg: (code, minutes) =>
     `🔐 Сайтқа кіру коды: <b>${code}</b>\n${minutes} минут жарамды, бір рет қана қолданылады. Оны ешкімге айтпаңыз.`,
@@ -1095,6 +1104,9 @@ const en: Msg = {
     "Open the link and pay with a card from any country. The order is confirmed automatically right after payment.",
   stripeUnavailable:
     "Foreign card payment is unavailable right now — please choose another method.",
+  payViaProdamusBtn: "🇷🇺 RU card / SBP",
+  prodamusHint:
+    "Open the link and pay with a Russian bank card or via SBP. The order is confirmed automatically right after payment.",
   payBalanceBtn: (no) => `💳 Pay the balance #${no}`,
   balanceTitle: (no, sum) => `💳 <b>Balance for order #${no}</b>\n\n💰 To pay: <b>${sum}</b>`,
   balanceNoDetails: "Please ask the seller for payment details.",
@@ -1354,6 +1366,9 @@ const en: Msg = {
 
 const uz: Msg = {
   ...ru,
+  payViaProdamusBtn: "🇷🇺 RF kartasi / SBP",
+  prodamusHint:
+    "Havolani oching va Rossiya banki kartasi yoki SBP orqali to‘lang. Buyurtma to‘lovdan so‘ng darhol o‘zi tasdiqlanadi.",
   cartHeader: "🛒 <b>Savatingiz</b>\n\n",
   phoneNoted: "Raqamingizni yozib oldim 👍",
   loginCodeMsg: (code, minutes) =>

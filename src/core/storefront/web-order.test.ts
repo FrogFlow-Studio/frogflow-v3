@@ -10,12 +10,28 @@ vi.mock("@/core/orders/orders", async (orig) => ({
 }));
 const robokassa = vi.fn();
 let stripeReady = false;
+let prodamusReady = false;
+let prodamusRate: number | null = null;
 vi.mock("@/core/payments/payment", async (orig) => ({
   // Чек 54-ФЗ — настоящий: у кассы Казахстана его нет.
   robokassaReceipt: (await orig<typeof import("@/core/payments/payment")>()).robokassaReceipt,
   robokassaFor: () => robokassa(),
   stripeFor: async () =>
     stripeReady ? { ready: true, secretKey: "sk", webhookSecret: "wh" } : { ready: false },
+  // Продамус: касса в рублях, курс тенге — из теста; пересчёт и ссылка настоящие.
+  prodamusFor: async (_c: unknown, currency?: string | null) => {
+    const { prodamusAccepts } = await import("@/core/payments/prodamus");
+    const cfg = {
+      formUrl: "https://shop.payform.ru",
+      secretKey: "pk",
+      currency: "RUB" as const,
+      rate: prodamusRate,
+    };
+    return prodamusReady && (currency == null || prodamusAccepts(cfg, currency))
+      ? { ready: true as const, ...cfg }
+      : { ready: false as const };
+  },
+  prodamusOrderUrl: (await orig<typeof import("@/core/payments/payment")>()).prodamusOrderUrl,
 }));
 vi.mock("@/core/fulfillment/fulfillment", async (orig) => ({
   ...(await orig<typeof import("@/core/fulfillment/fulfillment")>()),
@@ -37,6 +53,7 @@ const {
   webCustomer,
   webCardPaymentUrl,
   webStripePaymentUrl,
+  webProdamusPaymentUrl,
   webCustomerId,
   webMaterialSender,
   webOrderView,
@@ -68,6 +85,8 @@ beforeEach(() => {
   robokassa.mockReset();
   robokassa.mockResolvedValue({ ready: false });
   stripeReady = false;
+  prodamusReady = false;
+  prodamusRate = null;
   placeOrder.mockReset();
   importItems.mockReset();
 });
@@ -718,6 +737,37 @@ describe("заказ с сайта: страница заказа", () => {
     }
     const paid = withOrder({ status: "paid" });
     expect(await webStripePaymentUrl(paid.ctx, 9)).toEqual({ ok: false, reason: "closed" });
+  });
+
+  it("Продамус: заказ в тенге, касса в рублях — без курса кнопки нет, с курсом ссылка на рубли", async () => {
+    const { ctx } = withOrder();
+    Object.assign(ctx.tenant.settings, { slug: "shop", served_by: "v2" });
+    prodamusReady = true;
+    // Без курса 2500 ₸ не спишутся как 2500 ₽: кнопки нет.
+    expect((await webOrderView(ctx, 9))!.payment!.russia).toBeNull();
+    expect(await webProdamusPaymentUrl(ctx, 9)).toBeNull();
+    prodamusRate = 5;
+    expect((await webOrderView(ctx, 9))!.payment!.russia).toEqual({
+      amount: 500,
+      currency: "RUB",
+    });
+    const url = new URL((await webProdamusPaymentUrl(ctx, 9))!);
+    expect(url.origin).toBe("https://shop.payform.ru");
+    const { parsePhpForm, parseChargeRef, prodamusSign } = await import("@/core/payments/prodamus");
+    const q = parsePhpForm(url.search.slice(1));
+    expect(q).toMatchObject({
+      currency: "rub",
+      products: [{ price: "500.00", quantity: "1" }],
+    });
+    const cfg = { formUrl: "", secretKey: "pk", currency: "RUB" as const, rate: 5 };
+    expect(parseChargeRef(cfg, q.order_id)).toEqual({ orderId: 9, amount: 500, currency: "RUB" });
+    expect(String(q.urlNotification)).toMatch(/\/api\/prodamus\//);
+    expect(String(q.urlSuccess)).toMatch(/\/order\/9\?t=/);
+    const { signature, ...signed } = q;
+    expect(signature).toBe(prodamusSign(signed, "pk"));
+    const paid = withOrder({ status: "paid" });
+    Object.assign(paid.ctx.tenant.settings, { slug: "shop", served_by: "v2" });
+    expect(await webProdamusPaymentUrl(paid.ctx, 9)).toBeNull();
   });
 
   it("чек на проверке — реквизиты больше не показываются", async () => {

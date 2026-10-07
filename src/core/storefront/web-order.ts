@@ -40,8 +40,15 @@ import {
 } from "@/core/orders/orders";
 import { parseDeliveredLanguages } from "@/core/catalog/materials";
 import { imageUrl } from "@/core/catalog/catalog";
-import { robokassaFor, robokassaReceipt, stripeFor } from "@/core/payments/payment";
+import {
+  prodamusFor,
+  prodamusOrderUrl,
+  robokassaFor,
+  robokassaReceipt,
+  stripeFor,
+} from "@/core/payments/payment";
 import { buildPaymentUrl } from "@/core/payments/robokassa";
+import { prodamusCharge } from "@/core/payments/prodamus";
 import { amountDueNow } from "@/core/fulfillment/fulfillment";
 import { serverFailure } from "@/lib/server-failure";
 import { sha256Hex } from "@/lib/hash";
@@ -400,14 +407,16 @@ export type WebOrderView = {
   discount: number;
   /**
    * Как платить: реквизиты и QR способа оплаты страны заказа, карта через
-   * Robokassa продавца и/или иностранная карта через Stripe (abroad);
-   * null — платить не нужно.
+   * Robokassa продавца, иностранная карта через Stripe (abroad) и/или карта
+   * РФ и СБП через Продамус (russia); null — платить не нужно.
    */
   payment: {
     instructions: string | null;
     qr: string | null;
     card: boolean;
     abroad: boolean;
+    /** Сколько спишет Продамус (заказ в тенге — рубли по курсу продавца); null — нет. */
+    russia: { amount: number; currency: string } | null;
   } | null;
   materials: WebMaterial[];
   email: string | null;
@@ -544,18 +553,20 @@ export async function webOrderView(
     payable && order.country_code ? await paymentMethodFor(ctx, order.country_code) : null;
   const card = payable && (await robokassaFor(ctx, order.currency)).ready;
   const abroad = payable && (await stripeFor(ctx)).ready;
+  const prodamus = payable ? await prodamusFor(ctx, order.currency) : null;
   const { balance, balancePending } = await balanceView(ctx, order);
+  const due = payable
+    ? await amountDueNow(ctx, {
+        total: Number(order.total),
+        fulfillment_kind: order.fulfillment_kind,
+      })
+    : 0;
   return {
     id: order.id,
     no: displayNo(order),
     status: order.status,
     total: Number(order.total),
-    due: payable
-      ? await amountDueNow(ctx, {
-          total: Number(order.total),
-          fulfillment_kind: order.fulfillment_kind,
-        })
-      : 0,
+    due,
     currency: order.currency,
     createdAt: order.created_at,
     fulfillment:
@@ -579,12 +590,13 @@ export async function webOrderView(
     preorder: await webOrderPreorder(ctx, order.id),
     discount: orderDiscount(order),
     payment:
-      method || card || abroad
+      method || card || abroad || prodamus?.ready
         ? {
             instructions: method?.instructions ?? null,
             qr: method?.qr_code_path ? imageUrl(ctx, method.qr_code_path) : null,
             card,
             abroad,
+            russia: prodamus?.ready ? prodamusCharge(prodamus, due, order.currency) : null,
           }
         : null,
     materials: await webOrderMaterials(ctx, order),
@@ -752,4 +764,35 @@ export async function webStripePaymentUrl(
     return { ok: false, reason: "failed" };
   }
   return { ok: true, url: r.url };
+}
+
+/**
+ * Оплата картой РФ или СБП: ссылка на форму Продамуса продавца на сумму к
+ * оплате сейчас, возврат — на подписанную страницу заказа. null — заказ уже
+ * не ждёт оплаты или Продамус не подключён (или заказ не в валюте его кассы).
+ * Оплату подтверждает только уведомление /api/prodamus/<bot_id>.
+ */
+export async function webProdamusPaymentUrl(
+  ctx: TenantContext,
+  orderId: number,
+): Promise<string | null> {
+  const order = await getOrder(ctx, orderId);
+  if (!order || !(await hasOrderPage(ctx, order)) || !PAYABLE.has(order.status)) return null;
+  const cfg = await prodamusFor(ctx, order.currency);
+  if (!cfg.ready) return null;
+  const due = await amountDueNow(ctx, {
+    total: Number(order.total),
+    fulfillment_kind: order.fulfillment_kind,
+  });
+  const page = await orderPageUrl(ctx, order.id);
+  if (!(due > 0) || !page) return null;
+  const link = await prodamusOrderUrl(ctx, cfg, {
+    orderId: order.id,
+    no: displayNo(order),
+    due,
+    currency: order.currency,
+    back: page,
+    email: order.customer_email,
+  });
+  return link?.url ?? null;
 }

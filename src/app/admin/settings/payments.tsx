@@ -611,3 +611,99 @@ export function StripeCard({ settings }: { settings: Record<string, string> }) {
     </Card>
   );
 }
+
+/** Карта РФ и СБП через Продамус (core/payments/prodamus): ключ — только владельцу. */
+export function ProdamusCard({ settings }: { settings: Record<string, string> }) {
+  const router = useRouter();
+  const { shop } = settingsRoute.useRouteContext();
+  const t = adminT(shop.locale);
+  const [saved, setSaved] = useState(false);
+  const save = useAction(async (f: FormData) => {
+    setSaved(false);
+    await saveSettingsFn({
+      data: {
+        prodamus_enabled: f.get("enabled") === "on" ? "true" : "false",
+        prodamus_form_url: String(f.get("formUrl")).trim(),
+        prodamus_secret_key: String(f.get("secretKey")).trim(),
+        prodamus_currency: String(f.get("currency")),
+        prodamus_rate: String(f.get("rate")).trim().replace(",", "."),
+      },
+    });
+    setSaved(true);
+    await router.invalidate();
+  });
+  const [origin, setOrigin] = useState("");
+  useEffect(() => setOrigin(window.location.origin), []);
+  return (
+    <Card title={t("settings.prodamus.title")} className="lg:col-span-2">
+      <p className="mb-3 text-xs text-muted">
+        {t("settings.prodamus.intro")}{" "}
+        <code className="break-all rounded bg-surface-2 px-1">{`${origin}/api/prodamus/${shop.botId}`}</code>
+      </p>
+      <form
+        className="grid gap-3 sm:grid-cols-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void save.run(new FormData(e.currentTarget)).catch(() => {});
+        }}
+      >
+        <label className="flex items-center gap-2 text-sm sm:col-span-2">
+          <input
+            type="checkbox"
+            name="enabled"
+            defaultChecked={settings.prodamus_enabled === "true"}
+          />
+          {t("settings.prodamus.enabled")}
+        </label>
+        <Field label={t("settings.prodamus.formUrl")}>
+          <input
+            className="input"
+            name="formUrl"
+            autoComplete="off"
+            placeholder="https://shop.payform.ru"
+            defaultValue={settings.prodamus_form_url ?? ""}
+          />
+        </Field>
+        <Field label={t("settings.prodamus.secretKey")}>
+          <input
+            className="input"
+            name="secretKey"
+            autoComplete="off"
+            defaultValue={settings.prodamus_secret_key ?? ""}
+          />
+        </Field>
+        <Field label={t("settings.prodamus.currency")}>
+          <select
+            className="input"
+            name="currency"
+            defaultValue={(settings.prodamus_currency ?? "RUB").toUpperCase()}
+          >
+            {["RUB", "KZT", "USD", "EUR"].map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label={t("settings.prodamus.rate")}>
+          <input
+            className="input"
+            name="rate"
+            inputMode="decimal"
+            autoComplete="off"
+            placeholder="5.8"
+            defaultValue={settings.prodamus_rate ?? ""}
+          />
+        </Field>
+        <p className="text-xs text-muted sm:col-span-2">{t("settings.prodamus.currencyHint")}</p>
+        <div className="flex items-center gap-3 sm:col-span-2">
+          <button className="btn-primary" disabled={save.busy}>
+            {t("common.save")}
+          </button>
+          {saved && <span className="text-xs text-ok">{t("settings.saved")}</span>}
+        </div>
+        <ErrorBox error={save.error} />
+      </form>
+    </Card>
+  );
+}

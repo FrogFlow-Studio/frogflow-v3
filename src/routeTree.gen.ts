@@ -88,6 +88,7 @@ import { Route as ApiApipayWebhookRouteImport } from './routes/api/apipay.webhoo
 import { Route as ApiCronJobRouteImport } from './routes/api/cron.$job'
 import { Route as ApiNowpaymentsBotIdRouteImport } from './routes/api/nowpayments.$botId'
 import { Route as ApiOperatorBotsRouteImport } from './routes/api/operator/bots'
+import { Route as ApiProdamusBotIdRouteImport } from './routes/api/prodamus.$botId'
 import { Route as ApiStripeBotIdRouteImport } from './routes/api/stripe.$botId'
 import { Route as ApiTakeoutBotIdRouteImport } from './routes/api/takeout.$botId'
 import { Route as ApiTelegramBotIdRouteImport } from './routes/api/telegram.$botId'
@@ -549,6 +550,11 @@ const ApiOperatorBotsRoute = ApiOperatorBotsRouteImport.update({
   path: '/api/operator/bots',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiProdamusBotIdRoute = ApiProdamusBotIdRouteImport.update({
+  id: '/api/prodamus/$botId',
+  path: '/api/prodamus/$botId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiStripeBotIdRoute = ApiStripeBotIdRouteImport.update({
   id: '/api/stripe/$botId',
   path: '/api/stripe/$botId',
@@ -972,6 +978,7 @@ export interface FileRoutesByFullPath {
   '/api/cron/$job': typeof ApiCronJobRoute
   '/api/nowpayments/$botId': typeof ApiNowpaymentsBotIdRoute
   '/api/operator/bots': typeof ApiOperatorBotsRoute
+  '/api/prodamus/$botId': typeof ApiProdamusBotIdRoute
   '/api/stripe/$botId': typeof ApiStripeBotIdRoute
   '/api/takeout/$botId': typeof ApiTakeoutBotIdRoute
   '/api/telegram/$botId': typeof ApiTelegramBotIdRouteWithChildren
@@ -1115,6 +1122,7 @@ export interface FileRoutesByTo {
   '/api/cron/$job': typeof ApiCronJobRoute
   '/api/nowpayments/$botId': typeof ApiNowpaymentsBotIdRoute
   '/api/operator/bots': typeof ApiOperatorBotsRoute
+  '/api/prodamus/$botId': typeof ApiProdamusBotIdRoute
   '/api/stripe/$botId': typeof ApiStripeBotIdRoute
   '/api/takeout/$botId': typeof ApiTakeoutBotIdRoute
   '/api/telegram/$botId': typeof ApiTelegramBotIdRouteWithChildren
@@ -1261,6 +1269,7 @@ export interface FileRoutesById {
   '/api/cron/$job': typeof ApiCronJobRoute
   '/api/nowpayments/$botId': typeof ApiNowpaymentsBotIdRoute
   '/api/operator/bots': typeof ApiOperatorBotsRoute
+  '/api/prodamus/$botId': typeof ApiProdamusBotIdRoute
   '/api/stripe/$botId': typeof ApiStripeBotIdRoute
   '/api/takeout/$botId': typeof ApiTakeoutBotIdRoute
   '/api/telegram/$botId': typeof ApiTelegramBotIdRouteWithChildren
@@ -1408,6 +1417,7 @@ export interface FileRouteTypes {
     | '/api/cron/$job'
     | '/api/nowpayments/$botId'
     | '/api/operator/bots'
+    | '/api/prodamus/$botId'
     | '/api/stripe/$botId'
     | '/api/takeout/$botId'
     | '/api/telegram/$botId'
@@ -1551,6 +1561,7 @@ export interface FileRouteTypes {
     | '/api/cron/$job'
     | '/api/nowpayments/$botId'
     | '/api/operator/bots'
+    | '/api/prodamus/$botId'
     | '/api/stripe/$botId'
     | '/api/takeout/$botId'
     | '/api/telegram/$botId'
@@ -1696,6 +1707,7 @@ export interface FileRouteTypes {
     | '/api/cron/$job'
     | '/api/nowpayments/$botId'
     | '/api/operator/bots'
+    | '/api/prodamus/$botId'
     | '/api/stripe/$botId'
     | '/api/takeout/$botId'
     | '/api/telegram/$botId'
@@ -1791,6 +1803,7 @@ export interface RootRouteChildren {
   ApiCronJobRoute: typeof ApiCronJobRoute
   ApiNowpaymentsBotIdRoute: typeof ApiNowpaymentsBotIdRoute
   ApiOperatorBotsRoute: typeof ApiOperatorBotsRoute
+  ApiProdamusBotIdRoute: typeof ApiProdamusBotIdRoute
   ApiStripeBotIdRoute: typeof ApiStripeBotIdRoute
   ApiTakeoutBotIdRoute: typeof ApiTakeoutBotIdRoute
   ApiTelegramBotIdRoute: typeof ApiTelegramBotIdRouteWithChildren
@@ -2362,6 +2375,13 @@ declare module '@tanstack/react-router' {
       path: '/api/operator/bots'
       fullPath: '/api/operator/bots'
       preLoaderRoute: typeof ApiOperatorBotsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/prodamus/$botId': {
+      id: '/api/prodamus/$botId'
+      path: '/api/prodamus/$botId'
+      fullPath: '/api/prodamus/$botId'
+      preLoaderRoute: typeof ApiProdamusBotIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/stripe/$botId': {
@@ -3136,6 +3156,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiCronJobRoute: ApiCronJobRoute,
   ApiNowpaymentsBotIdRoute: ApiNowpaymentsBotIdRoute,
   ApiOperatorBotsRoute: ApiOperatorBotsRoute,
+  ApiProdamusBotIdRoute: ApiProdamusBotIdRoute,
   ApiStripeBotIdRoute: ApiStripeBotIdRoute,
   ApiTakeoutBotIdRoute: ApiTakeoutBotIdRoute,
   ApiTelegramBotIdRoute: ApiTelegramBotIdRouteWithChildren,

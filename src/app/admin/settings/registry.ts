@@ -252,6 +252,22 @@ export const SETTINGS_REGISTRY: readonly SettingsEntry[] = [
     wide: true,
     keys: ["stripe_enabled", "stripe_secret_key", "stripe_webhook_secret"],
   }),
+  E({
+    id: "prodamus",
+    sellsOnly: true,
+    theme: "payment",
+    title: "settings.prodamus.title",
+    module: "prodamus",
+    ownerOnly: true,
+    wide: true,
+    keys: [
+      "prodamus_enabled",
+      "prodamus_form_url",
+      "prodamus_secret_key",
+      "prodamus_currency",
+      "prodamus_rate",
+    ],
+  }),
   E({ id: "telegram", theme: "channels", title: "settings.tg.title" }),
   E({
     id: "channel-wizard",
