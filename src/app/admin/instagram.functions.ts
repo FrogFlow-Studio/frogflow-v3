@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { UserError } from "@/core/i18n/user-error";
+import { buttonSchema, postTitleSchema } from "./instagram-input";
 
 /**
  * Раздел «Instagram»: правила Comment-to-DM через Zernio. Каждая функция
@@ -31,13 +32,6 @@ async function zernioReadError(e: unknown): Promise<UserError> {
         "Zernio сейчас не отвечает — правила и публикации не загрузились. Обновите страницу через пару минут.",
       );
 }
-
-const buttonSchema = z.object({
-  type: z.enum(["url", "postback"]),
-  title: z.string().min(1).max(40),
-  url: z.string().url().max(500).optional(),
-  payload: z.string().max(100).optional(),
-});
 
 export const instagramFn = createServerFn({ method: "GET" }).handler(async () => {
   const ctx = await ig();
@@ -152,7 +146,7 @@ export const saveAutomationFn = createServerFn({ method: "POST" })
         trigger: z.enum(["comment", "story_reply"]).default("comment"),
         platformPostId: z.string().max(100).nullable().optional(),
         postId: z.string().max(100).nullable().optional(),
-        postTitle: z.string().max(500).optional(),
+        postTitle: postTitleSchema,
         keywords: z.array(z.string().max(100)).max(50).default([]),
         replyToAll: z.boolean().default(false),
         matchMode: z.enum(["exact", "contains"]).default("contains"),

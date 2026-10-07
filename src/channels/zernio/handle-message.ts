@@ -345,6 +345,7 @@ export async function handleZernioMessage(
     platform: m.platform,
     story: { storyId: m.storyId, mediaUrl: m.storyMediaUrl },
     ...(imageUrls.length ? { imageUrls } : {}),
+    shopInChat: shopOn,
   });
   if (!r) return { status: "failed", note: "консультант не ответил (см. consultant_last_error)" };
 

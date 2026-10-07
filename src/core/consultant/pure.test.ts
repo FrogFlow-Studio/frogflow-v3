@@ -54,6 +54,21 @@ describe("profile / prompt", () => {
     expect(s).toContain("КАТАЛОГ");
     expect(s).toContain("[ДОКУМЕНТ: Витамин D3");
   });
+  it("магазин в переписке: покупку оформляет бот, а не заявка менеджеру", () => {
+    const profile = parseProfile(null, "Bloom");
+    const plain = buildSystemPrompt(profile, docs, "- Роза, 5000 KZT");
+    expect(plain).toContain("record_order_lead и передайте менеджеру");
+    const shop = buildSystemPrompt(profile, docs, "- Роза, 5000 KZT", { shopInChat: true });
+    expect(shop).toContain("ГЛАВНАЯ ЦЕЛЬ — ПРОДАЖА");
+    expect(shop).toContain("Заказ в этом чате оформляет бот магазина");
+    expect(shop).toContain("Телефон и адрес не спрашивайте");
+    expect(shop).not.toContain("record_order_lead и передайте менеджеру");
+    // Другие цели (запись, созвон) магазин в переписке не меняет.
+    const booking = buildSystemPrompt({ ...profile, goal: "booking" }, docs, "", {
+      shopInChat: true,
+    });
+    expect(booking).toContain("ГЛАВНАЯ ЦЕЛЬ — ЗАПИСЬ");
+  });
   it("чистит markdown и сценарии", () => {
     expect(cleanReply("**Да**, есть.\nКлиент: беру\nАссистент: ок\n\n\n\n_итого_ 5")).toBe(
       "Да, есть.\n\nитого 5",

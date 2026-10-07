@@ -427,6 +427,8 @@ export async function runConsultant(
     /** Фото покупателя: ссылки (директ) или уже скачанные (Telegram) — консультант по прайсу. */
     imageUrls?: string[];
     images?: import("./pricelist/images").V2Image[];
+    /** В этом канале включён магазин в переписке: покупку оформляет бот, не менеджер. */
+    shopInChat?: boolean;
   } = { platform: "telegram" },
 ): Promise<ConsultantResult | null> {
   // Предпросмотр: до брони ИИ-баланса и до клиента — как «ИИ недоступен».
@@ -569,6 +571,7 @@ export async function runConsultant(
     : await catalogSnippet(ctx);
   const system = buildSystemPrompt(profile, retrieveKnowledge(incoming, docs, 6), catalog.text, {
     catalogTools: Boolean(loaded),
+    shopInChat: opts.shopInChat,
   });
   let known = loaded ? parseMemory(state.profile) : {};
   const profile0 = known;

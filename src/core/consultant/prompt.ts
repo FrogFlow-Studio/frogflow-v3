@@ -13,6 +13,16 @@ const GOAL_TEXT: Record<(typeof GOALS)[number], string> = {
 Отвечайте точно и только по базе знаний. Если ответа там нет — так и скажите и вызовите handoff_to_manager, не придумывайте.`,
 };
 
+/**
+ * Продажа там, где магазин в переписке включён (dm_shop/wa_shop): заказ
+ * оформляет сам бот по номеру товара или слову «каталог», поэтому консультант
+ * не собирает телефон и адрес и не передаёт покупку менеджеру — иначе
+ * продавцу снова приходится вести каждый заказ руками.
+ */
+const SHOP_IN_CHAT_SALES = `ГЛАВНАЯ ЦЕЛЬ — ПРОДАЖА.
+Помогите выбрать конкретный товар, подтвердите наличие по каталогу, назовите цену, ответьте на вопросы и подведите к заказу.
+Заказ в этом чате оформляет бот магазина. Когда клиент определился («беру», «хочу заказать»): назовите товар так, как он записан в каталоге, и попросите прислать в ответ его номер из названия, если он там есть, или написать «каталог» и выбрать товар кнопкой. Телефон и адрес не спрашивайте и record_order_lead для покупки не вызывайте — бот спросит сам, что ему нужно. Менеджеру передавайте только жалобу, просьбу позвать человека или вопрос, на который нет ответа.`;
+
 const TONE_TEXT = {
   friendly_expert: "дружелюбная, экспертная, живая",
   formal: "деловая, сдержанная, вежливая",
@@ -25,7 +35,7 @@ export function buildSystemPrompt(
   profile: ConsultantProfile,
   docs: KnowledgeDoc[],
   catalog: string,
-  opts: { catalogTools?: boolean } = {},
+  opts: { catalogTools?: boolean; shopInChat?: boolean } = {},
 ): string {
   const sections = [
     `РОЛЬ
@@ -33,7 +43,9 @@ export function buildSystemPrompt(
 ${profile.website_url ? `Сайт: ${profile.website_url}\n` : ""}${profile.about ? `О компании: ${profile.about}\n` : ""}Тональность: ${TONE_TEXT[profile.tone]}.
 Основной язык: ${profile.primary_language}. Если клиент пишет на другом языке (казахский, русский, английский) — отвечайте на его языке.
 Страны: ${profile.countries.join(", ")}. Валюта цен: ${profile.currency}.`,
-    GOAL_TEXT[profile.goal],
+    opts.shopInChat && profile.goal === "direct_sales"
+      ? SHOP_IN_CHAT_SALES
+      : GOAL_TEXT[profile.goal],
     [
       profile.delivery_info ? `УСЛОВИЯ ДОСТАВКИ: ${profile.delivery_info}` : "",
       profile.payment_info ? `УСЛОВИЯ ОПЛАТЫ: ${profile.payment_info}` : "",
