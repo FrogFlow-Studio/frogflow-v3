@@ -774,11 +774,11 @@ async function sendSecondStep(
   const buttons = normalizeDmButtons(p.buttons as DmButton[]);
   // Покупатель ответил «+» раньше, чем дошёл вебхук комментария, и второе
   // уже отдано по переписке (deliverTwoStepFromDm) — второй раз не шлём.
-  if (await startedFromDm(ctx, p.username, p.automationId)) {
+  if (await secondStepTaken(ctx, p.username, p.automationId, { queued: true })) {
     await upsertLog(ctx, key, {
       event_type: "two_step_dm_sent",
       status: "processed",
-      error_message: "второе сообщение отдано по ответу покупателя",
+      error_message: "второе сообщение этому покупателю уже ушло",
       payload: { commentId: p.commentId, username: p.username, automationId: p.automationId },
     });
     return true;
@@ -993,7 +993,27 @@ export async function deliverPendingTwoStepDm(
     secondText?: string;
     buttons?: DmButton[];
     attempts?: number;
+    automationId?: string;
   };
+  // Вторая строка того же правила (вебхук комментария и «+» пришли вместе) —
+  // второе уже ушло по первой: закрываем без отправки, сообщение покупателя
+  // разбирается дальше как обычное.
+  if (
+    matched.status === "pending" &&
+    pl.automationId &&
+    (await secondStepTaken(ctx, p.username, pl.automationId, { exceptId: matched.id }))
+  ) {
+    await ctx.db
+      .from("zernio_logs")
+      .update({
+        event_type: "two_step_dm_sent",
+        status: "processed",
+        error_message: "второе сообщение этому покупателю уже ушло",
+      })
+      .eq("id", matched.id)
+      .eq("status", "pending");
+    return false;
+  }
   const text = pl.secondText?.trim() || DEFAULT_SECOND_DM;
   const attempts = typeof pl.attempts === "number" ? pl.attempts : 0;
 
@@ -1258,27 +1278,44 @@ export async function deliverTwoStepFromDm(
 /** Строки второго шага, заведённые по ответу покупателя, а не по комментарию. */
 const DM_KEY_PREFIX = "two-step-dm:dm:";
 
-/** Второе по этому правилу этому покупателю уже заведено по его ответу в Direct. */
-async function startedFromDm(
+/**
+ * Второе по этому правилу этому покупателю за последние полчаса уже ушло или
+ * уходит (по комментарию или по его ответу в Direct); с `queued` — или уже
+ * заведено по ответу в Direct и вот-вот уйдёт. Вебхук комментария и «+» приходят почти одновременно и заводят по
+ * строке каждый; без этой проверки вторая строка ждала в очереди и уходила
+ * следующим сообщением покупателя — нажатие «Купить» присылало то же второе
+ * сообщение ещё раз (Кристина Дидактика, 07.10).
+ */
+async function secondStepTaken(
   ctx: TenantContext,
   username: string,
   autoId: string,
+  opts: { exceptId?: string; queued?: boolean } = {},
 ): Promise<boolean> {
   const rows = await pageAll(
     (from, to) =>
       ctx.db
         .from("zernio_logs")
-        .select("id, payload")
-        .like("event_id", `${DM_KEY_PREFIX}%`)
+        .select("id, event_id, status, payload")
+        .like("event_id", "two-step-dm:%")
         .gte("created_at", new Date(Date.now() - TWO_STEP_FROM_DM_MS).toISOString())
         .order("created_at", { ascending: false })
         .order("id")
         .range(from, to),
-    "[zernio] вторые сообщения по ответу покупателя не прочитаны",
+    "[zernio] вторые сообщения не прочитаны",
   );
   return rows.some((r) => {
+    if (opts.exceptId !== undefined && String(r.id) === String(opts.exceptId)) return false;
     const pl = r.payload as { username?: string; automationId?: string } | null;
-    return pl?.automationId === autoId && pl.username?.toLowerCase() === username.toLowerCase();
+    if (pl?.automationId !== autoId || pl.username?.toLowerCase() !== username.toLowerCase())
+      return false;
+    return (
+      r.status === "processing" ||
+      r.status === "processed" ||
+      (opts.queued === true &&
+        r.status === "pending" &&
+        String(r.event_id).startsWith(DM_KEY_PREFIX))
+    );
   });
 }
 

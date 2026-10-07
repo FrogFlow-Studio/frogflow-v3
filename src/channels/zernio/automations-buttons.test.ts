@@ -681,6 +681,31 @@ describe("Comment-to-DM: «+» раньше вебхука комментари�
     expect(inbox).toHaveBeenCalledTimes(1);
   });
 
+  it("вебхук комментария завёл свою строку одновременно с «+» — «Купить» не присылает второе ещё раз", async () => {
+    const { ctx, db, api, inbox } = dmSetup([]);
+    // Гонка: «+» и вебхук комментария не увидели строки друг друга — в очереди обе.
+    const row = (id: string, eventId: string, msAgo: number) => ({
+      id,
+      bot_id: BOT,
+      event_id: eventId,
+      event_type: "two_step_dm_pending",
+      status: "pending",
+      created_at: at(msAgo),
+      payload: { username: "anya", automationId: "rule1", secondText: "Держите", buttons: [] },
+    });
+    db.tables.zernio_logs!.push(
+      row("row-webhook", "two-step-dm:c-7", 5_000),
+      row("row-dm", "two-step-dm:dm:m-1", 4_000),
+    );
+    // «+» — второе сообщение уходит.
+    expect(await deliverPendingTwoStepDm(ctx, who, api)).toBe(true);
+    expect(inbox).toHaveBeenCalledTimes(1);
+    // Следующее сообщение покупателя («Купить») — второе сообщение не повторяется.
+    expect(await deliverPendingTwoStepDm(ctx, who, api)).toBe(false);
+    expect(inbox).toHaveBeenCalledTimes(1);
+    expect(db.tables.zernio_logs!.map((l) => l.status)).toEqual(["processed", "processed"]);
+  });
+
   it("после первого уже было другое исходящее, или первое давнее — «+» не трогаем", async () => {
     const after = dmSetup([
       { id: "m-1", direction: "outgoing", message: firstDm, createdAt: at(60_000) },
