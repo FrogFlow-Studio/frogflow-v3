@@ -98,7 +98,8 @@ export async function handleZernioMessage(
   // Двухшаговая Comment-to-DM: покупатель написал первым после комментария —
   // отдаём обещанное второе сообщение с кнопками; «+»/«да» дальше не разбираем.
   if (m.platform === "instagram" && m.senderUsername && ctx.tenant.modules.instagram) {
-    const { deliverPendingTwoStepDm, twoStepJustDelivered } = await import("./automations.server");
+    const { deliverPendingTwoStepDm, deliverTwoStepFromDm, twoStepJustDelivered } =
+      await import("./automations.server");
     const { isTwoStepAcknowledgement, isShopStartWord } =
       await import("@/core/instagram/comment-rules");
     const who = {
@@ -115,9 +116,22 @@ export async function handleZernioMessage(
     const justDelivered = () =>
       twoStepJustDelivered(ctx, who.username, payload.message?.sentAt ?? null);
     let ack = delivered || (typedOnly && (await justDelivered()));
-    // «+» обогнал вебхук комментария: второе сообщение ещё не в очереди и не
-    // отправлено — покупатель получал его только после следующей реплики, а «+»
-    // уходил в обращение (Кристина Дидактика, 07.10). Ждём вебхук один раз.
+    // «+» обогнал вебхук комментария (или тот не пришёл): второго сообщения нет
+    // в очереди — покупатель получал его только после следующей реплики, а «+»
+    // уходил в обращение (Кристина Дидактика, 07.10, обращение #25).
+    // Первое сообщение правила уже в переписке — по нему отдаём второе сами.
+    // Только вне шага магазина: там «1»/«да» — выбор, а не ответ на призыв.
+    const mode = customer.state.mode;
+    const inStep = Boolean(mode) && mode !== "idle";
+    if (
+      !ack &&
+      !toShop &&
+      typedOnly &&
+      !inStep &&
+      m.text?.trim() &&
+      isTwoStepAcknowledgement(m.text)
+    )
+      ack = await deliverTwoStepFromDm(ctx, who);
     if (!ack && !toShop && typedOnly && m.text?.trim() === "+") {
       await new Promise((r) => setTimeout(r, PLUS_WAIT.ms));
       delivered = await pending();

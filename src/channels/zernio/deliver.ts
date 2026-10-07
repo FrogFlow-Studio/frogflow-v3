@@ -64,9 +64,28 @@ export function zernioMaterialSender(
     const r = await transport.send(conversationId, accountId, lines.join("\n"), {
       platform,
       idempotencyScope: `deliver:${item.id}`,
-      buttons: downloadButtons(platform, links, m.downloadBtn),
     });
-    if (r.ok) return "sent";
+    if (r.ok) {
+      // Кнопки «Скачать» — отдельным коротким сообщением после ссылок. С
+      // кнопками Instagram берёт не больше 640 знаков текста, а подписанные
+      // ссылки длиннее: в одном сообщении выдача падала целиком (заказ #10,
+      // Кристина Дидактика, 07.10). Кнопки не дошли — файлы уже в переписке.
+      const buttons = downloadButtons(platform, links, m.downloadBtn);
+      if (buttons) {
+        const b = await transport.send(
+          conversationId,
+          accountId,
+          `📁 ${item.name_snapshot}`.slice(0, 600),
+          {
+            platform,
+            idempotencyScope: `deliver-buttons:${item.id}`,
+            buttons,
+          },
+        );
+        if (!b.ok) console.warn(`[zernio] кнопки «Скачать» не ушли: ${b.error ?? ""}`);
+      }
+      return "sent";
+    }
     if (opts.pageUrl && classifyZernioFailure(r.failure) === "window_closed") {
       windowClosed ??= (opts.onWindowClosed?.() ?? Promise.resolve()).catch((e) =>
         console.warn(`[zernio] выдача при закрытом окне: ${String(e)}`),
@@ -79,8 +98,8 @@ export function zernioMaterialSender(
 }
 
 /**
- * Instagram: кнопки «📥 Скачать» под сообщением о выдаче — файл открывается
- * прямо из Direct, без поиска ссылки в тексте. Кнопок в Direct не больше трёх:
+ * Instagram: кнопки «📥 Скачать» вторым сообщением после ссылок — файл
+ * открывается прямо из Direct, без поиска ссылки в тексте. Кнопок в Direct не больше трёх:
  * при большем числе файлов остаются ссылки текстом. WhatsApp кнопки-ссылки
  * в сессионном сообщении не рисует — там только текст.
  */

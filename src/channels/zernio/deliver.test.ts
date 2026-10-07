@@ -55,6 +55,28 @@ describe("выдача материалов в Direct/WhatsApp", () => {
     expect(texts[0]).not.toContain("7 дней");
   });
 
+  it("Instagram: ссылки отдельно, «Скачать» вторым сообщением; кнопки не дошли — файл всё равно выдан (заказ #10)", async () => {
+    const calls: Array<{ text: string; buttons?: unknown }> = [];
+    let n = 0;
+    const t = {
+      send: vi.fn(async (_c: string, _a: string, text: string, o: { buttons?: unknown }) => {
+        calls.push({ text, buttons: o.buttons });
+        return n++ === 0 ? { ok: true } : { ok: false, error: "text too long for template" };
+      }),
+    } as unknown as ZernioTransport;
+    const send = zernioMaterialSender(t, "conv-1", "acc-1", "instagram");
+    const r = await send({ ...item, id: "item-10" } as typeof item, [
+      { path: `${BOT}/glagol.pdf`, name: null, url: null },
+    ]);
+    expect(r).toBe("sent");
+    expect(calls[0]!.buttons).toBeUndefined();
+    expect(calls[0]!.text).toContain("https://s.test/product-files/");
+    expect(calls[1]!.text).not.toContain("https://");
+    expect(calls[1]!.buttons).toEqual([
+      expect.objectContaining({ type: "url", title: "📥 Скачать" }),
+    ]);
+  });
+
   it("ключ идемпотентности — по позиции заказа", async () => {
     const { t } = transport();
     const send = zernioMaterialSender(t, "conv-1", "acc-1", "whatsapp");

@@ -59,12 +59,14 @@ vi.mock("@/core/customers/opt-out", async (orig) => ({
 // Comment-to-DM: второе сообщение этому покупателю только что забрал другой вебхук.
 const twoStepJustDelivered = vi.fn(async () => false);
 const deliverPendingTwoStepDm = vi.fn(async () => false);
+const deliverTwoStepFromDm = vi.fn(async () => false);
 // Магазин в переписке — отдельный модуль со своими тестами; здесь важно, дошло ли до него.
 vi.mock("./shop.server", () => ({
   handleShopMessage: async (_ctx: unknown, customer: unknown) => ({ outcome: "handled", customer }),
 }));
 vi.mock("./automations.server", () => ({
   deliverPendingTwoStepDm: (...a: unknown[]) => deliverPendingTwoStepDm(...(a as [])),
+  deliverTwoStepFromDm: (...a: unknown[]) => deliverTwoStepFromDm(...(a as [])),
   twoStepJustDelivered,
 }));
 
@@ -211,6 +213,23 @@ describe("Comment-to-DM: второй быстрый «+»", () => {
     expect(r).toEqual({ status: "processed", note: "второе сообщение по комментарию" });
     expect(deliverPendingTwoStepDm).toHaveBeenCalledTimes(2);
     deliverPendingTwoStepDm.mockClear();
+  });
+
+  it("вебхука комментария нет — второе по первому сообщению в переписке, «+» не уходит в обращение (#25)", async () => {
+    deliverTwoStepFromDm.mockClear();
+    deliverTwoStepFromDm.mockResolvedValueOnce(true);
+    const r = await handleZernioMessage(
+      igCtx,
+      igEvent({ text: "+" }),
+      transport as unknown as ZernioTransport,
+    );
+    expect(r).toEqual({ status: "processed", note: "второе сообщение по комментарию" });
+    expect(deliverTwoStepFromDm).toHaveBeenCalledWith(igCtx, {
+      accountId: "acc-1",
+      conversationId: "conv-1",
+      username: "boris",
+    });
+    deliverTwoStepFromDm.mockClear();
   });
 
   it("«/start» сразу после второго сообщения при магазине в Direct идёт магазину", async () => {

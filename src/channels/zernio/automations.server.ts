@@ -772,6 +772,17 @@ async function sendSecondStep(
 ): Promise<boolean> {
   const key = `two-step-dm:${p.commentId}`;
   const buttons = normalizeDmButtons(p.buttons as DmButton[]);
+  // Покупатель ответил «+» раньше, чем дошёл вебхук комментария, и второе
+  // уже отдано по переписке (deliverTwoStepFromDm) — второй раз не шлём.
+  if (await startedFromDm(ctx, p.username, p.automationId)) {
+    await upsertLog(ctx, key, {
+      event_type: "two_step_dm_sent",
+      status: "processed",
+      error_message: "второе сообщение отдано по ответу покупателя",
+      payload: { commentId: p.commentId, username: p.username, automationId: p.automationId },
+    });
+    return true;
+  }
   const { data: known, error: knownErr } = await ctx.db
     .from("bot_users")
     .select("zernio_conversation_id")
@@ -1124,6 +1135,150 @@ export async function twoStepJustDelivered(
     if (typeof pl.sent_at !== "string") return false;
     const sentAt = Date.parse(pl.sent_at);
     return sentAt >= since && typedAt < sentAt;
+  });
+}
+
+/** Сколько после первого сообщения правила «+» ещё отдаёт второе по переписке. */
+export const TWO_STEP_FROM_DM_MS = 30 * 60_000;
+
+const squash = (s: string) => s.replace(/\s+/g, " ").trim();
+
+/** Первое сообщение какого двухшагового правила лежит в переписке: точный текст, иначе единственный призыв. */
+function ruleOfFirstDm(text: string, rules: CommentAutomation[]): CommentAutomation | null {
+  const t = squash(text);
+  const exact = rules.find((a) =>
+    [a.firstMessage ?? a.dmMessage, ...(a.dmMessageVariations ?? [])].some(
+      (v) => v && (squash(v) === t || squash(withReplyPrompt(v, a.replyPrompt)) === t),
+    ),
+  );
+  if (exact) return exact;
+  const byPrompt = rules.filter((a) => {
+    const prompt = squash(a.replyPrompt ?? DEFAULT_REPLY_PROMPT);
+    return prompt !== "" && t.endsWith(prompt);
+  });
+  return byPrompt.length === 1 ? byPrompt[0]! : null;
+}
+
+/**
+ * «+» пришёл, а второго сообщения в очереди нет: вебхук комментария от Zernio
+ * опаздывает или не приходит вовсе, и покупатель получал второе только после
+ * следующей реплики, а «+» уходил продавцу обращением (Кристина Дидактика,
+ * 07.10, обращение #25). Первое сообщение правила уже лежит в переписке — по
+ * нему узнаём правило и ставим второе в очередь сами. Ключ — id первого
+ * сообщения: два «+» подряд дают одну строку, отправку забирает
+ * deliverPendingTwoStepDm. Вебхук комментария или крон, пришедшие потом,
+ * видят строку и второй раз не шлют (sendSecondStep).
+ */
+export async function deliverTwoStepFromDm(
+  ctx: TenantContext,
+  p: { accountId: string; conversationId: string; username: string },
+  api: AutomationApi = liveAutomationApi,
+  now: () => Date = () => new Date(),
+): Promise<boolean> {
+  if (!p.username) return false;
+  let tail: ZernioInboxMessage[];
+  try {
+    tail = await api.tail(p.accountId, p.conversationId);
+  } catch (e) {
+    console.warn(`[comment-dm] переписка не прочитана: ${e instanceof Error ? e.message : e}`);
+    return false;
+  }
+  const since = now().getTime() - TWO_STEP_FROM_DM_MS;
+  const outgoing = tail.filter(
+    (m) => m.direction === "outgoing" && m.message && Date.parse(m.createdAt ?? "") >= since,
+  );
+  if (outgoing.length === 0) return false;
+  const rules = (await listAutomations(ctx, api)).filter(
+    (a) =>
+      (a.twoStepDm || Boolean(a.buttons?.length)) &&
+      a.isActive !== false &&
+      a.accountId === p.accountId,
+  );
+  if (rules.length === 0) return false;
+  // Последнее первое сообщение правила; после него уже было своё исходящее —
+  // второе ушло или разговор пошёл дальше, это не наш «+».
+  const last = outgoing.at(-1)!;
+  const rule = ruleOfFirstDm(last.message!, rules);
+  if (!rule) return false;
+  const autoId = automationId(rule);
+  const firstAt = Date.parse(last.createdAt!);
+
+  // Строка второго шага этому покупателю по этому правилу после первого
+  // сообщения уже есть (вебхук успел или «+» уже был) — новую не заводим.
+  const rows = await pageAll(
+    (from, to) =>
+      ctx.db
+        .from("zernio_logs")
+        .select("id, payload")
+        .like("event_id", "two-step-dm:%")
+        .gte("created_at", new Date(firstAt - 60_000).toISOString())
+        .order("created_at", { ascending: false })
+        .order("id")
+        .range(from, to),
+    "[zernio] вторые сообщения не прочитаны",
+  );
+  const known = rows.some((r) => {
+    const pl = r.payload as { username?: string; automationId?: string } | null;
+    return pl?.automationId === autoId && pl.username?.toLowerCase() === p.username.toLowerCase();
+  });
+  if (!known) {
+    const { error } = await ctx.db.from("zernio_logs").insert({
+      bot_id: ctx.tenant.id,
+      event_id: `${DM_KEY_PREFIX}${last.id ?? `${p.conversationId}:${firstAt}`}`,
+      event_type: "two_step_dm_pending",
+      status: "pending",
+      error_message: null,
+      created_at: now().toISOString(),
+      payload: {
+        username: p.username,
+        accountId: p.accountId,
+        automationId: autoId,
+        secondText: rule.secondDmMessage || DEFAULT_SECOND_DM,
+        buttons: toJson(
+          normalizeDmButtons(
+            (rule.secondDmButtons?.length
+              ? rule.secondDmButtons
+              : rule.buttons?.length
+                ? rule.buttons
+                : defaultButtons(ctx)) as DmButton[],
+          ),
+        ),
+        createdAt: now().toISOString(),
+      },
+    });
+    // Конфликт ключа — соседний «+» уже поставил ту же строку.
+    if (error && !/duplicate|unique/i.test(error.message)) {
+      console.warn(`[comment-dm] второй шаг по переписке не записан: ${error.message}`);
+      return false;
+    }
+  }
+  return deliverPendingTwoStepDm(ctx, p, api, now);
+}
+
+/** Строки второго шага, заведённые по ответу покупателя, а не по комментарию. */
+const DM_KEY_PREFIX = "two-step-dm:dm:";
+
+/** Второе по этому правилу этому покупателю уже заведено по его ответу в Direct. */
+async function startedFromDm(
+  ctx: TenantContext,
+  username: string,
+  autoId: string,
+): Promise<boolean> {
+  const rows = await pageAll(
+    (from, to) =>
+      ctx.db
+        .from("zernio_logs")
+        .select("id, payload")
+        .like("event_id", `${DM_KEY_PREFIX}%`)
+        .gte("created_at", new Date(Date.now() - TWO_STEP_FROM_DM_MS).toISOString())
+        .order("created_at", { ascending: false })
+        .order("id")
+        .range(from, to),
+    "[zernio] вторые сообщения по ответу покупателя не прочитаны",
+  );
+  return rows.some((r) => {
+    const pl = r.payload as { username?: string; automationId?: string } | null;
+    return pl?.automationId === autoId && pl.username?.toLowerCase() === username.toLowerCase();
   });
 }
 

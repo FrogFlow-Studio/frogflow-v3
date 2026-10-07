@@ -6,6 +6,7 @@ import {
   TWO_STEP_CLAIM_STALE_MS,
   TWO_STEP_MAX_ATTEMPTS,
   deliverPendingTwoStepDm,
+  deliverTwoStepFromDm,
   twoStepJustDelivered,
   handleCommentReceived,
   type AutomationApi,
@@ -14,7 +15,7 @@ import {
 const BOT = "22222222-2222-2222-2222-222222222222";
 
 function setup() {
-  const db = fakeDb();
+  const db = fakeDb({ unique: { zernio_logs: [["bot_id", "event_id"]] } });
   db.tables.app_settings = [
     {
       bot_id: BOT,
@@ -611,5 +612,91 @@ describe("Comment-to-DM: зависший захват второго шага",
       deliverPendingTwoStepDm(ctx, who, a.api, now),
     ]);
     expect(a.inbox).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("Comment-to-DM: «+» раньше вебхука комментария (Кристина Дидактика, обращение #25)", () => {
+  const who = { accountId: "acc-1", conversationId: "conv-1", username: "Anya" };
+  const firstDm = `Привет! Сейчас пришлю\n\n${DEFAULT_REPLY_PROMPT}`;
+  function dmSetup(tail: Array<Record<string, unknown>>) {
+    const { ctx, db } = setup();
+    const inbox = vi.fn(async () => ({ ok: true }));
+    const api = {
+      list: async () => [
+        { id: "rule1", name: "Хочу", accountId: "acc-1", keywords: ["хочу"], dmMessage: firstDm },
+      ],
+      inbox,
+      tail: vi.fn(async () => tail),
+    } as unknown as AutomationApi;
+    return { ctx, db, api, inbox };
+  }
+  const at = (msAgo: number) => new Date(Date.now() - msAgo).toISOString();
+
+  it("первое сообщение правила в переписке — второе уходит на этот «+», вебхук потом не дублирует", async () => {
+    const { ctx, db, api, inbox } = dmSetup([
+      { id: "m-1", direction: "outgoing", message: firstDm, createdAt: at(20_000) },
+      { id: "m-2", direction: "incoming", message: "+", createdAt: at(1_000) },
+    ]);
+    // Очереди ещё нет: вебхук комментария не дошёл.
+    expect(await deliverPendingTwoStepDm(ctx, who, api)).toBe(false);
+    expect(await deliverTwoStepFromDm(ctx, who, api)).toBe(true);
+    expect(inbox).toHaveBeenCalledTimes(1);
+    expect(inbox).toHaveBeenCalledWith(
+      "conv-1",
+      "acc-1",
+      "Держите материалы",
+      expect.objectContaining({
+        buttons: [
+          { type: "url", title: "Открыть бота", url: "https://t.me/seller_bot" },
+          { type: "postback", title: "Каталог", payload: "CATALOG" },
+        ],
+      }),
+    );
+    expect(db.tables.zernio_logs!.map((l) => [l.event_id, l.status])).toEqual([
+      ["two-step-dm:dm:m-1", "processed"],
+    ]);
+    // Вебхук комментария дошёл позже — второй раз не шлёт.
+    const r = await handleCommentReceived(
+      ctx,
+      {
+        account: { id: "acc-1" },
+        comment: { id: "c-9", text: "хочу", author: { id: "u-1", username: "anya" } },
+      },
+      api,
+      { delayMs: 0 },
+    );
+    expect(r.note).toBe("второе сообщение @anya");
+    expect(inbox).toHaveBeenCalledTimes(1);
+  });
+
+  it("два «+» одновременно — второе сообщение одно", async () => {
+    const { ctx, api, inbox } = dmSetup([
+      { id: "m-1", direction: "outgoing", message: firstDm, createdAt: at(20_000) },
+    ]);
+    const res = await Promise.all([
+      deliverTwoStepFromDm(ctx, who, api),
+      deliverTwoStepFromDm(ctx, who, api),
+    ]);
+    expect(res).toEqual([true, true]);
+    expect(inbox).toHaveBeenCalledTimes(1);
+  });
+
+  it("после первого уже было другое исходящее, или первое давнее — «+» не трогаем", async () => {
+    const after = dmSetup([
+      { id: "m-1", direction: "outgoing", message: firstDm, createdAt: at(60_000) },
+      { id: "m-2", direction: "outgoing", message: "Держите материалы", createdAt: at(50_000) },
+    ]);
+    expect(await deliverTwoStepFromDm(after.ctx, who, after.api)).toBe(false);
+    const old = dmSetup([
+      { id: "m-1", direction: "outgoing", message: firstDm, createdAt: at(2 * 3600_000) },
+    ]);
+    expect(await deliverTwoStepFromDm(old.ctx, who, old.api)).toBe(false);
+    const other = dmSetup([
+      { id: "m-1", direction: "outgoing", message: "Здравствуйте", createdAt: at(10_000) },
+    ]);
+    expect(await deliverTwoStepFromDm(other.ctx, who, other.api)).toBe(false);
+    expect(after.inbox).not.toHaveBeenCalled();
+    expect(old.inbox).not.toHaveBeenCalled();
+    expect(other.inbox).not.toHaveBeenCalled();
   });
 });
