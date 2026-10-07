@@ -153,6 +153,29 @@ describe("консультант по прайсу в общем пути", () =
     expect(lastState().paused_until).toBeTruthy();
   });
 
+  it("опт — сразу менеджеру заявкой, модель не зовём (v1 intent.ts:97)", async () => {
+    for (const text of ["У вас опт есть?", "Можно оптом закуп сделать?", "Мы дилер из Шымкента"]) {
+      saved.length = 0;
+      const r = await runConsultant(ctxOf(), customer(), text, { platform: "instagram" });
+      expect(r?.handoff).toMatchObject({ kind: "lead", reason: "wholesale" });
+      expect(r?.handoff?.summary).toContain(text);
+      expect(r?.reply).toBe(
+        "Оптовые условия назовёт менеджер. Я передам ему ваш запрос, он скоро свяжется.",
+      );
+      expect(lastState().paused_until).toBeTruthy();
+    }
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it("«оптимально», «оптика» — не опт, отвечает модель", async () => {
+    rounds.push([{ type: "text", text: "Uchino 50х100 — 9 000 ₸." }]);
+    const r = await runConsultant(ctxOf(), customer(), "Какое полотенце оптимально для бани?", {
+      platform: "instagram",
+    });
+    expect(r?.handoff).toBeNull();
+    expect(create).toHaveBeenCalled();
+  });
+
   it("сброс очищает историю диалога", async () => {
     const r = await runConsultant(
       ctxOf(),
@@ -249,5 +272,112 @@ describe("консультант по прайсу в общем пути", () =
     });
     expect(create).not.toHaveBeenCalled();
     expect(out?.handoff?.summary).toMatch(/ИИ-баланс/);
+  });
+});
+
+type Rows = Array<Record<string, unknown>>;
+const tables = (ctx: TenantContext) =>
+  (ctx.db as unknown as { tables: Record<string, Rows> }).tables;
+const setting = (ctx: TenantContext, key: string) =>
+  tables(ctx).app_settings!.find((r) => r.key === key)?.value as string | undefined;
+
+/** Чтение app_settings по ключу `key` — исключением (`throw`) или ошибкой базы (`error`). */
+function breakSetting(ctx: TenantContext, key: string, how: "throw" | "error") {
+  const db = ctx.db as unknown as { from: (t: string) => Record<string, unknown> };
+  const from = db.from.bind(db);
+  db.from = (table: string) => {
+    const q = from(table) as Record<string, (...a: unknown[]) => unknown>;
+    if (table !== "app_settings") return q;
+    const inOrig = q.in!.bind(q);
+    const eqOrig = q.eq!.bind(q);
+    q.in = (col: unknown, vs: unknown) => {
+      if (how === "throw" && (vs as string[]).includes(key)) throw new Error("обрыв клиента базы");
+      return inOrig(col, vs);
+    };
+    q.eq = (col: unknown, v: unknown) => {
+      if (how === "error" && v === key)
+        return {
+          maybeSingle: async () => ({ data: null, error: { message: "timeout" } }),
+        };
+      return eqOrig(col, v);
+    };
+    return q;
+  };
+}
+
+describe("консультант по прайсу: сбои и языки (BOVI 07.10)", () => {
+  it("сбой чтения модели до вызова — «не могу ответить» с передачей, обе брони закрыты", async () => {
+    const ctx = ctxOf();
+    breakSetting(ctx, "consultant_model", "throw");
+    const r = await runConsultant(ctx, customer(), "Полотенца есть?", { platform: "instagram" });
+    expect(create).not.toHaveBeenCalled();
+    expect(r?.reply).toBe("Сейчас не могу ответить — передаю вопрос менеджеру, он напишет вам.");
+    expect(r?.handoff?.kind).toBe("handoff");
+    // Дневная бронь вернулась целиком: вызова модели не было, списывать нечего.
+    const daily = JSON.parse(setting(ctx, "consultant_daily")!) as { usd: number };
+    expect(daily.usd).toBe(0);
+    // ИИ-баланс — как до сообщения.
+    const bal = JSON.parse(setting(ctx, "ai_balance")!) as { usd: number };
+    expect(bal.usd).toBeCloseTo(5, 6);
+    expect(setting(ctx, "consultant_last_error")).toContain("обрыв клиента базы");
+  });
+
+  it("база знаний не прочиталась — ответ без неё, сбой в журнале и в последней ошибке", async () => {
+    rounds.push([{ type: "text", text: "Uchino 50х100 - 9 000 ₸." }]);
+    const ctx = ctxOf();
+    breakSetting(ctx, "consultant_knowledge_json", "error");
+    const r = await runConsultant(ctx, customer(), "Полотенца есть?", { platform: "instagram" });
+    expect(r?.reply).toBe("Uchino 50х100 - 9 000 ₸.");
+    expect(r?.tools).toContain("kb_load_failed");
+    expect(setting(ctx, "consultant_last_error")).toContain(
+      "база знаний консультанта не прочитана",
+    );
+  });
+
+  it("сброс на казахском — «Начнём заново» на языке покупателя", async () => {
+    const c = customer();
+    c.state.locale = "kk";
+    const r = await runConsultant(ctxOf(), c, "/reset", { platform: "instagram" });
+    expect(r?.reply).toBe("Қайта бастайық. Немен көмектесейін?");
+  });
+
+  it("передача без фразы модели — на языке покупателя (uz)", async () => {
+    rounds.push([
+      {
+        type: "tool_use",
+        id: "h1",
+        name: "handoff_to_manager",
+        input: { reason: "complaint", summary: "Жалоба" },
+      },
+    ]);
+    const c = customer();
+    c.state.locale = "uz";
+    const r = await runConsultant(ctxOf(), c, "Shikoyatim bor", { platform: "instagram" });
+    expect(r?.reply).toBe(
+      "Rahmat. Savolingizni menejerga yuboraman, u tez orada siz bilan bog‘lanadi.",
+    );
+  });
+
+  it("рубли без курса — тенге покупателю, продавцу одно предупреждение на два сообщения", async () => {
+    const ctx = ctxOf();
+    const rows = tables(ctx).app_settings!;
+    rows.splice(
+      rows.findIndex((r) => r.key === "consultant_vtb_buy_rate"),
+      1,
+    );
+    rows.push({ bot_id: ctx.tenant.id, key: "admin_chat_id", value: "900" });
+    tables(ctx).zernio_logs = [];
+    rounds.push(
+      [{ type: "text", text: "Uchino 50х100 - 9 000 ₸." }],
+      [{ type: "text", text: "Uchino 50х100 - 9 000 ₸." }],
+    );
+    const first = await runConsultant(ctx, customer(), "Сколько в рублях?", {
+      platform: "instagram",
+    });
+    await runConsultant(ctx, customer({ rub: true }), "А белое?", { platform: "instagram" });
+    expect(first?.reply).toBe("Uchino 50х100 - 9 000 ₸.");
+    expect(first?.rate).toBeNull();
+    const queued = tables(ctx).zernio_logs!.filter((r) => r.event_type === "outbox.admin_notice");
+    expect(queued).toHaveLength(1);
   });
 });

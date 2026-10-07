@@ -51,7 +51,8 @@ test("консультант без продаж: в меню нет заказ�
   const menu = page.locator("aside");
   // Группы меню раскрываются по одной: в каждой — его разделы, без продажи.
   const group = async (name: string, has: string[], hasNot: string[]) => {
-    await menu.getByRole("button", { name, exact: true }).click();
+    // Кнопка группы — по группе: у свёрнутой в подписи бывает бейдж («Настройки 3» — новости).
+    await menu.getByRole("group", { name, exact: true }).getByRole("button").first().click();
     for (const x of has)
       await expect(menu.getByRole("link", { name: x, exact: true }), x).toBeVisible();
     for (const x of hasNot)
@@ -61,7 +62,7 @@ test("консультант без продаж: в меню нет заказ�
   await group("Каталог", ["Прайс консультанта"], ["Товары", "Категории"]);
   await group("Маркетинг", ["ИИ-консультант"], ["Поделиться"]);
   await group("Настройки", ["Настройки"], ["Оплата и настройки", "Комиссия"]);
-  await expect(menu.getByRole("button", { name: "Аналитика", exact: true })).toHaveCount(0);
+  await expect(menu.getByRole("group", { name: "Аналитика", exact: true })).toHaveCount(0);
 
   await page.goto("/admin/settings");
   await expect(page.getByRole("heading", { name: "Настройки", exact: true })).toBeVisible();

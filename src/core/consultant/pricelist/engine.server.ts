@@ -85,6 +85,13 @@ const RUBLES_NOTE =
   "[Покупателю нужны рубли: тенге из вашего ответа заменятся на рубли автоматически. Пишите цены в тенге и не упоминайте ни замену, ни курс.]";
 
 /**
+ * Рубли нужны, а свежего курса нет: тенге останутся тенге (tengeToRubles без
+ * курса текст не меняет). Обещать покупателю рубли нельзя — честно сказать.
+ */
+const RUBLES_NO_RATE_NOTE =
+  "[Покупателю нужны рубли, но актуального курса сейчас нет: цены останутся в тенге. Пишите цены в тенге и одной фразой честно скажите, что точную сумму в рублях подтвердит менеджер. Рубли сами не считайте.]";
+
+/**
  * Заказ без телефона не уходит менеджеру с первого раза: v1 спрашивал
  * телефон и город доставки, и менеджер получал готовый заказ.
  */
@@ -131,20 +138,27 @@ export type PricelistData = {
   storyTags: StoryTag[];
   loadMedia: () => Promise<ProductMedia[]>;
   mediaUrl: (path: string) => string;
+  /** База знаний не прочиталась: отвечаем без неё, но сбой виден в журнале и последней ошибке. */
+  knowledgeError?: string;
 };
 
 export async function loadPricelistData(
   ctx: TenantContext,
   now = Date.now(),
 ): Promise<PricelistData> {
+  let knowledgeError: string | undefined;
   const [snap, rate, store, articles, storyTags] = await Promise.all([
     loadPricelist(ctx, now),
     getFreshRate(ctx, now).catch(() => null),
     getStoreInfo(ctx),
-    loadKnowledge(ctx).catch(() => []),
+    loadKnowledge(ctx).catch((e: unknown): ConsultantKnowledgeArticle[] => {
+      knowledgeError = e instanceof Error ? e.message : String(e);
+      return [];
+    }),
     listStoryTags(ctx).catch(() => []),
   ]);
   return {
+    ...(knowledgeError ? { knowledgeError } : {}),
     catalog: snap.products,
     synonyms: snap.synonyms,
     shopUrl: snap.shopUrl,
@@ -211,6 +225,13 @@ export type PricelistDecision = {
   };
   /** Вызов модели не состоялся: лимит частоты или потолок времени. */
   stopped: "limited" | "late" | null;
+  /** Покупателю нужны рубли, а свежего курса нет: цены остались в тенге. */
+  rateMissing: boolean;
+  /**
+   * Черновик не прошёл сверку цен и после переписывания: ответ с ценой не
+   * по прайсу покупателю не уходит, вопрос — менеджеру.
+   */
+  priceBlocked: boolean;
 };
 
 /** Товары публикации — пометкой для модели. Покупатель её не видит. Цены — в тенге. */
@@ -364,7 +385,8 @@ async function decide(data: PricelistData, input: PricelistInput): Promise<Price
   });
   if (aboutModels) notes.push(aboutModels);
   const rubles = wantsRubles(text, state, knownProfile);
-  if (rubles) notes.push(RUBLES_NOTE);
+  const rateMissing = rubles && !(rate && rate > 0);
+  if (rubles) notes.push(rateMissing ? RUBLES_NO_RATE_NOTE : RUBLES_NOTE);
   if (isOffHours(input.now ?? new Date(), data.hours, data.timezone))
     notes.push(offHoursNote(data.hours));
   // Марка русскими буквами («акванова Маск») — подсказка, что в прайсе латиницей.
@@ -544,10 +566,18 @@ async function decide(data: PricelistData, input: PricelistInput): Promise<Price
   }
 
   if (rublesRetried && writesRubles(lastText)) toolsUsed.push("fix:rubles_by_model_again");
+  let priceBlocked = false;
   if (toolsUsed.some((t) => t.startsWith("fix:draft:")) && !handoff) {
     const left = draftProblems(lastText, catalog, draftCtx);
     if (left.length)
       toolsUsed.push(`fix:draft_again:${[...new Set(left.map((p) => p.kind))].join("+")}`);
+    // Цена не по прайсу и после переписывания — покупателю не уходит (как
+    // checkReplyFacts у общего консультанта): вопрос менеджеру.
+    if (left.some((p) => p.kind === "price")) {
+      priceBlocked = true;
+      handoff = { reason: "no_answer", summary: "" };
+      lastText = "";
+    }
   }
   const tengeText = finalizePricelistText(lastText, catalog);
   const reply = rubles ? tengeToRubles(tengeText, rate) : tengeText;
@@ -581,6 +611,8 @@ async function decide(data: PricelistData, input: PricelistInput): Promise<Price
       ...(lastIds ? { last_product_ids: lastIds } : {}),
     },
     stopped,
+    rateMissing,
+    priceBlocked,
   };
 
   async function sendPhoto(args: Record<string, unknown>): Promise<unknown> {

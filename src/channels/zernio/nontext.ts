@@ -50,3 +50,24 @@ export const SELLER_PHOTO: Record<Locale, (who: string, channel: string) => stri
   uz: (who, ch) =>
     `📷 ${who} (${ch}) rasm yubordi — chek emas: to‘lov kutayotgan buyurtma yo‘q. Ilovada javob bering.`,
 };
+
+/**
+ * Консультант ИИ: сообщение — только стикеры или гифки-реакции (giphy из
+ * стикеров Instagram). Это смайлик, а не вопрос: v1 BOVI на него молчал,
+ * звать менеджера или модель незачем.
+ */
+export function isStickerOnly(attachments: Att[] | null | undefined): boolean {
+  const list = attachments ?? [];
+  return (
+    list.length > 0 &&
+    list.every((a) => a.type?.trim().toLowerCase() === "sticker" || /giphy\.com/i.test(a.url ?? ""))
+  );
+}
+
+/** Консультант ИИ: голосовое не слушает — просит написать (v1 BOVI). */
+export const VOICE_WRITE_TEXT: Record<Locale, string> = {
+  ru: "Голосовые сообщения я не слушаю — напишите, пожалуйста, вопрос текстом.",
+  kk: "Дауыстық хабарламаларды тыңдай алмаймын — сұрағыңызды мәтінмен жазыңызшы.",
+  en: "I can't listen to voice messages — please type your question.",
+  uz: "Ovozli xabarlarni tinglay olmayman — iltimos, savolingizni matn bilan yozing.",
+};

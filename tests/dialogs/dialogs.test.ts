@@ -43,6 +43,27 @@ vi.mock("@/core/notify/recipients", () => ({
   adminRecipients: async () => ["900"],
   shopAdminIds: async () => ["900"],
 }));
+// Консультант по прайсу (`pricelist` в сценарии): настоящий runConsultant, подменён
+// только ответ API модели — раунды по очереди из сценария.
+const modelRounds: { list: Array<Array<Record<string, unknown>>> } = { list: [] };
+vi.mock("@anthropic-ai/sdk", () => {
+  class APIError extends Error {
+    status?: number;
+  }
+  const create = async () => ({
+    stop_reason: "end_turn",
+    content: modelRounds.list.shift() ?? [{ type: "text", text: "" }],
+    usage: { input_tokens: 100, output_tokens: 20 },
+  });
+  return {
+    default: Object.assign(
+      class {
+        messages = { create };
+      },
+      { APIError },
+    ),
+  };
+});
 // Модель консультанта подменена ответом сценария (`consultant`); маршрут до неё — настоящий.
 const consultantStub: { reply: string | null | undefined } = { reply: undefined };
 vi.mock("@/core/consultant/engine.server", async (orig) => {
@@ -65,6 +86,7 @@ beforeEach(() => {
   setEnvForTests({});
   notices.count = 0;
   consultantStub.reply = undefined;
+  modelRounds.list = [];
 });
 afterEach(() => setEnvForTests(undefined));
 
@@ -87,7 +109,23 @@ describe("золотые диалоги", () => {
         setEnvForTests({ ANTHROPIC_API_KEY: "sk-test" });
         consultantStub.reply = s.consultant;
       }
-      const r = room(s);
+      if (s.pricelist) {
+        setEnvForTests({ ANTHROPIC_API_KEY: "sk-test" });
+        modelRounds.list = s.pricelist.rounds.map((round) => [...round]);
+      }
+      const r = room(
+        s.pricelist
+          ? {
+              ...s,
+              tenantSettings: { ...s.tenantSettings, consultant_pricelist: { enabled: true } },
+            }
+          : s,
+      );
+      if (s.pricelist)
+        r.db.tables.app_settings!.push(
+          { key: "consultant_enabled", value: "true" },
+          { key: "consultant_catalog_json", value: JSON.stringify(s.pricelist.catalog) },
+        );
       s.arrange?.(r);
       const c = COPY[s.locale];
       const has = (all: string, x: Says) =>
@@ -96,6 +134,7 @@ describe("золотые диалоги", () => {
       for (const { say, expect: e } of s.steps) {
         step++;
         const before = notices.count;
+        const queuedBefore = r.sellerQueued();
         await r.say(say);
         const where = `шаг ${step} ${JSON.stringify(say)}`;
         const all = r.replies().join("\n");
@@ -119,6 +158,16 @@ describe("золотые диалоги", () => {
           expect(r.reasons().length, `${where}: причины ответов`).toBeGreaterThanOrEqual(e.reasons);
         if (e.sellerNotices !== undefined)
           expect(notices.count - before, where).toBe(e.sellerNotices);
+        if (e.sellerQueued !== undefined)
+          expect(r.sellerQueued() - queuedBefore, `${where}: в очереди продавцу`).toBe(
+            e.sellerQueued,
+          );
+        if (e.paused !== undefined) {
+          const until = (r.state().consultant as { paused_until?: string } | undefined)
+            ?.paused_until;
+          const paused = Boolean(until) && Date.parse(until!) > Date.now();
+          expect(paused, `${where}: консультант на паузе`).toBe(e.paused);
+        }
       }
     });
 });

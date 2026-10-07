@@ -47,7 +47,8 @@ export type Note =
   | "empty"
   | "slow"
   | "price"
-  | "injection";
+  | "injection"
+  | "wholesale";
 const NOTES: Record<Note, Record<Locale, string>> = {
   accounting: {
     ru: "Сбой учёта расхода консультанта.",
@@ -102,6 +103,12 @@ const NOTES: Record<Note, Record<Locale, string>> = {
     kk: "Хабарлама ботты басқаруға әрекет сияқты.",
     en: "The message looks like an attempt to control the bot.",
     uz: "Xabar botni boshqarishga urinishga o‘xshaydi.",
+  },
+  wholesale: {
+    ru: "Оптовый запрос: условий опта у консультанта нет, диалог передан вам.",
+    kk: "Көтерме сұрау: кеңесшіде көтерме шарттары жоқ, диалог сізге берілді.",
+    en: "Wholesale request: the consultant has no wholesale terms, the conversation is passed to you.",
+    uz: "Ulgurji so‘rov: maslahatchida ulgurji shartlar yo‘q, suhbat sizga uzatildi.",
   },
   failure: {
     ru: "Сбой консультанта.",

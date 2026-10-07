@@ -9,6 +9,20 @@ export function pricelistMode(tenant: Pick<Tenant, "settings">): boolean {
   return tenant.settings.consultant_pricelist?.enabled === true;
 }
 
+/**
+ * Новый клиент ниши «Консультант (ун. BOVI)» работает по прайсу сразу: без
+ * флага консультант без товаров ответил бы «ничего нет», а у продавца не было
+ * бы страницы «Прайс консультанта». Только если оператор флаг ещё не трогал:
+ * выключенный руками остаётся выключенным. Универсальный консультант
+ * (consultant_universal) отвечает по товарам магазина — его не касается.
+ */
+export function pricelistDefaultFor(
+  vertical: string,
+  current: Tenant["settings"]["consultant_pricelist"],
+): { enabled: true } | null {
+  return vertical === "consultant" && current === undefined ? { enabled: true } : null;
+}
+
 /** Рабочие часы по умолчанию — как у BOVI в v1: с 10 до 21 по поясу магазина. */
 export const DEFAULT_HOURS = { open: 10, close: 21 } as const;
 

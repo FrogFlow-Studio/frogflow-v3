@@ -3360,7 +3360,14 @@ export const saveConsultantFn = createServerFn({ method: "POST" })
           )
           .max(60),
         pauseHours: z
-          .union([z.literal(1), z.literal(3), z.literal(12), z.literal(24), z.literal(0)])
+          .union([
+            z.literal(1),
+            z.literal(3),
+            z.literal(6),
+            z.literal(12),
+            z.literal(24),
+            z.literal(0),
+          ])
           .optional(),
       })
       .parse(d),

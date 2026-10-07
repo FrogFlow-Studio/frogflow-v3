@@ -1,4 +1,6 @@
 import type { ConsultantProduct } from "./catalog";
+import type { Locale } from "@/core/i18n/locale";
+import { followUpLine } from "../messages";
 
 /**
  * Напоминание покупателю, который пропал после ответа с товаром (перенос
@@ -36,13 +38,18 @@ export function modelName(name: string): string {
     .trim();
 }
 
-export function followUpText(state: FollowUpState, catalog: ConsultantProduct[]): string | null {
+/** Текст напоминания на языке покупателя (customer.state.locale → язык магазина → ru). */
+export function followUpText(
+  state: FollowUpState,
+  catalog: ConsultantProduct[],
+  locale: Locale = "ru",
+): string | null {
   const id = state.last_product_ids?.[0];
   const product = id ? catalog.find((p) => p.id === id) : undefined;
   if (!product) return null;
   const model = modelName(product.name);
   if (!model) return null;
-  return `Остались вопросы по ${model}? Подскажу по размеру, цвету или доставке.`;
+  return followUpLine(locale, model);
 }
 
 export function isFollowUpCandidate(state: FollowUpState, now: Date, offHours: boolean): boolean {

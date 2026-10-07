@@ -7,7 +7,50 @@ import { COPY, type Msg } from "@/channels/telegram/copy";
 import type { Locale } from "@/core/i18n/locale";
 import type { Channel, Input, Product, Room } from "./harness";
 import { BOTS_20 } from "./scenarios-bots";
-import { handoffReply } from "@/core/consultant/messages";
+import { handoffReply, pricelistHandoffReply, unavailableReply } from "@/core/consultant/messages";
+import { VOICE_WRITE_TEXT } from "@/channels/zernio/nontext";
+
+/** Позиция прайса консультанта BOVI (consultant_catalog_json). */
+export interface PricelistItem {
+  id: string;
+  name: string;
+  category: string;
+  size: string;
+  colors: string[];
+  price_kzt: number;
+  stock: boolean;
+}
+
+/** Прайс BOVI в сценариях — один на все: кэш прайса держится на клиента. */
+const PL_CATALOG: PricelistItem[] = [
+  {
+    id: "T1",
+    name: "Uchino полотенце банное",
+    category: "Полотенца",
+    size: "50x100",
+    colors: ["белый"],
+    price_kzt: 9000,
+    stock: true,
+  },
+];
+const said = (text: string) => [{ type: "text", text }];
+
+/** Чтение настройки `key` падает исключением (обрыв в клиенте базы). */
+const failSettingRead =
+  (key: string) =>
+  (r: Room): void => {
+    const from = r.db.from.bind(r.db);
+    r.db.from = (table: string) => {
+      const q = from(table);
+      if (table !== "app_settings") return q;
+      const inOrig = q.in.bind(q);
+      q.in = (col: string, vs: unknown[]) => {
+        if (vs.includes(key)) throw new Error(`обрыв: ${key} не прочитана`);
+        return inOrig(col, vs);
+      };
+      return q;
+    };
+  };
 
 /** Ответ подменённой модели консультанта в сценариях. */
 const CONSULTANT_SAYS = "Консультант: кирпич М150 есть, 95 ₸ за штуку.";
@@ -38,6 +81,10 @@ export interface Expect {
   sellerSees?: Says[];
   /** Причин ответов бота в «Чате» не меньше стольки (Б13). */
   reasons?: number;
+  /** Сколько предупреждений продавцу поставлено в очередь (outbox) на эту реплику. */
+  sellerQueued?: number;
+  /** Консультант на паузе после реплики (state.consultant.paused_until в будущем). */
+  paused?: boolean;
 }
 
 export interface Scenario {
@@ -58,6 +105,16 @@ export interface Scenario {
    * Не задано — консультант не настроен, как раньше.
    */
   consultant?: string | null;
+  /**
+   * Консультант по прайсу (BOVI) на настоящем коде: подменён только ответ API
+   * модели — `rounds`, по раунду на вызов. Прайс — `catalog`; курса рубля нет
+   * (кэш курса и прайса — на клиента, а клиент в комнатах один).
+   */
+  pricelist?: { catalog: PricelistItem[]; rounds: Array<Array<Record<string, unknown>>> };
+  /** Добавка к bots.settings клиента. */
+  tenantSettings?: Record<string, unknown>;
+  /** Instagram/WhatsApp: отправка покупателю не подтверждена (обрыв, тайм-аут). */
+  sendFails?: boolean;
   /** Direct/WhatsApp: реплика идёт через весь разбор входящего (слова «позови человека», пауза). */
   full?: boolean;
   /** Подготовка до первой реплики (например, «продавец ответил руками»). */
@@ -541,6 +598,32 @@ export const SCENARIOS: Scenario[] = [
     consultant: CONSULTANT_SAYS,
     steps: [{ say: { text: "/start" }, expect: { buttons: ["📚 Каталог", "🛒 Корзина"] } }],
   },
+  // ───── Консультант: стикер и голосовое (v1 BOVI handle-message.ts:424-433) ─────
+  ...everyLocale(
+    (l) => ({
+      id: "consultant-sticker-voice",
+      title:
+        "консультант: стикер — молчит; голосовое — «напишите текстом» один раз; текст — консультант",
+      origin:
+        "перенос v1 BOVI: v2 отдавал стикер и голосовое модели как «[вложение: …]», модель отвечала невпопад",
+      channel: "instagram",
+      full: true,
+      vertical: "consultant",
+      modules: { shop: true },
+      consultant: CONSULTANT_SAYS,
+      steps: [
+        { say: { sticker: true }, expect: { silent: true } },
+        {
+          say: { voice: true },
+          expect: { says: [VOICE_WRITE_TEXT[l]], notSays: [CONSULTANT_SAYS], count: 1 },
+        },
+        // Второе голосовое подряд: та же просьба не повторяется.
+        { say: { voice: true }, expect: { silent: true } },
+        { say: { text: "Есть кирпич М150?" }, expect: { says: [CONSULTANT_SAYS] } },
+      ],
+    }),
+    ["instagram", "whatsapp"],
+  ),
   // ───── Буквенный код из ключевых слов: «#кпп» (AATeach, Instagram 07.10) ─────
   ...everyLocale(
     () => ({
@@ -599,5 +682,129 @@ export const SCENARIOS: Scenario[] = [
     locale: "ru",
     products: [{ id: P1, name: "018. Прописи", keywords: "кпп" }],
     steps: [{ say: { text: "Кпп" }, expect: { silent: true } }],
+  },
+  // ───── Консультант BOVI: надёжность ответа (07.10) ─────
+  ...everyLocale(
+    () => ({
+      id: "consultant-send-failed",
+      title: "ответ консультанта не ушёл — продавцу «ответ не ушёл», бот не на паузе",
+      origin: "BOVI 07.10, разбор: при сбое отправки покупатель молчал, продавец не знал",
+      channel: "instagram",
+      full: true,
+      vertical: "consultant",
+      modules: { shop: true },
+      consultant: CONSULTANT_SAYS,
+      sendFails: true,
+      steps: [
+        {
+          say: { text: "Есть кирпич М150?" },
+          expect: { silent: true, sellerNotices: 1, paused: false },
+        },
+      ],
+    }),
+    ["instagram", "whatsapp"],
+  ),
+  {
+    id: "pricelist-send-failed-handoff-ig-ru",
+    title:
+      "передача менеджеру, а фраза покупателю не ушла — продавцу карточка, пауза при менеджере",
+    origin: "BOVI 07.10, разбор: пауза записана, а продавец не уведомлён — диалог повис",
+    channel: "instagram",
+    locale: "ru",
+    full: true,
+    vertical: "consultant",
+    modules: { shop: true },
+    sendFails: true,
+    pricelist: {
+      catalog: PL_CATALOG,
+      rounds: [
+        [
+          { type: "text", text: "Передаю менеджеру, он ответит здесь." },
+          {
+            type: "tool_use",
+            id: "h1",
+            name: "handoff_to_manager",
+            input: { reason: "wholesale", summary: "Опт полотенец для гостиницы" },
+          },
+        ],
+      ],
+    },
+    steps: [
+      {
+        say: { text: "Хочу оформить оптовую закупку полотенец для гостиницы" },
+        expect: { silent: true, sellerNotices: 1, paused: true },
+      },
+    ],
+  },
+  ...everyLocale((l) => ({
+    id: "pricelist-model-setting-fails",
+    title: "сбой чтения модели консультанта — покупателю «не могу ответить», продавцу передача",
+    origin: "BOVI 07.10, разбор: исключение до try — бронь висела, покупатель без ответа",
+    channel: "instagram",
+    full: true,
+    vertical: "consultant",
+    modules: { shop: true },
+    pricelist: { catalog: PL_CATALOG, rounds: [] },
+    arrange: failSettingRead("consultant_model"),
+    steps: [
+      {
+        say: { text: "Есть полотенца?" },
+        expect: { says: [unavailableReply(l)], sellerNotices: 1 },
+      },
+    ],
+  })),
+  ...everyLocale((l) => ({
+    id: "pricelist-wrong-price-twice",
+    title: "цена не по прайсу и после переписывания — покупателю передача менеджеру, не цена",
+    origin: "BOVI 07.10, разбор: fix:draft_again — ответ с чужой ценой всё равно уходил",
+    channel: "instagram",
+    full: true,
+    vertical: "consultant",
+    modules: { shop: true },
+    pricelist: {
+      catalog: PL_CATALOG,
+      rounds: [
+        said("Uchino полотенце банное 50х100 - 5 000 ₸."),
+        said("Uchino полотенце банное 50х100 - 5 000 ₸."),
+      ],
+    },
+    steps: [
+      {
+        say: { text: "Сколько стоит полотенце Uchino?" },
+        expect: {
+          says: [pricelistHandoffReply(l)],
+          notSays: ["5 000"],
+          sellerNotices: 1,
+          paused: true,
+        },
+      },
+    ],
+  })),
+  {
+    id: "pricelist-rubles-no-rate-ig-ru",
+    title: "рубли без свежего курса — цены в тенге, продавцу одно предупреждение в сутки",
+    origin: "BOVI 07.10, разбор: подсказка обещала замену на рубли, а курса не было",
+    channel: "instagram",
+    locale: "ru",
+    full: true,
+    vertical: "consultant",
+    modules: { shop: true },
+    pricelist: {
+      catalog: PL_CATALOG,
+      rounds: [
+        said("Uchino полотенце банное 50х100 - 9 000 ₸."),
+        said("Uchino полотенце банное 50х100 - 9 000 ₸ за штуку."),
+      ],
+    },
+    steps: [
+      {
+        say: { text: "Сколько в рублях?" },
+        expect: { says: ["9 000 ₸"], notSays: ["₽"], sellerQueued: 1 },
+      },
+      {
+        say: { text: "А в рублях за штуку?" },
+        expect: { says: ["9 000 ₸ за штуку"], notSays: ["₽"], sellerQueued: 0 },
+      },
+    ],
   },
 ];

@@ -11,9 +11,12 @@ import {
   type PricelistInput,
 } from "./engine.server";
 import type { V2Image } from "./images";
+import type { Locale } from "@/core/i18n/locale";
+import { handoffSummary, sellerLocaleSafe } from "@/core/ai/seller-text";
+import { pricelistHandoffReply } from "../messages";
 
-/** Фраза передачи, когда модель ничего не написала сама (v1 HANDOFF_TO_MANAGER_REPLY). */
-export const HANDOFF_REPLY = "Спасибо. Я передам ваш вопрос менеджеру, он скоро с вами свяжется.";
+/** Фраза передачи, когда модель ничего не написала сама (v1 HANDOFF_TO_MANAGER_REPLY), по-русски. */
+export const HANDOFF_REPLY = pricelistHandoffReply("ru");
 
 export type PricelistTurn = {
   reply: string;
@@ -24,6 +27,8 @@ export type PricelistTurn = {
   attachments?: ConsultantResult["attachments"];
   tools: string[];
   rate?: ConsultantResult["rate"];
+  /** Сбой по ходу ответа, который покупателя не остановил (база знаний не прочиталась): в последнюю ошибку. */
+  error?: string;
 };
 
 /**
@@ -43,6 +48,10 @@ export async function runPricelistTurn(
     story?: { storyId: string | null; mediaUrl: string | null };
     imageUrls?: string[];
     images?: V2Image[];
+    /** Язык покупателя — для готовых фраз (передача менеджеру). */
+    locale?: Locale;
+    /** Язык продавца — для сводки передачи, написанной кодом. */
+    sellerLocale?: Locale;
     /** Для тестов: данные магазина без базы. */
     data?: PricelistData;
     now?: Date;
@@ -61,23 +70,60 @@ export async function runPricelistTurn(
     call: (req) => args.callModel({ model: args.model, ...req, ...modelParams(args.model) }),
   });
   const r = data.rate;
+  // Рубли просят, а курса нет — продавцу раз в сутки (условная отметка).
+  if (decision.rateMissing) {
+    const { noticeStaleRate } = await import("./rate-notice.server");
+    await noticeStaleRate(ctx);
+  }
+  const turn = toTurn(decision, args.text, {
+    locale: args.locale,
+    sellerLocale:
+      args.sellerLocale ?? (decision.priceBlocked ? await sellerLocaleSafe(ctx) : undefined),
+  });
+  if (data.knowledgeError) {
+    turn.tools = ["kb_load_failed", ...turn.tools];
+    turn.clearError = false;
+    turn.error = [
+      `база знаний консультанта не прочитана, ответ без неё: ${data.knowledgeError}`,
+      turn.error,
+    ]
+      .filter(Boolean)
+      .join("; ");
+  }
   return {
-    ...toTurn(decision, args.text),
+    ...turn,
     rate: r ? { value: r.rate, updatedAt: r.updatedAt, source: r.source ?? null } : null,
   };
 }
 
 /** Решение модели → общий результат консультанта. */
-export function toTurn(d: PricelistDecision, incoming: string): PricelistTurn {
+export function toTurn(
+  d: PricelistDecision,
+  incoming: string,
+  opts: { locale?: Locale; sellerLocale?: Locale } = {},
+): PricelistTurn {
   const patch: Partial<ConsultantState> = { ...d.statePatch };
-  const base = { patch, tools: d.tools, attachments: d.attachments };
+  const base = { patch, tools: [...d.tools], attachments: d.attachments };
+  const handoffText = pricelistHandoffReply(opts.locale ?? "ru");
   if (d.handoff) {
     const reason = HANDOFF_REASON_LABEL[d.handoff.reason];
+    // Цена не по прайсу и после переписывания: менеджеру — почему, на его языке.
+    const summary = d.priceBlocked
+      ? [handoffSummary(opts.sellerLocale ?? "ru", "price", incoming), d.handoff.summary]
+          .filter(Boolean)
+          .join("\n")
+      : d.handoff.summary || `Клиент написал: «${incoming.slice(0, 200)}»`;
     return {
       ...base,
-      reply: d.reply || HANDOFF_REPLY,
+      reply: d.reply || handoffText,
       historyReply: d.reply ? d.historyText : undefined,
-      clearError: true,
+      clearError: !d.priceBlocked,
+      ...(d.priceBlocked
+        ? {
+            error:
+              "ответ консультанта не отправлен: цена не по прайсу и после переписывания; вопрос передан менеджеру",
+          }
+        : {}),
       handoff: {
         // Покупка и опт — заявка: менеджер получает готовый заказ.
         kind:
@@ -85,7 +131,7 @@ export function toTurn(d: PricelistDecision, incoming: string): PricelistTurn {
         reason,
         customerName: d.statePatch.profile?.name,
         customerContact: d.handoff.phone,
-        summary: d.handoff.summary || `Клиент написал: «${incoming.slice(0, 200)}»`,
+        summary,
       },
     };
   }
@@ -100,7 +146,7 @@ export function toTurn(d: PricelistDecision, incoming: string): PricelistTurn {
           : "пустой ответ модели";
     return {
       ...base,
-      reply: HANDOFF_REPLY,
+      reply: handoffText,
       clearError: false,
       handoff: {
         kind: "handoff",

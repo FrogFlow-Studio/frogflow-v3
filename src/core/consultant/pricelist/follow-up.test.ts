@@ -27,6 +27,17 @@ describe("текст напоминания", () => {
     );
   });
 
+  it("на языке покупателя: kk, en, uz; по умолчанию — русский", () => {
+    expect(followUpText(base, [zeroTwist], "kk")).toBe(
+      "Uchino Полотенце махровое Zero Twist бойынша сұрақтарыңыз қалды ма? Өлшемі, түсі не жеткізу туралы айтып беремін.",
+    );
+    expect(followUpText(base, [zeroTwist], "en")).toBe(
+      "Any questions left about Uchino Полотенце махровое Zero Twist? I can help with the size, color or delivery.",
+    );
+    expect(followUpText(base, [zeroTwist], "uz")).toContain("bo‘yicha savollaringiz qoldimi?");
+    expect(followUpText(base, [zeroTwist], "ru")).toBe(followUpText(base, [zeroTwist]));
+  });
+
   it("товара из выдачи уже нет в прайсе — напоминания нет", () => {
     expect(followUpText(base, [])).toBeNull();
   });

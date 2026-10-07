@@ -111,6 +111,8 @@ export const Route = createFileRoute("/api/operator/bots")({
               { status: 400 },
             );
           const modules = Object.fromEntries(MODULE_KEYS.map((k) => [k, k === "shop"]));
+          const { pricelistDefaultFor } = await import("@/core/consultant/pricelist/mode");
+          const pricelist = pricelistDefaultFor(input.vertical ?? "digital", undefined);
           const { data, error } = await db
             .from("bots")
             .insert({
@@ -119,6 +121,8 @@ export const Route = createFileRoute("/api/operator/bots")({
               status: "active",
               modules,
               vertical: input.vertical ?? "digital",
+              // Консультант BOVI — по прайсу сразу (core/consultant/pricelist/mode).
+              ...(pricelist ? { settings: { consultant_pricelist: pricelist } } : {}),
             })
             .select("id")
             .single();

@@ -6,9 +6,10 @@ import type { Tenant } from "@/core/tenant/types";
  * исчерпанный предел ИИ. Продавец выбирает в настройках консультанта
  * (`bots.settings.consultant_pause_hours`); 0 — «пока не верну сам».
  */
-export const PAUSE_CHOICES = [1, 3, 12, 24, 0] as const;
+export const PAUSE_CHOICES = [1, 3, 6, 12, 24, 0] as const;
 export type PauseHours = (typeof PAUSE_CHOICES)[number];
-export const DEFAULT_PAUSE_HOURS: PauseHours = 12;
+/** 6 часов — как в v1 (DEFAULT_MANAGER_PAUSE_HOURS): после ответа менеджера бот возвращается в тот же день. */
+export const DEFAULT_PAUSE_HOURS: PauseHours = 6;
 /** «Пока не верну сам» — пауза на сто лет: isPaused и так сравнивает только время. */
 const FOREVER_MS = 100 * 365 * 24 * 3600_000;
 

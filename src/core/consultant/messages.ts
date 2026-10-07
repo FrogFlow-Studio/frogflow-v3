@@ -57,6 +57,16 @@ const CLARIFY: Record<Locale, string> = {
   uz: "Iltimos, aynan nima qiziqtirayotganini ayting — yordam beraman.",
 };
 
+const WHOLESALE: Record<Locale, string> = {
+  ru: "Оптовые условия назовёт менеджер. Я передам ему ваш запрос, он скоро свяжется.",
+  kk: "Көтерме шарттарын менеджер айтады. Сұрауыңызды оған беремін, ол жақын арада хабарласады.",
+  en: "A manager will give you the wholesale terms. I'll pass your request on — they'll contact you soon.",
+  uz: "Ulgurji shartlarni menejer aytadi. So‘rovingizni unga yetkazaman, u tez orada bog‘lanadi.",
+};
+
+/** Оптовый запрос: условия знает только менеджер (v1 WHOLESALE_REPLY). */
+export const wholesaleReply = (locale: Locale): string => WHOLESALE[locale];
+
 /** Цена не из каталога: ответ заменён, вопрос ушёл менеджеру. */
 export const priceUnsureReply = (locale: Locale): string => PRICE_UNSURE[locale];
 /** Заявка записана и передана менеджеру. */
@@ -75,3 +85,84 @@ const UNANSWERED_TITLE: Record<Locale, string> = {
 
 /** Продавцу (на его языке): вопрос остался без ответа консультанта. */
 export const unansweredQuestionTitle = (locale: Locale): string => UNANSWERED_TITLE[locale];
+
+const PRICELIST_HANDOFF: Record<Locale, string> = {
+  ru: "Спасибо. Я передам ваш вопрос менеджеру, он скоро с вами свяжется.",
+  kk: "Рахмет. Сұрағыңызды менеджерге жіберемін, ол жақын арада сізбен байланысады.",
+  en: "Thank you. I'll pass your question to a manager, who will contact you soon.",
+  uz: "Rahmat. Savolingizni menejerga yuboraman, u tez orada siz bilan bog‘lanadi.",
+};
+
+/** Консультант по прайсу передал вопрос, не написав фразы сам (v1 HANDOFF_TO_MANAGER_REPLY). */
+export const pricelistHandoffReply = (locale: Locale): string => PRICELIST_HANDOFF[locale];
+
+const RESET_PRICELIST: Record<Locale, string> = {
+  ru: "Начнём заново. Что подсказать?",
+  kk: "Қайта бастайық. Немен көмектесейін?",
+  en: "Let's start over. How can I help?",
+  uz: "Qaytadan boshlaymiz. Nima bilan yordam beray?",
+};
+
+const RESET: Record<Locale, (brand: string) => string> = {
+  ru: (b) => `Начнём заново. Я консультант «${b}» — чем помочь?`,
+  kk: (b) => `Қайта бастайық. Мен «${b}» кеңесшісімін — немен көмектесейін?`,
+  en: (b) => `Let's start over. I'm the “${b}” consultant — how can I help?`,
+  uz: (b) => `Qaytadan boshlaymiz. Men «${b}» maslahatchisiman — nima bilan yordam beray?`,
+};
+
+/** «Начнём заново»: покупатель сбросил диалог. С маркой — общий консультант, без — по прайсу. */
+export const resetReply = (locale: Locale, brand?: string): string =>
+  brand === undefined ? RESET_PRICELIST[locale] : RESET[locale](brand);
+
+const FOLLOW_UP: Record<Locale, (model: string) => string> = {
+  ru: (m) => `Остались вопросы по ${m}? Подскажу по размеру, цвету или доставке.`,
+  kk: (m) => `${m} бойынша сұрақтарыңыз қалды ма? Өлшемі, түсі не жеткізу туралы айтып беремін.`,
+  en: (m) => `Any questions left about ${m}? I can help with the size, color or delivery.`,
+  uz: (m) =>
+    `${m} bo‘yicha savollaringiz qoldimi? O‘lcham, rang yoki yetkazib berish bo‘yicha yordam beraman.`,
+};
+
+/** Напоминание замолчавшему покупателю о товаре (консультант по прайсу, follow-up). */
+export const followUpLine = (locale: Locale, model: string): string => FOLLOW_UP[locale](model);
+
+/* ── продавцу (на его языке, HTML Telegram) ─────────────────────────── */
+
+const REPLY_NOT_SENT: Record<Locale, string> = {
+  ru: "⚠️ <b>Ответ консультанта не ушёл покупателю</b>",
+  kk: "⚠️ <b>Кеңесшінің жауабы сатып алушыға жетпеді</b>",
+  en: "⚠️ <b>The consultant's reply did not reach the customer</b>",
+  uz: "⚠️ <b>Maslahatchi javobi xaridorga yetib bormadi</b>",
+};
+
+const REPLY_NOT_SENT_HINT: Record<Locale, string> = {
+  ru: "Канал не подтвердил отправку (обрыв или ошибка). Повторно бот не отправляет: ответ мог и дойти. Проверьте переписку и ответьте сами.",
+  kk: "Арна жіберуді растамады (үзіліс не қате). Бот қайта жібермейді: жауап жетуі де мүмкін. Хат алмасуды тексеріп, өзіңіз жауап беріңіз.",
+  en: "The channel did not confirm delivery (connection drop or error). The bot does not resend: the reply may still have arrived. Check the conversation and reply yourself.",
+  uz: "Kanal yuborilganini tasdiqlamadi (uzilish yoki xato). Bot qayta yubormaydi: javob yetib borgan bo‘lishi ham mumkin. Yozishmani tekshiring va o‘zingiz javob bering.",
+};
+
+const QUESTION: Record<Locale, string> = { ru: "Вопрос", kk: "Сұрақ", en: "Question", uz: "Savol" };
+
+const BOT_ANSWERED: Record<Locale, string> = {
+  ru: "Ответ бота",
+  kk: "Бот жауабы",
+  en: "Bot's reply",
+  uz: "Bot javobi",
+};
+
+/** Продавцу: ответ консультанта не подтверждён каналом — заголовок и что делать. */
+export const replyNotSentTitle = (locale: Locale): string => REPLY_NOT_SENT[locale];
+export const replyNotSentHint = (locale: Locale): string => REPLY_NOT_SENT_HINT[locale];
+/** Подписи «Вопрос» и «Ответ бота» в уведомлении о неотправленном ответе. */
+export const questionLabel = (locale: Locale): string => QUESTION[locale];
+export const botAnsweredLabel = (locale: Locale): string => BOT_ANSWERED[locale];
+
+const RATE_STALE: Record<Locale, string> = {
+  ru: "🟡 <b>Курс рубля для консультанта устарел или не получен.</b>\n\nПокупатели просят цены в рублях, но без свежего курса рубли не пересчитываются: консультант называет цены в тенге. Обновите курс в панели: «Прайс консультанта» → «Курс рубля».",
+  kk: "🟡 <b>Кеңесшіге арналған рубль бағамы ескірген немесе алынбаған.</b>\n\nСатып алушылар бағаны рубльмен сұрайды, бірақ жаңа бағамсыз рубль есептелмейді: кеңесші бағаны теңгемен атайды. Бағамды панельде жаңартыңыз: «Кеңесші прайсы» → «Рубль бағамы».",
+  en: "🟡 <b>The ruble rate for the consultant is out of date or missing.</b>\n\nCustomers ask for prices in rubles, but without a fresh rate rubles are not calculated: the consultant quotes prices in tenge. Update the rate in the panel: “Consultant price list” → “Ruble rate”.",
+  uz: "🟡 <b>Maslahatchi uchun rubl kursi eskirgan yoki olinmagan.</b>\n\nXaridorlar narxni rublda so‘rayapti, ammo yangi kurssiz rubl hisoblanmaydi: maslahatchi narxlarni tengeda aytadi. Kursni panelda yangilang: «Maslahatchi narxnomasi» → «Rubl kursi».",
+};
+
+/** Продавцу, не чаще раза в сутки: рубли просят, а свежего курса нет (pricelist/rate-notice). */
+export const rateStaleNotice = (locale: Locale): string => RATE_STALE[locale];

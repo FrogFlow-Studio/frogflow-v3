@@ -155,7 +155,7 @@ describe("консультант: ответ и состояние", () => {
 });
 
 describe("консультант: передача менеджеру", () => {
-  it("передача менеджеру ставит паузу на 12 часов и запоминает контакт", async () => {
+  it("передача менеджеру ставит паузу на 6 часов (по умолчанию, как в v1) и запоминает контакт", async () => {
     content = [
       tool("handoff_to_manager", {
         reason: "human_requested",
@@ -173,8 +173,8 @@ describe("консультант: передача менеджеру", () => {
       .consultant;
     expect(st.contact).toBe("@anya");
     const pause = Date.parse(st.paused_until) - before;
-    expect(pause).toBeGreaterThanOrEqual(12 * HOUR - 1000);
-    expect(pause).toBeLessThanOrEqual(12 * HOUR + 5000);
+    expect(pause).toBeGreaterThanOrEqual(6 * HOUR - 1000);
+    expect(pause).toBeLessThanOrEqual(6 * HOUR + 5000);
   });
 
   it("пауза берётся из настроек продавца: 3 часа и «пока не верну сам»", async () => {

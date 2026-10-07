@@ -333,8 +333,15 @@ export async function handleZernioMessage(
         : "консультант выключен — сообщение в «Чате»",
     );
   }
-  if (consultant.isPaused(customerNow)) return processed("консультант на паузе");
+  if (consultant.isPaused(customerNow)) {
+    // В журнал ответов: сводка качества считает, сколько раз бот молчал при менеджере.
+    await recordSilentRun(ctx, customerNow, m, text, "paused");
+    return processed("консультант на паузе");
+  }
   customer = customerNow;
+  // Стикер или гифка-реакция — не вопрос (v1 BOVI): консультант молчит.
+  const inbox = await import("./consultant-inbox");
+  if (inbox.consultantIgnoresSticker(m)) return ignored("стикер — консультант не отвечает");
 
   const memory = consultantMemory(customer);
   let tail: Awaited<ReturnType<ZernioTransport["tail"]>> = [];
@@ -358,6 +365,7 @@ export async function handleZernioMessage(
   });
   if (manager) {
     await consultant.pauseConsultant(ctx, customer);
+    await recordSilentRun(ctx, customer, m, text, "manager");
     return processed("менеджер отвечает из приложения — консультант на паузе");
   }
 
@@ -365,9 +373,15 @@ export async function handleZernioMessage(
   // кроме самой публикации и гифок-реакций; подпись «[вложение: …]» ему не нужна.
   const { pricelistMode } = await import("@/core/consultant/pricelist/mode");
   const imageUrls = pricelistMode(ctx.tenant) ? customerImageUrls(m) : [];
+  // Голосовое — «напишите текстом»; публикация без слов — ждёт вопроса (consultant-inbox).
+  const pre = await inbox.beforeConsultant(ctx, customer, m, transport, {
+    customerPhotos: customerImageUrls(m).length,
+  });
+  if (pre.done) return processed(pre.note);
+  customer = pre.customer;
   const r = await consultant.runConsultant(ctx, customer, imageUrls.length ? m.text : text, {
     platform: m.platform,
-    story: { storyId: m.storyId, mediaUrl: m.storyMediaUrl },
+    story: pre.story,
     ...(imageUrls.length ? { imageUrls } : {}),
     shopInChat: shopOn,
   });
@@ -394,7 +408,15 @@ export async function handleZernioMessage(
     tools: r.tools,
     ...(sent.ok ? {} : { status: "terminal_failed" as const, errorCode: "send_failed" }),
   });
-  if (!sent.ok) return { status: "failed", note: sent.error };
+  if (!sent.ok) {
+    // Ответ мог и дойти (обрыв, тайм-аут, 5xx): не повторяем и не шлём иначе.
+    // Продавцу — карточка передачи с пометкой (пауза этого хода — из-за передачи,
+    // и о ней продавец теперь знает) или короткое «ответ не ушёл»: без передачи
+    // пауза не ставится, следующий вопрос бот примет как обычно.
+    if (r.handoff) await notifyHandoff(ctx, customer, m, r.handoff, { replyNotSent: true });
+    else await notifyReplyNotSent(ctx, customer, m, text, r.reply);
+    return { status: "failed", note: sent.error };
+  }
   // Фото и видео товара из фотобазы — следом за ответом, каждое отдельно.
   // Не принял Instagram файл — ответ уже ушёл, остальное не держим.
   for (const a of r.attachments ?? []) {
@@ -418,36 +440,120 @@ export async function handleZernioMessage(
   }
 
   if (r.handoff) {
-    if (ctx.tenant.modules.manager_chat) {
-      const { connect } = await import("@/core/chat/chat");
-      await connect(ctx, customer.telegramId).catch(() => {});
-    }
-    const { leadFromHandoff } = await import("@/core/pipeline/sources");
-    await leadFromHandoff(ctx, customer, r.handoff);
-    const who = customer.firstName || (customer.username ? `@${customer.username}` : m.senderId);
-    // Модуль «Поддержка»: передача менеджеру — обращение, итог консультанта — его тема.
-    const ticket = await directTicket(ctx, customer, m.platform, r.handoff.summary, {
-      notify: false,
-    });
-    const lines = [
-      ticket ? `📨 Обращение #${ticket.number}` : "",
-      r.handoff.kind === "lead"
-        ? `📝 <b>Заявка от ИИ-консультанта</b> (${escapeHtml(r.handoff.reason)})`
-        : `🙋 <b>Клиент ждёт менеджера</b> (${escapeHtml(r.handoff.reason)})`,
-      `${PLATFORM_LABEL[m.platform]} · 👤 ${escapeHtml(who)}${customer.username ? ` · @${escapeHtml(customer.username)}` : ""}`,
-      r.handoff.customerName ? `Имя: ${escapeHtml(r.handoff.customerName)}` : "",
-      r.handoff.customerContact ? `📞 ${escapeHtml(r.handoff.customerContact)}` : "",
-      `📋 ${escapeHtml(r.handoff.summary)}`,
-      "",
-      `Ответьте в разделе «Чат» панели или прямо в ${PLATFORM_LABEL[m.platform]} — консультант в этом диалоге ${pauseNoticeRu(pauseHours(ctx.tenant))}.`,
-    ].filter((l) => l !== "");
-    // Метка для ответа свайпом в Telegram — он уйдёт покупателю (core/consultant/relay).
-    const { handoffRefLine, issueHandoffRef } = await import("@/core/consultant/relay");
-    const ref = await issueHandoffRef(ctx, customer.userKey).catch(() => null);
-    if (ref) lines.push(handoffRefLine(ref));
-    await notifyAdminsHtml(ctx, lines.join("\n"), { kind: r.handoff.kind }).catch(() => 0);
+    await notifyHandoff(ctx, customer, m, r.handoff);
+    // Передача из-за долгого сбоя ИИ (деньги, ключ) — продавцу отдельно, раз в три часа.
+    const { alertSellerModelFailure } = await import("@/core/consultant/model-alert.server");
+    await alertSellerModelFailure(ctx, (html) =>
+      notifyAdminsHtml(ctx, html, { kind: "consultant_model" }),
+    );
   }
   return processed(r.handoff ? `ответ + передача менеджеру (${r.handoff.reason})` : undefined);
+}
+
+type ParsedMessage = ReturnType<typeof parseZernioMessage>;
+
+/** Ход консультанта без ответа (пауза, менеджер в чате) — строка cancelled в журнале ответов. */
+async function recordSilentRun(
+  ctx: TenantContext,
+  customer: Customer,
+  m: ParsedMessage,
+  text: string,
+  why: "paused" | "manager",
+) {
+  const { recordConsultantRun } = await import("@/core/consultant/runs");
+  const { currentZernioEventId } = await import("./event-context.server");
+  await recordConsultantRun(ctx, {
+    messageId: m.platformMessageId ?? currentZernioEventId() ?? "",
+    conversationId: m.conversationId!,
+    accountId: m.accountId,
+    userKey: customer.userKey,
+    source: "webhook",
+    incomingText: text,
+    replyKind: why,
+    status: "cancelled",
+  });
+}
+
+/**
+ * Передача менеджеру: «Чат», воронка, обращение и карточка продавцу.
+ * `replyNotSent` — фраза покупателю не подтверждена каналом: в карточке пометка.
+ */
+async function notifyHandoff(
+  ctx: TenantContext,
+  customer: Customer,
+  m: ParsedMessage,
+  handoff: import("@/core/consultant/engine.server").Handoff,
+  opts: { replyNotSent?: boolean } = {},
+) {
+  if (ctx.tenant.modules.manager_chat) {
+    const { connect } = await import("@/core/chat/chat");
+    await connect(ctx, customer.telegramId).catch(() => {});
+  }
+  const { leadFromHandoff } = await import("@/core/pipeline/sources");
+  await leadFromHandoff(ctx, customer, handoff);
+  const who = customer.firstName || (customer.username ? `@${customer.username}` : m.senderId);
+  // Модуль «Поддержка»: передача менеджеру — обращение, итог консультанта — его тема.
+  const ticket = await directTicket(ctx, customer, m.platform, handoff.summary, {
+    notify: false,
+  });
+  const warn = opts.replyNotSent ? await replyNotSentLines(ctx) : [];
+  // Товары разговора и кнопка «открыть диалог» (v1 consultant/notify.ts).
+  const { handoffCardExtras } = await import("./handoff-card");
+  const card = await handoffCardExtras(ctx, customer, m);
+  const lines = [
+    ...warn,
+    ticket ? `📨 Обращение #${ticket.number}` : "",
+    handoff.kind === "lead"
+      ? `📝 <b>Заявка от ИИ-консультанта</b> (${escapeHtml(handoff.reason)})`
+      : `🙋 <b>Клиент ждёт менеджера</b> (${escapeHtml(handoff.reason)})`,
+    `${PLATFORM_LABEL[m.platform]} · 👤 ${escapeHtml(who)}${customer.username ? ` · @${escapeHtml(customer.username)}` : ""}`,
+    handoff.customerName ? `Имя: ${escapeHtml(handoff.customerName)}` : "",
+    handoff.customerContact ? `📞 ${escapeHtml(handoff.customerContact)}` : "",
+    `📋 ${escapeHtml(handoff.summary)}`,
+    ...card.lines,
+    "",
+    `Ответьте в разделе «Чат» панели или прямо в ${PLATFORM_LABEL[m.platform]} — консультант в этом диалоге ${pauseNoticeRu(pauseHours(ctx.tenant))}.`,
+  ].filter((l) => l !== "");
+  // Метка для ответа свайпом в Telegram — он уйдёт покупателю (core/consultant/relay).
+  const { handoffRefLine, issueHandoffRef } = await import("@/core/consultant/relay");
+  const ref = await issueHandoffRef(ctx, customer.userKey).catch(() => null);
+  if (ref) lines.push(handoffRefLine(ref));
+  await notifyAdminsHtml(ctx, lines.join("\n"), {
+    kind: handoff.kind,
+    ...(card.replyMarkup ? { replyMarkup: card.replyMarkup } : {}),
+  }).catch(() => 0);
+}
+
+/** Заголовок и подсказка «ответ не ушёл» на языке продавца. */
+async function replyNotSentLines(ctx: TenantContext): Promise<string[]> {
+  const { sellerLocaleSafe } = await import("@/core/ai/seller-text");
+  const { replyNotSentHint, replyNotSentTitle } = await import("@/core/consultant/messages");
+  const l = await sellerLocaleSafe(ctx);
+  return [replyNotSentTitle(l), replyNotSentHint(l), ""];
+}
+
+/** Ответ без передачи не ушёл: продавцу вопрос и ответ бота, чтобы ответил сам. */
+async function notifyReplyNotSent(
+  ctx: TenantContext,
+  customer: Customer,
+  m: ParsedMessage,
+  question: string,
+  reply: string,
+) {
+  const { sellerLocaleSafe } = await import("@/core/ai/seller-text");
+  const { botAnsweredLabel, questionLabel, replyNotSentHint, replyNotSentTitle } =
+    await import("@/core/consultant/messages");
+  const l = await sellerLocaleSafe(ctx);
+  const who = customer.firstName || (customer.username ? `@${customer.username}` : m.senderId);
+  const lines = [
+    replyNotSentTitle(l),
+    `${PLATFORM_LABEL[m.platform]} · 👤 ${escapeHtml(who)}${customer.username ? ` · @${escapeHtml(customer.username)}` : ""}`,
+    `💬 ${questionLabel(l)}: ${escapeHtml(question.slice(0, 500))}`,
+    `🤖 ${botAnsweredLabel(l)}: ${escapeHtml(reply.slice(0, 700))}`,
+    "",
+    replyNotSentHint(l),
+  ];
+  await notifyAdminsHtml(ctx, lines.join("\n"), { kind: "question" }).catch(() => 0);
 }
 
 /** Отписка или возврат в Direct/WhatsApp: флаг и короткое подтверждение. */

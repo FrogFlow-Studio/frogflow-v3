@@ -14,7 +14,9 @@ import {
   handoffReply,
   leadDoneReply,
   priceUnsureReply,
+  resetReply,
   unavailableReply,
+  wholesaleReply,
 } from "./messages";
 import { getSettings, trySetSetting, updateSettingAtomic } from "@/core/settings/settings";
 import { resolvePrice } from "@/core/pricing/pricing";
@@ -350,7 +352,7 @@ async function saveState(ctx: TenantContext, customer: Customer, patch: Partial<
 
 /**
  * Продавец ответил сам или клиент ушёл к менеджеру — консультант молчит
- * столько, сколько выбрал продавец (core/consultant/pause, по умолчанию 12 ч).
+ * столько, сколько выбрал продавец (core/consultant/pause, по умолчанию 6 ч, как в v1).
  */
 export async function pauseConsultant(ctx: TenantContext, customer: Customer) {
   return saveState(ctx, customer, { paused_until: pausedUntilIso(pauseHours(ctx.tenant)) });
@@ -455,12 +457,27 @@ export async function runConsultant(
   if (customer && !opts.dryRun && isResetIntent(incoming)) {
     await resumeConsultant(ctx, customer);
     return {
-      reply: pricelist
-        ? "Начнём заново. Что подсказать?"
-        : `Начнём заново. Я консультант «${profile.brand_name}» — чем помочь?`,
+      reply: resetReply(bLocale, pricelist ? undefined : profile.brand_name),
       handoff: null,
       usage: { inputTokens: 0, outputTokens: 0, usd: 0 },
     };
+  }
+  // Опт — сразу менеджеру: оптовых условий у консультанта нет (v1 intent.ts, handle-message.ts:858).
+  if (pricelist) {
+    const { matchWholesaleIntent } = await import("./pricelist/wholesale");
+    if (matchWholesaleIntent(incoming)) {
+      if (customer && !opts.dryRun)
+        await saveState(ctx, customer, { paused_until: pausedUntilIso(pauseHours(ctx.tenant)) });
+      return {
+        reply: wholesaleReply(bLocale),
+        handoff: {
+          kind: "lead",
+          reason: "wholesale",
+          summary: handoffSummary(await sellerLocaleSafe(ctx), "wholesale", incoming),
+        },
+        usage: { inputTokens: 0, outputTokens: 0, usd: 0 },
+      };
+    }
   }
   // Попытка взломать подсказку — менеджеру, модель её не видит (v1 BOVI).
   if (pricelist) {
@@ -624,10 +641,11 @@ export async function runConsultant(
   }
 
   // ИИ-баланс клиента (core/ai/balance): кончился — вопрос менеджеру, как при пределе.
-  const { aiReserve, aiSettle, aiRelease } = await import("@/core/ai/balance");
+  // Модуль не загрузился — как сбой учёта баланса: дневная бронь закрывается ниже.
+  const balance = await import("@/core/ai/balance").catch(() => null);
   // Бронь — на все раунды сразу, как дневной расход выше: расчёт один, после цикла.
-  const aiHold = await aiReserve(ctx, "consultant", reserveUsd);
-  if (typeof aiHold === "string") {
+  const aiHold = balance ? await balance.aiReserve(ctx, "consultant", reserveUsd) : "failed";
+  if (typeof aiHold === "string" || !balance) {
     await updateSettingAtomic(ctx, KEYS.daily, (raw) => settleRaw(raw, date, reserveUsd, 0));
     if (aiHold === "short")
       return overBudget(
@@ -646,28 +664,27 @@ export async function runConsultant(
       usage: { inputTokens: 0, outputTokens: 0, usd: 0 },
     };
   }
+  const { aiSettle, aiRelease } = balance;
 
   const client = new Anthropic({ apiKey, maxRetries: 1, timeout: TIMEOUT_MS });
-  const baseModel = env().CONSULTANT_MODEL?.trim() || DEFAULT_MODEL;
-  // Модель «по прайсу» читается из настроек — сбой здесь, до try ниже, не держит бронь.
-  const model = pricelist
-    ? await import("./pricelist/engine.server")
-        .then((m) => m.pricelistModel(ctx, baseModel))
-        .catch(async (e: unknown) => {
-          await aiRelease(ctx, aiHold);
-          throw e;
-        })
-    : baseModel;
-  const price = /sonnet/.test(model) ? PRICE_SONNET : PRICE;
+  // Модель «по прайсу» читается из настроек уже внутри try ниже: её сбой закрывает
+  // обе брони и уходит покупателю «сейчас не могу ответить» с передачей менеджеру.
+  let model = env().CONSULTANT_MODEL?.trim() || DEFAULT_MODEL;
   const u = { input_tokens: 0, output_tokens: 0, cacheWrite: 0, cacheRead: 0 };
-  const costUsd = () =>
-    (u.input_tokens * price.in +
-      u.cacheWrite * price.cacheWrite +
-      u.cacheRead * price.cacheRead +
-      u.output_tokens * price.out) /
-    1_000_000;
+  const costUsd = () => {
+    const price = /sonnet/.test(model) ? PRICE_SONNET : PRICE;
+    return (
+      (u.input_tokens * price.in +
+        u.cacheWrite * price.cacheWrite +
+        u.cacheRead * price.cacheRead +
+        u.output_tokens * price.out) /
+      1_000_000
+    );
+  };
   // Расход записан и бронь закрыта — catch второй раз их не трогает.
   let settled = false;
+  // Вызов модели ушёл и не вернулся: Anthropic мог его списать (catch бронирует его цену).
+  let callInFlight = false;
   const toolsUsed: string[] = [];
   const started = Date.now();
   const deadline = started + ROUNDS_DEADLINE_MS;
@@ -683,6 +700,7 @@ export async function runConsultant(
     const bounded = Boolean(loaded) || pricelist;
     if (bounded && left < MIN_CALL_MS) return "late";
     if (!(await takeAiCall(ctx))) return "limited";
+    callInFlight = true;
     const response = bounded
       ? await client.messages.create(params, {
           timeout: Math.min(TIMEOUT_MS, left),
@@ -695,6 +713,7 @@ export async function runConsultant(
     u.output_tokens += response.usage.output_tokens;
     u.cacheWrite += response.usage.cache_creation_input_tokens ?? 0;
     u.cacheRead += response.usage.cache_read_input_tokens ?? 0;
+    callInFlight = false;
     return response;
   };
   /**
@@ -708,6 +727,8 @@ export async function runConsultant(
     patch: Partial<ConsultantState>;
     /** В историю, если покупателю ушло другое (рубли вместо тенге). */
     historyReply?: string;
+    /** Сбой, который ответ не остановил: в последнюю ошибку вместо очистки. */
+    error?: string;
     attachments?: ConsultantResult["attachments"];
     rate?: ConsultantResult["rate"];
   }): Promise<ConsultantResult> => {
@@ -726,7 +747,13 @@ export async function runConsultant(
           count: parseMonthly(raw, dialogs.month).count + 1,
         }),
       );
-    if (out.clearError) await trySetSetting(ctx, KEYS.lastError, "");
+    if (out.error)
+      await trySetSetting(
+        ctx,
+        KEYS.lastError,
+        `${new Date().toISOString()} — ${out.error}`.slice(0, 500),
+      );
+    else if (out.clearError) await trySetSetting(ctx, KEYS.lastError, "");
 
     if (customer && !opts.dryRun) {
       const recent: ConsultantTurn[] = [
@@ -773,10 +800,13 @@ export async function runConsultant(
   };
   try {
     if (pricelist) {
+      const { pricelistModel } = await import("./pricelist/engine.server");
+      model = await pricelistModel(ctx, model);
       const { runPricelistTurn } = await import("./pricelist/turn.server");
       const out = await runPricelistTurn(ctx, {
         text: incoming,
         state,
+        locale: bLocale,
         model,
         callModel,
         story: opts.story,
@@ -981,7 +1011,8 @@ export async function runConsultant(
       `${new Date().toISOString()} — ${detail}`.slice(0, 500),
     );
     // Бронь закрываем прошедшими раундами плюс одна бронь на упавший вызов:
-    // Anthropic мог успеть его списать, а мы этого не узнаем.
+    // Anthropic мог успеть его списать, а мы этого не узнаем. Упало до вызова
+    // модели (настройки, прайс) — только прошедшие раунды.
     if (!settled) {
       const spent = costUsd();
       if (spent > 0)
@@ -992,7 +1023,7 @@ export async function runConsultant(
           u.output_tokens,
         ).catch(() => {});
       await updateSettingAtomic(ctx, KEYS.daily, (raw) =>
-        settleRaw(raw, date, reserveUsd, spent + RESERVE_USD),
+        settleRaw(raw, date, reserveUsd, spent + (callInFlight ? RESERVE_USD : 0)),
       ).catch(() => {});
     }
     return {

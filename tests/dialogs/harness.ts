@@ -63,6 +63,8 @@ export interface Room {
   sellerReplies(): string[];
   /** Причины ответов бота, записанные в «Чат» («Почему бот так ответил», Б13). */
   reasons(): string[];
+  /** Сколько уведомлений продавцу поставлено в очередь (outbox, admin_notice) за весь диалог. */
+  sellerQueued(): number;
   db: FakeDb;
 }
 
@@ -80,6 +82,10 @@ export interface RoomOptions {
    * а не только через магазин: так работают слова «позови человека» и пауза.
    */
   full?: boolean;
+  /** Instagram/WhatsApp: отправка покупателю не прошла (обрыв, тайм-аут) — дошло ли, неизвестно. */
+  sendFails?: boolean;
+  /** Добавка к bots.settings клиента (например, консультант по прайсу). */
+  tenantSettings?: Record<string, unknown>;
 }
 
 /** Куда уходят сообщения покупателю, отправленные не из его реплики (ответ продавца, трек). */
@@ -168,7 +174,7 @@ function baseDb(o: RoomOptions, key: string, platform: string, telegramId: numbe
         ...(o.full ? { instagram: true, whatsapp: true, dm_shop: true, wa_shop: true } : {}),
         ...(o.modules ?? {}),
       },
-      settings: { default_locale: o.locale },
+      settings: { default_locale: o.locale, ...(o.tenantSettings ?? {}) },
     },
     db,
     appUrl: "https://app.test",
@@ -209,6 +215,9 @@ async function sellerTrackReply(
   return { buyer, seller };
 }
 
+const queuedOf = (db: FakeDb) =>
+  (db.tables.zernio_logs ?? []).filter((r) => r.event_type === "outbox.admin_notice").length;
+
 const reasonsOf = (db: FakeDb) =>
   (db.tables.manager_chat_reasons ?? []).map((r) => String(r.reason ?? ""));
 
@@ -230,6 +239,8 @@ function directRoom(o: RoomOptions): Room {
         text: string,
         opts: { buttons?: Array<{ title?: string }> } = {},
       ) => {
+        // Обрыв: покупатель (насколько известно) ничего не получил.
+        if (o.sendFails) return { ok: false, error: "timeout" };
         sent.push({ text: plain(text), buttons: (opts.buttons ?? []).map((b) => b.title ?? "") });
         return { ok: true };
       },
@@ -324,6 +335,7 @@ function directRoom(o: RoomOptions): Room {
     },
     sellerReplies: () => sellerLines,
     reasons: () => reasonsOf(db),
+    sellerQueued: () => queuedOf(db),
     replies: () => sent.slice(mark).map((s) => s.text),
     buttons: () => sent.slice(mark).flatMap((s) => s.buttons),
     cart: () => (db.tables.cart_items ?? []).map((c) => String(c.product_id)),
@@ -373,6 +385,7 @@ function telegramRoom(o: RoomOptions): Room {
     db,
     sellerReplies: () => sellerLines,
     reasons: () => reasonsOf(db),
+    sellerQueued: () => queuedOf(db),
     async say(i) {
       mark = calls.length;
       sellerLines = [];

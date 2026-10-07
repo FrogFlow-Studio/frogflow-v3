@@ -612,7 +612,7 @@ async function handleMessage(
   if (customer.state.mode === "search" && text && b.sells) return showSearch(b, text);
   // «Как в прошлый раз» словом: последний оплаченный заказ в корзину (Б11).
   if (text && b.sells && isReorderWord(text) && (await reorderLast(b))) return;
-  if (text && (await consultantReply(b, text))) return;
+  if (text && (await consultantReply(b, text, { messageId: msg.message_id }))) return;
   // Консультант без товаров не ответил: не поиск по пустому каталогу, а вопрос менеджеру.
   if (text && !b.sells) return questionToManager(b, text);
   const word = menuWordFor(text);
@@ -699,7 +699,10 @@ async function pricelistPhoto(b: Bot, msg: TelegramMessage): Promise<boolean> {
   const file = await downloadTelegramFile(b.api, fileId);
   const { imageFromBytes } = await import("@/core/consultant/pricelist/images");
   const image = file ? imageFromBytes(file.bytes) : null;
-  return consultantReply(b, msg.caption?.trim() ?? "", image ? [image] : []);
+  return consultantReply(b, msg.caption?.trim() ?? "", {
+    images: image ? [image] : [],
+    messageId: msg.message_id,
+  });
 }
 
 /**
@@ -710,20 +713,48 @@ async function pricelistPhoto(b: Bot, msg: TelegramMessage): Promise<boolean> {
 async function consultantReply(
   b: Bot,
   text: string,
-  images?: import("@/core/consultant/pricelist/images").V2Image[],
+  opts: {
+    images?: import("@/core/consultant/pricelist/images").V2Image[];
+    /** message_id входящего — ключ строки журнала ответов (повтор доставки её не плодит). */
+    messageId?: number;
+  } = {},
 ): Promise<boolean> {
   const { consultantEnabled, isPaused, runConsultant } =
     await import("@/core/consultant/engine.server");
   const { pauseHours, pauseNoticeRu } = await import("@/core/consultant/pause");
+  const { recordConsultantRun } = await import("@/core/consultant/runs");
+  const images = opts.images;
+  // Журнал ответов консультанта (core/consultant/runs), как в Direct.
+  const run = {
+    messageId: opts.messageId != null ? `tg:${b.chatId}:${opts.messageId}` : "",
+    conversationId: String(b.chatId),
+    userKey: b.customer.userKey,
+    source: "webhook" as const,
+    incomingText: text,
+  };
   if (!(await consultantEnabled(b.ctx))) return false;
-  if (isPaused(b.customer)) return true; // менеджер ведёт диалог — бот молчит
+  if (isPaused(b.customer)) {
+    // Менеджер ведёт диалог — бот молчит; в журнал — ход без ответа.
+    await recordConsultantRun(b.ctx, { ...run, replyKind: "paused", status: "cancelled" });
+    return true;
+  }
   await b.api.call("sendChatAction", { chat_id: b.chatId, action: "typing" });
   const r = await runConsultant(b.ctx, b.customer, text, {
     platform: "telegram",
     ...(images ? { images } : {}),
   });
   if (!r) return false;
-  await b.api.call("sendMessage", { chat_id: b.chatId, text: r.reply });
+  const sent = await b.api.call("sendMessage", { chat_id: b.chatId, text: r.reply });
+  await recordConsultantRun(b.ctx, {
+    ...run,
+    replyText: r.reply,
+    replyKind: r.handoff ? `handoff:${r.handoff.reason}` : "reply",
+    model: r.model ?? null,
+    usage: r.usage,
+    rate: r.rate ?? null,
+    tools: r.tools,
+    ...(sent.ok ? {} : { status: "terminal_failed" as const, errorCode: "send_failed" }),
+  });
   // Фото и видео товара (консультант по прайсу) — следом, по ссылке /api/img.
   for (const a of r.attachments ?? [])
     await b.api
@@ -763,12 +794,23 @@ async function consultantReply(
       "",
       `Ответьте клиенту в разделе «Чат» панели — консультант в этом диалоге ${pauseNoticeRu(pauseHours(b.ctx.tenant))}.`,
     ].filter((l) => l !== "");
+    // Один недоступный админ (заблокировал бота, обрыв) не мешает остальным.
     for (const chatId of await adminRecipients(b.ctx))
-      await b.api.call("sendMessage", {
-        chat_id: chatId,
-        text: lines.join("\n"),
-        parse_mode: "HTML",
-      });
+      await b.api
+        .call("sendMessage", {
+          chat_id: chatId,
+          text: lines.join("\n"),
+          parse_mode: "HTML",
+        })
+        .catch((e: unknown) => {
+          console.error(`[tg:${b.ctx.tenant.id}] передача менеджеру не ушла ${chatId}`, e);
+          return null;
+        });
+    // Передача из-за долгого сбоя ИИ (деньги, ключ) — продавцу отдельно, раз в три часа.
+    const { alertSellerModelFailure } = await import("@/core/consultant/model-alert.server");
+    await alertSellerModelFailure(b.ctx, (html) =>
+      notifyAdminsHtml(b.ctx, html, { kind: "consultant_model" }),
+    );
   }
   return true;
 }

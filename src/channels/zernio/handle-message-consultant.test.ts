@@ -1,0 +1,175 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { fakeDb, type FakeDb } from "../../../tests/fake-db";
+import type { TenantContext } from "@/core/tenant/resolve.server";
+import type { Customer } from "@/core/customers/customers";
+import type { ZernioTransport } from "./api.server";
+
+/**
+ * Ответ консультанта в Direct: что видит продавец, когда отправка не
+ * подтверждена, и какие строки остаются в журнале ответов (consultant_message_runs).
+ */
+
+const customer = {
+  userKey: "ig:1",
+  platform: "instagram",
+  telegramId: -1,
+  firstName: "Аня",
+  state: { consultant: {} },
+} as unknown as Customer;
+
+vi.mock("@/core/customers/customers", () => ({
+  upsertCustomer: vi.fn(async () => customer),
+  isBlocked: vi.fn(async () => false),
+  setState: vi.fn(async (_c: unknown, c: Customer) => c),
+}));
+const notifyAdminsHtml = vi.fn(async (_ctx: unknown, _html: string, _o?: unknown) => 1);
+vi.mock("@/channels/telegram/notify", () => ({ notifyAdminsHtml }));
+vi.mock("@/core/instagram/direct-bot-settings", () => ({
+  loadDirectBotSettings: vi.fn(async () => ({ enabled: true, ignoreExcluded: false })),
+}));
+vi.mock("@/core/pipeline/sources", () => ({ leadFromHandoff: vi.fn(async () => {}) }));
+vi.mock("@/core/consultant/relay", () => ({
+  issueHandoffRef: vi.fn(async () => null),
+  handoffRefLine: () => "",
+}));
+
+const engine = {
+  paused: false,
+  result: null as unknown,
+};
+const pauseConsultant = vi.fn(async () => {});
+const runConsultant = vi.fn(async () => engine.result);
+vi.mock("@/core/consultant/engine.server", () => ({
+  consultantEnabled: async () => true,
+  isPaused: () => engine.paused,
+  pauseConsultant,
+  runConsultant,
+}));
+
+const { handleZernioMessage } = await import("./handle-message");
+
+let db: FakeDb;
+let ctx: TenantContext;
+beforeEach(() => {
+  db = fakeDb({ unique: { consultant_message_runs: [["bot_id", "message_id"]] } });
+  db.tables.app_settings = [];
+  db.tables.consultant_message_runs = [];
+  ctx = {
+    tenant: {
+      id: "b",
+      vertical: "consultant",
+      status: "active",
+      modules: { instagram: true },
+      settings: {},
+    },
+    db,
+    timezone: "Asia/Almaty",
+  } as unknown as TenantContext;
+  engine.paused = false;
+  engine.result = null;
+  notifyAdminsHtml.mockClear();
+  runConsultant.mockClear();
+});
+
+const payload = (text: string) =>
+  ({
+    account: { platform: "instagram", accountId: "acc-1" },
+    conversation: { id: "conv-1" },
+    message: { text, platformMessageId: "mid-1", sender: { id: "1" } },
+  }) as never;
+
+function transport(ok: boolean, tail: unknown[] = []) {
+  const send = vi.fn(async () => (ok ? { ok: true } : { ok: false, error: "timeout" }));
+  return { send, t: { send, tail: async () => tail } as unknown as ZernioTransport };
+}
+const usage = { inputTokens: 1, outputTokens: 1, usd: 0.001 };
+const runs = () => db.tables.consultant_message_runs!;
+
+describe("ответ консультанта не подтверждён каналом", () => {
+  it("без передачи — продавцу «ответ не ушёл» с вопросом и ответом, повтора нет, паузы нет", async () => {
+    engine.result = { reply: "Полотенца есть, 9 000 ₸.", handoff: null, usage };
+    const { send, t } = transport(false);
+    const r = await handleZernioMessage(ctx, payload("Есть полотенца?"), t);
+    expect(r.status).toBe("failed");
+    // Отправка могла дойти — второй попытки нет.
+    expect(send).toHaveBeenCalledOnce();
+    expect(pauseConsultant).not.toHaveBeenCalled();
+    expect(notifyAdminsHtml).toHaveBeenCalledOnce();
+    const html = notifyAdminsHtml.mock.calls[0]![1];
+    expect(html).toContain("Ответ консультанта не ушёл покупателю");
+    expect(html).toContain("Есть полотенца?");
+    expect(html).toContain("Полотенца есть, 9 000 ₸.");
+    expect(runs()).toHaveLength(1);
+    expect(runs()[0]).toMatchObject({ status: "terminal_failed", error_code: "send_failed" });
+  });
+
+  it("с передачей — карточка менеджеру с пометкой, что фраза покупателю не ушла", async () => {
+    engine.result = {
+      reply: "Передаю менеджеру.",
+      handoff: { kind: "handoff", reason: "human_requested", summary: "Просит человека" },
+      usage,
+    };
+    const { send, t } = transport(false);
+    await handleZernioMessage(ctx, payload("Позовите менеджера, пожалуйста"), t);
+    expect(send).toHaveBeenCalledOnce();
+    expect(notifyAdminsHtml).toHaveBeenCalledOnce();
+    const html = notifyAdminsHtml.mock.calls[0]![1];
+    expect(html).toContain("Ответ консультанта не ушёл покупателю");
+    expect(html).toContain("Клиент ждёт менеджера");
+    expect(html).toContain("Просит человека");
+  });
+
+  it("продавец с английской админкой — пометка по-английски", async () => {
+    db.tables.app_settings!.push({ key: "admin_locale", value: "en" });
+    engine.result = { reply: "Есть.", handoff: null, usage };
+    await handleZernioMessage(ctx, payload("Есть полотенца?"), transport(false).t);
+    expect(notifyAdminsHtml.mock.calls[0]![1]).toContain(
+      "The consultant's reply did not reach the customer",
+    );
+  });
+
+  it("ответ ушёл — продавцу ничего, строка replied", async () => {
+    engine.result = { reply: "Есть.", handoff: null, usage };
+    await handleZernioMessage(ctx, payload("Есть полотенца?"), transport(true).t);
+    expect(notifyAdminsHtml).not.toHaveBeenCalled();
+    expect(runs()[0]).toMatchObject({ status: "replied", reply_text: "Есть." });
+  });
+});
+
+describe("журнал ответов: ход без ответа", () => {
+  it("консультант на паузе — строка cancelled (для сводки «отвечал менеджер»)", async () => {
+    engine.paused = true;
+    const { send, t } = transport(true);
+    await handleZernioMessage(ctx, payload("Ещё вопрос"), t);
+    expect(runConsultant).not.toHaveBeenCalled();
+    expect(send).not.toHaveBeenCalled();
+    expect(runs()).toHaveLength(1);
+    expect(runs()[0]).toMatchObject({
+      status: "cancelled",
+      reply_kind: "paused",
+      message_id: "mid-1",
+      incoming_text: "Ещё вопрос",
+      sent_at: null,
+    });
+  });
+
+  it("менеджер ответил из приложения — пауза и строка cancelled", async () => {
+    const tail = [
+      {
+        direction: "outgoing",
+        message: "Сейчас подскажу",
+        createdAt: new Date(Date.now() - 60_000).toISOString(),
+      },
+    ];
+    await handleZernioMessage(ctx, payload("а размер?"), transport(true, tail).t);
+    expect(pauseConsultant).toHaveBeenCalled();
+    expect(runs()[0]).toMatchObject({ status: "cancelled", reply_kind: "manager" });
+  });
+
+  it("повтор доставки того же сообщения не плодит строк", async () => {
+    engine.paused = true;
+    await handleZernioMessage(ctx, payload("Ещё вопрос"), transport(true).t);
+    await handleZernioMessage(ctx, payload("Ещё вопрос"), transport(true).t);
+    expect(runs()).toHaveLength(1);
+  });
+});

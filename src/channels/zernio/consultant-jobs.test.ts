@@ -74,9 +74,10 @@ function ctxOf(followUp = "on"): TenantContext {
   } as unknown as TenantContext;
 }
 
-const transport = () => {
+type Tail = Awaited<ReturnType<ZernioTransport["tail"]>>;
+const transport = (tail: () => Promise<Tail> = async () => []) => {
   const send = vi.fn(async () => ({ ok: true as const }));
-  return { t: { send } as unknown as ZernioTransport, send };
+  return { t: { send, tail: vi.fn(tail) } as unknown as ZernioTransport, send };
 };
 const consultantOf = (ctx: TenantContext, key: string) =>
   (
@@ -106,6 +107,22 @@ describe("напоминание замолчавшему покупателю",
     expect(send).toHaveBeenCalledTimes(1);
   });
 
+  it("покупатель выбрал казахский — напоминание на казахском (а без выбора — язык магазина)", async () => {
+    const ctx = ctxOf();
+    const rows = (ctx.db as unknown as { tables: Record<string, Array<Record<string, unknown>>> })
+      .tables.bot_users!;
+    rows[0]!.state = { ...(rows[0]!.state as object), locale: "kk" };
+    const { t, send } = transport();
+    await sendPricelistFollowUps(ctx, now, t);
+    expect((send.mock.calls[0] as unknown[])[2]).toContain("бойынша сұрақтарыңыз қалды ма?");
+
+    const uz = ctxOf();
+    (uz.tenant.settings as { default_locale?: string }).default_locale = "uz";
+    const second = transport();
+    await sendPricelistFollowUps(uz, now, second.t);
+    expect((second.send.mock.calls[0] as unknown[])[2]).toContain("savollaringiz qoldimi?");
+  });
+
   it("два крона одновременно — одно напоминание", async () => {
     const ctx = ctxOf();
     const { t, send } = transport();
@@ -115,6 +132,45 @@ describe("напоминание замолчавшему покупателю",
     ]);
     expect(send).toHaveBeenCalledTimes(1);
     expect(a.sent + b.sent).toBe(1);
+  });
+
+  it("менеджер ответил из приложения после бота — напоминания нет, диалог отмечен", async () => {
+    const ctx = ctxOf();
+    const { t, send } = transport(
+      async () =>
+        [
+          { direction: "incoming", message: "Сколько Zero Twist?", createdAt: hoursAgo(4.1) },
+          { direction: "outgoing", message: "55 000 ₸.", createdAt: hoursAgo(4) },
+          {
+            direction: "outgoing",
+            message: "Добрый день! Могу оформить доставку",
+            createdAt: hoursAgo(2),
+          },
+        ] as Tail,
+    );
+    expect(await sendPricelistFollowUps(ctx, now, t)).toMatchObject({ sent: 0, manager: 1 });
+    expect(send).not.toHaveBeenCalled();
+    expect(consultantOf(ctx, "ig_1").followup_for).toBe(hoursAgo(4));
+    expect(consultantOf(ctx, "ig_1").relayed).toBeUndefined();
+  });
+
+  it("в хвосте только наши ответы — напоминание уходит", async () => {
+    const ctx = ctxOf();
+    const { t, send } = transport(
+      async () => [{ direction: "outgoing", message: "55 000 ₸.", createdAt: hoursAgo(4) }] as Tail,
+    );
+    expect(await sendPricelistFollowUps(ctx, now, t)).toMatchObject({ sent: 1 });
+    expect(send).toHaveBeenCalledTimes(1);
+  });
+
+  it("переписку не прочитали — не пишем и не отмечаем: решит следующий крон", async () => {
+    const ctx = ctxOf();
+    const { t, send } = transport(async () => {
+      throw new Error("Zernio API 500");
+    });
+    expect(await sendPricelistFollowUps(ctx, now, t)).toMatchObject({ sent: 0 });
+    expect(send).not.toHaveBeenCalled();
+    expect(consultantOf(ctx, "ig_1").followup_for).toBeUndefined();
   });
 
   it("выключено у продавца или ночью — не пишем", async () => {

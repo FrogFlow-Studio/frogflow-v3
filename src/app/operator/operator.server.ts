@@ -36,6 +36,7 @@ import {
 import { ensureTelegramWebhook } from "@/channels/telegram/webhook-setup.server";
 import type { Tenant } from "@/core/tenant/types";
 import { foreignZernioAccounts } from "@/core/tenant/zernio-accounts";
+import { pricelistDefaultFor } from "@/core/consultant/pricelist/mode";
 import { addressConflict, telegramBotTaken, vipBotTaken } from "@/core/tenant/directory";
 import { UserError } from "@/core/i18n/user-error";
 import { adminLoginTaken } from "@/core/auth/roles";
@@ -557,10 +558,23 @@ export async function updateClientMeta(
   if (patch.notes !== undefined) upd.notes = patch.notes;
   if (patch.pausedMessage !== undefined) upd.paused_message = patch.pausedMessage;
   if (patch.tags !== undefined) upd.tags = patch.tags;
+  // Ниша сменилась на консультанта BOVI — флаг «по прайсу», если оператор его не трогал.
+  const before =
+    patch.vertical !== undefined
+      ? (await tenantDirectory(true)).find((t) => t.id === botId)
+      : undefined;
   const { error } = await serviceDb().from("bots").update(upd).eq("id", botId);
   if (error) throw serverFailure(error.message);
+  const pricelist =
+    before && before.vertical !== patch.vertical
+      ? pricelistDefaultFor(patch.vertical!, before.settings.consultant_pricelist)
+      : null;
+  if (pricelist) await patchTenantSettings(botId, { consultant_pricelist: pricelist });
   invalidateTenantDirectory();
-  await logEvent(botId, "meta", patch as Record<string, unknown>);
+  await logEvent(botId, "meta", {
+    ...(patch as Record<string, unknown>),
+    ...(pricelist ? { consultant_pricelist: true } : {}),
+  });
 }
 
 export async function setStatus(botId: string, status: Tenant["status"]) {
@@ -850,6 +864,8 @@ export async function createClient(input: {
     MODULE_KEYS.map((k) => [k, moduleDef(k).price === null && moduleDef(k).status === "available"]),
   );
   const settings: Record<string, unknown> = { served_by: "v2", slug: input.ownerId };
+  const pricelist = pricelistDefaultFor(input.vertical, undefined);
+  if (pricelist) settings.consultant_pricelist = pricelist;
   if (input.signup) settings.signup = input.signup;
   if (input.admin) {
     settings.admin = {

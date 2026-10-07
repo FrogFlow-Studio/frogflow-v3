@@ -66,6 +66,8 @@ type Opts = {
   storyMediaUrl?: string;
   fetchImage?: (url: string) => Promise<V2Image | null>;
   onToolCall?: (name: string) => void;
+  /** Курс рубля; null — свежего нет (getFreshRate вернул null). */
+  rate?: PricelistData["rate"];
 };
 
 function dataOf(o: Opts): PricelistData {
@@ -75,7 +77,8 @@ function dataOf(o: Opts): PricelistData {
     shopUrl: "https://bovi.kz",
     store: { address: "Сатпаева, 3", phone: "+7 777", hours: "10–22" },
     articles: knowledgeArticles,
-    rate: { rate: 4.2, updatedAt: DAY.toISOString(), source: "test" },
+    rate:
+      o.rate !== undefined ? o.rate : { rate: 4.2, updatedAt: DAY.toISOString(), source: "test" },
     hours: { open: 10, close: 21 },
     timezone: "Asia/Almaty",
     storyTags: [],
@@ -749,5 +752,92 @@ describe("живой диалог BOVI 27.09: клиентка из Москвы
     expect(turn.tools).toContain("fix:draft:property");
     expect(lastMessage(1)).toContain("непромокаемое");
     expect(turn.reply).toContain("в описании не указано");
+  });
+});
+
+describe("надёжность ответа по прайсу (BOVI 07.10)", () => {
+  it("цена не по прайсу и после переписывания — ответ не уходит, вопрос менеджеру", async () => {
+    responses.push(
+      reply([{ type: "text", text: "Uchino полотенце банное 50х100 - 5 000 ₸." }]),
+      reply([{ type: "text", text: "Uchino полотенце банное 50х100 - 5 000 ₸." }]),
+    );
+    const { d, turn } = await decide("Сколько стоит Uchino?");
+    expect(d.priceBlocked).toBe(true);
+    expect(d.tools.some((t) => t.startsWith("fix:draft_again:") && t.includes("price"))).toBe(true);
+    expect(turn.reply).toBe("Спасибо. Я передам ваш вопрос менеджеру, он скоро с вами свяжется.");
+    expect(turn.reply).not.toContain("5 000");
+    expect(turn.historyReply).toBeUndefined();
+    expect(turn.handoff).toMatchObject({ kind: "handoff", reason: "unknown_question" });
+    expect(turn.handoff!.summary).toContain("не из каталога");
+    expect(turn.handoff!.summary).toContain("Сколько стоит Uchino?");
+    expect(turn.clearError).toBe(false);
+    expect(turn.error).toContain("цена не по прайсу");
+  });
+
+  it("после переписывания осталась только не ценовая мелочь — ответ уходит, как раньше", async () => {
+    responses.push(
+      reply([{ type: "text", text: "Uchino 50х100 - 5 000 ₸. Какой цвет? И размер?" }]),
+      reply([{ type: "text", text: "Uchino 50х100 - 9 000 ₸. Какой цвет? И размер?" }]),
+    );
+    const { d, turn } = await decide("Uchino есть?");
+    expect(d.priceBlocked).toBe(false);
+    expect(turn.handoff).toBeNull();
+    expect(turn.reply).toContain("9 000 ₸");
+  });
+
+  it("передача на казахском: готовая фраза — на языке покупателя, сводка — на языке продавца", async () => {
+    responses.push(
+      reply([{ type: "text", text: "Uchino 50х100 - 5 000 ₸." }]),
+      reply([{ type: "text", text: "Uchino 50х100 - 5 000 ₸." }]),
+    );
+    const { d } = await decide("Uchino бағасы қанша?");
+    const turn = toTurn(d, "Uchino бағасы қанша?", { locale: "kk", sellerLocale: "en" });
+    expect(turn.reply).toBe(
+      "Рахмет. Сұрағыңызды менеджерге жіберемін, ол жақын арада сізбен байланысады.",
+    );
+    expect(turn.handoff!.summary).toContain("not from the catalog");
+  });
+
+  it("рубли без свежего курса — честная пометка вместо обещания замены, цены в тенге", async () => {
+    responses.push(reply([{ type: "text", text: "Uchino 50х100 - 9 000 ₸." }]));
+    const { d, turn } = await decide("Сколько в рублях?", {}, { rate: null });
+    expect(d.rateMissing).toBe(true);
+    expect(lastMessage(0)).toContain("актуального курса сейчас нет");
+    expect(lastMessage(0)).not.toContain("заменятся на рубли автоматически");
+    expect(turn.reply).toBe("Uchino 50х100 - 9 000 ₸.");
+  });
+
+  it("рубли с курсом — прежняя пометка, курс не «пропал»", async () => {
+    responses.push(reply([{ type: "text", text: "Uchino 50х100 - 9 000 ₸." }]));
+    const { d } = await decide("Сколько в рублях?");
+    expect(d.rateMissing).toBe(false);
+    expect(lastMessage(0)).toContain("заменятся на рубли автоматически");
+  });
+
+  it("рублей не просили — курс не нужен, продавца не тревожим", async () => {
+    responses.push(reply([{ type: "text", text: "Uchino 50х100 - 9 000 ₸." }]));
+    const { d } = await decide("Есть полотенца?", {}, { rate: null });
+    expect(d.rateMissing).toBe(false);
+  });
+
+  it("модель не ответила — фраза передачи на языке покупателя (uz)", () => {
+    const turn = toTurn(
+      {
+        reply: "",
+        historyText: "",
+        handoff: null,
+        tools: [],
+        attachments: [],
+        statePatch: {},
+        stopped: "late",
+        rateMissing: false,
+        priceBlocked: false,
+      },
+      "salom",
+      { locale: "uz" },
+    );
+    expect(turn.reply).toBe(
+      "Rahmat. Savolingizni menejerga yuboraman, u tez orada siz bilan bog‘lanadi.",
+    );
   });
 });

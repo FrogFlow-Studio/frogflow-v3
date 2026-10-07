@@ -23,8 +23,10 @@ import {
   type FollowUpState,
 } from "@/core/consultant/pricelist/follow-up";
 import { liveTransport, type ZernioTransport } from "./api.server";
+import { findManagerMessage } from "./manager-guard";
 import type { ZernioPlatform } from "./platform";
 import { pageAll } from "@/core/db/page";
+import { buyerLocale } from "@/core/consultant/messages";
 
 /**
  * Фоновые задачи консультанта по прайсу (крон health, раз в 15 минут, как
@@ -63,7 +65,7 @@ export async function sendPricelistFollowUps(
   ctx: TenantContext,
   now = new Date(),
   transport: ZernioTransport = liveTransport,
-): Promise<{ checked: number; sent: number; skipped?: string }> {
+): Promise<{ checked: number; sent: number; skipped?: string; manager?: number }> {
   if ((await getSetting(ctx, FOLLOW_UP_SETTING_KEY))?.trim() !== "on")
     return { checked: 0, sent: 0, skipped: "off" };
   if (isOffHours(now, pricelistHours(ctx.tenant), ctx.timezone))
@@ -94,9 +96,26 @@ export async function sendPricelistFollowUps(
 
   const { products } = await loadPricelist(ctx);
   let sent = 0;
+  let manager = 0;
   for (const customer of candidates) {
     const memory = memoryOf(customer.state);
-    const text = followUpText(memory, products);
+    const text = followUpText(memory, products, buyerLocale(ctx, customer));
+    // Менеджер ответил из приложения после бота (Zernio исходящих не присылает,
+    // паузы нет) — напоминание от бота поверх человека не шлём, диалог отмечаем.
+    // Переписку прочитать не удалось — не знаем, кто в чате: ждём следующего крона.
+    if (text) {
+      const seen = await managerInChat(customer, memory, transport, now);
+      if (seen === "unknown") continue;
+      if (seen) {
+        await claimStateSection(ctx, customer, "consultant", (cur) =>
+          (cur.followup_for ?? cur.v2_followup_for) === memory.last_reply_at
+            ? null
+            : { ...cur, followup_for: memory.last_reply_at },
+        );
+        manager++;
+        continue;
+      }
+    }
     // Сначала отметка и «свой голос», потом отправка: второй крон не повторит,
     // а проверка «в чате менеджер» узнает своё сообщение (relayed).
     // Отметка — условная по свежему состоянию: если соседний крон уже поставил
@@ -145,7 +164,38 @@ export async function sendPricelistFollowUps(
     }
     sent++;
   }
-  return { checked: rows.length, sent };
+  return { checked: rows.length, sent, ...(manager ? { manager } : {}) };
+}
+
+/** Хвост переписки в Zernio: есть ли ответ человека новее последнего ответа бота. */
+async function managerInChat(
+  customer: ReturnType<typeof customerFromRow>,
+  memory: FollowUpState,
+  transport: ZernioTransport,
+  now: Date,
+): Promise<boolean | "unknown"> {
+  let tail: Awaited<ReturnType<ZernioTransport["tail"]>>;
+  try {
+    tail = await transport.tail(customer.zernioAccountId!, customer.zernioConversationId!);
+  } catch (e) {
+    console.warn(`[followup] переписка ${customer.userKey} не прочитана: ${String(e)}`);
+    return "unknown";
+  }
+  const c = (customer.state.consultant ?? {}) as { relayed?: unknown };
+  const relayed = Array.isArray(c.relayed) ? c.relayed.map(String) : [];
+  return Boolean(
+    findManagerMessage(
+      tail,
+      {
+        lastBotReplyAt: memory.last_reply_at,
+        ourReplies: [
+          ...(memory.recent ?? []).filter((t) => t.role === "assistant").map((t) => t.text),
+          ...relayed,
+        ],
+      },
+      now.getTime(),
+    ),
+  );
 }
 
 /**
