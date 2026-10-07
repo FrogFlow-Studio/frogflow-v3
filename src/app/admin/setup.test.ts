@@ -117,13 +117,13 @@ describe("запуск магазина: процент и список шаго
     expect(setupProgress(none, school, []).total).toBe(7);
   });
 
-  it("консультант без продаж (BOVI): без товаров, оплаты, доставки и первого заказа", () => {
+  it("консультант без продаж (BOVI): без товаров, оплаты, доставки, реквизитов, приветствия витрины и первого заказа", () => {
     const bovi = relevantSetupSteps({
       modules: { shop: true, dm_shop: true },
       vertical: "consultant",
       sells: false,
     });
-    expect(bovi).toEqual(["telegram", "notifications", "legal", "botTexts"]);
+    expect(bovi).toEqual(["telegram", "notifications"]);
     // Консультант с товарами — шаги магазина на месте.
     expect(
       relevantSetupSteps({ modules: { shop: true }, vertical: "consultant", sells: true }),

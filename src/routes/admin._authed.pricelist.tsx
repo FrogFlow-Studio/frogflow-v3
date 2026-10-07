@@ -103,6 +103,9 @@ function FileCard({ t, data, date, canEdit, onDone }: CardProps & { date: (s: st
             source: data.meta.source,
           })}
         </p>
+      ) : data.count > 0 ? (
+        // Прайс из v1 без записи о загрузке: позиции есть, даты нет.
+        <p className="text-sm">{t("pricelist.file.loaded", { count: data.count })}</p>
       ) : (
         <p className="text-sm">{t("pricelist.file.none")}</p>
       )}

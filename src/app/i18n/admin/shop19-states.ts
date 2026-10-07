@@ -8,6 +8,8 @@ export const ru = {
   "customers.emptyTitle": "Покупателей пока нет",
   "customers.emptyHint":
     "Покупатель появляется после первого сообщения боту или заказа на витрине.",
+  "customers.emptyHintChat":
+    "Покупатель появляется после первого сообщения боту, в Instagram или WhatsApp.",
   "states.addProducts": "Добавить товары",
   "categories.emptyTitle": "Категорий пока нет",
   "categories.emptyHint":
@@ -24,6 +26,8 @@ export const kk: SectionDict<typeof ru> = {
   "customers.emptyTitle": "Сатып алушылар әлі жоқ",
   "customers.emptyHint":
     "Сатып алушы ботқа алғашқы хабарлама жазғаннан немесе витринада тапсырыс бергеннен кейін пайда болады.",
+  "customers.emptyHintChat":
+    "Сатып алушы ботқа, Instagram немесе WhatsApp-қа алғашқы хабарлама жазғаннан кейін пайда болады.",
   "states.addProducts": "Тауар қосу",
   "categories.emptyTitle": "Санаттар әлі жоқ",
   "categories.emptyHint":
@@ -40,6 +44,8 @@ export const en: SectionDict<typeof ru> = {
   "customers.emptyTitle": "No buyers yet",
   "customers.emptyHint":
     "A buyer appears after their first message to the bot or an order on the storefront.",
+  "customers.emptyHintChat":
+    "A buyer appears after their first message to the bot, on Instagram or on WhatsApp.",
   "states.addProducts": "Add products",
   "categories.emptyTitle": "No categories yet",
   "categories.emptyHint":
@@ -56,6 +62,8 @@ export const uz: SectionDict<typeof ru> = {
   "customers.emptyTitle": "Xaridorlar hozircha yoʻq",
   "customers.emptyHint":
     "Xaridor botga birinchi xabar yozgach yoki vitrinada buyurtma bergach paydo boʻladi.",
+  "customers.emptyHintChat":
+    "Xaridor botga, Instagram yoki WhatsAppʼga birinchi xabar yozgach paydo boʻladi.",
   "states.addProducts": "Mahsulot qoʻshish",
   "categories.emptyTitle": "Kategoriyalar hozircha yoʻq",
   "categories.emptyHint":

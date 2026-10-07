@@ -2,6 +2,12 @@ import type { SectionDict } from "../section";
 
 /** Запуск магазина на главной (А11): процент готовности, доставка, тексты бота, скрытие шагов. */
 export const ru = {
+  "launch.titleConsultant": "Запуск консультанта",
+  "launch.introConsultant":
+    "Шаги, после которых консультант отвечает покупателям и передаёт вам заявки.",
+  "launch.notificationsConsultant": "Куда присылать заявки",
+  "launch.notificationsConsultantHint":
+    "Ваш Telegram-id в настройках уведомлений: бот пришлёт каждую заявку, которую консультант передаёт вам. Свой id бот скажет по команде /id.",
   "launch.title": "Запуск магазина",
   "launch.percent": "готово на {n}%",
   "launch.skip": "Скрыть",
@@ -19,6 +25,12 @@ export const ru = {
 } as const;
 
 export const kk: SectionDict<typeof ru> = {
+  "launch.titleConsultant": "Кеңесшіні іске қосу",
+  "launch.introConsultant":
+    "Осы қадамдардан кейін кеңесші сатып алушыларға жауап беріп, өтінімдерді сізге жібереді.",
+  "launch.notificationsConsultant": "Өтінімдерді қайда жіберу",
+  "launch.notificationsConsultantHint":
+    "Хабарландыру баптауларындағы Telegram-id: кеңесші сізге берген әр өтінімді бот жібереді. Өз id-іңізді бот /id командасымен айтады.",
   "launch.title": "Дүкенді іске қосу",
   "launch.percent": "{n}% дайын",
   "launch.skip": "Жасыру",
@@ -36,6 +48,12 @@ export const kk: SectionDict<typeof ru> = {
 };
 
 export const en: SectionDict<typeof ru> = {
+  "launch.titleConsultant": "Consultant launch",
+  "launch.introConsultant":
+    "Steps after which the consultant answers buyers and passes requests to you.",
+  "launch.notificationsConsultant": "Where to send requests",
+  "launch.notificationsConsultantHint":
+    "Your Telegram id in the notification settings: the bot sends every request the consultant passes to you. The bot tells you your id with the /id command.",
   "launch.title": "Shop launch",
   "launch.percent": "{n}% ready",
   "launch.skip": "Hide",
@@ -52,6 +70,12 @@ export const en: SectionDict<typeof ru> = {
 };
 
 export const uz: SectionDict<typeof ru> = {
+  "launch.titleConsultant": "Maslahatchini ishga tushirish",
+  "launch.introConsultant":
+    "Bu qadamlardan keyin maslahatchi xaridorlarga javob beradi va soʻrovlarni sizga yuboradi.",
+  "launch.notificationsConsultant": "Soʻrovlarni qayerga yuborish",
+  "launch.notificationsConsultantHint":
+    "Bildirishnoma sozlamalaridagi Telegram-id: maslahatchi sizga uzatgan har bir soʻrovni bot yuboradi. Oʻz id raqamingizni bot /id buyrugʻi bilan aytadi.",
   "launch.title": "Do‘konni ishga tushirish",
   "launch.percent": "{n}% tayyor",
   "launch.skip": "Yashirish",

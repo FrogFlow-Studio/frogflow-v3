@@ -8,6 +8,8 @@ export const ru = {
   "consultant.notConfigured":
     "На платформе не задан ключ Anthropic — консультант не ответит, пока оператор его не добавит. Настройки можно заполнить заранее.",
   "consultant.profile.title": "Профиль бизнеса",
+  "consultant.profile.pricelist":
+    "Консультант отвечает по прайсу. Как он себя называет, тон, особенности товаров, сайт, адрес и часы бутика задаются на странице «Прайс консультанта», в карточках «Образ консультанта» и «Марки, сайт и бутик».",
   "consultant.enable": "Включить консультанта",
   "consultant.enabledHint": "Отвечает на свободный текст в боте",
   "consultant.disabledHint": "Выключен — на свободный текст бот показывает меню",
@@ -93,7 +95,7 @@ export const ru = {
   "consultant.stories.shown": "Показано {n} из {total}",
   "consultant.stories.loadMore": "Показать ещё",
   "consultant.knowledge.pricelist":
-    "Консультант отвечает по прайсу, его база знаний (статей: {n}) — на странице «Прайс консультанта». Там же можно загрузить PDF, Word или текст.",
+    "Там же его база знаний (статей: {n}): статьи можно править или загрузить из PDF, Word и текста.",
   "consultant.knowledge.openPricelist": "Открыть «Прайс консультанта»",
   "consultant.knowledge.pricelistOff":
     "У магазина есть прайс и база знаний с прежней платформы (статей: {n}), но консультант сейчас отвечает не по ним. Попросите оператора включить «Консультант по прайсу» — тогда появится страница «Прайс консультанта».",
@@ -106,6 +108,8 @@ export const kk: SectionDict<typeof ru> = {
   "consultant.notConfigured":
     "Платформада Anthropic кілті орнатылмаған — оператор қоспайынша кеңесші жауап бермейді. Баптауларды алдын ала толтыруға болады.",
   "consultant.profile.title": "Бизнес профилі",
+  "consultant.profile.pricelist":
+    "Кеңесші прайс бойынша жауап береді. Оның өзін қалай атайтыны, сөйлеу мәнері, тауар ерекшеліктері, сайт, мекенжай және бутиктің жұмыс уақыты «Кеңесші прайсы» бетіндегі «Кеңесші бейнесі» және «Маркалар, сайт және бутик» карточкаларында беріледі.",
   "consultant.enable": "Кеңесшіні қосу",
   "consultant.enabledHint": "Боттағы еркін мәтінге жауап береді",
   "consultant.disabledHint": "Өшірулі — еркін мәтінге бот мәзірді көрсетеді",
@@ -192,7 +196,7 @@ export const kk: SectionDict<typeof ru> = {
   "consultant.stories.shown": "{total} ішінен {n} көрсетілді",
   "consultant.stories.loadMore": "Тағы көрсету",
   "consultant.knowledge.pricelist":
-    "Кеңесші прайс бойынша жауап береді, оның білім базасы ({n} мақала) «Кеңесші прайсы» бетінде. Сонда PDF, Word немесе мәтін жүктеуге болады.",
+    "Оның білім базасы ({n} мақала) да сонда: мақалаларды түзетуге немесе PDF, Word және мәтіннен жүктеуге болады.",
   "consultant.knowledge.openPricelist": "«Кеңесші прайсын» ашу",
   "consultant.knowledge.pricelistOff":
     "Дүкенде бұрынғы платформадан прайс пен білім базасы бар ({n} мақала), бірақ кеңесші қазір солар бойынша жауап бермейді. Операторға «Прайс бойынша кеңесшіні» қосуды сұраңыз — сонда «Кеңесші прайсы» беті пайда болады.",
@@ -205,6 +209,8 @@ export const en: SectionDict<typeof ru> = {
   "consultant.notConfigured":
     "The platform has no Anthropic key — the consultant won't reply until the operator adds one. You can fill in the settings in advance.",
   "consultant.profile.title": "Business profile",
+  "consultant.profile.pricelist":
+    "The consultant answers from the price list. Its name, tone, product details, website, address and boutique hours are set on the «Consultant price list» page, in the «Consultant persona» and «Brands, website and store» cards.",
   "consultant.enable": "Enable consultant",
   "consultant.enabledHint": "Replies to free-form text in the bot",
   "consultant.disabledHint": "Off — the bot shows the menu for free-form text",
@@ -291,7 +297,7 @@ export const en: SectionDict<typeof ru> = {
   "consultant.stories.shown": "Showing {n} of {total}",
   "consultant.stories.loadMore": "Show more",
   "consultant.knowledge.pricelist":
-    "The consultant answers from the price list; its knowledge base ({n} articles) is on the «Consultant price list» page. You can upload PDF, Word or text there.",
+    "Its knowledge base ({n} articles) is there too: edit the articles or upload them from PDF, Word or text.",
   "consultant.knowledge.openPricelist": "Open «Consultant price list»",
   "consultant.knowledge.pricelistOff":
     "Your shop has a price list and a knowledge base from the previous platform ({n} articles), but the consultant is not answering from them now. Ask the operator to turn on «Price-list consultant» — the «Consultant price list» page will then appear.",
@@ -304,6 +310,8 @@ export const uz: SectionDict<typeof ru> = {
   "consultant.notConfigured":
     "Platformada Anthropic kaliti o‘rnatilmagan — operator qo‘shmaguncha maslahatchi javob bermaydi. Sozlamalarni oldindan to‘ldirish mumkin.",
   "consultant.profile.title": "Biznes profili",
+  "consultant.profile.pricelist":
+    "Maslahatchi narxnoma boʻyicha javob beradi. Uning oʻzini qanday atashi, ohangi, tovar xususiyatlari, sayt, manzil va butik ish vaqti «Maslahatchi narxnomasi» sahifasidagi «Maslahatchi obrazi» va «Brendlar, sayt va butik» kartochkalarida belgilanadi.",
   "consultant.enable": "Maslahatchini yoqish",
   "consultant.enabledHint": "Botdagi erkin matnga javob beradi",
   "consultant.disabledHint": "O‘chirilgan — erkin matnga bot menyuni ko‘rsatadi",
@@ -391,7 +399,7 @@ export const uz: SectionDict<typeof ru> = {
   "consultant.stories.shown": "{total} tadan {n} tasi ko‘rsatildi",
   "consultant.stories.loadMore": "Yana ko‘rsatish",
   "consultant.knowledge.pricelist":
-    "Maslahatchi narxlar ro‘yxati bo‘yicha javob beradi, uning bilimlar bazasi ({n} ta maqola) «Maslahatchi narxnomasi» sahifasida. U yerda PDF, Word yoki matn yuklash mumkin.",
+    "Uning bilimlar bazasi ({n} ta maqola) ham oʻsha yerda: maqolalarni tahrirlash yoki PDF, Word va matndan yuklash mumkin.",
   "consultant.knowledge.openPricelist": "«Maslahatchi narxnomasi»ni ochish",
   "consultant.knowledge.pricelistOff":
     "Do‘koningizda avvalgi platformadan narxlar ro‘yxati va bilimlar bazasi bor ({n} ta maqola), lekin maslahatchi hozir ular bo‘yicha javob bermayapti. Operatordan «Narxlar bo‘yicha maslahatchi»ni yoqishni so‘rang — shunda «Maslahatchi narxnomasi» sahifasi paydo bo‘ladi.",

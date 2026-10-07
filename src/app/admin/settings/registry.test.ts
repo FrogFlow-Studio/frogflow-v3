@@ -105,6 +105,10 @@ describe("поиск и «изменено недавно»", () => {
       "low-stock",
       "gift-wrap",
       "referral",
+      // Витрина и автосообщения про заказы: у консультанта без продаж их нет.
+      "about",
+      "design",
+      "auto-v3",
     ])
       expect(bovi, gone).not.toContain(gone);
     for (const kept of [

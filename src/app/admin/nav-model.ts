@@ -50,6 +50,12 @@ export type AdminNav = {
   groups: NavGroup[];
   /** Четыре главных пункта нижней панели телефона (остальное — за «Ещё»). */
   primary: NavItem[];
+  /**
+   * Закреплённые под «Обзором» в боковом меню (в группах их тогда нет):
+   * магазину — «Заказы» и «Входящие», консультанту без продаж — консультант,
+   * прайс и «Входящие». Нет значения — как у магазина.
+   */
+  pinned?: string[];
 };
 
 const PHYSICAL = new Set(["confectionery", "flowers"]);
@@ -240,7 +246,8 @@ export function buildAdminNav(shop: NavShop): AdminNav {
       m.manager_chat && chat,
       customers,
     ]).slice(0, 4);
-    return { overview, groups, primary };
+    const pinned = ["/admin/consultant", "/admin/pricelist", "/admin/chat"];
+    return { overview, groups, primary, pinned };
   }
   return { overview, groups, primary: [overview, orders, products, fourth] };
 }

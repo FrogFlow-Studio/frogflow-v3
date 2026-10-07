@@ -94,8 +94,8 @@ export const SETTINGS_REGISTRY: readonly SettingsEntry[] = [
     wide: true,
     keys: ["legal_offer", "legal_privacy", "legal_requisites", "legal_about"],
   }),
-  E({ id: "about", theme: "shop", title: "settings.about.title" }),
-  E({ id: "design", theme: "shop", title: "settings.design.title" }),
+  E({ id: "about", sellsOnly: true, theme: "shop", title: "settings.about.title" }),
+  E({ id: "design", sellsOnly: true, theme: "shop", title: "settings.design.title" }),
   E({ id: "marketplace", sellsOnly: true, theme: "shop", title: "settings.market.title" }),
   E({ id: "community", theme: "shop", title: "settings.community.title" }),
   E({ id: "watermark", sellsOnly: true, theme: "shop", title: "settings.watermark.title" }),
@@ -128,6 +128,7 @@ export const SETTINGS_REGISTRY: readonly SettingsEntry[] = [
   }),
   E({
     id: "auto-v3",
+    sellsOnly: true,
     theme: "shop",
     title: "settings.autoV3.title",
     keys: ["auto_messages_v3"],

@@ -132,7 +132,7 @@ function Dashboard() {
             progress.percent < 100 &&
             !firstWeek && (
               <Card
-                title={`${t("launch.title")} · ${t("launch.percent", { n: progress.percent })}`}
+                title={`${t(sells ? "launch.title" : "launch.titleConsultant")} · ${t("launch.percent", { n: progress.percent })}`}
                 className="mb-6"
                 actions={
                   <button
@@ -150,7 +150,9 @@ function Dashboard() {
                     style={{ width: `${progress.percent}%` }}
                   />
                 </div>
-                <p className="mb-3 text-sm text-muted">{t("overview.stepsIntro")}</p>
+                <p className="mb-3 text-sm text-muted">
+                  {t(sells ? "overview.stepsIntro" : "launch.introConsultant")}
+                </p>
                 <ol className="space-y-2 text-sm">
                   {progress.rows
                     .filter((r) => !r.skipped)
@@ -160,7 +162,7 @@ function Dashboard() {
                         current={next === r.step ? t("overview.next") : null}
                         done={r.done}
                         to={STEP_LINKS[r.step]}
-                        title={stepTitle(r.step, t)}
+                        title={stepTitle(r.step, t, sells)}
                         onSkip={() => void skip.run(r.step, true).catch(() => {})}
                         skipLabel={t("launch.skip")}
                       >
@@ -187,6 +189,8 @@ function Dashboard() {
                           </>
                         ) : r.step === "products" ? (
                           t("launch.productsHint", { n: d.setup.productsCount })
+                        ) : !sells && r.step === "notifications" ? (
+                          t("launch.notificationsConsultantHint")
                         ) : (
                           t(STEP_HINTS[r.step])
                         )}
@@ -204,7 +208,7 @@ function Dashboard() {
                           className="mr-2 underline"
                           onClick={() => void skip.run(r.step, false).catch(() => {})}
                         >
-                          {stepTitle(r.step, t)} · {t("launch.restore")}
+                          {stepTitle(r.step, t, sells)} · {t("launch.restore")}
                         </button>
                       ))}
                   </div>
@@ -356,7 +360,9 @@ const STEP_HINTS = {
   firstOrder: "overview.step.firstOrderHint",
 } as const satisfies Record<SetupStep, AdminKey>;
 
-function stepTitle(step: SetupStep, t: AdminT): string {
+function stepTitle(step: SetupStep, t: AdminT, sells = true): string {
+  // Консультант без продаж получает заявки, а не заказы и чеки.
+  if (!sells && step === "notifications") return t("launch.notificationsConsultant");
   return t(STEP_TITLES[step]);
 }
 

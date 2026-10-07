@@ -136,6 +136,9 @@ function SettingsPage() {
   const t = adminT(shop.locale);
   // Консультанту без продаж разделов оплаты нет — и в заголовке её нет.
   const pageTitle = shop.sells === false ? t("nav.groupSettings") : t("settings.title");
+  // Консультант без продаж (BOVI): витрины, баллов и выдачи материалов у него нет —
+  // эти поля не рисуются и не сохраняются (их значения не трогаем).
+  const sells = shop.sells !== false;
   const router = useRouter();
   const [saved, setSaved] = useState(false);
   // Темы слева, открыта одна («Магазин»); «Все» — отдельный пункт.
@@ -171,9 +174,16 @@ function SettingsPage() {
       data: {
         shop_name: String(f.get("shop_name")),
         shop_currency: String(f.get("shop_currency") || "KZT").toUpperCase(),
-        shop_tagline: String(f.get("shop_tagline") ?? ""),
-        storefront_accent: String(f.get("storefront_accent_on") ? f.get("storefront_accent") : ""),
-        ...(shop.modules.web_storefront
+        ...(sells
+          ? {
+              shop_tagline: String(f.get("shop_tagline") ?? ""),
+              storefront_accent: String(
+                f.get("storefront_accent_on") ? f.get("storefront_accent") : "",
+              ),
+              instruction_caption: String(f.get("instruction_caption")),
+            }
+          : {}),
+        ...(sells && shop.modules.web_storefront
           ? {
               storefront_checkout: JSON.stringify({
                 enabled: Boolean(f.get("storefront_checkout")),
@@ -183,17 +193,16 @@ function SettingsPage() {
           : {}),
         admin_chat_id: String(f.get("admin_chat_id")),
         admin_contact_link: String(f.get("admin_contact_link")),
-        instruction_caption: String(f.get("instruction_caption")),
-        ...(shop.modules.instagram || shop.modules.whatsapp
+        ...(sells && (shop.modules.instagram || shop.modules.whatsapp)
           ? { delivery_email_note: String(f.get("delivery_email_note") ?? "") }
           : {}),
-        ...(shop.modules.loyalty
+        ...(sells && shop.modules.loyalty
           ? {
               loyalty_earn_percent: String(f.get("loyalty_earn_percent") || "5"),
               loyalty_max_redeem_percent: String(f.get("loyalty_max_redeem_percent") || "100"),
             }
           : {}),
-        ...(shop.modules.multi_language
+        ...(sells && shop.modules.multi_language
           ? { delivery_lang_timing: String(f.get("delivery_lang_timing") || "during") }
           : {}),
       },
@@ -350,30 +359,37 @@ function SettingsPage() {
                         </select>
                       </Field>
                     </div>
-                    <Field label={t("settings.shop.tagline")} hint={t("settings.shop.taglineHint")}>
-                      <input
-                        className="input"
-                        name="shop_tagline"
-                        maxLength={160}
-                        defaultValue={settings.shop_tagline ?? ""}
-                      />
-                    </Field>
-                    <Field label={t("settings.shop.accent")} hint={t("settings.shop.accentHint")}>
-                      <div className="flex items-center gap-3">
+                    {sells && (
+                      <Field
+                        label={t("settings.shop.tagline")}
+                        hint={t("settings.shop.taglineHint")}
+                      >
                         <input
-                          type="checkbox"
-                          name="storefront_accent_on"
-                          defaultChecked={Boolean(settings.storefront_accent)}
+                          className="input"
+                          name="shop_tagline"
+                          maxLength={160}
+                          defaultValue={settings.shop_tagline ?? ""}
                         />
-                        <input
-                          type="color"
-                          name="storefront_accent"
-                          className="h-9 w-16 rounded border border-line"
-                          defaultValue={settings.storefront_accent || "#2f9e5f"}
-                        />
-                      </div>
-                    </Field>
-                    {shop.modules.web_storefront && (
+                      </Field>
+                    )}
+                    {sells && (
+                      <Field label={t("settings.shop.accent")} hint={t("settings.shop.accentHint")}>
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="checkbox"
+                            name="storefront_accent_on"
+                            defaultChecked={Boolean(settings.storefront_accent)}
+                          />
+                          <input
+                            type="color"
+                            name="storefront_accent"
+                            className="h-9 w-16 rounded border border-line"
+                            defaultValue={settings.storefront_accent || "#2f9e5f"}
+                          />
+                        </div>
+                      </Field>
+                    )}
+                    {sells && shop.modules.web_storefront && (
                       <Field
                         label={t("settings.shop.webCheckout")}
                         hint={t("settings.shop.webCheckoutHint")}
@@ -387,7 +403,7 @@ function SettingsPage() {
                         />
                       </Field>
                     )}
-                    {shop.modules.web_storefront && (
+                    {sells && shop.modules.web_storefront && (
                       <Field
                         label={t("settings.shop.tgLogin")}
                         hint={t("settings.shop.tgLoginHint")}
@@ -409,7 +425,7 @@ function SettingsPage() {
                         placeholder="https://t.me/username"
                       />
                     </Field>
-                    {shop.modules.loyalty && (
+                    {sells && shop.modules.loyalty && (
                       <Field
                         label={t("settings.shop.loyaltyPercent")}
                         hint={t("settings.shop.loyaltyHint")}
@@ -424,7 +440,7 @@ function SettingsPage() {
                         />
                       </Field>
                     )}
-                    {shop.modules.loyalty && (
+                    {sells && shop.modules.loyalty && (
                       <Field
                         label={t("settings.shop.loyaltyMaxRedeem")}
                         hint={t("settings.shop.loyaltyMaxRedeemHint")}
@@ -439,7 +455,7 @@ function SettingsPage() {
                         />
                       </Field>
                     )}
-                    {shop.modules.multi_language && (
+                    {sells && shop.modules.multi_language && (
                       <Field
                         label={t("settings.shop.langTiming")}
                         hint={t("settings.shop.langTimingHint")}
@@ -454,15 +470,17 @@ function SettingsPage() {
                         </select>
                       </Field>
                     )}
-                    <Field label={t("settings.shop.instruction")}>
-                      <textarea
-                        className="input"
-                        name="instruction_caption"
-                        rows={3}
-                        defaultValue={settings.instruction_caption ?? ""}
-                      />
-                    </Field>
-                    {(shop.modules.instagram || shop.modules.whatsapp) && (
+                    {sells && (
+                      <Field label={t("settings.shop.instruction")}>
+                        <textarea
+                          className="input"
+                          name="instruction_caption"
+                          rows={3}
+                          defaultValue={settings.instruction_caption ?? ""}
+                        />
+                      </Field>
+                    )}
+                    {sells && (shop.modules.instagram || shop.modules.whatsapp) && (
                       <Field
                         label={t("settings.shop.deliveryNote")}
                         hint={t("settings.shop.deliveryNoteHint")}

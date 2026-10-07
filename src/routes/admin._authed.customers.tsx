@@ -76,8 +76,13 @@ function CustomersPage() {
         ) : (
           <EmptyState
             title={t("customers.emptyTitle")}
-            hint={t("customers.emptyHint")}
-            action={{ label: t("states.addProducts"), to: "/admin/products" }}
+            // Консультант без продаж: покупатели приходят из переписки, товаров у него нет.
+            hint={t(shop.sells === false ? "customers.emptyHintChat" : "customers.emptyHint")}
+            action={
+              shop.sells === false
+                ? undefined
+                : { label: t("states.addProducts"), to: "/admin/products" }
+            }
           />
         )
       ) : (

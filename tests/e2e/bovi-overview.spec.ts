@@ -19,11 +19,13 @@ test("консультант без продаж: «Обзор» без карт
   const errors = await watch(page);
   await login(page);
   await expect(page.getByText("Покупателей", { exact: true })).toBeVisible();
-  // «Запуск» остаётся, но без шагов про продажу.
-  await expect(page.getByText("Подключить бота в Telegram", { exact: true })).toBeVisible();
+  // У консультанта в «Запуске» только Telegram и уведомления: оба сделаны — карточки нет.
+  await expect(page.getByText(/^Запуск (магазина|консультанта)/)).toHaveCount(0);
   await expect(page.getByText("Первые 7 дней", { exact: true })).toHaveCount(0);
   await expect(page.getByText("Добавьте и включите товар", { exact: true })).toHaveCount(0);
   await expect(page.getByText("Добавить 5 товаров", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Заполнить реквизиты продавца", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Написать приветствие магазина", { exact: true })).toHaveCount(0);
   await expect(page.getByText("Последние заказы", { exact: true })).toHaveCount(0);
   await expect(page.getByText("Выручка за 30 дней", { exact: true })).toHaveCount(0);
   await expect(page.getByText("Товаров в продаже", { exact: true })).toHaveCount(0);
@@ -58,9 +60,13 @@ test("консультант без продаж: в меню нет заказ�
     for (const x of hasNot)
       await expect(menu.getByRole("link", { name: x, exact: true }), x).toHaveCount(0);
   };
+  // Консультант и прайс закреплены сверху, как «Заказы» у магазина: видны без раскрытия групп.
+  for (const x of ["ИИ-консультант", "Прайс консультанта"])
+    await expect(menu.getByRole("link", { name: x, exact: true }), x).toBeVisible();
   await group("Продажи", ["Покупатели"], ["Заказы"]);
-  await group("Каталог", ["Прайс консультанта"], ["Товары", "Категории"]);
-  await group("Маркетинг", ["ИИ-консультант"], ["Поделиться"]);
+  // В «Каталоге» был только прайс — он сверху, пустой группы нет.
+  await expect(menu.getByRole("group", { name: "Каталог", exact: true })).toHaveCount(0);
+  await group("Маркетинг", ["Instagram"], ["Поделиться", "Товары", "Категории"]);
   await group("Настройки", ["Настройки"], ["Оплата и настройки", "Комиссия"]);
   await expect(menu.getByRole("group", { name: "Аналитика", exact: true })).toHaveCount(0);
 
@@ -74,8 +80,13 @@ test("консультант без продаж: в меню нет заказ�
     "Физические товары: получение и оплата",
     "Зоны доставки",
     "Защита PDF от перепродажи",
+    "Оформление витрины",
+    "Новые автосообщения",
   ])
     await expect(page.getByText(title, { exact: true }), title).toBeHidden();
+  // В карточке «Магазин» нет полей витрины и выдачи материалов.
+  for (const label of ["Подзаголовок витрины", "Цвет витрины", "Текст инструкции покупателю"])
+    await expect(page.getByText(label, { exact: true }), label).toHaveCount(0);
 
   // Скрытые из меню страницы по прямой ссылке открываются без ошибок.
   for (const path of ["/admin/orders", "/admin/products"]) {
@@ -85,5 +96,24 @@ test("консультант без продаж: в меню нет заказ�
       /Cannot read|undefined|TypeError|Internal Server Error/,
     );
   }
+  expect(errors).toEqual([]);
+});
+
+test("консультант по прайсу: на странице консультанта нет полей, которые прайс не читает", async ({
+  page,
+}) => {
+  const errors = await watch(page);
+  await login(page);
+  await page.goto("/admin/consultant");
+  await expect(
+    page.getByText(/Консультант отвечает по прайсу\. Как он себя называет/),
+  ).toBeVisible();
+  for (const label of ["Условия доставки", "Условия оплаты", "Цель диалога", "Тон общения"])
+    await expect(page.getByText(label, { exact: true }), label).toHaveCount(0);
+  // Включатель и пауза остаются: их консультант по прайсу слушает.
+  await expect(page.getByText("Когда отвечает человек, бот молчит", { exact: true })).toBeVisible();
+  await page.goto("/admin/customers");
+  await expect(page.getByText("Покупателей пока нет", { exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Добавить товары", exact: true })).toHaveCount(0);
   expect(errors).toEqual([]);
 });

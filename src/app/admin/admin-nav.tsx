@@ -50,10 +50,10 @@ function ItemLink({
 }
 
 /** Закреплённые сверху: самые частые пункты, в группах их нет. */
-const PINNED = new Set(["/admin/orders", "/admin/chat"]);
+const PINNED = ["/admin/orders", "/admin/chat"];
 
 /**
- * Меню: «Обзор» и закреплённые «Заказы»/«Входящие» сверху, ниже группы-аккордеон.
+ * Меню: «Обзор» и закреплённые пункты сверху (`nav.pinned`, у магазина — «Заказы»/«Входящие»), ниже группы-аккордеон.
  * Раскрыта одна группа — с текущей страницей, остальные свёрнуты до заголовка.
  */
 export function AdminNavLinks({
@@ -66,9 +66,14 @@ export function AdminNavLinks({
   onNavigate?: () => void;
 }) {
   const isActive = useActive();
-  const pinned = nav.groups.flatMap((g) => g.items).filter((i) => PINNED.has(i.to));
+  const order = nav.pinned ?? PINNED;
+  const isPinned = (i: NavItem) => !i.hash && order.includes(i.to);
+  const pinned = nav.groups
+    .flatMap((g) => g.items)
+    .filter(isPinned)
+    .sort((a, b) => order.indexOf(a.to) - order.indexOf(b.to));
   const groups = nav.groups
-    .map((g) => ({ ...g, items: g.items.filter((i) => !PINNED.has(i.to)) }))
+    .map((g) => ({ ...g, items: g.items.filter((i) => !isPinned(i)) }))
     .filter((g) => g.items.length > 0);
   const activeGroup = groups.find((g) => g.items.some(isActive))?.id ?? null;
   const [open, setOpen] = useState<string | null>(activeGroup);

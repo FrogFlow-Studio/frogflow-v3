@@ -130,6 +130,9 @@ describe("меню админки", () => {
     expect(n.groups.find((g) => g.id === "catalog")?.items.map((i) => i.to)).toEqual([
       "/admin/pricelist",
     ]);
+    // В боковом меню консультант и прайс закреплены сверху, а не спрятаны в группах.
+    expect(n.pinned).toEqual(["/admin/consultant", "/admin/pricelist", "/admin/chat"]);
+    expect(buildAdminNav(shop({ vertical: "consultant" })).pinned).toBeUndefined();
     const settingsLabel = (s: NavShop) =>
       buildAdminNav(s)
         .groups.flatMap((g) => g.items)

@@ -89,137 +89,150 @@ function ConsultantPage() {
                 ))}
               </select>
             </Field>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Field label={t("consultant.brandName")}>
-                <input
-                  className="input"
-                  value={profile.brand_name}
-                  onChange={(e) => set("brand_name", e.target.value)}
-                />
-              </Field>
-              <Field label={t("consultant.website")} hint={t("consultant.optional")}>
-                <input
-                  className="input"
-                  value={profile.website_url ?? ""}
-                  onChange={(e) => set("website_url", e.target.value || undefined)}
-                  placeholder="https://"
-                />
-              </Field>
-              <Field label={t("consultant.goal")}>
-                <select
-                  className="input"
-                  value={profile.goal}
-                  onChange={(e) => set("goal", e.target.value as ConsultantProfile["goal"])}
-                >
-                  {GOALS.map((g) => (
-                    <option key={g} value={g}>
-                      {t(`consultant.goal.${g}` as AdminKey)}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-              <Field label={t("consultant.tone")}>
-                <select
-                  className="input"
-                  value={profile.tone}
-                  onChange={(e) => set("tone", e.target.value as ConsultantProfile["tone"])}
-                >
-                  {TONES.map((tone) => (
-                    <option key={tone} value={tone}>
-                      {t(`consultant.tone.${tone}` as AdminKey)}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-              <Field label={t("consultant.language")} hint={t("consultant.languageHint")}>
-                <select
-                  className="input"
-                  value={profile.primary_language}
-                  onChange={(e) =>
-                    set("primary_language", e.target.value as ConsultantProfile["primary_language"])
-                  }
-                >
-                  <option value="ru">Русский</option>
-                  <option value="kk">Қазақша</option>
-                  <option value="en">English</option>
-                </select>
-              </Field>
-              <Field label={t("consultant.currency")}>
-                <input
-                  className="input"
-                  value={profile.currency}
-                  maxLength={3}
-                  onChange={(e) => set("currency", e.target.value.toUpperCase())}
-                />
-              </Field>
-              <Field label={t("consultant.countries")} hint={t("consultant.countriesHint")}>
-                <input
-                  className="input"
-                  value={profile.countries.join(", ")}
-                  onChange={(e) =>
-                    set(
-                      "countries",
-                      e.target.value
-                        .split(",")
-                        .map((c) => c.trim().toUpperCase())
-                        .filter(Boolean),
-                    )
-                  }
-                />
-              </Field>
-            </div>
-            <div className="mt-3 space-y-3">
-              <Field label={t("consultant.about")} hint={t("consultant.aboutHint")}>
-                <textarea
-                  className="input min-h-20"
-                  value={profile.about ?? ""}
-                  onChange={(e) => set("about", e.target.value || undefined)}
-                />
-              </Field>
-              <Field label={t("consultant.delivery")}>
-                <textarea
-                  className="input min-h-16"
-                  value={profile.delivery_info ?? ""}
-                  onChange={(e) => set("delivery_info", e.target.value || undefined)}
-                  placeholder={t("consultant.deliveryPlaceholder")}
-                />
-              </Field>
-              <Field label={t("consultant.payment")}>
-                <textarea
-                  className="input min-h-16"
-                  value={profile.payment_info ?? ""}
-                  onChange={(e) => set("payment_info", e.target.value || undefined)}
-                  placeholder={t("consultant.paymentPlaceholder")}
-                />
-              </Field>
-              <Field label={t("consultant.instructions")} hint={t("consultant.instructionsHint")}>
-                <textarea
-                  className="input min-h-20"
-                  value={profile.custom_instructions ?? ""}
-                  onChange={(e) => set("custom_instructions", e.target.value || undefined)}
-                />
-              </Field>
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={Boolean(profile.medical_disclaimer)}
-                  onChange={(e) => set("medical_disclaimer", e.target.checked)}
-                />
-                {t("consultant.medicalDisclaimer")}
-              </label>
-            </div>
+            {/* По прайсу эти поля не читаются: образ, сайт и часы — на странице прайса. */}
+            {data.pricelist.on ? (
+              <>
+                <p className="text-sm">{t("consultant.profile.pricelist")}</p>
+                <p className="mt-2 text-sm">
+                  {t("consultant.knowledge.pricelist", { n: String(data.pricelist.articles) })}
+                </p>
+                <Link to="/admin/pricelist" className="btn-secondary mt-3 inline-block text-sm">
+                  {t("consultant.knowledge.openPricelist")}
+                </Link>
+              </>
+            ) : (
+              <>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Field label={t("consultant.brandName")}>
+                    <input
+                      className="input"
+                      value={profile.brand_name}
+                      onChange={(e) => set("brand_name", e.target.value)}
+                    />
+                  </Field>
+                  <Field label={t("consultant.website")} hint={t("consultant.optional")}>
+                    <input
+                      className="input"
+                      value={profile.website_url ?? ""}
+                      onChange={(e) => set("website_url", e.target.value || undefined)}
+                      placeholder="https://"
+                    />
+                  </Field>
+                  <Field label={t("consultant.goal")}>
+                    <select
+                      className="input"
+                      value={profile.goal}
+                      onChange={(e) => set("goal", e.target.value as ConsultantProfile["goal"])}
+                    >
+                      {GOALS.map((g) => (
+                        <option key={g} value={g}>
+                          {t(`consultant.goal.${g}` as AdminKey)}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                  <Field label={t("consultant.tone")}>
+                    <select
+                      className="input"
+                      value={profile.tone}
+                      onChange={(e) => set("tone", e.target.value as ConsultantProfile["tone"])}
+                    >
+                      {TONES.map((tone) => (
+                        <option key={tone} value={tone}>
+                          {t(`consultant.tone.${tone}` as AdminKey)}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                  <Field label={t("consultant.language")} hint={t("consultant.languageHint")}>
+                    <select
+                      className="input"
+                      value={profile.primary_language}
+                      onChange={(e) =>
+                        set(
+                          "primary_language",
+                          e.target.value as ConsultantProfile["primary_language"],
+                        )
+                      }
+                    >
+                      <option value="ru">Русский</option>
+                      <option value="kk">Қазақша</option>
+                      <option value="en">English</option>
+                    </select>
+                  </Field>
+                  <Field label={t("consultant.currency")}>
+                    <input
+                      className="input"
+                      value={profile.currency}
+                      maxLength={3}
+                      onChange={(e) => set("currency", e.target.value.toUpperCase())}
+                    />
+                  </Field>
+                  <Field label={t("consultant.countries")} hint={t("consultant.countriesHint")}>
+                    <input
+                      className="input"
+                      value={profile.countries.join(", ")}
+                      onChange={(e) =>
+                        set(
+                          "countries",
+                          e.target.value
+                            .split(",")
+                            .map((c) => c.trim().toUpperCase())
+                            .filter(Boolean),
+                        )
+                      }
+                    />
+                  </Field>
+                </div>
+                <div className="mt-3 space-y-3">
+                  <Field label={t("consultant.about")} hint={t("consultant.aboutHint")}>
+                    <textarea
+                      className="input min-h-20"
+                      value={profile.about ?? ""}
+                      onChange={(e) => set("about", e.target.value || undefined)}
+                    />
+                  </Field>
+                  <Field label={t("consultant.delivery")}>
+                    <textarea
+                      className="input min-h-16"
+                      value={profile.delivery_info ?? ""}
+                      onChange={(e) => set("delivery_info", e.target.value || undefined)}
+                      placeholder={t("consultant.deliveryPlaceholder")}
+                    />
+                  </Field>
+                  <Field label={t("consultant.payment")}>
+                    <textarea
+                      className="input min-h-16"
+                      value={profile.payment_info ?? ""}
+                      onChange={(e) => set("payment_info", e.target.value || undefined)}
+                      placeholder={t("consultant.paymentPlaceholder")}
+                    />
+                  </Field>
+                  <Field
+                    label={t("consultant.instructions")}
+                    hint={t("consultant.instructionsHint")}
+                  >
+                    <textarea
+                      className="input min-h-20"
+                      value={profile.custom_instructions ?? ""}
+                      onChange={(e) => set("custom_instructions", e.target.value || undefined)}
+                    />
+                  </Field>
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(profile.medical_disclaimer)}
+                      onChange={(e) => set("medical_disclaimer", e.target.checked)}
+                    />
+                    {t("consultant.medicalDisclaimer")}
+                  </label>
+                </div>
+              </>
+            )}
           </Card>
 
-          {data.pricelist.on ? (
-            <Card title={t("consultant.knowledge.title")}>
-              <p className="text-sm">
-                {t("consultant.knowledge.pricelist", { n: String(data.pricelist.articles) })}
-              </p>
-              <Link to="/admin/pricelist" className="btn-secondary mt-3 inline-block text-sm">
-                {t("consultant.knowledge.openPricelist")}
-              </Link>
-            </Card>
-          ) : (
+          {/* По прайсу база знаний — на странице прайса: ссылка на неё в карточке выше. */}
+          {data.pricelist.on ? null : (
             <>
               {(data.pricelist.articles > 0 || data.pricelist.hasCatalog) && (
                 <div className="rounded-md border border-warn/40 bg-warn/15 px-3 py-2 text-sm">
