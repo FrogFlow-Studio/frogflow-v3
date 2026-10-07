@@ -9,11 +9,27 @@ import { z } from "zod";
  * Иначе normalizeDmButtons (channels/zernio/api.server) превратил бы
  * команду с оставшейся ссылкой в кнопку-ссылку.
  */
+/**
+ * Команды бота регистрозависимы («CATALOG», «PROD:<id>»): «catalog» строчными
+ * бот не узнавал, и покупатель получал второе сообщение правила ещё раз
+ * (Кристина Дидактика, 07.10). Поднимаем только имя команды, id не трогаем.
+ */
+function commandHeadUpper(payload: unknown): unknown {
+  if (typeof payload !== "string") return payload;
+  const p = payload.trim();
+  const i = p.indexOf(":");
+  const head = i < 0 ? p : p.slice(0, i);
+  // «/start» и прочие не-команды магазина оставляем как есть.
+  if (!/^[a-z_]+$/i.test(head)) return p;
+  return head.toUpperCase() + (i < 0 ? "" : p.slice(i));
+}
+
 export const buttonSchema = z.preprocess(
   (raw) => {
     if (!raw || typeof raw !== "object") return raw;
     const b = raw as Record<string, unknown>;
-    if (b.type === "postback") return { type: b.type, title: b.title, payload: b.payload };
+    if (b.type === "postback")
+      return { type: b.type, title: b.title, payload: commandHeadUpper(b.payload) };
     if (b.type === "url") return { type: b.type, title: b.title, url: b.url };
     return raw;
   },

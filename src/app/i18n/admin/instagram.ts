@@ -60,6 +60,10 @@ export const ru = {
   "instagram.buttons.add": "+ Кнопка",
   "instagram.buttons.openTelegram": "Открыть в Telegram ✈️",
   "instagram.buttons.addTelegram": "+ В Telegram-бот",
+  "instagram.buttons.addProduct": "+ Товар",
+  "instagram.buttons.buyTitle": "Купить",
+  "instagram.buttons.productHint":
+    "Покупатель нажмёт кнопку — бот пришлёт карточку этого товара с кнопкой «В корзину».",
   // форма правила
   "instagram.form.editTitle": "Изменить правило",
   "instagram.form.newTitle": "Новое правило",
@@ -183,6 +187,10 @@ export const kk: SectionDict<typeof ru> = {
   "instagram.buttons.add": "+ Түйме",
   "instagram.buttons.openTelegram": "Telegram-да ашу ✈️",
   "instagram.buttons.addTelegram": "+ Telegram-ботқа",
+  "instagram.buttons.addProduct": "+ Тауар",
+  "instagram.buttons.buyTitle": "Сатып алу",
+  "instagram.buttons.productHint":
+    "Сатып алушы түймені басады — бот осы тауардың карточкасын «Себетке» түймесімен жібереді.",
   "instagram.form.editTitle": "Ережені өзгерту",
   "instagram.form.newTitle": "Жаңа ереже",
   "instagram.form.name": "Атауы",
@@ -304,6 +312,10 @@ export const en: SectionDict<typeof ru> = {
   "instagram.buttons.add": "+ Button",
   "instagram.buttons.openTelegram": "Open in Telegram ✈️",
   "instagram.buttons.addTelegram": "+ To Telegram bot",
+  "instagram.buttons.addProduct": "+ Product",
+  "instagram.buttons.buyTitle": "Buy",
+  "instagram.buttons.productHint":
+    "The buyer taps the button and the bot sends this product's card with an «Add to cart» button.",
   "instagram.form.editTitle": "Edit rule",
   "instagram.form.newTitle": "New rule",
   "instagram.form.name": "Name",
@@ -426,6 +438,10 @@ export const uz: SectionDict<typeof ru> = {
   "instagram.buttons.add": "+ Tugma",
   "instagram.buttons.openTelegram": "Telegram-da ochish ✈️",
   "instagram.buttons.addTelegram": "+ Telegram-botga",
+  "instagram.buttons.addProduct": "+ Mahsulot",
+  "instagram.buttons.buyTitle": "Sotib olish",
+  "instagram.buttons.productHint":
+    "Xaridor tugmani bosadi — bot shu mahsulot kartochkasini «Savatga» tugmasi bilan yuboradi.",
   "instagram.form.editTitle": "Qoidani o‘zgartirish",
   "instagram.form.newTitle": "Yangi qoida",
   "instagram.form.name": "Nomi",

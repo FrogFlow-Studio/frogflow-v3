@@ -22,6 +22,16 @@ describe("форма правила Instagram", () => {
     });
     expect(b).not.toHaveProperty("url");
   });
+  it("имя команды боту — заглавными, id товара не трогаем", () => {
+    const pb = (payload: string) =>
+      (buttonSchema.parse({ type: "postback", title: "к", payload }) as { payload?: string })
+        .payload;
+    expect(pb("catalog")).toBe("CATALOG");
+    expect(pb(" prod:3fa85f64-5717-4562-b3fc-2c963f66afa6 ")).toBe(
+      "PROD:3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    );
+    expect(pb("/start")).toBe("/start");
+  });
   it("ссылка по-прежнему проверяется", () => {
     expect(() => buttonSchema.parse({ type: "url", title: "сайт", url: "" })).toThrow();
     expect(

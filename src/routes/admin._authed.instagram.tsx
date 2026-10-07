@@ -13,6 +13,7 @@ import {
   toggleAutomationFn,
 } from "@/app/admin/instagram.functions";
 import { adminT, intlLocale, type AdminKey, type AdminT } from "@/app/i18n/admin";
+import { ProductSearch } from "@/app/admin/product-picker";
 import { Badge, Card, Empty, ErrorBox, Field, PageTitle, Switch, useAction } from "@/app/ui";
 import {
   DEFAULT_REPLY_PROMPT,
@@ -389,6 +390,7 @@ function ButtonsEditor({
   telegramUsername: string | null;
 }) {
   const { t } = useAdminI18n();
+  const [picking, setPicking] = useState(false);
   const update = (i: number, patch: Partial<Button>) =>
     onChange(buttons.map((b, j) => (j === i ? { ...b, ...patch } : b)));
   return (
@@ -443,6 +445,13 @@ function ButtonsEditor({
           >
             {t("instagram.buttons.add")}
           </button>
+          <button
+            type="button"
+            className="btn-secondary text-xs"
+            onClick={() => setPicking((v) => !v)}
+          >
+            {t("instagram.buttons.addProduct")}
+          </button>
           {telegramUsername && (
             <button
               type="button"
@@ -461,6 +470,26 @@ function ButtonsEditor({
               {t("instagram.buttons.addTelegram")}
             </button>
           )}
+        </div>
+      )}
+      {picking && buttons.length < 3 && (
+        <div className="space-y-1">
+          <p className="text-xs text-muted">{t("instagram.buttons.productHint")}</p>
+          <ProductSearch
+            t={t}
+            autoFocus
+            onPick={(p) => {
+              onChange([
+                ...buttons,
+                {
+                  type: "postback",
+                  title: t("instagram.buttons.buyTitle"),
+                  payload: `PROD:${p.id}`,
+                },
+              ]);
+              setPicking(false);
+            }}
+          />
         </div>
       )}
     </div>
