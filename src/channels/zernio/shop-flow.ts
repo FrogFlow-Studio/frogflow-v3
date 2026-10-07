@@ -392,8 +392,9 @@ export function emailStep(p: {
   mailReady: boolean;
 }): "required" | "optional" | null {
   if (!p.mailReady || p.physical || p.knownEmail?.trim()) return null;
-  if (p.platform === "instagram") return "required";
-  if (p.platform === "whatsapp" && !p.skipped) return "optional";
+  // Файлы приходят ссылками и кнопкой «Скачать» прямо в переписку (deliver.ts),
+  // почта — дополнительно: и в Instagram её можно пропустить.
+  if ((p.platform === "instagram" || p.platform === "whatsapp") && !p.skipped) return "optional";
   return null;
 }
 

@@ -301,6 +301,8 @@ export type Msg = {
   nativeCartForwarded: string;
   /** Выдача ссылками в Direct и WhatsApp (channels/zernio/deliver). */
   deliveryLinksExpire: string;
+  /** Кнопка-ссылка на файл в Instagram Direct (до 20 знаков). */
+  downloadBtn: string;
   deliveryOrderPage: string;
   notReceiptLike: (no: string) => string;
   receiptPaymentFailed: (no: string) => string;
@@ -392,7 +394,7 @@ const ru: Msg = {
     `❌ Чек на остаток по заказу #${no} продавец не принял. Оплатите остаток ещё раз или пришлите другой чек; вопросы — продавцу.`,
   emailSaveFailed: "Не получилось сохранить почту. Пришлите адрес ещё раз, пожалуйста.",
   emailAsk:
-    "На какую почту прислать материалы после оплаты? Instagram не умеет пересылать документы, поэтому файлы уходят письмом.\n\nПроверьте адрес: без лишних пробелов и ошибок, например anna@mail.ru",
+    "На какую почту прислать материалы после оплаты? Файлы придут и сюда, и письмом.\n\nПроверьте адрес: без лишних пробелов и ошибок, например anna@mail.ru",
   emailAskOptional:
     "Прислать материалы ещё и на почту? Напишите адрес, например anna@mail.ru, или нажмите «Без почты».",
   emailSkipBtn: "Без почты",
@@ -402,7 +404,7 @@ const ru: Msg = {
   proofReceivedEmail: (no, email) =>
     `✅ Чек по заказу #${no} получен. После проверки пришлём материалы сюда и на ${email}.`,
   proofReceivedNeedEmail: (no) =>
-    `✅ Чек по заказу #${no} получен.\n\nНа какую почту прислать материалы? Instagram не умеет пересылать документы, поэтому файлы уходят письмом. Проверьте адрес перед отправкой.`,
+    `✅ Чек по заказу #${no} получен.\n\nНа какую почту прислать материалы? Файлы придут и сюда, и письмом. Проверьте адрес перед отправкой.`,
   notReceiptLike: (no) =>
     `⚠️ Это не похоже на чек оплаты.\n\nПришлите, пожалуйста, скриншот перевода / чека с суммой заказа #${no}.`,
   receiptPaymentFailed: (no) =>
@@ -751,6 +753,7 @@ const ru: Msg = {
   nativeCartForwarded:
     "Получил вашу корзину из каталога и передал продавцу — он подтвердит заказ и напишет здесь.",
   deliveryLinksExpire: "Ссылки на файлы действуют 7 дней.",
+  downloadBtn: "📥 Скачать",
   deliveryOrderPage: "Все файлы заказа — на странице:",
   yourId: (id) => `Ваш Telegram ID: <code>${id}</code>`,
   fileLink: "📥 Нажмите здесь, чтобы скачать файл",
@@ -844,7 +847,7 @@ const kk: Msg = {
   payReminderLink: (url) => `Төлеуге және чекті жіберуге тапсырыс бетінде болады:\n${url}`,
   emailSaveFailed: "Поштаны сақтау мүмкін болмады. Мекенжайды қайта жіберіңізші.",
   emailAsk:
-    "Төлемнен кейін материалдарды қай поштаға жіберейік? Instagram құжаттарды жібере алмайды, сондықтан файлдар хатпен кетеді.\n\nМекенжайды тексеріңіз: артық бос орынсыз және қатесіз, мысалы anna@mail.ru",
+    "Төлемнен кейін материалдарды қай поштаға жіберейік? Файлдар осында да, хатпен де келеді.\n\nМекенжайды тексеріңіз: артық бос орынсыз және қатесіз, мысалы anna@mail.ru",
   emailAskOptional:
     "Материалдарды поштаға да жіберейік пе? Мекенжайды жазыңыз, мысалы anna@mail.ru, немесе «Поштасыз» түймесін басыңыз.",
   emailSkipBtn: "Поштасыз",
@@ -855,7 +858,7 @@ const kk: Msg = {
   proofReceivedEmail: (no, email) =>
     `✅ #${no} тапсырыстың чегі алынды. Тексерістен кейін материалдарды осында және ${email} мекенжайына жібереміз.`,
   proofReceivedNeedEmail: (no) =>
-    `✅ #${no} тапсырыстың чегі алынды.\n\nМатериалдарды қай поштаға жіберейік? Instagram құжаттарды жібере алмайды, сондықтан файлдар хатпен кетеді. Жібермес бұрын мекенжайды тексеріңіз.`,
+    `✅ #${no} тапсырыстың чегі алынды.\n\nМатериалдарды қай поштаға жіберейік? Файлдар осында да, хатпен де келеді. Жібермес бұрын мекенжайды тексеріңіз.`,
   waitlistBtn: "🔔 Түскенде хабарлау",
   upsellHeader: "✨ Мұнымен бірге жиі алады:",
   quizBtn: "🧩 Тауар таңдау",
@@ -1038,6 +1041,7 @@ const kk: Msg = {
   nativeCartForwarded:
     "Каталогтан жиналған себетіңізді алдым және сатушыға бердім — ол тапсырысты растап, осында жазады.",
   deliveryLinksExpire: "Файл сілтемелері 7 күн жарамды.",
+  downloadBtn: "📥 Жүктеп алу",
   deliveryOrderPage: "Тапсырыстың барлық файлдары — бетте:",
 };
 
@@ -1114,7 +1118,7 @@ const en: Msg = {
   payReminderLink: (url) => `You can pay and send the receipt on the order page:\n${url}`,
   emailSaveFailed: "Couldn't save the email. Please send the address again.",
   emailAsk:
-    "Which email should we send the materials to after payment? Instagram can't forward documents, so files go out by email.\n\nPlease check the address: no extra spaces or typos, e.g. anna@mail.ru",
+    "Which email should we send the materials to after payment? Files will come here and by email.\n\nPlease check the address: no extra spaces or typos, e.g. anna@mail.ru",
   emailAskOptional:
     "Send the materials to your email as well? Type the address, e.g. anna@mail.ru, or tap “No email”.",
   emailSkipBtn: "No email",
@@ -1125,7 +1129,7 @@ const en: Msg = {
   proofReceivedEmail: (no, email) =>
     `✅ Receipt for order #${no} received. After checking we'll send the materials here and to ${email}.`,
   proofReceivedNeedEmail: (no) =>
-    `✅ Receipt for order #${no} received.\n\nWhich email should we send the materials to? Instagram can't forward documents, so files go out by email. Please check the address before sending.`,
+    `✅ Receipt for order #${no} received.\n\nWhich email should we send the materials to? Files will come here and by email. Please check the address before sending.`,
   waitlistBtn: "🔔 Notify me when available",
   upsellHeader: "✨ Often bought together:",
   quizBtn: "🧩 Find a product",
@@ -1344,6 +1348,7 @@ const en: Msg = {
   nativeCartForwarded:
     "Got your cart from the catalog and passed it to the seller — they will confirm the order and reply here.",
   deliveryLinksExpire: "Links to the files are valid for 7 days.",
+  downloadBtn: "📥 Download",
   deliveryOrderPage: "All order files are on the page:",
 };
 
@@ -1431,7 +1436,7 @@ const uz: Msg = {
   payReminderLink: (url) => `To‘lash va chekni yuborish buyurtma sahifasida:\n${url}`,
   emailSaveFailed: "Pochtani saqlab bo‘lmadi. Iltimos, manzilni qayta yuboring.",
   emailAsk:
-    "To‘lovdan keyin materiallarni qaysi pochtaga yuboraylik? Instagram hujjatlarni yubora olmaydi, shuning uchun fayllar xat orqali ketadi.\n\nManzilni tekshiring: ortiqcha bo‘shliq va xatosiz, masalan anna@mail.ru",
+    "To‘lovdan keyin materiallarni qaysi pochtaga yuboraylik? Fayllar shu yerga ham, xat orqali ham keladi.\n\nManzilni tekshiring: ortiqcha bo‘shliq va xatosiz, masalan anna@mail.ru",
   emailAskOptional:
     "Materiallarni pochtaga ham yuboraylikmi? Manzilni yozing, masalan anna@mail.ru, yoki «Pochtasiz» tugmasini bosing.",
   emailSkipBtn: "Pochtasiz",
@@ -1442,7 +1447,7 @@ const uz: Msg = {
   proofReceivedEmail: (no, email) =>
     `✅ #${no} buyurtma cheki qabul qilindi. Tekshirgach materiallarni shu yerga va ${email} manziliga yuboramiz.`,
   proofReceivedNeedEmail: (no) =>
-    `✅ #${no} buyurtma cheki qabul qilindi.\n\nMateriallarni qaysi pochtaga yuboraylik? Instagram hujjatlarni yubora olmaydi, shuning uchun fayllar xat orqali ketadi. Yuborishdan oldin manzilni tekshiring.`,
+    `✅ #${no} buyurtma cheki qabul qilindi.\n\nMateriallarni qaysi pochtaga yuboraylik? Fayllar shu yerga ham, xat orqali ham keladi. Yuborishdan oldin manzilni tekshiring.`,
   waitlistBtn: "🔔 Kelganda xabar berish",
   upsellHeader: "✨ Bu bilan ko‘pincha olishadi:",
   quizBtn: "🧩 Mahsulot tanlash",
@@ -1615,6 +1620,7 @@ const uz: Msg = {
   nativeCartForwarded:
     "Katalogdan yig‘ilgan savatingizni oldim va sotuvchiga uzatdim — u buyurtmani tasdiqlab, shu yerda yozadi.",
   deliveryLinksExpire: "Fayl havolalari 7 kun amal qiladi.",
+  downloadBtn: "📥 Yuklab olish",
   deliveryOrderPage: "Buyurtmaning barcha fayllari — sahifada:",
 };
 

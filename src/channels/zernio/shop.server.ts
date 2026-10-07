@@ -2226,6 +2226,7 @@ async function saveOrderEmail(s: Shop, orderId: number, email: string) {
 async function askOrderEmailIfMissing(s: Shop, order: OrderWithItems): Promise<boolean> {
   if (
     s.platform !== "instagram" ||
+    memory(s.customer).email_skipped === true ||
     order.fulfillment_kind === "physical" ||
     order.customer_email?.trim() ||
     !(s.transport.mailReady ?? isMailConfigured)()

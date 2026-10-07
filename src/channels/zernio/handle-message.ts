@@ -65,6 +65,9 @@ async function handleOutgoing(ctx: TenantContext, m: ParsedZernioMessage): Promi
   return ignored(paused ? "продавец ответил руками — бот на паузе" : "исходящее сообщение");
 }
 
+/** Сколько «+» ждёт вебхук комментария (тесты ставят 0). */
+export const PLUS_WAIT = { ms: 4000 };
+
 export async function handleZernioMessage(
   ctx: TenantContext,
   payload: ZernioWebhookMessagePayload,
@@ -98,22 +101,29 @@ export async function handleZernioMessage(
     const { deliverPendingTwoStepDm, twoStepJustDelivered } = await import("./automations.server");
     const { isTwoStepAcknowledgement, isShopStartWord } =
       await import("@/core/instagram/comment-rules");
-    const delivered = await deliverPendingTwoStepDm(ctx, {
+    const who = {
       accountId: m.accountId,
       conversationId: m.conversationId,
       username: m.senderUsername,
-    });
+    };
+    const pending = () => deliverPendingTwoStepDm(ctx, who);
+    let delivered = await pending();
     // Второй быстрый «+» после уже отданного второго сообщения тоже не разбираем.
     // Только набранный ответ: нажатие кнопки второго сообщения и фото чека идут дальше.
     const typedOnly = !m.postbackPayload && m.attachments.length === 0 && !m.nativeOrder;
     const toShop = ctx.tenant.modules.dm_shop && isShopStartWord(m.text) && (await sells());
-    if (
-      !toShop &&
-      isTwoStepAcknowledgement(m.text) &&
-      (delivered ||
-        (typedOnly &&
-          (await twoStepJustDelivered(ctx, m.senderUsername, payload.message?.sentAt ?? null))))
-    )
+    const justDelivered = () =>
+      twoStepJustDelivered(ctx, who.username, payload.message?.sentAt ?? null);
+    let ack = delivered || (typedOnly && (await justDelivered()));
+    // «+» обогнал вебхук комментария: второе сообщение ещё не в очереди и не
+    // отправлено — покупатель получал его только после следующей реплики, а «+»
+    // уходил в обращение (Кристина Дидактика, 07.10). Ждём вебхук один раз.
+    if (!ack && !toShop && typedOnly && m.text?.trim() === "+") {
+      await new Promise((r) => setTimeout(r, PLUS_WAIT.ms));
+      delivered = await pending();
+      ack = delivered || (await justDelivered());
+    }
+    if (!toShop && isTwoStepAcknowledgement(m.text) && ack)
       return processed("второе сообщение по комментарию");
   }
 

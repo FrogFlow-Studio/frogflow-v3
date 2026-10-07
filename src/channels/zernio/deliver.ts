@@ -43,6 +43,7 @@ export function zernioMaterialSender(
   const m = COPY[opts.locale ?? "ru"];
   return async (item, materials) => {
     const lines: string[] = [`📁 ${item.name_snapshot}`];
+    const links: Array<{ name: string | null; url: string }> = [];
     for (const mat of materials) {
       const url =
         mat.url ??
@@ -54,6 +55,7 @@ export function zernioMaterialSender(
             )
           : null);
       if (!url) return "failed";
+      links.push({ name: mat.name ?? null, url });
       lines.push(`${mat.name ? `${mat.name}: ` : ""}${url}`);
     }
     if (materials.some((m) => m.path)) lines.push("", m.deliveryLinksExpire);
@@ -62,6 +64,7 @@ export function zernioMaterialSender(
     const r = await transport.send(conversationId, accountId, lines.join("\n"), {
       platform,
       idempotencyScope: `deliver:${item.id}`,
+      buttons: downloadButtons(platform, links, m.downloadBtn),
     });
     if (r.ok) return "sent";
     if (opts.pageUrl && classifyZernioFailure(r.failure) === "window_closed") {
@@ -73,4 +76,24 @@ export function zernioMaterialSender(
     }
     return "failed";
   };
+}
+
+/**
+ * Instagram: кнопки «📥 Скачать» под сообщением о выдаче — файл открывается
+ * прямо из Direct, без поиска ссылки в тексте. Кнопок в Direct не больше трёх:
+ * при большем числе файлов остаются ссылки текстом. WhatsApp кнопки-ссылки
+ * в сессионном сообщении не рисует — там только текст.
+ */
+export function downloadButtons(
+  platform: ZernioPlatform,
+  links: Array<{ name: string | null; url: string }>,
+  label: string,
+): Array<{ type: "url"; title: string; url: string }> | undefined {
+  if (platform !== "instagram" || links.length === 0 || links.length > 3) return undefined;
+  if (links.length === 1) return [{ type: "url", title: label, url: links[0]!.url }];
+  return links.map((l, i) => ({
+    type: "url" as const,
+    title: `📥 ${l.name?.trim() || String(i + 1)}`,
+    url: l.url,
+  }));
 }

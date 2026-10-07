@@ -487,10 +487,9 @@ describe("emailStep — шаг «ваша почта»", () => {
     skipped: false,
     mailReady: true,
   };
-  it("Instagram, цифровой заказ, почты нет — спрашиваем обязательно", () => {
-    expect(emailStep(base)).toBe("required");
-    // отказ от почты в Instagram не действует: иначе материалам некуда уйти
-    expect(emailStep({ ...base, skipped: true })).toBe("required");
+  it("Instagram — почта по желанию: файлы приходят кнопкой «Скачать» в Direct", () => {
+    expect(emailStep(base)).toBe("optional");
+    expect(emailStep({ ...base, skipped: true })).toBeNull();
   });
   it("WhatsApp — предлагаем с кнопкой «Без почты», после отказа не спрашиваем", () => {
     expect(emailStep({ ...base, platform: "whatsapp" })).toBe("optional");
@@ -498,7 +497,7 @@ describe("emailStep — шаг «ваша почта»", () => {
   });
   it("шага нет: почта известна, физический товар, Telegram, почта платформы не настроена", () => {
     expect(emailStep({ ...base, knownEmail: "a@b.kz" })).toBeNull();
-    expect(emailStep({ ...base, knownEmail: "  " })).toBe("required");
+    expect(emailStep({ ...base, knownEmail: "  " })).toBe("optional");
     expect(emailStep({ ...base, physical: true })).toBeNull();
     expect(emailStep({ ...base, platform: "telegram" })).toBeNull();
     expect(emailStep({ ...base, mailReady: false })).toBeNull();

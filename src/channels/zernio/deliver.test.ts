@@ -15,7 +15,7 @@ vi.mock("@/core/db/client.server", () => ({
   }),
 }));
 
-const { zernioMaterialSender } = await import("./deliver");
+const { zernioMaterialSender, downloadButtons } = await import("./deliver");
 
 const BOT = "11111111-1111-1111-1111-111111111111";
 
@@ -130,5 +130,27 @@ describe("язык выдачи в Direct/WhatsApp", () => {
     expect(texts[0]).toContain("Fayl havolalari 7 kun amal qiladi.");
     expect(texts[0]).toContain("Buyurtmaning barcha fayllari — sahifada: https://app.test/o/1");
     expect(texts[0]).not.toMatch(/[а-яё]/i);
+  });
+});
+
+describe("downloadButtons — «Скачать» прямо в Direct", () => {
+  const link = (name: string | null, url = "https://f/1") => ({ name, url });
+  it("Instagram, один файл — кнопка «📥 Скачать»", () => {
+    expect(downloadButtons("instagram", [link(null)], "📥 Скачать")).toEqual([
+      { type: "url", title: "📥 Скачать", url: "https://f/1" },
+    ]);
+  });
+  it("несколько файлов — по кнопке на файл, больше трёх — только ссылки текстом", () => {
+    expect(
+      downloadButtons("instagram", [link("A"), link(null, "https://f/2")], "x")?.map(
+        (b) => b.title,
+      ),
+    ).toEqual(["📥 A", "📥 2"]);
+    expect(downloadButtons("instagram", [link("1"), link("2"), link("3"), link("4")], "x")).toBe(
+      undefined,
+    );
+  });
+  it("WhatsApp — без кнопок", () => {
+    expect(downloadButtons("whatsapp", [link(null)], "x")).toBeUndefined();
   });
 });
