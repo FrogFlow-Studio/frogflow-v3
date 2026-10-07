@@ -34,6 +34,9 @@ const NOT_AUDITED = new Set([
   // предпросмотр автосообщений: без изменений, «отправить себе» — тестовое сообщение продавцу
   "previewAutoMessageFn",
   "sendAutoPreviewFn",
+  // прайс консультанта: предпросмотр таблицы и разбор файла базы знаний — ничего не меняют
+  "previewPricelistSheetFn",
+  "previewKnowledgeImportFn",
   // заказы
   "orderActionFn",
   "orderNoteFn",

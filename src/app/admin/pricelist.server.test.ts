@@ -18,9 +18,13 @@ vi.mock("@/core/db/client.server", () => ({
 }));
 
 const {
+  addKnowledgeArticles,
   addProductMedia,
   deleteProductMedia,
   importPricelist,
+  importPricelistSheetFor,
+  previewKnowledgeImport,
+  previewPricelistSheetFor,
   pricelistOverview,
   savePricelistArticles,
   savePricelistSettings,
@@ -147,4 +151,141 @@ describe("прайс консультанта в админке", () => {
     const o = await pricelistOverview(ctx);
     expect(o.articles.map((a) => a.title)).toEqual(["Uchino"]);
   });
+
+  it("загрузка статей: предпросмотр ничего не пишет, добавление сохраняет прежние", async () => {
+    const ctx = ctxOf();
+    await savePricelistArticles(ctx, [
+      { title: "Uchino", content: "Японская марка." },
+      { title: "Доставка", content: "По Алматы бесплатно." },
+    ]);
+    const pre = await previewKnowledgeImport(ctx, {
+      text: "### Доставка\nТеги: доставка\nПо Казахстану — 2 дня.\n---\n### Уход\nСтирать при 40°C.",
+    });
+    expect(pre.articles.map((a) => [a.title, a.replaces])).toEqual([
+      ["Доставка", true],
+      ["Уход", false],
+    ]);
+    expect((await pricelistOverview(ctx)).articles).toHaveLength(2);
+
+    const r = await addKnowledgeArticles(ctx, pre.articles);
+    expect(r).toEqual({ added: 1, updated: 1, total: 3 });
+    const o = await pricelistOverview(ctx);
+    expect(o.articles.map((a) => [a.title, a.content])).toEqual([
+      ["Uchino", "Японская марка."],
+      ["Доставка", "По Казахстану — 2 дня."],
+      ["Уход", "Стирать при 40°C."],
+    ]);
+    expect(o.articles[1]!.tags).toEqual(["доставка"]);
+  });
+
+  it("загрузка статей из Word: файл без разделителей — статья с именем файла", async () => {
+    const { zipFiles } = await import("@/core/export/zip");
+    const doc = zipFiles([
+      {
+        name: "word/document.xml",
+        data: '<w:document xmlns:w="w"><w:body><w:p><w:r><w:t>Rivolta Carmignani — Италия.</w:t></w:r></w:p><w:p><w:r><w:t>Поставляет в отели люкс.</w:t></w:r></w:p></w:body></w:document>',
+      },
+    ]);
+    const pre = await previewKnowledgeImport(ctx0(), {
+      fileName: "Rivolta_Carmignani.docx",
+      base64: `data:application/octet-stream;base64,${doc.toString("base64")}`,
+    });
+    expect(pre.articles).toEqual([
+      {
+        title: "Rivolta Carmignani",
+        tags: [],
+        content: "Rivolta Carmignani — Италия.\nПоставляет в отели люкс.",
+        replaces: false,
+      },
+    ]);
+  });
+
+  it("загрузка статей: скан PDF, большой файл и пустой выбор — ошибки продавцу", async () => {
+    const { PDFDocument } = await import("pdf-lib");
+    const scan = await (async () => {
+      const d = await PDFDocument.create();
+      d.addPage();
+      return Buffer.from(await d.save()).toString("base64");
+    })();
+    await expect(
+      previewKnowledgeImport(ctx0(), { fileName: "scan.pdf", base64: scan }),
+    ).rejects.toMatchObject({ key: "err.pricelist.kbPdfScan" });
+    await expect(
+      previewKnowledgeImport(ctx0(), {
+        fileName: "big.txt",
+        base64: Buffer.alloc(3 * 1024 * 1024 + 1, 97).toString("base64"),
+      }),
+    ).rejects.toMatchObject({ key: "err.pricelist.kbFileTooBig" });
+    await expect(
+      addKnowledgeArticles(ctx0(), [{ title: " ", tags: [], content: "x" }]),
+    ).rejects.toMatchObject({
+      key: "err.pricelist.kbNothingChosen",
+    });
+  });
+
+  it("две загрузки статей одновременно не затирают друг друга", async () => {
+    const ctx = ctxOf();
+    await savePricelistArticles(ctx, [{ title: "Uchino", content: "Японская марка." }]);
+    await Promise.all([
+      addKnowledgeArticles(ctx, [{ title: "Доставка", tags: [], content: "2 дня." }]),
+      addKnowledgeArticles(ctx, [{ title: "Уход", tags: [], content: "40°C." }]),
+    ]);
+    const titles = (await pricelistOverview(ctx)).articles.map((a) => a.title);
+    expect(titles).toHaveLength(3);
+    expect(new Set(titles)).toEqual(new Set(["Uchino", "Доставка", "Уход"]));
+  });
+
+  it("больше 200 статей не добавляется: ошибка, база прежняя", async () => {
+    const ctx = ctxOf();
+    await savePricelistArticles(
+      ctx,
+      Array.from({ length: 199 }, (_, i) => ({ title: `Статья ${i}`, content: "т" })),
+    );
+    await expect(
+      addKnowledgeArticles(ctx, [
+        { title: "Новая 1", tags: [], content: "т" },
+        { title: "Новая 2", tags: [], content: "т" },
+      ]),
+    ).rejects.toMatchObject({ key: "err.pricelist.kbTooMany" });
+    expect((await pricelistOverview(ctx)).articles).toHaveLength(199);
+  });
+
+  it("таблица: чужая ссылка не скачивается; загрузка файла отключает таблицу", async () => {
+    const ctx = ctxOf();
+    await expect(previewPricelistSheetFor(ctx, "https://evil.kz/x.csv")).rejects.toMatchObject({
+      key: "err.catalog.sheetBadLink",
+    });
+    const link =
+      "https://docs.google.com/spreadsheets/d/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789/edit";
+    const sheetCsv = "Название;Раздел;Цена\nFeiler;Полотенца;30000\n";
+    const f = async () =>
+      new Response(sheetCsv, { status: 200, headers: { "content-type": "text/csv" } });
+    const pre = await previewPricelistSheetFor(ctx, link, f);
+    if (!pre.ok) throw new Error("предпросмотр");
+    expect(pre.diff).toMatchObject({ added: 1, removed: 0 });
+    await importPricelistSheetFor(ctx, link, pre.fingerprint, f);
+    let o = await pricelistOverview(ctx);
+    expect(o.sheet).toMatchObject({ url: link, status: { ok: true, count: 1 } });
+    expect(o.count).toBe(1);
+
+    const r = await importPricelist(ctx, CSV, "остатки.csv");
+    expect(r.sheetDisconnected).toBe(true);
+    expect(r.diff).toMatchObject({ added: 2, removed: 1 });
+    o = await pricelistOverview(ctx);
+    expect(o.sheet).toBeNull();
+    expect(o.count).toBe(2);
+  });
+
+  it("предпросмотр таблицы и статей закрыт магазину без режима по прайсу", async () => {
+    await expect(previewPricelistSheetFor(ctxOf(false), "x")).rejects.toMatchObject({
+      key: "err.pricelist.off",
+    });
+    await expect(previewKnowledgeImport(ctxOf(false), { text: "т" })).rejects.toMatchObject({
+      key: "err.pricelist.off",
+    });
+  });
 });
+
+function ctx0() {
+  return ctxOf();
+}

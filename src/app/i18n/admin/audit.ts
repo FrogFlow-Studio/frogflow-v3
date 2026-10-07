@@ -91,6 +91,10 @@ export const ru = {
   "audit.action.addProductMediaFn": "добавил фото товара для консультанта",
   "audit.action.deleteProductMediaFn": "удалил фото товара консультанта",
   "audit.action.savePricelistArticlesFn": "изменил статьи базы знаний консультанта",
+  "audit.action.addKnowledgeArticlesFn":
+    "добавил статьи в базу знаний консультанта из файла или текста",
+  "audit.action.importPricelistSheetFn": "загрузил прайс консультанта из Google Таблицы",
+  "audit.action.disconnectPricelistSheetFn": "отключил Google Таблицу прайса консультанта",
   "audit.action.chatInvoiceFn": "выставил счёт покупателю из диалога",
   "audit.action.setPdfWatermarkFn": "переключил водяной знак на PDF",
   "audit.action.saveSettingsFn": "изменил настройки магазина",
@@ -287,6 +291,10 @@ export const kk: SectionDict<typeof ru> = {
   "audit.action.addProductMediaFn": "кеңесшіге тауар фотосын қосты",
   "audit.action.deleteProductMediaFn": "кеңесшінің тауар фотосын өшірді",
   "audit.action.savePricelistArticlesFn": "кеңесшінің білім базасы мақалаларын өзгертті",
+  "audit.action.addKnowledgeArticlesFn":
+    "кеңесшінің білім базасына файлдан немесе мәтіннен мақалалар қосты",
+  "audit.action.importPricelistSheetFn": "кеңесші прайсын Google Кестеден жүктеді",
+  "audit.action.disconnectPricelistSheetFn": "кеңесші прайсының Google Кестесін ажыратты",
   "audit.action.chatInvoiceFn": "диалогтан сатып алушыға шот жіберді",
   "audit.action.setPdfWatermarkFn": "PDF су таңбасын ауыстырды",
   "audit.action.saveSettingsFn": "дүкен баптауларын өзгертті",
@@ -483,6 +491,10 @@ export const en: SectionDict<typeof ru> = {
   "audit.action.addProductMediaFn": "added a product photo for the consultant",
   "audit.action.deleteProductMediaFn": "deleted a consultant product photo",
   "audit.action.savePricelistArticlesFn": "changed consultant knowledge base articles",
+  "audit.action.addKnowledgeArticlesFn":
+    "added consultant knowledge base articles from a file or text",
+  "audit.action.importPricelistSheetFn": "loaded the consultant price list from Google Sheets",
+  "audit.action.disconnectPricelistSheetFn": "disconnected the consultant price list Google Sheet",
   "audit.action.chatInvoiceFn": "sent an invoice to a customer from a dialog",
   "audit.action.setPdfWatermarkFn": "toggled the PDF watermark",
   "audit.action.saveSettingsFn": "changed shop settings",
@@ -679,6 +691,10 @@ export const uz: SectionDict<typeof ru> = {
   "audit.action.addProductMediaFn": "maslahatchi uchun mahsulot rasmini qo‘shdi",
   "audit.action.deleteProductMediaFn": "maslahatchi mahsulot rasmini o‘chirdi",
   "audit.action.savePricelistArticlesFn": "maslahatchi bilimlar bazasi maqolalarini o‘zgartirdi",
+  "audit.action.addKnowledgeArticlesFn":
+    "maslahatchi bilimlar bazasiga fayl yoki matndan maqolalar qo‘shdi",
+  "audit.action.importPricelistSheetFn": "maslahatchi narxnomasini Google Jadvaldan yukladi",
+  "audit.action.disconnectPricelistSheetFn": "maslahatchi narxnomasining Google Jadvalini uzdi",
   "audit.action.chatInvoiceFn": "dialogdan xaridorga hisob yubordi",
   "audit.action.setPdfWatermarkFn": "PDF suv belgisini almashtirdi",
   "audit.action.saveSettingsFn": "doʻkon sozlamalarini oʻzgartirdi",

@@ -20,6 +20,19 @@ export const ru = {
   "err.pricelist.badRate": "Курс рубля к тенге — число от 1 до 20, например 4,79.",
   "err.pricelist.badFile": "Файл не найден — загрузите его ещё раз.",
   "err.pricelist.noMatch": "Укажите модель, как в прайсе: например «Uchino Zero Twist».",
+  "err.pricelist.kbTooMany":
+    "В базе знаний было бы {count} статей, а помещается {max}. Удалите лишние или объедините статьи.",
+  "err.pricelist.kbEmptyFile": "В файле нет текста.",
+  "err.pricelist.kbPdfScan":
+    "В этом PDF нет текстового слоя — похоже, это скан. Пришлите PDF, из которого текст можно выделить мышью, или вставьте текст.",
+  "err.pricelist.kbPdfBroken": "Не удалось прочитать PDF.",
+  "err.pricelist.kbDocxBroken": "Не удалось прочитать документ Word.",
+  "err.pricelist.kbOldDoc":
+    "Это старый формат Word (.doc). Сохраните документ как .docx или PDF и загрузите снова.",
+  "err.pricelist.kbFileTooBig": "Файл больше {mb} МБ — разделите его на части или вставьте текст.",
+  "err.pricelist.kbNoArticles":
+    "Не удалось выделить статьи. Разделяйте статьи строкой ### или ---, первая строка — заголовок.",
+  "err.pricelist.kbNothingChosen": "Отметьте хотя бы одну статью.",
   "err.pipeline.leadNotFound": "Заявка не найдена.",
   "err.pipeline.badOwner": "Такого сотрудника нет в команде магазина.",
   "err.catalog.sheetBadLink": "Нужна ссылка на Google Таблицу (docs.google.com/spreadsheets/…)",
@@ -243,6 +256,20 @@ export const kk: SectionDict<typeof ru> = {
   "err.pricelist.badRate": "Рубльдің теңгеге бағамы — 1-ден 20-ға дейінгі сан, мысалы 4,79.",
   "err.pricelist.badFile": "Файл табылмады — қайта жүктеңіз.",
   "err.pricelist.noMatch": "Прайстағыдай модельді көрсетіңіз: мысалы «Uchino Zero Twist».",
+  "err.pricelist.kbTooMany":
+    "Білім базасында {count} мақала болар еді, ал {max} ғана сыяды. Артығын өшіріңіз немесе мақалаларды біріктіріңіз.",
+  "err.pricelist.kbEmptyFile": "Файлда мәтін жоқ.",
+  "err.pricelist.kbPdfScan":
+    "Бұл PDF-те мәтін қабаты жоқ — сканға ұқсайды. Мәтінін тінтуірмен белгілеуге болатын PDF жіберіңіз немесе мәтінді қойыңыз.",
+  "err.pricelist.kbPdfBroken": "PDF оқылмады.",
+  "err.pricelist.kbDocxBroken": "Word құжаты оқылмады.",
+  "err.pricelist.kbOldDoc":
+    "Бұл Word-тың ескі пішімі (.doc). Құжатты .docx немесе PDF ретінде сақтап, қайта жүктеңіз.",
+  "err.pricelist.kbFileTooBig":
+    "Файл {mb} МБ-тан үлкен — оны бөліктерге бөліңіз немесе мәтінді қойыңыз.",
+  "err.pricelist.kbNoArticles":
+    "Мақалалар бөлінбеді. Мақалаларды ### немесе --- жолымен бөліңіз, бірінші жол — тақырып.",
+  "err.pricelist.kbNothingChosen": "Кем дегенде бір мақаланы белгілеңіз.",
   "err.pipeline.leadNotFound": "Өтінім табылмады.",
   "err.pipeline.badOwner": "Дүкен командасында мұндай қызметкер жоқ.",
   "err.catalog.sheetBadLink": "Google Кестеге сілтеме керек (docs.google.com/spreadsheets/…)",
@@ -462,6 +489,20 @@ export const en: SectionDict<typeof ru> = {
   "err.pricelist.badRate": "The RUB to KZT rate must be a number from 1 to 20, e.g. 4.79.",
   "err.pricelist.badFile": "File not found — please upload it again.",
   "err.pricelist.noMatch": "Enter the model as in the price list, e.g. “Uchino Zero Twist”.",
+  "err.pricelist.kbTooMany":
+    "The knowledge base would have {count} articles, but it holds {max}. Delete some or merge articles.",
+  "err.pricelist.kbEmptyFile": "The file has no text.",
+  "err.pricelist.kbPdfScan":
+    "This PDF has no text layer — it looks like a scan. Send a PDF whose text can be selected with the mouse, or paste the text.",
+  "err.pricelist.kbPdfBroken": "Could not read the PDF.",
+  "err.pricelist.kbDocxBroken": "Could not read the Word document.",
+  "err.pricelist.kbOldDoc":
+    "This is the old Word format (.doc). Save the document as .docx or PDF and upload it again.",
+  "err.pricelist.kbFileTooBig":
+    "The file is larger than {mb} MB — split it into parts or paste the text.",
+  "err.pricelist.kbNoArticles":
+    "Could not split the text into articles. Separate articles with a ### or --- line; the first line is the title.",
+  "err.pricelist.kbNothingChosen": "Select at least one article.",
   "err.pipeline.leadNotFound": "Lead not found.",
   "err.pipeline.badOwner": "There is no such team member in this shop.",
   "err.catalog.sheetBadLink": "A Google Sheets link is needed (docs.google.com/spreadsheets/…)",
@@ -683,6 +724,20 @@ export const uz: SectionDict<typeof ru> = {
   "err.pricelist.badRate": "Rublning tengega kursi — 1 dan 20 gacha son, masalan 4,79.",
   "err.pricelist.badFile": "Fayl topilmadi — qaytadan yuklang.",
   "err.pricelist.noMatch": "Modelni narxnomadagidek kiriting: masalan «Uchino Zero Twist».",
+  "err.pricelist.kbTooMany":
+    "Bilimlar bazasida {count} ta maqola bo‘lardi, sig‘imi esa {max} ta. Ortiqchasini o‘chiring yoki maqolalarni birlashtiring.",
+  "err.pricelist.kbEmptyFile": "Faylda matn yo‘q.",
+  "err.pricelist.kbPdfScan":
+    "Bu PDF da matn qatlami yo‘q — skanga o‘xshaydi. Matnini sichqoncha bilan belgilash mumkin bo‘lgan PDF yuboring yoki matnni joylashtiring.",
+  "err.pricelist.kbPdfBroken": "PDF o‘qilmadi.",
+  "err.pricelist.kbDocxBroken": "Word hujjati o‘qilmadi.",
+  "err.pricelist.kbOldDoc":
+    "Bu Word ning eski formati (.doc). Hujjatni .docx yoki PDF sifatida saqlab, qayta yuklang.",
+  "err.pricelist.kbFileTooBig":
+    "Fayl {mb} MB dan katta — uni qismlarga bo‘ling yoki matnni joylashtiring.",
+  "err.pricelist.kbNoArticles":
+    "Maqolalar ajratilmadi. Maqolalarni ### yoki --- qatori bilan ajrating, birinchi qator — sarlavha.",
+  "err.pricelist.kbNothingChosen": "Kamida bitta maqolani belgilang.",
   "err.pipeline.leadNotFound": "Ariza topilmadi.",
   "err.pipeline.badOwner": "Doʻkon jamoasida bunday xodim yoʻq.",
   "err.catalog.sheetBadLink": "Google Jadval havolasi kerak (docs.google.com/spreadsheets/…)",

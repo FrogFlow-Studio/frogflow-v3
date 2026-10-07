@@ -101,3 +101,65 @@ export const savePricelistArticlesFn = createServerFn({ method: "POST" })
     const ctx = await adminWrite();
     return (await server()).savePricelistArticles(ctx, data.articles);
   });
+
+const importedArticle = z.object({
+  title: z.string().max(300),
+  tags: z.array(z.string().max(60)).max(30),
+  content: z.string().max(40_000),
+});
+
+/**
+ * Предпросмотр загрузки в базу знаний: PDF, Word (.docx), .txt/.md (base64)
+ * или вставленный текст. Ничего не пишет — только статьи для показа.
+ */
+export const previewKnowledgeImportFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .union([
+        z.object({ text: z.string().min(1).max(400_000) }),
+        // Потолок на строку base64 с запасом; настоящий предел — по байтам на сервере.
+        z.object({
+          fileName: z.string().min(1).max(200),
+          base64: z.string().min(1).max(6_000_000),
+        }),
+      ])
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await adminWrite();
+    return (await server()).previewKnowledgeImport(ctx, data);
+  });
+
+/** Добавить статьи из предпросмотра к базе знаний (прежние остаются). */
+export const addKnowledgeArticlesFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z.object({ articles: z.array(importedArticle).min(1).max(200) }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await adminWrite();
+    return (await server()).addKnowledgeArticles(ctx, data.articles);
+  });
+
+/** Предпросмотр прайса из Google Таблицы: разница с текущим. Ничего не пишет. */
+export const previewPricelistSheetFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ url: z.string().min(1).max(500) }).parse(d))
+  .handler(async ({ data }) => {
+    const ctx = await adminWrite();
+    return (await server()).previewPricelistSheetFor(ctx, data.url);
+  });
+
+/** Загрузить прайс из таблицы (после предпросмотра) и обновлять его автоматически. */
+export const importPricelistSheetFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z.object({ url: z.string().min(1).max(500), fingerprint: z.string().min(1).max(60) }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await adminWrite();
+    return (await server()).importPricelistSheetFor(ctx, data.url, data.fingerprint);
+  });
+
+/** Отключить таблицу: прайс остаётся, автообновление прекращается. */
+export const disconnectPricelistSheetFn = createServerFn({ method: "POST" }).handler(async () => {
+  const ctx = await adminWrite();
+  return (await server()).disconnectPricelistSheetFor(ctx);
+});

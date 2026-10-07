@@ -1,9 +1,14 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
+  addKnowledgeArticlesFn,
   addProductMediaFn,
   deleteProductMediaFn,
+  disconnectPricelistSheetFn,
   importPricelistFn,
+  importPricelistSheetFn,
+  previewKnowledgeImportFn,
+  previewPricelistSheetFn,
   pricelistFn,
   refreshPricelistRateFn,
   savePricelistArticlesFn,
@@ -12,6 +17,7 @@ import {
 } from "@/app/admin/pricelist.functions";
 import { Badge, Card, ErrorBox, Field, PageTitle, useAction } from "@/app/ui";
 import { adminT, intlLocale, type AdminT } from "@/app/i18n/admin";
+import { KNOWLEDGE_FILE_MAX_MB } from "@/core/consultant/pricelist/knowledge-import";
 
 export const Route = createFileRoute("/admin/_authed/pricelist")({
   loader: () => pricelistFn(),
@@ -44,6 +50,7 @@ function PricelistPage() {
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="space-y-4">
           <FileCard t={t} data={data} date={date} canEdit={canEdit} onDone={router.invalidate} />
+          <SheetCard t={t} data={data} date={date} canEdit={canEdit} onDone={router.invalidate} />
           <RateCard t={t} data={data} date={date} canEdit={canEdit} onDone={router.invalidate} />
           <SettingsCard t={t} data={data} canEdit={canEdit} onDone={router.invalidate} />
           <Card title={t("pricelist.usage.title")}>
@@ -117,6 +124,14 @@ function FileCard({ t, data, date, canEdit, onDone }: CardProps & { date: (s: st
       {result && (
         <div className="mt-3 text-sm">
           <p>{t("pricelist.file.loaded", { count: result.meta.count })}</p>
+          <p className="text-muted">
+            {t("pricelist.file.diff", {
+              added: result.diff.added,
+              removed: result.diff.removed,
+              priceChanged: result.diff.priceChanged,
+            })}
+          </p>
+          {result.sheetDisconnected && <p className="text-warn">{t("pricelist.file.sheetOff")}</p>}
           {result.errorCount > 0 && (
             <>
               <p className="mt-1 text-warn">
@@ -132,6 +147,179 @@ function FileCard({ t, data, date, canEdit, onDone }: CardProps & { date: (s: st
         </div>
       )}
       <ErrorBox error={upload.error} />
+    </Card>
+  );
+}
+
+type SheetPreview = Awaited<ReturnType<typeof previewPricelistSheetFn>>;
+
+/** Прайс из Google Таблицы: проверка с разницей, загрузка, статус автообновления. */
+function SheetCard({
+  t,
+  data,
+  date,
+  canEdit,
+  onDone,
+}: CardProps & { date: (s: string) => string }) {
+  const loc = intlLocale(Route.useRouteContext().shop.locale);
+  const [url, setUrl] = useState(data.sheet?.url ?? "");
+  const [preview, setPreview] = useState<{ url: string; result: SheetPreview } | null>(null);
+  const [done, setDone] = useState<number | null>(null);
+  const reason = (r: string) =>
+    r === "noRows" || r === "shrunk" || r === "changed"
+      ? t(`pricelist.sheet.reason.${r}`)
+      : t(`sheet.reason.${r}` as Parameters<AdminT>[0]);
+  const check = useAction(async () => {
+    setPreview(null);
+    setDone(null);
+    const link = url.trim();
+    setPreview({ url: link, result: await previewPricelistSheetFn({ data: { url: link } }) });
+  });
+  const load = useAction(async () => {
+    if (!preview?.result.ok) return;
+    const r = await importPricelistSheetFn({
+      data: { url: preview.url, fingerprint: preview.result.fingerprint },
+    });
+    if (!r.ok) {
+      setPreview({ url: preview.url, result: r });
+      return;
+    }
+    setPreview(null);
+    setDone(r.meta.count);
+    await onDone();
+  });
+  const disconnect = useAction(async () => {
+    if (!confirm(t("pricelist.sheet.disconnectConfirm"))) return;
+    await disconnectPricelistSheetFn();
+    setUrl("");
+    setPreview(null);
+    await onDone();
+  });
+  const money = (n: number) => n.toLocaleString(loc);
+  const status = data.sheet?.status ?? null;
+  const p = preview?.result;
+  return (
+    <Card title={t("pricelist.sheet.title")}>
+      <p className="mb-3 text-sm text-muted">{t("pricelist.sheet.hint")}</p>
+      {data.sheet && (
+        <div className="mb-3 space-y-1 text-sm">
+          <p>
+            {t("pricelist.sheet.connected")}{" "}
+            <a
+              className="break-all underline"
+              href={data.sheet.url}
+              target="_blank"
+              rel="noreferrer"
+            >
+              {data.sheet.url}
+            </a>
+          </p>
+          {status?.lastOkAt ? (
+            <p>
+              {t("pricelist.sheet.lastOk", {
+                date: date(status.lastOkAt),
+                count: status.count ?? 0,
+              })}
+            </p>
+          ) : (
+            <p className="text-muted">{t("pricelist.sheet.never")}</p>
+          )}
+          {status && !status.ok && status.reason && (
+            <p className="text-danger">
+              {t("pricelist.sheet.lastFail", {
+                date: date(status.at),
+                reason: reason(status.reason),
+              })}
+            </p>
+          )}
+        </div>
+      )}
+      {canEdit && (
+        <div className="space-y-3">
+          <Field label={t("pricelist.sheet.url")}>
+            <div className="flex gap-2">
+              <input
+                className="input"
+                value={url}
+                placeholder="https://docs.google.com/spreadsheets/d/…"
+                onChange={(e) => {
+                  setUrl(e.target.value);
+                  setPreview(null);
+                }}
+              />
+              <button
+                className="btn-secondary"
+                disabled={check.busy || !url.trim()}
+                onClick={() => void check.run().catch(() => {})}
+              >
+                {t("pricelist.sheet.check")}
+              </button>
+            </div>
+          </Field>
+          {p && !p.ok && <p className="text-sm text-danger">{reason(p.reason)}</p>}
+          {p?.ok && (
+            <div className="space-y-1 rounded-md border border-line p-3 text-sm">
+              <p>
+                {t("pricelist.sheet.preview", {
+                  count: p.count,
+                  current: p.current,
+                  added: p.diff.added,
+                  removed: p.diff.removed,
+                  priceChanged: p.diff.priceChanged,
+                  unchanged: p.diff.unchanged,
+                })}
+              </p>
+              {p.diff.samples.added.length > 0 && (
+                <p className="text-muted">
+                  {t("pricelist.sheet.sampleAdded", { names: p.diff.samples.added.join("; ") })}
+                </p>
+              )}
+              {p.diff.samples.removed.length > 0 && (
+                <p className="text-warn">
+                  {t("pricelist.sheet.sampleRemoved", { names: p.diff.samples.removed.join("; ") })}
+                </p>
+              )}
+              {p.diff.samples.priceChanged.length > 0 && (
+                <ul className="list-disc pl-5 text-muted">
+                  {p.diff.samples.priceChanged.map((c, i) => (
+                    <li key={i}>
+                      {t("pricelist.sheet.samplePrice", {
+                        name: c.name,
+                        from: money(c.from),
+                        to: money(c.to),
+                      })}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {p.errorCount > 0 && (
+                <p className="text-warn">{t("pricelist.file.errors", { count: p.errorCount })}</p>
+              )}
+              <button
+                className="btn-primary mt-2"
+                disabled={load.busy}
+                onClick={() => void load.run().catch(() => {})}
+              >
+                {t("pricelist.sheet.import")}
+              </button>
+            </div>
+          )}
+          {done !== null && (
+            <p className="text-sm text-ok">{t("pricelist.sheet.imported", { count: done })}</p>
+          )}
+          {data.sheet && (
+            <button
+              className="btn-ghost text-xs text-danger"
+              disabled={disconnect.busy}
+              onClick={() => void disconnect.run().catch(() => {})}
+            >
+              {t("pricelist.sheet.disconnect")}
+            </button>
+          )}
+          <p className="text-xs text-muted">{t("pricelist.sheet.fileNote")}</p>
+        </div>
+      )}
+      <ErrorBox error={check.error ?? load.error ?? disconnect.error} />
     </Card>
   );
 }
@@ -408,7 +596,54 @@ function MediaCard({ t, data, canEdit, onDone }: CardProps) {
 }
 
 function KnowledgeCard({ t, data, canEdit, onDone }: CardProps) {
+  // После загрузки статей список правки берётся из базы заново (новый ключ),
+  // когда страница получила свежие статьи.
+  const [version, setVersion] = useState(0);
+  const [dirty, setDirty] = useState(false);
+  // Статьи, которые были на странице до загрузки: ждём, пока придут другие.
+  const [staleArticles, setStaleArticles] = useState<Data["articles"] | null>(null);
+  useEffect(() => {
+    if (!staleArticles || data.articles === staleArticles) return;
+    setStaleArticles(null);
+    setDirty(false);
+    setVersion((v) => v + 1);
+  }, [data.articles, staleArticles]);
+  return (
+    <Card title={t("pricelist.kb.title")}>
+      <p className="mb-3 text-sm text-muted">{t("pricelist.kb.hint")}</p>
+      {canEdit && (
+        <KnowledgeImport
+          t={t}
+          dirty={dirty}
+          onDone={async () => {
+            setStaleArticles(data.articles);
+            await onDone();
+          }}
+        />
+      )}
+      <ArticlesEditor
+        key={version}
+        t={t}
+        data={data}
+        canEdit={canEdit}
+        onDone={onDone}
+        onDirty={setDirty}
+      />
+    </Card>
+  );
+}
+
+function ArticlesEditor({
+  t,
+  data,
+  canEdit,
+  onDone,
+  onDirty,
+}: CardProps & { onDirty: (dirty: boolean) => void }) {
   const [articles, setArticles] = useState(data.articles);
+  useEffect(() => {
+    onDirty(JSON.stringify(articles) !== JSON.stringify(data.articles));
+  }, [articles, data.articles, onDirty]);
   const [saved, setSaved] = useState(false);
   const save = useAction(async () => {
     setSaved(false);
@@ -419,8 +654,7 @@ function KnowledgeCard({ t, data, canEdit, onDone }: CardProps) {
   const set = (i: number, patch: Partial<(typeof articles)[number]>) =>
     setArticles((as) => as.map((a, j) => (j === i ? { ...a, ...patch } : a)));
   return (
-    <Card title={t("pricelist.kb.title")}>
-      <p className="mb-3 text-sm text-muted">{t("pricelist.kb.hint")}</p>
+    <>
       <div className="space-y-3">
         {articles.map((a, i) => (
           <div key={a.id || i} className="rounded-md border border-line p-3">
@@ -472,6 +706,165 @@ function KnowledgeCard({ t, data, canEdit, onDone }: CardProps) {
         </div>
       )}
       <ErrorBox error={save.error} />
-    </Card>
+    </>
+  );
+}
+
+type KbPreview = Awaited<ReturnType<typeof previewKnowledgeImportFn>>;
+
+function fileBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result));
+    r.onerror = () => reject(r.error ?? new Error("read"));
+    r.readAsDataURL(file);
+  });
+}
+
+/**
+ * Загрузка статей из PDF, Word, .txt/.md или вставленного текста: сначала
+ * предпросмотр, в базу — только отмеченные; прежние статьи остаются.
+ */
+function KnowledgeImport({
+  t,
+  dirty,
+  onDone,
+}: {
+  t: AdminT;
+  dirty: boolean;
+  onDone: () => Promise<void>;
+}) {
+  const [text, setText] = useState("");
+  const [preview, setPreview] = useState<KbPreview | null>(null);
+  const [chosen, setChosen] = useState<boolean[]>([]);
+  const [tooBig, setTooBig] = useState(false);
+  const [done, setDone] = useState<{ added: number; updated: number; total: number } | null>(null);
+  const show = (p: KbPreview) => {
+    setPreview(p);
+    setChosen(p.articles.map(() => true));
+    setDone(null);
+  };
+  const fromFile = useAction(async (file: File) => {
+    setPreview(null);
+    setTooBig(file.size > KNOWLEDGE_FILE_MAX_MB * 1024 * 1024);
+    if (file.size > KNOWLEDGE_FILE_MAX_MB * 1024 * 1024) return;
+    const base64 = await fileBase64(file);
+    show(await previewKnowledgeImportFn({ data: { fileName: file.name, base64 } }));
+  });
+  const fromText = useAction(async () => {
+    setPreview(null);
+    setTooBig(false);
+    show(await previewKnowledgeImportFn({ data: { text } }));
+  });
+  const add = useAction(async () => {
+    if (!preview) return;
+    const articles = preview.articles
+      .filter((_, i) => chosen[i])
+      .map(({ title, tags, content }) => ({ title, tags, content }));
+    const r = await addKnowledgeArticlesFn({ data: { articles } });
+    setPreview(null);
+    setText("");
+    setDone(r);
+    await onDone();
+  });
+  const count = chosen.filter(Boolean).length;
+  return (
+    <div className="mb-4 rounded-md border border-line p-3">
+      <div className="mb-1 text-sm font-medium">{t("pricelist.kb.import.title")}</div>
+      <p className="mb-3 text-xs text-muted">
+        {t("pricelist.kb.import.hint", { mb: KNOWLEDGE_FILE_MAX_MB })}
+      </p>
+      <label className="btn-secondary inline-block cursor-pointer">
+        {t("pricelist.kb.import.file")}
+        <input
+          type="file"
+          accept=".pdf,.docx,.txt,.md,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown"
+          className="hidden"
+          disabled={fromFile.busy}
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            e.target.value = "";
+            if (f) void fromFile.run(f).catch(() => {});
+          }}
+        />
+      </label>
+      {tooBig && (
+        <p className="mt-2 text-sm text-danger">
+          {t("pricelist.kb.import.tooBig", { mb: KNOWLEDGE_FILE_MAX_MB })}
+        </p>
+      )}
+      <Field label={t("pricelist.kb.import.text")}>
+        <textarea
+          className="input min-h-24 text-sm"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+        />
+      </Field>
+      <button
+        className="btn-secondary"
+        disabled={fromText.busy || !text.trim()}
+        onClick={() => void fromText.run().catch(() => {})}
+      >
+        {t("pricelist.kb.import.preview")}
+      </button>
+      {preview && (
+        <div className="mt-3 space-y-2 text-sm">
+          <p>{t("pricelist.kb.import.found", { count: preview.articles.length })}</p>
+          {preview.truncated > 0 && (
+            <p className="text-warn">
+              {t("pricelist.kb.import.truncated", {
+                count: preview.truncated,
+                max: preview.maxChars,
+              })}
+            </p>
+          )}
+          <ul className="space-y-2">
+            {preview.articles.map((a, i) => (
+              <li key={i} className="rounded-md border border-line p-2">
+                <label className="flex items-start gap-2">
+                  <input
+                    type="checkbox"
+                    className="mt-1"
+                    checked={chosen[i] ?? false}
+                    onChange={(e) =>
+                      setChosen((c) => c.map((v, j) => (j === i ? e.target.checked : v)))
+                    }
+                  />
+                  <span className="min-w-0">
+                    <span className="font-medium">{a.title}</span>{" "}
+                    <Badge tone={a.replaces ? "warn" : "ok"}>
+                      {a.replaces
+                        ? t("pricelist.kb.import.replaces")
+                        : t("pricelist.kb.import.new")}
+                    </Badge>
+                    {a.tags.length > 0 && (
+                      <span className="block text-xs text-muted">#{a.tags.join(" #")}</span>
+                    )}
+                    <span className="block whitespace-pre-line text-xs text-muted">
+                      {a.content.length > 300 ? `${a.content.slice(0, 300)}…` : a.content}
+                    </span>
+                  </span>
+                </label>
+              </li>
+            ))}
+          </ul>
+          {dirty && <p className="text-warn">{t("pricelist.kb.import.saveFirst")}</p>}
+          <div className="flex gap-2">
+            <button
+              className="btn-primary"
+              disabled={add.busy || count === 0 || dirty}
+              onClick={() => void add.run().catch(() => {})}
+            >
+              {t("pricelist.kb.import.add", { count })}
+            </button>
+            <button className="btn-ghost" onClick={() => setPreview(null)}>
+              {t("pricelist.kb.import.cancel")}
+            </button>
+          </div>
+        </div>
+      )}
+      {done && <p className="mt-2 text-sm text-ok">{t("pricelist.kb.import.done", done)}</p>}
+      <ErrorBox error={fromFile.error ?? fromText.error ?? add.error} />
+    </div>
   );
 }

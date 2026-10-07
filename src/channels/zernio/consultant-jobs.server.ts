@@ -14,6 +14,8 @@ import { escapeHtml } from "@/channels/telegram/copy";
 import { pricelistMode, isOffHours, pricelistHours } from "@/core/consultant/pricelist/mode";
 import { loadPricelist } from "@/core/consultant/pricelist/catalog.server";
 import { refreshRate } from "@/core/consultant/pricelist/rate.server";
+import { refreshPricelistSheet } from "@/core/consultant/pricelist/sheet.server";
+import type { FetchLike } from "@/core/catalog/sheet.server";
 import {
   FOLLOW_UP_SETTING_KEY,
   FOLLOW_UP_UNTIL_MS,
@@ -30,16 +32,30 @@ import { buyerLocale } from "@/core/consultant/messages";
 
 /**
  * Фоновые задачи консультанта по прайсу (крон health, раз в 15 минут, как
- * кроны v1): свежий курс рубля (шаг 18) и одно напоминание замолчавшему
- * покупателю в директе (шаг 16). Только клиенты v2 с режимом «по прайсу» —
- * список уже отобран маршрутом крона.
+ * кроны v1): свежий курс рубля (шаг 18), прайс из подключённой Google
+ * Таблицы (как refreshCatalogFromSavedSheet v1) и одно напоминание
+ * замолчавшему покупателю в директе (шаг 16). Только клиенты v2 с режимом
+ * «по прайсу» — список уже отобран маршрутом крона.
  */
 const MAX_FOLLOW_UPS_PER_RUN = 20;
+/** Общий предел на скачивание таблицы одного магазина (со всеми переадресациями). */
+export const SHEET_REFRESH_BUDGET_MS = 25_000;
+
+/** fetch с общим сроком: тайм-аут каждого запроса и общий предел — что наступит раньше. */
+export function fetchWithin(ms: number, base: FetchLike = fetch): FetchLike {
+  const deadline = AbortSignal.timeout(ms);
+  return (url, init) =>
+    base(url, {
+      ...init,
+      signal: init.signal ? AbortSignal.any([init.signal, deadline]) : deadline,
+    });
+}
 
 export async function runPricelistJobs(
   tenants: Tenant[],
   now = new Date(),
   transport: ZernioTransport = liveTransport,
+  sheetFetch?: FetchLike,
 ): Promise<Record<string, unknown>> {
   const out: Record<string, unknown> = {};
   for (const t of tenants) {
@@ -47,10 +63,17 @@ export async function runPricelistJobs(
     const ctx = tenantContext(t);
     try {
       const rate = await refreshRate(ctx);
+      // Таблица не скачалась или база отказала — прайс не тронут, остальные задачи идут.
+      const sheet = await refreshPricelistSheet(
+        ctx,
+        now,
+        sheetFetch ?? fetchWithin(SHEET_REFRESH_BUDGET_MS),
+      ).catch((e: unknown) => ({ ok: false, error: e instanceof Error ? e.message : String(e) }));
       const followUps = await sendPricelistFollowUps(ctx, now, transport);
       const digest = await sendQualityDigest(ctx, now);
       out[t.id] = {
         rate: rate.fetched ? rate.stored?.rate : (rate.error ?? "kept"),
+        sheet,
         followUps,
         digest,
       };

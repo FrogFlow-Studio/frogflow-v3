@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { fakeDb } from "../../../tests/fake-db";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { settingsFromJson } from "@/core/tenant/directory";
-import { sendPricelistFollowUps } from "./consultant-jobs.server";
+import { fetchWithin, sendPricelistFollowUps } from "./consultant-jobs.server";
 import type { ZernioTransport } from "./api.server";
 
 /**
@@ -246,5 +246,23 @@ describe("сводка качества за сутки", () => {
       await sendQualityDigest(withRuns("on"), new Date("2026-09-26T02:00:00Z"), notify),
     ).toMatchObject({ reason: "early" });
     expect(notify).not.toHaveBeenCalled();
+  });
+});
+
+describe("скачивание таблицы прайса в кроне", () => {
+  it("общий срок на все запросы одного магазина: после него следующий запрос прерван", async () => {
+    const seen: AbortSignal[] = [];
+    const base = async (_url: string, init: RequestInit) => {
+      seen.push(init.signal!);
+      return new Response("ok");
+    };
+    const f = fetchWithin(30, base);
+    await f("https://docs.google.com/a", { signal: AbortSignal.timeout(60_000) });
+    expect(seen[0]!.aborted).toBe(false);
+    await new Promise((r) => setTimeout(r, 60));
+    await f("https://docs.google.com/b", {});
+    expect(seen[1]!.aborted).toBe(true);
+    // Свой тайм-аут запроса тоже действует: сигнал первого запроса прерван общим сроком.
+    expect(seen[0]!.aborted).toBe(true);
   });
 });

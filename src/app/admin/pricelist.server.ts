@@ -7,8 +7,30 @@ import {
   SHOP_URL_KEY,
 } from "@/core/consultant/pricelist/catalog.server";
 import { parseCatalogCsv } from "@/core/consultant/pricelist/import";
-import { loadKnowledge, saveKnowledge } from "@/core/consultant/pricelist/knowledge.server";
+import {
+  appendKnowledge,
+  loadKnowledge,
+  saveKnowledge,
+} from "@/core/consultant/pricelist/knowledge.server";
 import type { ConsultantKnowledgeArticle } from "@/core/consultant/pricelist/knowledge";
+import {
+  articlesFromText,
+  KNOWLEDGE_ARTICLE_MAX_CHARS,
+  KNOWLEDGE_FILE_MAX_MB,
+  previewMerge,
+  type ImportedArticle,
+} from "@/core/consultant/pricelist/knowledge-import";
+import type { DocumentTextFailure } from "@/core/consultant/pricelist/doc-text";
+import {
+  disconnectPricelistSheet,
+  importPricelistSheet,
+  loadSheetLink,
+  previewPricelistSheet,
+  storedRows,
+} from "@/core/consultant/pricelist/sheet.server";
+import { diffPricelists } from "@/core/consultant/pricelist/sheet";
+import { sheetCsvUrl } from "@/core/catalog/sheet";
+import type { FetchLike } from "@/core/catalog/sheet.server";
 import {
   loadProductMedia,
   productMediaUrl,
@@ -51,7 +73,7 @@ export function requirePricelist(ctx: TenantContext): TenantContext {
 
 export async function pricelistOverview(ctx: TenantContext) {
   requirePricelist(ctx);
-  const [snap, stored, attempt, store, media, articles, usage] = await Promise.all([
+  const [snap, stored, attempt, store, media, articles, usage, sheet] = await Promise.all([
     loadPricelist(ctx, 0),
     getStoredRate(ctx),
     loadAttemptLog(ctx),
@@ -59,10 +81,12 @@ export async function pricelistOverview(ctx: TenantContext) {
     loadProductMedia(ctx),
     loadKnowledge(ctx),
     loadConsultantUsage(ctx),
+    loadSheetLink(ctx),
   ]);
   const p = ctx.tenant.settings.consultant_pricelist ?? {};
   return {
     meta: snap.meta,
+    sheet,
     count: snap.products.length,
     hidden: snap.hidden.length,
     synonyms: snap.synonymsText,
@@ -88,7 +112,11 @@ export async function pricelistOverview(ctx: TenantContext) {
   };
 }
 
-/** Выгрузка 1С (CSV): разбор, проверка, замена прайса. Ошибки строк — продавцу. */
+/**
+ * Выгрузка 1С (CSV): разбор, проверка, замена прайса. Ошибки строк и разница
+ * с прежним прайсом — продавцу. Подключённая таблица отключается: иначе
+ * автообновление через четверть часа заменило бы загруженный файл таблицей.
+ */
 export async function importPricelist(ctx: TenantContext, csv: string, fileName: string) {
   requirePricelist(ctx);
   const parsed = parseCatalogCsv(csv);
@@ -97,8 +125,131 @@ export async function importPricelist(ctx: TenantContext, csv: string, fileName:
       "err.pricelist.empty",
       "В файле не нашлось ни одной позиции. Нужна выгрузка 1С в CSV: название, раздел, размер, цена.",
     );
+  const [before, sheet] = await Promise.all([storedRows(ctx), loadSheetLink(ctx)]);
+  const diff = diffPricelists(before, parsed.products);
   const meta = await savePricelist(ctx, parsed.products, fileName.slice(0, 120) || "CSV");
-  return { meta, errors: parsed.errors.slice(0, 20), errorCount: parsed.errors.length };
+  const sheetDisconnected = Boolean(sheet);
+  if (sheetDisconnected) await disconnectPricelistSheet(ctx);
+  return {
+    meta,
+    diff,
+    sheetDisconnected,
+    errors: parsed.errors.slice(0, 20),
+    errorCount: parsed.errors.length,
+  };
+}
+
+function requireSheetLink(url: string): string {
+  if (!sheetCsvUrl(url))
+    throw new UserError(
+      "err.catalog.sheetBadLink",
+      "Нужна ссылка на Google Таблицу (docs.google.com/spreadsheets/…)",
+    );
+  return url.trim();
+}
+
+/** Предпросмотр таблицы: сколько позиций добавится, пропадёт, сменит цену. Ничего не пишет. */
+export async function previewPricelistSheetFor(
+  ctx: TenantContext,
+  url: string,
+  fetchImpl?: FetchLike,
+) {
+  requirePricelist(ctx);
+  return previewPricelistSheet(ctx, requireSheetLink(url), fetchImpl);
+}
+
+/** Загрузить таблицу после предпросмотра и обновлять из неё прайс автоматически. */
+export async function importPricelistSheetFor(
+  ctx: TenantContext,
+  url: string,
+  fingerprint: string,
+  fetchImpl?: FetchLike,
+) {
+  requirePricelist(ctx);
+  return importPricelistSheet(ctx, requireSheetLink(url), fingerprint, fetchImpl);
+}
+
+export async function disconnectPricelistSheetFor(ctx: TenantContext) {
+  requirePricelist(ctx);
+  await disconnectPricelistSheet(ctx);
+  return { ok: true };
+}
+
+const DOC_FAILURE: Record<DocumentTextFailure, [string, string]> = {
+  empty: ["err.pricelist.kbEmptyFile", "В файле нет текста."],
+  pdfScan: [
+    "err.pricelist.kbPdfScan",
+    "В этом PDF нет текстового слоя — похоже, это скан. Пришлите PDF, из которого текст можно выделить мышью, или вставьте текст.",
+  ],
+  pdfBroken: ["err.pricelist.kbPdfBroken", "Не удалось прочитать PDF."],
+  docxBroken: ["err.pricelist.kbDocxBroken", "Не удалось прочитать документ Word."],
+  oldDoc: [
+    "err.pricelist.kbOldDoc",
+    "Это старый формат Word (.doc). Сохраните документ как .docx или PDF и загрузите снова.",
+  ],
+};
+
+/**
+ * Предпросмотр загрузки в базу знаний: файл PDF, Word (.docx), .txt/.md или
+ * вставленный текст → статьи. Ничего не пишет: продавец видит статьи, отмечает
+ * нужные и только потом добавляет их (addKnowledgeArticles).
+ */
+export async function previewKnowledgeImport(
+  ctx: TenantContext,
+  input: { text: string } | { fileName: string; base64: string },
+) {
+  requirePricelist(ctx);
+  let text: string;
+  let fileName: string | undefined;
+  if ("text" in input) text = input.text;
+  else {
+    const { decodeBase64, extractDocumentText } =
+      await import("@/core/consultant/pricelist/doc-text");
+    const bytes = decodeBase64(input.base64);
+    if (bytes.length > KNOWLEDGE_FILE_MAX_MB * 1024 * 1024)
+      throw new UserError(
+        "err.pricelist.kbFileTooBig",
+        "Файл больше {mb} МБ — разделите его на части или вставьте текст.",
+        { mb: KNOWLEDGE_FILE_MAX_MB },
+      );
+    const r = await extractDocumentText(bytes, input.fileName);
+    if (!r.ok) {
+      const [key, ru] = DOC_FAILURE[r.error];
+      throw new UserError(key, ru);
+    }
+    text = r.text;
+    fileName = input.fileName;
+  }
+  const { articles, truncated } = articlesFromText(text, fileName);
+  if (articles.length === 0)
+    throw new UserError(
+      "err.pricelist.kbNoArticles",
+      "Не удалось выделить статьи. Разделяйте статьи строкой ### или ---, первая строка — заголовок.",
+    );
+  const existing = await loadKnowledge(ctx);
+  return {
+    articles: previewMerge(existing, articles),
+    truncated,
+    maxChars: KNOWLEDGE_ARTICLE_MAX_CHARS,
+  };
+}
+
+/** Добавить отмеченные статьи из предпросмотра: прежние статьи остаются, тот же заголовок — обновляется. */
+export async function addKnowledgeArticles(ctx: TenantContext, articles: ImportedArticle[]) {
+  requirePricelist(ctx);
+  const clean = articles
+    .map((a) => ({
+      title: a.title.trim().slice(0, 200),
+      tags: a.tags
+        .map((t) => t.trim())
+        .filter(Boolean)
+        .slice(0, 20),
+      content: a.content.trim().slice(0, KNOWLEDGE_ARTICLE_MAX_CHARS),
+    }))
+    .filter((a) => a.title && a.content);
+  if (clean.length === 0)
+    throw new UserError("err.pricelist.kbNothingChosen", "Отметьте хотя бы одну статью.");
+  return appendKnowledge(ctx, clean);
 }
 
 export async function savePricelistSettings(

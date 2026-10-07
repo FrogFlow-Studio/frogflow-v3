@@ -486,13 +486,13 @@
     "готовый ответ на прямой вопрос не предлагает снятую жёсткость": "src/core/consultant/pricelist/finalize.test.ts › готовый ответ на прямой вопрос не предлагает снятую жёсткость"
   },
   "tests/consultant-doc-text.test.ts": {
-    "читает обычный текст и markdown": "drop: загрузки файлов (PDF, txt) в базу знаний нет — статьи вводятся текстом на странице «Прайс консультанта» (routes/admin._authed.pricelist.tsx)",
-    "не принимает пустой файл": "drop: загрузки файлов (PDF, txt) в базу знаний нет — статьи вводятся текстом на странице «Прайс консультанта» (routes/admin._authed.pricelist.tsx)",
-    "узнаёт PDF по сигнатуре, даже если расширение другое": "drop: загрузки файлов (PDF, txt) в базу знаний нет — статьи вводятся текстом на странице «Прайс консультанта» (routes/admin._authed.pricelist.tsx)",
-    "base64 читается и с префиксом data:, и без него": "drop: загрузки файлов (PDF, txt) в базу знаний нет — статьи вводятся текстом на странице «Прайс консультанта» (routes/admin._authed.pricelist.tsx)",
-    "видит разделители статей": "drop: загрузки файлов (PDF, txt) в базу знаний нет — статьи вводятся текстом на странице «Прайс консультанта» (routes/admin._authed.pricelist.tsx)",
-    "делает заголовок из имени файла": "drop: загрузки файлов (PDF, txt) в базу знаний нет — статьи вводятся текстом на странице «Прайс консультанта» (routes/admin._authed.pricelist.tsx)",
-    "предел размера задан одним числом для сервера и формы": "drop: загрузки файлов (PDF, txt) в базу знаний нет — статьи вводятся текстом на странице «Прайс консультанта» (routes/admin._authed.pricelist.tsx)"
+    "читает обычный текст и markdown": "src/core/consultant/pricelist/doc-text.test.ts › читает обычный текст и markdown",
+    "не принимает пустой файл": "src/core/consultant/pricelist/doc-text.test.ts › не принимает пустой файл",
+    "узнаёт PDF по сигнатуре, даже если расширение другое": "src/core/consultant/pricelist/doc-text.test.ts › узнаёт PDF по сигнатуре, даже если расширение другое",
+    "base64 читается и с префиксом data:, и без него": "src/core/consultant/pricelist/doc-text.test.ts › base64 читается и с префиксом data:, и без него",
+    "видит разделители статей": "src/core/consultant/pricelist/doc-text.test.ts › видит разделители статей",
+    "делает заголовок из имени файла": "src/core/consultant/pricelist/doc-text.test.ts › делает заголовок из имени файла",
+    "предел размера задан одним числом для сервера и формы": "src/core/consultant/pricelist/doc-text.test.ts › предел размера задан одним числом для сервера и формы"
   },
   "tests/consultant-finkaz-rate.test.ts": {
     "берёт курс покупки рубля, а не продажи и не евро": "src/core/consultant/pricelist/finkaz-rate.test.ts › берёт курс покупки рубля, а не продажи и не евро",
@@ -640,7 +640,7 @@
     "разбирает Excel-CSV с точкой с запятой и русскими заголовками": "src/core/consultant/pricelist/import-1c.test.ts › остаток и наличие читаются",
     "разбирает иерархический отчет 1С с папками, двухстрочным заголовком и извлечением размера/цвета": "src/core/consultant/pricelist/import-1c.test.ts › строки-папки становятся категорией, а не ошибкой",
     "извлекает двуязычные расцветки из 1C и нормализует русский цвет (латиница в скобках)": "src/core/consultant/pricelist/color-from-name.test.ts › берёт цвет, написанный словом",
-    "строит export URL для Google Sheet": "drop: правило консультанта BOVI v1 без модели (выбор страны, шаблоны, корзина, фильтры ответа); в v2 консультант по прайсу — решает модель по поиску в прайсе, код даёт данные и сверяет черновик (core/consultant/pricelist/engine.server.ts)",
+    "строит export URL для Google Sheet": "src/core/consultant/pricelist/sheet.test.ts › строит export URL для Google Sheet",
     "отвечает на свежее входящее без исходящего": "drop: добор переписки v1 (inbox-poll) заменён добором зависших событий zernio_logs (channels/zernio/dispatch.server.ts)",
     "молчит если уже ответили или пауза": "drop: добор переписки v1 (inbox-poll) заменён добором зависших событий zernio_logs (channels/zernio/dispatch.server.ts)",
     "не пишет сам, если последнее слово уже за ботом": "drop: добор переписки v1 (inbox-poll) заменён добором зависших событий zernio_logs (channels/zernio/dispatch.server.ts)",

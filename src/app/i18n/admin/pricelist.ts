@@ -67,6 +67,48 @@ export const ru = {
   "pricelist.usage.summary":
     "{messages} ответов · ${usd} · в среднем ${per} за ответ · из кеша {share}% ввода",
   "pricelist.usage.empty": "Ответов за неделю пока нет.",
+  "pricelist.file.diff": "Добавилось {added}, пропало {removed}, изменилась цена у {priceChanged}.",
+  "pricelist.file.sheetOff": "Google Таблица отключена: теперь прайс — из этого файла.",
+  "pricelist.sheet.title": "Прайс из Google Таблицы",
+  "pricelist.sheet.hint":
+    "Ведёте прайс в Google Таблице? Откройте ей доступ «Все, у кого есть ссылка», вставьте ссылку, проверьте, что изменится, и загрузите. Дальше прайс обновляется из таблицы сам каждые 15 минут. Колонки — как у выгрузки 1С. Если таблица не скачалась или в ней нет позиций, прежний прайс остаётся.",
+  "pricelist.sheet.url": "Ссылка на таблицу",
+  "pricelist.sheet.check": "Проверить",
+  "pricelist.sheet.preview":
+    "В таблице {count} позиций, сейчас в прайсе {current}: добавится {added}, пропадёт {removed}, изменится цена у {priceChanged}, без изменений {unchanged}.",
+  "pricelist.sheet.sampleAdded": "Новые: {names}",
+  "pricelist.sheet.sampleRemoved": "Пропадут: {names}",
+  "pricelist.sheet.samplePrice": "{name}: {from} → {to} ₸",
+  "pricelist.sheet.import": "Загрузить и обновлять автоматически",
+  "pricelist.sheet.imported": "Прайс загружен из таблицы: {count} позиций.",
+  "pricelist.sheet.connected": "Подключена таблица:",
+  "pricelist.sheet.lastOk": "Последнее удачное обновление: {date}, позиций: {count}.",
+  "pricelist.sheet.never": "Удачных обновлений из таблицы ещё не было.",
+  "pricelist.sheet.lastFail": "Не обновилось {date}: {reason}. Прайс не тронут.",
+  "pricelist.sheet.disconnect": "Отключить",
+  "pricelist.sheet.disconnectConfirm": "Отключить таблицу? Прайс останется как есть.",
+  "pricelist.sheet.fileNote":
+    "Загрузка CSV-файла отключает таблицу, чтобы автообновление не заменило файл.",
+  "pricelist.sheet.reason.noRows": "в таблице нет ни одной позиции с ценой",
+  "pricelist.sheet.reason.shrunk":
+    "в таблице вдвое меньше позиций, чем в прайсе — если так и задумано, загрузите её вручную",
+  "pricelist.sheet.reason.changed": "таблица изменилась после проверки — проверьте ещё раз",
+  "pricelist.kb.import.title": "Загрузить статьи из файла или текста",
+  "pricelist.kb.import.hint":
+    "PDF, Word (.docx), .txt или .md до {mb} МБ — или вставьте текст. Статьи разделяйте строкой ### или ---: первая строка — заголовок, строка «Теги: …» — теги. Файл без разделителей станет одной статьёй с именем файла. Сначала покажем статьи — сохранятся только отмеченные, прежние статьи останутся.",
+  "pricelist.kb.import.file": "Выбрать файл",
+  "pricelist.kb.import.text": "Или вставьте текст",
+  "pricelist.kb.import.preview": "Показать статьи",
+  "pricelist.kb.import.found": "Найдено статей: {count}. Отметьте, какие добавить.",
+  "pricelist.kb.import.replaces": "обновит статью с тем же заголовком",
+  "pricelist.kb.import.new": "новая",
+  "pricelist.kb.import.truncated": "Статей длиннее {max} символов: {count} — их конец обрезан.",
+  "pricelist.kb.import.add": "Добавить в базу ({count})",
+  "pricelist.kb.import.cancel": "Отмена",
+  "pricelist.kb.import.done": "Добавлено {added}, обновлено {updated}. Всего статей: {total}.",
+  "pricelist.kb.import.tooBig": "Файл больше {mb} МБ — разделите его на части или вставьте текст.",
+  "pricelist.kb.import.saveFirst":
+    "Сначала сохраните правки статей ниже — после загрузки список обновится.",
 } as const;
 
 export const kk: SectionDict<typeof ru> = {
@@ -135,6 +177,49 @@ export const kk: SectionDict<typeof ru> = {
   "pricelist.usage.summary":
     "{messages} жауап · ${usd} · бір жауапқа орта есеппен ${per} · енгізудің {share}%-ы кэштен",
   "pricelist.usage.empty": "Аптада әлі жауап жоқ.",
+  "pricelist.file.diff": "{added} қосылды, {removed} жоғалды, {priceChanged} бағасы өзгерді.",
+  "pricelist.file.sheetOff": "Google Кесте ажыратылды: енді прайс осы файлдан.",
+  "pricelist.sheet.title": "Google Кестеден прайс",
+  "pricelist.sheet.hint":
+    "Прайсты Google Кестеде жүргізесіз бе? Оған «Сілтемесі бар барлығы» рұқсатын ашыңыз, сілтемені қойыңыз, не өзгеретінін тексеріп, жүктеңіз. Әрі қарай прайс кестеден әр 15 минут сайын өзі жаңарады. Бағандар — 1С түсіріліміндегідей. Кесте жүктелмесе немесе онда позиция болмаса, бұрынғы прайс қалады.",
+  "pricelist.sheet.url": "Кестеге сілтеме",
+  "pricelist.sheet.check": "Тексеру",
+  "pricelist.sheet.preview":
+    "Кестеде {count} позиция, қазір прайста {current}: {added} қосылады, {removed} жоғалады, {priceChanged} бағасы өзгереді, {unchanged} өзгеріссіз.",
+  "pricelist.sheet.sampleAdded": "Жаңалары: {names}",
+  "pricelist.sheet.sampleRemoved": "Жоғалатындары: {names}",
+  "pricelist.sheet.samplePrice": "{name}: {from} → {to} ₸",
+  "pricelist.sheet.import": "Жүктеу және автоматты жаңарту",
+  "pricelist.sheet.imported": "Прайс кестеден жүктелді: {count} позиция.",
+  "pricelist.sheet.connected": "Қосылған кесте:",
+  "pricelist.sheet.lastOk": "Соңғы сәтті жаңарту: {date}, позиция: {count}.",
+  "pricelist.sheet.never": "Кестеден сәтті жаңарту әлі болған жоқ.",
+  "pricelist.sheet.lastFail": "{date} жаңармады: {reason}. Прайс өзгертілмеді.",
+  "pricelist.sheet.disconnect": "Ажырату",
+  "pricelist.sheet.disconnectConfirm": "Кестені ажырату керек пе? Прайс қазіргідей қалады.",
+  "pricelist.sheet.fileNote":
+    "CSV файлын жүктеу кестені ажыратады — автожаңарту файлды ауыстырмауы үшін.",
+  "pricelist.sheet.reason.noRows": "кестеде бағасы бар бірде-бір позиция жоқ",
+  "pricelist.sheet.reason.shrunk":
+    "кестеде позиция прайстағыдан екі есе аз — әдейі болса, оны қолмен жүктеңіз",
+  "pricelist.sheet.reason.changed": "тексерістен кейін кесте өзгерді — қайта тексеріңіз",
+  "pricelist.kb.import.title": "Мақалаларды файлдан немесе мәтіннен жүктеу",
+  "pricelist.kb.import.hint":
+    "{mb} МБ-қа дейінгі PDF, Word (.docx), .txt немесе .md — не мәтінді қойыңыз. Мақалаларды ### немесе --- жолымен бөліңіз: бірінші жол — тақырып, «Теги: …» жолы — тегтер. Бөлгіші жоқ файл файл атымен бір мақала болады. Алдымен мақалаларды көрсетеміз — тек белгіленгендері сақталады, бұрынғы мақалалар қалады.",
+  "pricelist.kb.import.file": "Файлды таңдау",
+  "pricelist.kb.import.text": "Немесе мәтінді қойыңыз",
+  "pricelist.kb.import.preview": "Мақалаларды көрсету",
+  "pricelist.kb.import.found": "Табылған мақала: {count}. Қайсысын қосу керегін белгілеңіз.",
+  "pricelist.kb.import.replaces": "тақырыбы бірдей мақаланы жаңартады",
+  "pricelist.kb.import.new": "жаңа",
+  "pricelist.kb.import.truncated": "{max} таңбадан ұзын мақала: {count} — соңы қысқартылды.",
+  "pricelist.kb.import.add": "Базаға қосу ({count})",
+  "pricelist.kb.import.cancel": "Болдырмау",
+  "pricelist.kb.import.done": "{added} қосылды, {updated} жаңартылды. Барлық мақала: {total}.",
+  "pricelist.kb.import.tooBig":
+    "Файл {mb} МБ-тан үлкен — оны бөліктерге бөліңіз немесе мәтінді қойыңыз.",
+  "pricelist.kb.import.saveFirst":
+    "Алдымен төмендегі мақала түзетулерін сақтаңыз — жүктегеннен кейін тізім жаңарады.",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -204,6 +289,51 @@ export const en: SectionDict<typeof ru> = {
   "pricelist.usage.summary":
     "{messages} replies · ${usd} · ${per} per reply on average · {share}% of input from cache",
   "pricelist.usage.empty": "No replies this week yet.",
+  "pricelist.file.diff": "Added {added}, removed {removed}, price changed for {priceChanged}.",
+  "pricelist.file.sheetOff":
+    "The Google Sheet is disconnected: the price list now comes from this file.",
+  "pricelist.sheet.title": "Price list from Google Sheets",
+  "pricelist.sheet.hint":
+    "Keep your price list in Google Sheets? Share it as “Anyone with the link”, paste the link, check what will change and load it. After that the price list refreshes from the sheet by itself every 15 minutes. Columns are the same as in the 1C export. If the sheet cannot be downloaded or has no items, the previous price list stays.",
+  "pricelist.sheet.url": "Sheet link",
+  "pricelist.sheet.check": "Check",
+  "pricelist.sheet.preview":
+    "The sheet has {count} items, the price list now has {current}: {added} will be added, {removed} removed, {priceChanged} with a new price, {unchanged} unchanged.",
+  "pricelist.sheet.sampleAdded": "New: {names}",
+  "pricelist.sheet.sampleRemoved": "Will disappear: {names}",
+  "pricelist.sheet.samplePrice": "{name}: {from} → {to} ₸",
+  "pricelist.sheet.import": "Load and refresh automatically",
+  "pricelist.sheet.imported": "Price list loaded from the sheet: {count} items.",
+  "pricelist.sheet.connected": "Connected sheet:",
+  "pricelist.sheet.lastOk": "Last successful refresh: {date}, items: {count}.",
+  "pricelist.sheet.never": "No successful refresh from the sheet yet.",
+  "pricelist.sheet.lastFail": "Not refreshed {date}: {reason}. The price list was not touched.",
+  "pricelist.sheet.disconnect": "Disconnect",
+  "pricelist.sheet.disconnectConfirm": "Disconnect the sheet? The price list stays as it is.",
+  "pricelist.sheet.fileNote":
+    "Uploading a CSV file disconnects the sheet so the automatic refresh does not replace the file.",
+  "pricelist.sheet.reason.noRows": "the sheet has no items with a price",
+  "pricelist.sheet.reason.shrunk":
+    "the sheet has half as many items as the price list — if that is intended, load it manually",
+  "pricelist.sheet.reason.changed": "the sheet changed after the check — check again",
+  "pricelist.kb.import.title": "Load articles from a file or text",
+  "pricelist.kb.import.hint":
+    "PDF, Word (.docx), .txt or .md up to {mb} MB — or paste text. Separate articles with a ### or --- line: the first line is the title, a “Tags: …” line sets tags. A file without separators becomes one article named after the file. We show the articles first — only the selected ones are saved, existing articles stay.",
+  "pricelist.kb.import.file": "Choose file",
+  "pricelist.kb.import.text": "Or paste text",
+  "pricelist.kb.import.preview": "Show articles",
+  "pricelist.kb.import.found": "Articles found: {count}. Select which to add.",
+  "pricelist.kb.import.replaces": "updates the article with the same title",
+  "pricelist.kb.import.new": "new",
+  "pricelist.kb.import.truncated":
+    "Articles longer than {max} characters: {count} — their end is cut off.",
+  "pricelist.kb.import.add": "Add to the base ({count})",
+  "pricelist.kb.import.cancel": "Cancel",
+  "pricelist.kb.import.done": "Added {added}, updated {updated}. Total articles: {total}.",
+  "pricelist.kb.import.tooBig":
+    "The file is larger than {mb} MB — split it into parts or paste the text.",
+  "pricelist.kb.import.saveFirst":
+    "Save your article edits below first — the list refreshes after loading.",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -272,4 +402,49 @@ export const uz: SectionDict<typeof ru> = {
   "pricelist.usage.summary":
     "{messages} javob · ${usd} · bir javobga o‘rtacha ${per} · kirishning {share}% keshdan",
   "pricelist.usage.empty": "Haftada hali javoblar yo‘q.",
+  "pricelist.file.diff":
+    "{added} ta qo‘shildi, {removed} ta yo‘qoldi, {priceChanged} tasining narxi o‘zgardi.",
+  "pricelist.file.sheetOff": "Google Jadval uzildi: endi narxnoma shu fayldan.",
+  "pricelist.sheet.title": "Google Jadvaldan narxnoma",
+  "pricelist.sheet.hint":
+    "Narxnomani Google Jadvalda yuritasizmi? Unga «Havolasi bor hamma» ruxsatini bering, havolani joylashtiring, nima o‘zgarishini tekshirib, yuklang. Keyin narxnoma jadvaldan har 15 daqiqada o‘zi yangilanadi. Ustunlar — 1C eksportidagidek. Jadval yuklanmasa yoki unda pozitsiya bo‘lmasa, avvalgi narxnoma qoladi.",
+  "pricelist.sheet.url": "Jadval havolasi",
+  "pricelist.sheet.check": "Tekshirish",
+  "pricelist.sheet.preview":
+    "Jadvalda {count} ta pozitsiya, hozir narxnomada {current} ta: {added} ta qo‘shiladi, {removed} ta yo‘qoladi, {priceChanged} tasining narxi o‘zgaradi, {unchanged} tasi o‘zgarishsiz.",
+  "pricelist.sheet.sampleAdded": "Yangilari: {names}",
+  "pricelist.sheet.sampleRemoved": "Yo‘qoladiganlar: {names}",
+  "pricelist.sheet.samplePrice": "{name}: {from} → {to} ₸",
+  "pricelist.sheet.import": "Yuklash va avtomatik yangilash",
+  "pricelist.sheet.imported": "Narxnoma jadvaldan yuklandi: {count} ta pozitsiya.",
+  "pricelist.sheet.connected": "Ulangan jadval:",
+  "pricelist.sheet.lastOk": "Oxirgi muvaffaqiyatli yangilanish: {date}, pozitsiyalar: {count}.",
+  "pricelist.sheet.never": "Jadvaldan muvaffaqiyatli yangilanish hali bo‘lmagan.",
+  "pricelist.sheet.lastFail": "{date} yangilanmadi: {reason}. Narxnomaga tegilmadi.",
+  "pricelist.sheet.disconnect": "Uzish",
+  "pricelist.sheet.disconnectConfirm": "Jadval uzilsinmi? Narxnoma o‘z holicha qoladi.",
+  "pricelist.sheet.fileNote":
+    "CSV faylni yuklash jadvalni uzadi — avtomatik yangilanish faylni almashtirmasligi uchun.",
+  "pricelist.sheet.reason.noRows": "jadvalda narxi bor birorta ham pozitsiya yo‘q",
+  "pricelist.sheet.reason.shrunk":
+    "jadvalda pozitsiyalar narxnomadagidan ikki baravar kam — ataylab bo‘lsa, uni qo‘lda yuklang",
+  "pricelist.sheet.reason.changed": "tekshiruvdan keyin jadval o‘zgardi — qayta tekshiring",
+  "pricelist.kb.import.title": "Maqolalarni fayl yoki matndan yuklash",
+  "pricelist.kb.import.hint":
+    "{mb} MB gacha PDF, Word (.docx), .txt yoki .md — yoki matnni joylashtiring. Maqolalarni ### yoki --- qatori bilan ajrating: birinchi qator — sarlavha, «Tags: …» qatori — teglar. Ajratgichsiz fayl fayl nomi bilan bitta maqola bo‘ladi. Avval maqolalarni ko‘rsatamiz — faqat belgilanganlari saqlanadi, avvalgi maqolalar qoladi.",
+  "pricelist.kb.import.file": "Faylni tanlash",
+  "pricelist.kb.import.text": "Yoki matnni joylashtiring",
+  "pricelist.kb.import.preview": "Maqolalarni ko‘rsatish",
+  "pricelist.kb.import.found": "Topilgan maqolalar: {count}. Qaysilarini qo‘shishni belgilang.",
+  "pricelist.kb.import.replaces": "sarlavhasi bir xil maqolani yangilaydi",
+  "pricelist.kb.import.new": "yangi",
+  "pricelist.kb.import.truncated": "{max} belgidan uzun maqolalar: {count} — oxiri qisqartirildi.",
+  "pricelist.kb.import.add": "Bazaga qo‘shish ({count})",
+  "pricelist.kb.import.cancel": "Bekor qilish",
+  "pricelist.kb.import.done":
+    "{added} ta qo‘shildi, {updated} ta yangilandi. Jami maqolalar: {total}.",
+  "pricelist.kb.import.tooBig":
+    "Fayl {mb} MB dan katta — uni qismlarga bo‘ling yoki matnni joylashtiring.",
+  "pricelist.kb.import.saveFirst":
+    "Avval quyidagi maqola tuzatishlarini saqlang — yuklangandan keyin ro‘yxat yangilanadi.",
 };
