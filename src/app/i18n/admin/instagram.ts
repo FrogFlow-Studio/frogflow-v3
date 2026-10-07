@@ -95,7 +95,10 @@ export const ru = {
   "instagram.form.secondDmPlaceholder":
     "Для перехода в бот и получения материалов нажмите кнопку ниже 👇",
   "instagram.form.commentReply": "Публичный ответ под комментарием",
-  "instagram.form.commentReplyHint": "необязательно; например «Ответили в директ 💬»",
+  "instagram.form.commentReplyHint":
+    "необязательно; например «Ответили в директ 💬». Добавьте 2–3 варианта: ответы будут чередоваться и не выглядеть как спам",
+  "instagram.form.addReplyVariant": "+ Ещё вариант",
+  "instagram.form.removeReplyVariant": "Убрать вариант",
   "instagram.form.unresolved": "Если DM не доставилась никак",
   "instagram.form.unresolvedHint":
     "публичный ответ с просьбой написать первым — открывает окно Direct",
@@ -222,7 +225,10 @@ export const kk: SectionDict<typeof ru> = {
   "instagram.form.secondDmPlaceholder":
     "Ботқа өтіп, материалдарды алу үшін төмендегі түймені басыңыз 👇",
   "instagram.form.commentReply": "Пікір астындағы жария жауап",
-  "instagram.form.commentReplyHint": "міндетті емес; мысалы «Директке жауап бердік 💬»",
+  "instagram.form.commentReplyHint":
+    "міндетті емес; мысалы «Директке жауап бердік 💬». 2–3 нұсқа қосыңыз: жауаптар кезектесіп, спамға ұқсамайды",
+  "instagram.form.addReplyVariant": "+ Тағы нұсқа",
+  "instagram.form.removeReplyVariant": "Нұсқаны алып тастау",
   "instagram.form.unresolved": "DM мүлде жетпесе",
   "instagram.form.unresolvedHint":
     "бірінші болып жазуды сұрайтын жария жауап — Direct терезесін ашады",
@@ -347,7 +353,10 @@ export const en: SectionDict<typeof ru> = {
   "instagram.form.secondDmPlaceholder":
     "To open the bot and get the materials, tap the button below 👇",
   "instagram.form.commentReply": "Public reply under the comment",
-  "instagram.form.commentReplyHint": "optional; e.g. “Replied in DM 💬”",
+  "instagram.form.commentReplyHint":
+    "optional; e.g. “Replied in DM 💬”. Add 2–3 variants: replies will alternate and won’t look like spam",
+  "instagram.form.addReplyVariant": "+ Another variant",
+  "instagram.form.removeReplyVariant": "Remove variant",
   "instagram.form.unresolved": "If the DM could not be delivered at all",
   "instagram.form.unresolvedHint":
     "a public reply asking to message first — it opens the Direct window",
@@ -472,7 +481,10 @@ export const uz: SectionDict<typeof ru> = {
   "instagram.form.secondDmPlaceholder":
     "Botga o‘tish va materiallarni olish uchun pastdagi tugmani bosing 👇",
   "instagram.form.commentReply": "Izoh ostidagi ochiq javob",
-  "instagram.form.commentReplyHint": "majburiy emas; masalan «Direktda javob berdik 💬»",
+  "instagram.form.commentReplyHint":
+    "majburiy emas; masalan «Direktda javob berdik 💬». 2–3 variant qo‘shing: javoblar almashinadi va spamga o‘xshamaydi",
+  "instagram.form.addReplyVariant": "+ Yana variant",
+  "instagram.form.removeReplyVariant": "Variantni olib tashlash",
   "instagram.form.unresolved": "Agar DM umuman yetib bormasa",
   "instagram.form.unresolvedHint":
     "birinchi bo‘lib yozishni so‘raydigan ochiq javob — Direct oynasini ochadi",

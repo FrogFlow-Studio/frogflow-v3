@@ -526,7 +526,12 @@ function RuleForm({
   );
   const [dmMessage, setDmMessage] = useState(initial?.dmMessage ?? "");
   const [buttons, setButtons] = useState<Button[]>(initial?.buttons ?? []);
-  const [commentReply, setCommentReply] = useState(initial?.commentReply ?? "");
+  // Публичный ответ: основной и варианты — Zernio чередует их, чтобы одинаковые
+  // ответы под постом не выглядели как спам.
+  const [commentReplies, setCommentReplies] = useState<string[]>(() => {
+    const all = [initial?.commentReply ?? "", ...(initial?.commentReplyVariations ?? [])];
+    return all.filter((r, i) => i === 0 || r.trim());
+  });
   const [twoStepDm, setTwoStepDm] = useState(initial?.twoStepDm ?? false);
   const [secondDmMessage, setSecondDmMessage] = useState(initial?.secondDmMessage ?? "");
   const [unresolvedPrompt, setUnresolvedPrompt] = useState(initial?.unresolvedPrompt ?? "");
@@ -563,7 +568,10 @@ function RuleForm({
         matchMode,
         dmMessage,
         buttons: buttons.filter((b) => b.title.trim()),
-        commentReply,
+        ...(() => {
+          const filled = commentReplies.map((r) => r.trim()).filter(Boolean);
+          return { commentReply: filled[0] ?? "", commentReplyVariations: filled.slice(1) };
+        })(),
         twoStepDm,
         secondDmMessage,
         unresolvedPrompt,
@@ -722,12 +730,40 @@ function RuleForm({
           )}
         </div>
         <Field label={t("instagram.form.commentReply")} hint={t("instagram.form.commentReplyHint")}>
-          <input
-            className="input"
-            value={commentReply}
-            maxLength={1000}
-            onChange={(e) => setCommentReply(e.target.value)}
-          />
+          <div className="space-y-2">
+            {commentReplies.map((reply, i) => (
+              <div key={i} className="flex gap-2">
+                <input
+                  className="input flex-1"
+                  value={reply}
+                  maxLength={1000}
+                  onChange={(e) =>
+                    setCommentReplies(commentReplies.map((r, j) => (j === i ? e.target.value : r)))
+                  }
+                />
+                {i > 0 && (
+                  <button
+                    type="button"
+                    className="btn-ghost text-xs"
+                    aria-label={t("instagram.form.removeReplyVariant")}
+                    title={t("instagram.form.removeReplyVariant")}
+                    onClick={() => setCommentReplies(commentReplies.filter((_, j) => j !== i))}
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            ))}
+            {commentReplies.length < 5 && (
+              <button
+                type="button"
+                className="btn-ghost text-xs"
+                onClick={() => setCommentReplies([...commentReplies, ""])}
+              >
+                {t("instagram.form.addReplyVariant")}
+              </button>
+            )}
+          </div>
         </Field>
         <Field label={t("instagram.form.unresolved")} hint={t("instagram.form.unresolvedHint")}>
           <input

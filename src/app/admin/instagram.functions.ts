@@ -67,6 +67,7 @@ export const instagramFn = createServerFn({ method: "GET" }).handler(async () =>
       dmMessage: x.dmMessage ?? "",
       buttons: x.buttons ?? [],
       commentReply: x.commentReply ?? "",
+      commentReplyVariations: x.commentReplyVariations ?? [],
       isActive: x.isActive !== false,
       twoStepDm: Boolean(x.twoStepDm),
       secondDmMessage: x.secondDmMessage ?? "",
@@ -153,6 +154,8 @@ export const saveAutomationFn = createServerFn({ method: "POST" })
         dmMessage: z.string().max(1000),
         buttons: z.array(buttonSchema).max(3).default([]),
         commentReply: z.string().max(1000).default(""),
+        // Ещё варианты публичного ответа: Zernio чередует их с основным.
+        commentReplyVariations: z.array(z.string().max(1000)).max(4).default([]),
         twoStepDm: z.boolean().default(false),
         secondDmMessage: z.string().max(1000).default(""),
         unresolvedPrompt: z.string().max(500).default(""),

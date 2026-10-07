@@ -318,6 +318,34 @@ describe("Comment-to-DM: пересохранение правила", () => {
     return { ctx, api, update, input };
   }
 
+  it("несколько вариантов публичного ответа уходят в Zernio; пустой список их снимает (просьба Кристины Дидактики)", async () => {
+    const { saveAutomation } = await import("./automations.server");
+    const { ctx, api, update, input } = patchSetup();
+    const replies = {
+      commentReply: "Написали вам в директ 💬",
+      commentReplyVariations: ["Ответили в личные 📩", "Проверьте директ ✨"],
+    };
+    expect(await saveAutomation(ctx, { ...input, ...replies }, api)).toEqual({
+      ok: true,
+      id: "rule1",
+    });
+    expect(update).toHaveBeenLastCalledWith("rule1", expect.objectContaining(replies));
+    await saveAutomation(ctx, { ...input, ...replies, commentReplyVariations: [] }, api);
+    expect(update).toHaveBeenLastCalledWith(
+      "rule1",
+      expect.objectContaining({ commentReplyVariations: [] }),
+    );
+  });
+
+  it("запасной публичный ответ берёт основной или вариант, пустые пропускает", async () => {
+    const { pickCommentReply } = await import("./automations.server");
+    const a = { commentReply: "Первый", commentReplyVariations: [" ", "Второй", "Третий"] };
+    expect(pickCommentReply(a, () => 0)).toBe("Первый");
+    expect(pickCommentReply(a, () => 0.5)).toBe("Второй");
+    expect(pickCommentReply(a, () => 0.99)).toBe("Третий");
+    expect(pickCommentReply({ commentReply: "" }, () => 0)).toBe("");
+  });
+
   it("PATCH явно очищает кнопки у Zernio и дописывает призыв ответить", async () => {
     const { saveAutomation, getAutomationsMeta } = await import("./automations.server");
     const { ctx, api, update, input } = patchSetup();

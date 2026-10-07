@@ -1378,6 +1378,17 @@ async function claimConversationSecondStep(
   return { result: "taken", release: noop };
 }
 
+/** Публичный ответ под комментарием: основной или один из вариантов, наугад — как у Zernio. */
+export function pickCommentReply(
+  a: Pick<CommentAutomation, "commentReply" | "commentReplyVariations">,
+  random: () => number = Math.random,
+): string {
+  const all = [a.commentReply, ...(a.commentReplyVariations ?? [])]
+    .map((t) => t?.trim() ?? "")
+    .filter(Boolean);
+  return all[Math.floor(random() * all.length)] ?? "";
+}
+
 export type CatchupInput = {
   postId: string;
   accountId: string;
@@ -1796,7 +1807,7 @@ export async function runCommentDmFallback(
         // с префиксом prompt_.
         let publicStatus: "skipped" | "sent" | "failed" = "skipped";
         let publicError: string | null = null;
-        const commentReply = automation.commentReply?.trim();
+        const commentReply = pickCommentReply(automation);
         const prompt = automation.unresolvedPrompt?.trim();
         if (!reply.ok && altStatus === "sent" && commentReply && !publicByZernio.has(commentId)) {
           const r = await api.publicReply(postId, commentId, automation.accountId, commentReply);
