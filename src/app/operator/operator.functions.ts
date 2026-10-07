@@ -134,6 +134,26 @@ export const clientZernioInboxFn = createServerFn({ method: "GET" })
     return (await import("./zernio-inbox.server")).clientZernioInbox(data.botId);
   });
 
+/** Строки базы знаний консультанта по всем клиентам — откуда перенести статьи. */
+export const clientKnowledgeSourcesFn = createServerFn({ method: "GET" })
+  .validator((d: unknown) => z.object({ botId }).parse(d))
+  .handler(async ({ data }) => {
+    await guard();
+    return (await import("./knowledge-import.server")).listKnowledgeSources(data.botId);
+  });
+
+/** Перенести статьи выбранной строки в базу знаний этого клиента (источник не меняется). */
+export const importClientKnowledgeFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ botId, sourceBotId: botId }).parse(d))
+  .handler(async ({ data }) => {
+    await guard();
+    return (await import("./knowledge-import.server")).importKnowledgeFrom(
+      data.botId,
+      data.sourceBotId,
+      await actor(),
+    );
+  });
+
 /** События, дошедшие до v2 без клиента (аккаунт не привязан или клиент на v1). */
 export const unmatchedZernioFn = createServerFn({ method: "GET" }).handler(async () => {
   await guard();

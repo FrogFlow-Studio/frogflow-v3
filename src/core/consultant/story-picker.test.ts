@@ -4,7 +4,7 @@ import { fakeDb } from "../../../tests/fake-db";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { CATALOG_KEY } from "./pricelist/catalog.server";
 import { decidePricelistReply, loadPricelistData } from "./pricelist/engine.server";
-import { searchPricelist, searchStoryProducts } from "./story-picker";
+import { searchPricelist, searchPricelistPage, searchStoryProducts } from "./story-picker";
 import { listStoryTags, upsertStoryTag } from "./story-tags";
 
 /**
@@ -75,6 +75,20 @@ describe("товары для публикации Instagram", () => {
   it("пустой запрос — первые по алфавиту, слова ищутся в любом порядке и регистре", () => {
     expect(searchPricelist(PRICELIST, "")).toHaveLength(30);
     expect(searchPricelist(PRICELIST, "frisco КОРЗИНА").map((p) => p.id)).toEqual(["00-777"]);
+  });
+
+  it("прайс листается дальше первых 30: всего найдено и следующая страница без повторов", async () => {
+    const first = searchPricelistPage(PRICELIST, "");
+    expect(first.items).toHaveLength(30);
+    expect(first.total).toBe(PRICELIST.length);
+    const next = searchPricelistPage(PRICELIST, "", 30);
+    expect(next.items.length).toBe(Math.min(30, PRICELIST.length - 30));
+    const ids = [...first.items, ...next.items].map((p) => p.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    const { ctx } = shop(true);
+    const r = await searchStoryProducts(ctx, "", 30);
+    expect(r.total).toBe(PRICELIST.length);
+    expect(r.items.map((p) => p.id)).toEqual(next.items.map((p) => p.id));
   });
 
   it("без прайса — поиск по каталогу магазина", async () => {

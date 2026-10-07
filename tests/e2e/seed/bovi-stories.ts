@@ -56,6 +56,37 @@ export function seedBoviStories(db: StubDb, now: string) {
     own({ key: "shop_name", value: F.BOVI_E2E_NAME, updated_at: now }),
     own({ key: "consultant_enabled", value: "true", updated_at: now }),
     own({ key: "consultant_catalog_json", value: JSON.stringify(pricelist), updated_at: now }),
+    // База знаний из v1: на странице консультанта — ссылка на «Прайс консультанта».
+    own({
+      key: "consultant_knowledge_json",
+      value: JSON.stringify([
+        { id: "kb-e2e-1", title: "Фабрики", tags: [], content: "Португалия", updatedAt: now },
+        { id: "kb-e2e-2", title: "Полотенца", tags: [], content: "550 г/м²", updatedAt: now },
+      ]),
+      updated_at: now,
+    }),
+    // Тег публикации из v1 с пятью товарами: в списке видны три и «ещё 2».
+    own({
+      key: "consultant_story_tags",
+      value: JSON.stringify([
+        {
+          id: "st-e2e-many",
+          story_id: "DPe2eMany",
+          story_url: "https://www.instagram.com/p/DPe2eMany/",
+          product_id: "old-0",
+          product_name: "BOVI Наволочки 00",
+          price: 25000,
+          notes: null,
+          created_at: now,
+          products: [0, 1, 2, 3, 4].map((i) => ({
+            id: `old-${i}`,
+            name: `BOVI Наволочки 0${i}`,
+            price: 25000,
+          })),
+        },
+      ]),
+      updated_at: now,
+    }),
     // Задача консультанта: передача менеджеру, которую продавец отмечает сделанной.
     own({
       key: "consultant_tasks_json",

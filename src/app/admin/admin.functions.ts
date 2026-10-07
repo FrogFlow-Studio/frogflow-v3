@@ -3310,9 +3310,12 @@ export const consultantFn = createServerFn({ method: "GET" }).handler(async () =
   const { loadConsultant, consultantConfigured, KEYS } =
     await import("@/core/consultant/engine.server");
   const { getSettings } = await import("@/core/settings/settings");
+  const { pricelistMode } = await import("@/core/consultant/pricelist/mode");
+  const { KNOWLEDGE_KEY } = await import("@/core/consultant/pricelist/knowledge");
+  const { CATALOG_META_KEY } = await import("@/core/consultant/pricelist/catalog.server");
   const [c, s] = await Promise.all([
     loadConsultant(ctx),
-    getSettings(ctx, [KEYS.usage, KEYS.lastError]),
+    getSettings(ctx, [KEYS.usage, KEYS.lastError, KNOWLEDGE_KEY, CATALOG_META_KEY]),
   ]);
   let usage = { count: 0, inputTokens: 0, outputTokens: 0, usd: 0 };
   try {
@@ -3327,8 +3330,26 @@ export const consultantFn = createServerFn({ method: "GET" }).handler(async () =
     usage,
     lastError: s[KEYS.lastError] ?? "",
     pauseHours: pauseHours(ctx.tenant),
+    pricelist: {
+      on: pricelistMode(ctx.tenant),
+      articles: countArticles(s[KNOWLEDGE_KEY]),
+      hasCatalog: Boolean(s[CATALOG_META_KEY]?.trim()),
+    },
   };
 });
+
+/**
+ * Статьи базы знаний консультанта по прайсу (`consultant_knowledge_json`, как у
+ * v1): сколько их на самом деле, без статей по умолчанию.
+ */
+function countArticles(raw: string | null | undefined): number {
+  try {
+    const v = JSON.parse(raw ?? "") as unknown;
+    return Array.isArray(v) ? v.length : 0;
+  } catch {
+    return 0;
+  }
+}
 
 export const saveConsultantFn = createServerFn({ method: "POST" })
   .validator((d: unknown) =>

@@ -65,6 +65,7 @@ import { seedShop19AReports } from "./seed/shop19-a-reports.ts";
 import { seedShop19ATeam } from "./seed/shop19-a-team.ts";
 import { seedBoviStories } from "./seed/bovi-stories.ts";
 import { seedBoviPlan } from "./seed/bovi-plan.ts";
+import { seedKbImport } from "./seed/kb-import.ts";
 
 export function seedDb(): StubDb {
   const db = stubDb();
@@ -130,5 +131,6 @@ export function seedDb(): StubDb {
   seedShop19ATeam(db, now);
   seedBoviStories(db, now);
   seedBoviPlan(db, now);
+  seedKbImport(db, now);
   return db;
 }

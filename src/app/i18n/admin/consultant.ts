@@ -88,6 +88,15 @@ export const ru = {
   "consultant.stories.addManual": "Добавить",
   "consultant.stories.remove": "Убрать",
   "consultant.stories.edit": "Изменить",
+  "consultant.stories.more": "ещё {n}",
+  "consultant.stories.less": "Свернуть",
+  "consultant.stories.shown": "Показано {n} из {total}",
+  "consultant.stories.loadMore": "Показать ещё",
+  "consultant.knowledge.pricelist":
+    "Консультант отвечает по прайсу, его база знаний (статей: {n}) — на странице «Прайс консультанта». Там же можно загрузить PDF, Word или текст.",
+  "consultant.knowledge.openPricelist": "Открыть «Прайс консультанта»",
+  "consultant.knowledge.pricelistOff":
+    "У магазина есть прайс и база знаний с прежней платформы (статей: {n}), но консультант сейчас отвечает не по ним. Попросите оператора включить «Консультант по прайсу» — тогда появится страница «Прайс консультанта».",
 } as const;
 
 export const kk: SectionDict<typeof ru> = {
@@ -178,6 +187,15 @@ export const kk: SectionDict<typeof ru> = {
   "consultant.stories.addManual": "Қосу",
   "consultant.stories.remove": "Алып тастау",
   "consultant.stories.edit": "Өзгерту",
+  "consultant.stories.more": "тағы {n}",
+  "consultant.stories.less": "Жию",
+  "consultant.stories.shown": "{total} ішінен {n} көрсетілді",
+  "consultant.stories.loadMore": "Тағы көрсету",
+  "consultant.knowledge.pricelist":
+    "Кеңесші прайс бойынша жауап береді, оның білім базасы ({n} мақала) «Кеңесші прайсы» бетінде. Сонда PDF, Word немесе мәтін жүктеуге болады.",
+  "consultant.knowledge.openPricelist": "«Кеңесші прайсын» ашу",
+  "consultant.knowledge.pricelistOff":
+    "Дүкенде бұрынғы платформадан прайс пен білім базасы бар ({n} мақала), бірақ кеңесші қазір солар бойынша жауап бермейді. Операторға «Прайс бойынша кеңесшіні» қосуды сұраңыз — сонда «Кеңесші прайсы» беті пайда болады.",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -268,6 +286,15 @@ export const en: SectionDict<typeof ru> = {
   "consultant.stories.addManual": "Add",
   "consultant.stories.remove": "Remove",
   "consultant.stories.edit": "Edit",
+  "consultant.stories.more": "{n} more",
+  "consultant.stories.less": "Collapse",
+  "consultant.stories.shown": "Showing {n} of {total}",
+  "consultant.stories.loadMore": "Show more",
+  "consultant.knowledge.pricelist":
+    "The consultant answers from the price list; its knowledge base ({n} articles) is on the «Consultant price list» page. You can upload PDF, Word or text there.",
+  "consultant.knowledge.openPricelist": "Open «Consultant price list»",
+  "consultant.knowledge.pricelistOff":
+    "Your shop has a price list and a knowledge base from the previous platform ({n} articles), but the consultant is not answering from them now. Ask the operator to turn on «Price-list consultant» — the «Consultant price list» page will then appear.",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -359,4 +386,13 @@ export const uz: SectionDict<typeof ru> = {
   "consultant.stories.addManual": "Qo‘shish",
   "consultant.stories.remove": "Olib tashlash",
   "consultant.stories.edit": "O‘zgartirish",
+  "consultant.stories.more": "yana {n}",
+  "consultant.stories.less": "Yig‘ish",
+  "consultant.stories.shown": "{total} tadan {n} tasi ko‘rsatildi",
+  "consultant.stories.loadMore": "Yana ko‘rsatish",
+  "consultant.knowledge.pricelist":
+    "Maslahatchi narxlar ro‘yxati bo‘yicha javob beradi, uning bilimlar bazasi ({n} ta maqola) «Maslahatchi narxnomasi» sahifasida. U yerda PDF, Word yoki matn yuklash mumkin.",
+  "consultant.knowledge.openPricelist": "«Maslahatchi narxnomasi»ni ochish",
+  "consultant.knowledge.pricelistOff":
+    "Do‘koningizda avvalgi platformadan narxlar ro‘yxati va bilimlar bazasi bor ({n} ta maqola), lekin maslahatchi hozir ular bo‘yicha javob bermayapti. Operatordan «Narxlar bo‘yicha maslahatchi»ni yoqishni so‘rang — shunda «Maslahatchi narxnomasi» sahifasi paydo bo‘ladi.",
 };

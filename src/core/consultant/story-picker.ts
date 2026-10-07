@@ -19,17 +19,31 @@ export function searchPricelist(
   q: string,
   limit = PICKER_LIMIT,
 ): StoryPickItem[] {
+  return searchPricelistPage(rows, q, 0, limit).items;
+}
+
+/**
+ * Страница поиска по прайсу: `total` — сколько всего нашлось, чтобы продавец
+ * видел «показано 30 из 790» и мог догрузить следующие, а не терял остальные.
+ */
+export function searchPricelistPage(
+  rows: readonly ConsultantProduct[],
+  q: string,
+  offset = 0,
+  limit = PICKER_LIMIT,
+): { items: StoryPickItem[]; total: number } {
   const words = foldText(q).split(" ").filter(Boolean);
   const hits = rows.filter((p) => {
     if (!words.length) return true;
     const hay = foldText(`${p.name} ${p.category} ${p.size} ${p.colors.join(" ")}`);
     return words.every((w) => hay.includes(w));
   });
-  return hits
+  const items = hits
     .slice()
     .sort((a, b) => a.name.localeCompare(b.name, "ru") || a.id.localeCompare(b.id))
-    .slice(0, limit)
+    .slice(offset, offset + limit)
     .map((p) => ({ id: p.id, name: p.name, price: p.price_kzt > 0 ? p.price_kzt : null }));
+  return { items, total: hits.length };
 }
 
 /**
@@ -43,12 +57,13 @@ export function searchPricelist(
 export async function searchStoryProducts(
   ctx: TenantContext,
   q: string,
-): Promise<{ source: "pricelist" | "catalog"; items: StoryPickItem[] }> {
+  offset = 0,
+): Promise<{ source: "pricelist" | "catalog"; items: StoryPickItem[]; total?: number }> {
   if (pricelistMode(ctx.tenant)) {
     // Мимо кэша консультанта и строго: только что загруженный прайс виден
     // сразу, а сбой чтения — ошибка, а не «ничего не найдено».
     const raw = (await getSettingsStrict(ctx, [CATALOG_KEY]))[CATALOG_KEY];
-    return { source: "pricelist", items: searchPricelist(snapshotOf(raw).products, q) };
+    return { source: "pricelist", ...searchPricelistPage(snapshotOf(raw).products, q, offset) };
   }
   const found = await searchProducts(ctx, { q });
   return {

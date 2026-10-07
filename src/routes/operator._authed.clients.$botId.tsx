@@ -5,6 +5,7 @@ import { archiveClientFn, getClientFn, setStatusFn } from "@/app/operator/operat
 import { Card, ErrorBox, PageTitle, Stat, useAction } from "@/app/ui";
 import { DiagnoseCard } from "@/app/operator/client/diagnose";
 import { MigrationCard, TelegramCard } from "@/app/operator/client/telegram";
+import { KnowledgeImportCard } from "@/app/operator/client/knowledge";
 import { PlanCard } from "@/app/operator/client/plan";
 import { ModulesCard, AdminAccessCard, AddressingCard } from "@/app/operator/client/access";
 import { ZernioCard, MetaCard, ZernioInboxCard } from "@/app/operator/client/channels";
@@ -216,7 +217,12 @@ function ClientPage() {
         </Card>
       )}
 
-      {tab === "migration" && <MigrationCard c={c} migration={migration} onDone={refresh} />}
+      {tab === "migration" && (
+        <div className="space-y-4">
+          <MigrationCard c={c} migration={migration} onDone={refresh} />
+          <KnowledgeImportCard c={c} />
+        </div>
+      )}
 
       {archiving && (
         <ConfirmName

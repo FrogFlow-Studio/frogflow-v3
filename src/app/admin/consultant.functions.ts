@@ -25,11 +25,18 @@ export const storyTagsFn = createServerFn({ method: "GET" }).handler(async () =>
  * (его знает консультант), у остальных — из каталога (core/consultant/story-picker).
  */
 export const storyProductsFn = createServerFn({ method: "GET" })
-  .validator((d: unknown) => z.object({ q: z.string().max(100).default("") }).parse(d ?? {}))
+  .validator((d: unknown) =>
+    z
+      .object({
+        q: z.string().max(100).default(""),
+        offset: z.number().int().min(0).max(100_000).default(0),
+      })
+      .parse(d ?? {}),
+  )
   .handler(async ({ data }) => {
     const ctx = await admin();
     const { searchStoryProducts } = await import("@/core/consultant/story-picker");
-    return searchStoryProducts(ctx, data.q);
+    return searchStoryProducts(ctx, data.q, data.offset);
   });
 
 export const upsertStoryTagFn = createServerFn({ method: "POST" })

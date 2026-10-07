@@ -1,4 +1,4 @@
-import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { consultantFn, consultantTestFn, saveConsultantFn } from "@/app/admin/admin.functions";
 import {
@@ -14,6 +14,9 @@ import { adminT, intlLocale, type AdminKey, type AdminT } from "@/app/i18n/admin
 import { GOALS, TONES, type ConsultantProfile } from "@/core/consultant/profile";
 import type { KnowledgeDoc } from "@/core/consultant/knowledge";
 import { PAUSE_CHOICES, type PauseHours } from "@/core/consultant/pause";
+
+/** Сколько товаров тега видно в списке до «ещё N». */
+const TAG_PREVIEW = 3;
 
 export const Route = createFileRoute("/admin/_authed/consultant")({
   loader: () => consultantFn(),
@@ -65,7 +68,7 @@ function ConsultantPage() {
         </div>
       )}
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4">
           <Card title={t("consultant.profile.title")}>
             <div className="mb-4 flex items-center gap-3">
               <Switch checked={enabled} onChange={setEnabled} label={t("consultant.enable")} />
@@ -207,58 +210,78 @@ function ConsultantPage() {
             </div>
           </Card>
 
-          <Card
-            title={t("consultant.knowledge.title")}
-            actions={
-              <button
-                type="button"
-                className="btn-secondary text-xs"
-                onClick={() =>
-                  setDocs((ds) => [...ds, { id: `doc${Date.now()}`, title: "", content: "" }])
+          {data.pricelist.on ? (
+            <Card title={t("consultant.knowledge.title")}>
+              <p className="text-sm">
+                {t("consultant.knowledge.pricelist", { n: String(data.pricelist.articles) })}
+              </p>
+              <Link to="/admin/pricelist" className="btn-secondary mt-3 inline-block text-sm">
+                {t("consultant.knowledge.openPricelist")}
+              </Link>
+            </Card>
+          ) : (
+            <>
+              {(data.pricelist.articles > 0 || data.pricelist.hasCatalog) && (
+                <div className="rounded-md border border-warn/40 bg-warn/15 px-3 py-2 text-sm">
+                  {t("consultant.knowledge.pricelistOff", {
+                    n: String(data.pricelist.articles),
+                  })}
+                </div>
+              )}
+              <Card
+                title={t("consultant.knowledge.title")}
+                actions={
+                  <button
+                    type="button"
+                    className="btn-secondary text-xs"
+                    onClick={() =>
+                      setDocs((ds) => [...ds, { id: `doc${Date.now()}`, title: "", content: "" }])
+                    }
+                  >
+                    {t("consultant.knowledge.add")}
+                  </button>
                 }
               >
-                {t("consultant.knowledge.add")}
-              </button>
-            }
-          >
-            <p className="mb-3 text-sm text-muted">{t("consultant.knowledge.intro")}</p>
-            {docs.length === 0 && (
-              <p className="text-sm text-muted">{t("consultant.knowledge.empty")}</p>
-            )}
-            <div className="space-y-4">
-              {docs.map((d, i) => (
-                <div key={d.id} className="rounded-md border border-line p-3">
-                  <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto]">
-                    <input
-                      className="input"
-                      placeholder={t("consultant.knowledge.docTitle")}
-                      value={d.title}
-                      onChange={(e) => setDoc(i, { title: e.target.value })}
-                    />
-                    <input
-                      className="input sm:w-40"
-                      placeholder={t("consultant.knowledge.category")}
-                      value={d.category ?? ""}
-                      onChange={(e) => setDoc(i, { category: e.target.value })}
-                    />
-                    <button
-                      type="button"
-                      className="btn-ghost text-xs text-danger"
-                      onClick={() => setDocs((ds) => ds.filter((_, j) => j !== i))}
-                    >
-                      {t("common.delete")}
-                    </button>
-                  </div>
-                  <textarea
-                    className="input mt-2 min-h-24"
-                    placeholder={t("consultant.knowledge.content")}
-                    value={d.content}
-                    onChange={(e) => setDoc(i, { content: e.target.value })}
-                  />
+                <p className="mb-3 text-sm text-muted">{t("consultant.knowledge.intro")}</p>
+                {docs.length === 0 && (
+                  <p className="text-sm text-muted">{t("consultant.knowledge.empty")}</p>
+                )}
+                <div className="space-y-4">
+                  {docs.map((d, i) => (
+                    <div key={d.id} className="rounded-md border border-line p-3">
+                      <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto]">
+                        <input
+                          className="input"
+                          placeholder={t("consultant.knowledge.docTitle")}
+                          value={d.title}
+                          onChange={(e) => setDoc(i, { title: e.target.value })}
+                        />
+                        <input
+                          className="input sm:w-40"
+                          placeholder={t("consultant.knowledge.category")}
+                          value={d.category ?? ""}
+                          onChange={(e) => setDoc(i, { category: e.target.value })}
+                        />
+                        <button
+                          type="button"
+                          className="btn-ghost text-xs text-danger"
+                          onClick={() => setDocs((ds) => ds.filter((_, j) => j !== i))}
+                        >
+                          {t("common.delete")}
+                        </button>
+                      </div>
+                      <textarea
+                        className="input mt-2 min-h-24"
+                        placeholder={t("consultant.knowledge.content")}
+                        value={d.content}
+                        onChange={(e) => setDoc(i, { content: e.target.value })}
+                      />
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </Card>
+              </Card>
+            </>
+          )}
 
           <div className="flex items-center gap-3">
             <button
@@ -273,7 +296,7 @@ function ConsultantPage() {
           <ErrorBox error={save.error} />
         </div>
 
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4">
           <TestChat configured={data.configured} t={t} />
           {shop.modules.instagram && <StoriesCard t={t} />}
           <Card title={t("consultant.usage.title")}>
@@ -377,6 +400,8 @@ type StoryPost = Awaited<ReturnType<typeof storyPostsFn>>["posts"][number];
  */
 function StoriesCard({ t }: { t: AdminT }) {
   const [data, setData] = useState<StoryTags | null>(null);
+  // Тег из v1 может держать десятки товаров: в списке — первые, остальные по кнопке.
+  const [open, setOpen] = useState<Set<string>>(() => new Set());
   const [story, setStory] = useState("");
   const [items, setItems] = useState<StoryItem[]>([]);
   const [query, setQuery] = useState("");
@@ -400,6 +425,14 @@ function StoriesCard({ t }: { t: AdminT }) {
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query]);
+  // Догрузить следующие товары прайса к уже найденным (тот же запрос).
+  const more = useAction(async () => {
+    if (!found) return;
+    const n = latest.current;
+    const r = await storyProductsFn({ data: { q: query, offset: found.items.length } });
+    if (n === latest.current)
+      setFound((prev) => (prev ? { ...r, items: [...prev.items, ...r.items] } : r));
+  });
   const loadPosts = useAction(async () => setPosts((await storyPostsFn()).posts));
   const addItem = (item: StoryItem) =>
     setItems((prev) =>
@@ -545,11 +578,31 @@ function StoriesCard({ t }: { t: AdminT }) {
                   </button>
                 ))
               )}
-              {found.items.length >= PICKER_LIMIT && (
-                <p className="p-2 text-xs text-muted">{t("picker.more", { n: PICKER_LIMIT })}</p>
-              )}
             </div>
           )}
+          {found &&
+            (found.total != null
+              ? found.total > found.items.length && (
+                  <div className="flex flex-wrap items-center gap-2 p-2 text-xs text-muted">
+                    <span>
+                      {t("consultant.stories.shown", {
+                        n: String(found.items.length),
+                        total: String(found.total),
+                      })}
+                    </span>
+                    <button
+                      type="button"
+                      className="btn-ghost text-xs"
+                      disabled={more.busy}
+                      onClick={() => void more.run().catch(() => {})}
+                    >
+                      {t("consultant.stories.loadMore")}
+                    </button>
+                  </div>
+                )
+              : found.items.length >= PICKER_LIMIT && (
+                  <p className="p-2 text-xs text-muted">{t("picker.more", { n: PICKER_LIMIT })}</p>
+                ))}
         </div>
         <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_8rem_auto]">
           <input
@@ -584,7 +637,7 @@ function StoriesCard({ t }: { t: AdminT }) {
         <button className="btn-secondary" disabled={add.busy || items.length === 0}>
           {t("consultant.stories.add")}
         </button>
-        <ErrorBox error={add.error ?? del.error ?? search.error ?? loadPosts.error} />
+        <ErrorBox error={add.error ?? del.error ?? search.error ?? more.error ?? loadPosts.error} />
       </form>
       {data && data.tags.length === 0 && (
         <p className="mt-3 text-sm text-muted">{t("consultant.stories.empty")}</p>
@@ -594,12 +647,30 @@ function StoriesCard({ t }: { t: AdminT }) {
           {data.tags.map((tag) => (
             <li key={tag.id} className="flex items-start justify-between gap-2 px-3 py-2">
               <div className="min-w-0">
-                {tag.items.map((it, i) => (
+                {(open.has(tag.id) ? tag.items : tag.items.slice(0, TAG_PREVIEW)).map((it, i) => (
                   <div key={`${it.id ?? it.name}-${i}`} className="font-medium">
                     {it.name}
                     <span className="text-muted">{money(it.price)}</span>
                   </div>
                 ))}
+                {tag.items.length > TAG_PREVIEW && (
+                  <button
+                    type="button"
+                    className="btn-ghost px-0 text-xs"
+                    onClick={() =>
+                      setOpen((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(tag.id)) next.delete(tag.id);
+                        else next.add(tag.id);
+                        return next;
+                      })
+                    }
+                  >
+                    {open.has(tag.id)
+                      ? t("consultant.stories.less")
+                      : t("consultant.stories.more", { n: String(tag.items.length - TAG_PREVIEW) })}
+                  </button>
+                )}
                 <div className="truncate text-xs text-muted">
                   {tag.story_url ? (
                     <a
