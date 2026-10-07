@@ -765,6 +765,8 @@ async function sendSecondStep(
     automationId: string;
     commentId: string;
     username: string;
+    /** id автора комментария: по нему узнаём покупателя, если Zernio прислал в Direct вместо имени цифры. */
+    authorId?: string | null;
     secondText: string;
     buttons: AutomationButton[];
   },
@@ -772,17 +774,6 @@ async function sendSecondStep(
 ): Promise<boolean> {
   const key = `two-step-dm:${p.commentId}`;
   const buttons = normalizeDmButtons(p.buttons as DmButton[]);
-  // Покупатель ответил «+» раньше, чем дошёл вебхук комментария, и второе
-  // уже отдано по переписке (deliverTwoStepFromDm) — второй раз не шлём.
-  if (await secondStepTaken(ctx, p.username, p.automationId, { queued: true })) {
-    await upsertLog(ctx, key, {
-      event_type: "two_step_dm_sent",
-      status: "processed",
-      error_message: "второе сообщение этому покупателю уже ушло",
-      payload: { commentId: p.commentId, username: p.username, automationId: p.automationId },
-    });
-    return true;
-  }
   const { data: known, error: knownErr } = await ctx.db
     .from("bot_users")
     .select("zernio_conversation_id")
@@ -793,12 +784,27 @@ async function sendSecondStep(
   let ok = false;
   let error: string | undefined = "ждём ответа покупателя в Direct";
   if (known?.zernio_conversation_id) {
-    const r = await api.inbox(known.zernio_conversation_id, p.accountId, p.secondText, {
-      buttons,
-      platform: "instagram",
-    });
-    ok = r.ok;
-    error = r.error;
+    const claim = await claimConversationSecondStep(ctx, known.zernio_conversation_id, key);
+    if (claim.result === "taken") {
+      // Второе этому покупателю уже ушло другим путём («+» раньше вебхука,
+      // другое правило на тот же пост) — второй раз не шлём.
+      await upsertLog(ctx, key, {
+        event_type: "two_step_dm_sent",
+        status: "processed",
+        error_message: ALREADY_SENT,
+        payload: { commentId: p.commentId, username: p.username, automationId: p.automationId },
+      });
+      return true;
+    }
+    if (claim.result === "won") {
+      const r = await api.inbox(known.zernio_conversation_id, p.accountId, p.secondText, {
+        buttons,
+        platform: "instagram",
+      });
+      ok = r.ok;
+      error = r.error;
+      if (!ok) await claim.release();
+    }
   }
   await upsertLog(ctx, key, {
     event_type: ok ? "two_step_dm_sent" : "two_step_dm_pending",
@@ -807,6 +813,7 @@ async function sendSecondStep(
     payload: {
       commentId: p.commentId,
       username: p.username,
+      ...(p.authorId ? { authorId: p.authorId } : {}),
       accountId: p.accountId,
       automationId: p.automationId,
       secondText: p.secondText,
@@ -896,6 +903,7 @@ export async function handleCommentReceived(
       automationId: automationId(matched),
       commentId,
       username,
+      authorId: payload.comment?.author?.id ?? null,
       secondText: matched.secondDmMessage || DEFAULT_SECOND_DM,
       buttons,
     },
@@ -960,7 +968,7 @@ async function alreadyDelivered(
 /** Покупатель написал в Direct первым — отдать ему обещанное второе сообщение из очереди. */
 export async function deliverPendingTwoStepDm(
   ctx: TenantContext,
-  p: { accountId: string; conversationId: string; username: string },
+  p: { accountId: string; conversationId: string; username: string; senderId?: string },
   api: AutomationApi = liveAutomationApi,
   now: () => Date = () => new Date(),
 ): Promise<boolean> {
@@ -981,10 +989,16 @@ export async function deliverPendingTwoStepDm(
         .range(from, to),
     "[zernio] очередь вторых сообщений не прочитана",
   );
+  // Свой — по имени или по id автора комментария: в первом сообщении новой
+  // переписки Zernio кладёт в имя отправителя цифровой id, и строка с именем
+  // из комментария по имени не находилась (Кристина Дидактика, 07.10: «+» от
+  // «@1407411881513987», комментарий от «@dolphin.2023841»).
   const own = (logs as PendingRow[]).filter((l) => {
-    const pl = l.payload as { username?: string } | null;
+    const pl = l.payload as { username?: string; authorId?: string } | null;
     return (
-      typeof pl?.username === "string" && pl.username.toLowerCase() === p.username.toLowerCase()
+      (typeof pl?.username === "string" &&
+        pl.username.toLowerCase() === p.username.toLowerCase()) ||
+      (Boolean(p.senderId) && pl?.authorId === p.senderId)
     );
   });
   const matched = own.find((l) => l.status === "pending") ?? own[0];
@@ -993,27 +1007,7 @@ export async function deliverPendingTwoStepDm(
     secondText?: string;
     buttons?: DmButton[];
     attempts?: number;
-    automationId?: string;
   };
-  // Вторая строка того же правила (вебхук комментария и «+» пришли вместе) —
-  // второе уже ушло по первой: закрываем без отправки, сообщение покупателя
-  // разбирается дальше как обычное.
-  if (
-    matched.status === "pending" &&
-    pl.automationId &&
-    (await secondStepTaken(ctx, p.username, pl.automationId, { exceptId: matched.id }))
-  ) {
-    await ctx.db
-      .from("zernio_logs")
-      .update({
-        event_type: "two_step_dm_sent",
-        status: "processed",
-        error_message: "второе сообщение этому покупателю уже ушло",
-      })
-      .eq("id", matched.id)
-      .eq("status", "pending");
-    return false;
-  }
   const text = pl.secondText?.trim() || DEFAULT_SECOND_DM;
   const attempts = typeof pl.attempts === "number" ? pl.attempts : 0;
 
@@ -1070,6 +1064,25 @@ export async function deliverPendingTwoStepDm(
     return false;
   }
   if (!claimed?.length) return true;
+  // Одно второе сообщение в переписку, каким бы путём и по какому бы правилу
+  // оно ни шло: строка из очереди, которую обогнал «+», закрывается без
+  // отправки (Кристина Дидактика, 07.10: «+» пришёл с цифровым id вместо
+  // имени, второе ушло по переписке, а строка вебхука с настоящим именем
+  // дождалась «Купить» и прислала то же второе сообщение ещё раз).
+  const buyer = await claimConversationSecondStep(ctx, p.conversationId, `row:${matched.id}`, now);
+  if (buyer.result !== "won") {
+    await ctx.db
+      .from("zernio_logs")
+      .update(
+        buyer.result === "taken"
+          ? { event_type: "two_step_dm_sent", status: "processed", error_message: ALREADY_SENT }
+          : { status: matched.status, error_message: matched.error_message },
+      )
+      .eq("id", matched.id)
+      .eq("status", "processing")
+      .eq("error_message", token);
+    return false;
+  }
   const buttons = normalizeDmButtons(Array.isArray(pl.buttons) ? pl.buttons : []);
   // Ключ идемпотентности — от строки очереди, а не от вебхука: повтор после
   // зависшего захвата приходит с другим вебхуком, и если первая отправка всё
@@ -1082,6 +1095,7 @@ export async function deliverPendingTwoStepDm(
   if (!r.ok) {
     // Не ушло — вернуть в очередь (или сдаться после предела попыток):
     // следующий ответ покупателя попробует снова.
+    await buyer.release();
     const last = attempts + 1 >= TWO_STEP_MAX_ATTEMPTS;
     await ctx.db
       .from("zernio_logs")
@@ -1191,7 +1205,7 @@ function ruleOfFirstDm(text: string, rules: CommentAutomation[]): CommentAutomat
  */
 export async function deliverTwoStepFromDm(
   ctx: TenantContext,
-  p: { accountId: string; conversationId: string; username: string },
+  p: { accountId: string; conversationId: string; username: string; senderId?: string },
   api: AutomationApi = liveAutomationApi,
   now: () => Date = () => new Date(),
 ): Promise<boolean> {
@@ -1238,8 +1252,12 @@ export async function deliverTwoStepFromDm(
     "[zernio] вторые сообщения не прочитаны",
   );
   const known = rows.some((r) => {
-    const pl = r.payload as { username?: string; automationId?: string } | null;
-    return pl?.automationId === autoId && pl.username?.toLowerCase() === p.username.toLowerCase();
+    const pl = r.payload as { username?: string; authorId?: string; automationId?: string } | null;
+    return (
+      pl?.automationId === autoId &&
+      (pl.username?.toLowerCase() === p.username.toLowerCase() ||
+        (Boolean(p.senderId) && pl.authorId === p.senderId))
+    );
   });
   if (!known) {
     const { error } = await ctx.db.from("zernio_logs").insert({
@@ -1278,45 +1296,86 @@ export async function deliverTwoStepFromDm(
 /** Строки второго шага, заведённые по ответу покупателя, а не по комментарию. */
 const DM_KEY_PREFIX = "two-step-dm:dm:";
 
+const ALREADY_SENT = "второе сообщение этому покупателю уже ушло";
+
 /**
- * Второе по этому правилу этому покупателю за последние полчаса уже ушло или
- * уходит (по комментарию или по его ответу в Direct); с `queued` — или уже
- * заведено по ответу в Direct и вот-вот уйдёт. Вебхук комментария и «+» приходят почти одновременно и заводят по
- * строке каждый; без этой проверки вторая строка ждала в очереди и уходила
- * следующим сообщением покупателя — нажатие «Купить» присылало то же второе
- * сообщение ещё раз (Кристина Дидактика, 07.10).
+ * Право отправить второе сообщение в эту переписку: одно за
+ * TWO_STEP_FROM_DM_MS, какое бы правило и какой бы путь его ни слал —
+ * вебхук комментария, крон, очередь на ответ покупателя, «+» по переписке.
+ * Ключ — переписка, а не имя: имя отправителя Zernio в первом сообщении
+ * присылает цифрами, а в следующих — настоящее, и строки одного покупателя
+ * по имени не сходились (#567 не помог). Захват — условная запись по метке
+ * `<время>|<владелец>` в одной строке на переписку: из двух одновременных
+ * записей проходит одна. Владелец — строка, которая шлёт; её повтор после
+ * зависшего захвата право не теряет. Не прочитали — "unknown": не шлём
+ * вслепую, строка ждёт следующего сообщения.
  */
-async function secondStepTaken(
+async function claimConversationSecondStep(
   ctx: TenantContext,
-  username: string,
-  autoId: string,
-  opts: { exceptId?: string; queued?: boolean } = {},
-): Promise<boolean> {
-  const rows = await pageAll(
-    (from, to) =>
-      ctx.db
-        .from("zernio_logs")
-        .select("id, event_id, status, payload")
-        .like("event_id", "two-step-dm:%")
-        .gte("created_at", new Date(Date.now() - TWO_STEP_FROM_DM_MS).toISOString())
-        .order("created_at", { ascending: false })
-        .order("id")
-        .range(from, to),
-    "[zernio] вторые сообщения не прочитаны",
-  );
-  return rows.some((r) => {
-    if (opts.exceptId !== undefined && String(r.id) === String(opts.exceptId)) return false;
-    const pl = r.payload as { username?: string; automationId?: string } | null;
-    if (pl?.automationId !== autoId || pl.username?.toLowerCase() !== username.toLowerCase())
-      return false;
-    return (
-      r.status === "processing" ||
-      r.status === "processed" ||
-      (opts.queued === true &&
-        r.status === "pending" &&
-        String(r.event_id).startsWith(DM_KEY_PREFIX))
-    );
-  });
+  conversationId: string,
+  owner: string,
+  now: () => Date = () => new Date(),
+): Promise<{ result: "won" | "taken" | "unknown"; release: () => Promise<void> }> {
+  const key = `two-step-conv:${conversationId}`;
+  const at = now();
+  const mark = `${at.toISOString()}|${owner}`;
+  const noop = async () => {};
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const { data: row, error } = await ctx.db
+      .from("zernio_logs")
+      .select("id, error_message")
+      .eq("event_id", key)
+      .maybeSingle();
+    if (error) {
+      console.warn(`[comment-dm] отметка второго сообщения не прочитана: ${error.message}`);
+      return { result: "unknown", release: noop };
+    }
+    if (!row) {
+      const { error: insErr } = await ctx.db.from("zernio_logs").insert({
+        bot_id: ctx.tenant.id,
+        event_id: key,
+        event_type: "two_step_conversation",
+        status: "processed",
+        error_message: mark,
+        payload: { conversationId },
+      });
+      if (!insErr)
+        return {
+          result: "won",
+          release: async () => {
+            await ctx.db.from("zernio_logs").delete().eq("event_id", key).eq("error_message", mark);
+          },
+        };
+      if (/duplicate|unique/i.test(insErr.message)) continue; // соседний путь успел первым
+      console.warn(`[comment-dm] отметка второго сообщения не записана: ${insErr.message}`);
+      return { result: "unknown", release: noop };
+    }
+    const prev = (row.error_message as string | null) ?? "";
+    const [prevAt, prevOwner] = prev.split("|");
+    if (prevOwner === owner) return { result: "won", release: noop };
+    const prevMs = Date.parse(prevAt ?? "");
+    if (Number.isFinite(prevMs) && at.getTime() - prevMs < TWO_STEP_FROM_DM_MS)
+      return { result: "taken", release: noop };
+    let cas = ctx.db.from("zernio_logs").update({ error_message: mark }).eq("id", row.id);
+    cas = row.error_message == null ? cas.is("error_message", null) : cas.eq("error_message", prev);
+    const { data: won, error: casErr } = await cas.select("id");
+    if (casErr) {
+      console.warn(`[comment-dm] отметка второго сообщения не записана: ${casErr.message}`);
+      return { result: "unknown", release: noop };
+    }
+    if (!won?.length) return { result: "taken", release: noop };
+    return {
+      result: "won",
+      release: async () => {
+        await ctx.db
+          .from("zernio_logs")
+          .update({ error_message: row.error_message })
+          .eq("id", row.id)
+          .eq("error_message", mark);
+      },
+    };
+  }
+  return { result: "taken", release: noop };
 }
 
 export type CatchupInput = {
@@ -1552,6 +1611,7 @@ export async function runCommentDmFallback(
                 automationId: autoId,
                 commentId,
                 username,
+                authorId: comment.from?.id ?? null,
                 secondText: automation.secondDmMessage || DEFAULT_SECOND_DM,
                 buttons: automation.secondDmButtons?.length
                   ? automation.secondDmButtons
@@ -1693,6 +1753,7 @@ export async function runCommentDmFallback(
                 automationId: autoId,
                 commentId,
                 username,
+                authorId: comment.from?.id ?? null,
                 secondText: automation.secondDmMessage || DEFAULT_SECOND_DM,
                 buttons: automation.secondDmButtons?.length
                   ? automation.secondDmButtons

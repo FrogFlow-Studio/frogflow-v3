@@ -14,6 +14,10 @@ import {
 
 const BOT = "22222222-2222-2222-2222-222222222222";
 
+/** Строки второго шага (без отметки «одно второе на покупателя»). */
+const secondSteps = (db: ReturnType<typeof fakeDb>) =>
+  db.tables.zernio_logs!.filter((l) => String(l.event_id).startsWith("two-step-dm:"));
+
 function setup() {
   const db = fakeDb({ unique: { zernio_logs: [["bot_id", "event_id"]] } });
   db.tables.app_settings = [
@@ -85,7 +89,7 @@ describe("Comment-to-DM: второе сообщение с кнопками п�
       ],
       platform: "instagram",
     });
-    expect(db.tables.zernio_logs!.map((l) => [l.event_id, l.status])).toEqual([
+    expect(secondSteps(db).map((l) => [l.event_id, l.status])).toEqual([
       ["two-step-dm:c-1", "processed"],
     ]);
   });
@@ -128,7 +132,7 @@ describe("Comment-to-DM: незнакомому покупателю первы�
     );
     expect(r.note).toBe("в очередь pending @boris");
     expect(inbox).not.toHaveBeenCalled();
-    expect(db.tables.zernio_logs!.map((l) => [l.event_id, l.status, l.error_message])).toEqual([
+    expect(secondSteps(db).map((l) => [l.event_id, l.status, l.error_message])).toEqual([
       ["two-step-dm:c-2", "pending", "ждём ответа покупателя в Direct"],
     ]);
   });
@@ -652,7 +656,7 @@ describe("Comment-to-DM: «+» раньше вебхука комментари�
         ],
       }),
     );
-    expect(db.tables.zernio_logs!.map((l) => [l.event_id, l.status])).toEqual([
+    expect(secondSteps(db).map((l) => [l.event_id, l.status])).toEqual([
       ["two-step-dm:dm:m-1", "processed"],
     ]);
     // Вебхук комментария дошёл позже — второй раз не шлёт.
@@ -703,7 +707,7 @@ describe("Comment-to-DM: «+» раньше вебхука комментари�
     // Следующее сообщение покупателя («Купить») — второе сообщение не повторяется.
     expect(await deliverPendingTwoStepDm(ctx, who, api)).toBe(false);
     expect(inbox).toHaveBeenCalledTimes(1);
-    expect(db.tables.zernio_logs!.map((l) => l.status)).toEqual(["processed", "processed"]);
+    expect(secondSteps(db).map((l) => l.status)).toEqual(["processed", "processed"]);
   });
 
   it("после первого уже было другое исходящее, или первое давнее — «+» не трогаем", async () => {
@@ -723,5 +727,167 @@ describe("Comment-to-DM: «+» раньше вебхука комментари�
     expect(after.inbox).not.toHaveBeenCalled();
     expect(old.inbox).not.toHaveBeenCalled();
     expect(other.inbox).not.toHaveBeenCalled();
+  });
+});
+
+describe("Comment-to-DM: одно второе сообщение покупателю (Кристина Дидактика, 07.10, тест 19:33)", () => {
+  const firstDm = `привет, вот товар\n\n${DEFAULT_REPLY_PROMPT}`;
+  const who = { accountId: "acc-1", conversationId: "conv-7", username: "fro5654" };
+  function twoRules() {
+    const { ctx, db } = setup();
+    // Покупатель ещё не известен по имени: вебхук комментария ставит второе в очередь.
+    db.tables.bot_users = [];
+    db.tables.app_settings = [
+      {
+        bot_id: BOT,
+        key: "ig_comment_automations_meta",
+        value: JSON.stringify({
+          general: { twoStepDm: true, secondDmMessage: "Держите" },
+          reel: {
+            twoStepDm: true,
+            secondDmButtons: [{ type: "postback", title: "Купить", payload: "PROD:p-1" }],
+          },
+        }),
+      },
+    ];
+    const tail: Array<Record<string, unknown>> = [];
+    const inbox = vi.fn(async (_c: string, _a: string, text: string) => {
+      tail.push({ id: `out-${tail.length}`, direction: "outgoing", message: text });
+      return { ok: true };
+    });
+    const api = {
+      // Два правила на один пост: общее (любой пост) первым в списке, и правило рилса.
+      list: async () => [
+        {
+          id: "general",
+          name: "Общее",
+          accountId: "acc-1",
+          keywords: ["хочу"],
+          dmMessage: "Привет",
+        },
+        {
+          id: "reel",
+          name: "Рилс",
+          accountId: "acc-1",
+          keywords: ["хочу"],
+          dmMessage: firstDm,
+          platformPostId: "ig-reel-1",
+        },
+      ],
+      inbox,
+      tail: vi.fn(async () => tail),
+    } as unknown as AutomationApi;
+    const first = () =>
+      tail.push({
+        id: "m-first",
+        direction: "outgoing",
+        message: firstDm,
+        createdAt: new Date(Date.now() - 15_000).toISOString(),
+      });
+    return { ctx, db, api, inbox, first };
+  }
+  const comment = (id: string, author = { id: "u-7", username: "fro5654" }) => ({
+    account: { id: "acc-1" },
+    post: { platformPostId: "ig-reel-1" },
+    comment: { id, text: "хочу", author },
+  });
+  /** Вебхук комментария: created_at в базе ставит default — тестовая база его не знает. */
+  async function commentWebhook(
+    ctx: TenantContext,
+    api: AutomationApi,
+    id: string,
+    author?: { id: string; username: string },
+  ) {
+    await handleCommentReceived(ctx, comment(id, author), api, { delayMs: 0 });
+    for (const l of (ctx.db as unknown as ReturnType<typeof fakeDb>).tables.zernio_logs!)
+      l.created_at ??= new Date().toISOString();
+  }
+
+  it("комментарий → «+» → запоздавший вебхук комментария → «Купить»: второе уходит один раз", async () => {
+    const { ctx, db, api, inbox, first } = twoRules();
+    // 1. Комментарий: первое сообщение шлёт сам Zernio — оно в переписке.
+    first();
+    // 2. «+»: очереди нет, второе — по первому сообщению в переписке.
+    expect(await deliverPendingTwoStepDm(ctx, who, api)).toBe(false);
+    expect(await deliverTwoStepFromDm(ctx, who, api)).toBe(true);
+    expect(inbox).toHaveBeenCalledTimes(1);
+    // 3. Вебхук комментария пришёл позже и выбрал другое правило — ставит своё в очередь.
+    await commentWebhook(ctx, api, "c-33");
+    expect(secondSteps(db).map((l) => l.status)).toEqual(["processed", "pending"]);
+    // 4. «Купить»: строка из очереди закрывается без отправки, сообщение идёт магазину.
+    expect(await deliverPendingTwoStepDm(ctx, who, api)).toBe(false);
+    expect(await deliverPendingTwoStepDm(ctx, who, api)).toBe(false);
+    expect(inbox).toHaveBeenCalledTimes(1);
+    expect(secondSteps(db).map((l) => l.status)).toEqual(["processed", "processed"]);
+  });
+
+  it("как в журнале 19:29: вебхук комментария → «+» с цифровым id вместо имени → «Купить» с именем — второе одно", async () => {
+    const { ctx, db, api, inbox, first } = twoRules();
+    // 19:29:05 — вебхук комментария: покупатель ещё не известен, второе в очередь.
+    first();
+    await commentWebhook(ctx, api, "c-29", { username: "dolphin.2023841", id: "1407411881513987" });
+    expect(secondSteps(db).map((l) => l.status)).toEqual(["pending"]);
+    // 19:29:53 — «+»: Zernio прислал вместо имени цифровой id.
+    const plus = {
+      accountId: "acc-1",
+      conversationId: "conv-29",
+      username: "1407411881513987",
+      senderId: "1407411881513987",
+    };
+    expect(await deliverPendingTwoStepDm(ctx, plus, api)).toBe(true);
+    expect(inbox).toHaveBeenCalledTimes(1);
+    // 19:30:02 — «Купить»: имя уже настоящее; второе не повторяется.
+    const buy = { ...plus, username: "dolphin.2023841" };
+    expect(await deliverPendingTwoStepDm(ctx, buy, api)).toBe(false);
+    expect(await deliverTwoStepFromDm(ctx, buy, api)).toBe(false);
+    expect(inbox).toHaveBeenCalledTimes(1);
+  });
+
+  it("id автора комментария не совпал с id отправителя — «+» по переписке, строка вебхука на «Купить» не шлёт", async () => {
+    const { ctx, db, api, inbox, first } = twoRules();
+    first();
+    await commentWebhook(ctx, api, "c-30", {
+      username: "dolphin.2023841",
+      id: "17841400000000000",
+    });
+    const plus = {
+      accountId: "acc-1",
+      conversationId: "conv-30",
+      username: "1407411881513987",
+      senderId: "1407411881513987",
+    };
+    // «+»: строку вебхука не узнали — второе по первому сообщению в переписке.
+    expect(await deliverPendingTwoStepDm(ctx, plus, api)).toBe(false);
+    expect(await deliverTwoStepFromDm(ctx, plus, api)).toBe(true);
+    expect(inbox).toHaveBeenCalledTimes(1);
+    // «Купить» с настоящим именем находит строку вебхука — переписка уже получила второе.
+    const buy = { ...plus, username: "dolphin.2023841" };
+    expect(await deliverPendingTwoStepDm(ctx, buy, api)).toBe(false);
+    expect(inbox).toHaveBeenCalledTimes(1);
+    expect(secondSteps(db).every((l) => l.status === "processed")).toBe(true);
+  });
+
+  it("вебхук успел и покупатель известен — прямая отправка; «+» и «Купить» потом ничего не повторяют", async () => {
+    const { ctx, db, api, inbox, first } = twoRules();
+    db.tables.bot_users = [
+      { bot_id: BOT, platform: "instagram", username: "fro5654", zernio_conversation_id: "conv-7" },
+    ];
+    first();
+    await commentWebhook(ctx, api, "c-34");
+    expect(inbox).toHaveBeenCalledTimes(1);
+    // Ещё раз по тому же покупателю (крон догнал, другое правило) — не шлёт.
+    await commentWebhook(ctx, api, "c-35");
+    expect(await deliverTwoStepFromDm(ctx, who, api)).toBe(false);
+    expect(await deliverPendingTwoStepDm(ctx, who, api)).toBe(false);
+    expect(inbox).toHaveBeenCalledTimes(1);
+  });
+
+  it("второе не ушло — право отпускается, следующее сообщение покупателя пробует снова", async () => {
+    const { ctx, api, inbox, first } = twoRules();
+    first();
+    inbox.mockResolvedValueOnce({ ok: false, error: "rate limit" } as never);
+    expect(await deliverTwoStepFromDm(ctx, who, api)).toBe(false);
+    expect(await deliverPendingTwoStepDm(ctx, who, api)).toBe(true);
+    expect(inbox).toHaveBeenCalledTimes(2);
   });
 });

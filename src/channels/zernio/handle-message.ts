@@ -106,6 +106,7 @@ export async function handleZernioMessage(
       accountId: m.accountId,
       conversationId: m.conversationId,
       username: m.senderUsername,
+      senderId: m.senderId,
     };
     const pending = () => deliverPendingTwoStepDm(ctx, who);
     let delivered = await pending();

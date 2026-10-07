@@ -228,6 +228,7 @@ describe("Comment-to-DM: второй быстрый «+»", () => {
       accountId: "acc-1",
       conversationId: "conv-1",
       username: "boris",
+      senderId: "ig-1",
     });
     deliverTwoStepFromDm.mockClear();
   });
