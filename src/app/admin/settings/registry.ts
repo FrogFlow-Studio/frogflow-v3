@@ -41,6 +41,18 @@ export type SettingsEntry = {
   adminOnly?: boolean;
   /** Карточка на две колонки. */
   wide?: boolean;
+  /**
+   * Раздел только про продажу (оплата, доставка, заказ, каталог): консультанту
+   * без продаж (`sells === false`, BOVI) не показывается.
+   */
+  sellsOnly?: boolean;
+};
+
+/** Что о магазине нужно, чтобы решить, виден ли раздел. Нет `sells` — продаёт. */
+export type SettingsShop = {
+  role: string;
+  modules: Partial<Record<string, boolean>>;
+  sells?: boolean;
 };
 
 const E = (e: SettingsEntry) => e;
@@ -84,12 +96,19 @@ export const SETTINGS_REGISTRY: readonly SettingsEntry[] = [
   }),
   E({ id: "about", theme: "shop", title: "settings.about.title" }),
   E({ id: "design", theme: "shop", title: "settings.design.title" }),
-  E({ id: "marketplace", theme: "shop", title: "settings.market.title" }),
+  E({ id: "marketplace", sellsOnly: true, theme: "shop", title: "settings.market.title" }),
   E({ id: "community", theme: "shop", title: "settings.community.title" }),
-  E({ id: "watermark", theme: "shop", title: "settings.watermark.title" }),
-  E({ id: "gift-wrap", theme: "shop", title: "settings.giftWrap.title", module: "bundles" }),
+  E({ id: "watermark", sellsOnly: true, theme: "shop", title: "settings.watermark.title" }),
+  E({
+    id: "gift-wrap",
+    sellsOnly: true,
+    theme: "shop",
+    title: "settings.giftWrap.title",
+    module: "bundles",
+  }),
   E({
     id: "smart-search",
+    sellsOnly: true,
     theme: "shop",
     title: "settings.ss.title",
     module: "smart_search",
@@ -119,9 +138,16 @@ export const SETTINGS_REGISTRY: readonly SettingsEntry[] = [
     title: "settings.svcNotice.title",
     keys: ["notify_photo_not_receipt", "notify_bot_pause"],
   }),
-  E({ id: "payment-methods", theme: "money", title: "settings.pay.title", ownerOnly: true }),
+  E({
+    id: "payment-methods",
+    sellsOnly: true,
+    theme: "money",
+    title: "settings.pay.title",
+    ownerOnly: true,
+  }),
   E({
     id: "commission",
+    sellsOnly: true,
     theme: "money",
     title: "commission.nav",
     to: "/admin/commission",
@@ -137,6 +163,7 @@ export const SETTINGS_REGISTRY: readonly SettingsEntry[] = [
   }),
   E({
     id: "fulfillment",
+    sellsOnly: true,
     theme: "payment",
     title: "settings.ful.title",
     keys: [
@@ -151,17 +178,24 @@ export const SETTINGS_REGISTRY: readonly SettingsEntry[] = [
       "fulfillment_slot_limit",
     ],
   }),
-  E({ id: "zones", theme: "payment", title: "settings.zones.title" }),
-  E({ id: "free-delivery", theme: "payment", title: "settings.freeDelivery.title" }),
-  E({ id: "min-order", theme: "payment", title: "settings.minOrder.title" }),
+  E({ id: "zones", sellsOnly: true, theme: "payment", title: "settings.zones.title" }),
+  E({
+    id: "free-delivery",
+    sellsOnly: true,
+    theme: "payment",
+    title: "settings.freeDelivery.title",
+  }),
+  E({ id: "min-order", sellsOnly: true, theme: "payment", title: "settings.minOrder.title" }),
   E({
     id: "pay-remind",
+    sellsOnly: true,
     theme: "payment",
     title: "settings.payRemind.title",
     keys: ["chat_pay_reminder_hours"],
   }),
   E({
     id: "stars",
+    sellsOnly: true,
     theme: "payment",
     title: "settings.stars.title",
     module: "telegram_stars",
@@ -170,6 +204,7 @@ export const SETTINGS_REGISTRY: readonly SettingsEntry[] = [
   }),
   E({
     id: "robokassa",
+    sellsOnly: true,
     theme: "payment",
     title: "settings.rk.title",
     module: "robokassa",
@@ -191,6 +226,7 @@ export const SETTINGS_REGISTRY: readonly SettingsEntry[] = [
   }),
   E({
     id: "receipt-ocr",
+    sellsOnly: true,
     theme: "payment",
     title: "settings.ocr.title",
     module: "receipt_ocr",
@@ -198,6 +234,7 @@ export const SETTINGS_REGISTRY: readonly SettingsEntry[] = [
   }),
   E({
     id: "crypto",
+    sellsOnly: true,
     theme: "payment",
     title: "settings.crypto.title",
     module: "crypto",
@@ -207,6 +244,7 @@ export const SETTINGS_REGISTRY: readonly SettingsEntry[] = [
   }),
   E({
     id: "stripe",
+    sellsOnly: true,
     theme: "payment",
     title: "settings.stripe.title",
     module: "stripe",
@@ -250,7 +288,13 @@ export const SETTINGS_REGISTRY: readonly SettingsEntry[] = [
     module: "notify_in_bot",
     wide: true,
   }),
-  E({ id: "low-stock", theme: "bots", title: "settings.lowStock.title", module: "stock" }),
+  E({
+    id: "low-stock",
+    sellsOnly: true,
+    theme: "bots",
+    title: "settings.lowStock.title",
+    module: "stock",
+  }),
   E({ id: "push", theme: "bots", title: "settings.push.title" }),
   E({
     id: "consultant",
@@ -290,6 +334,7 @@ export const SETTINGS_REGISTRY: readonly SettingsEntry[] = [
   }),
   E({
     id: "referral",
+    sellsOnly: true,
     theme: "bots",
     title: "nav.discounts",
     to: "/admin/discounts",
@@ -352,11 +397,9 @@ export function recentEntries(recentKeys: readonly string[]): Set<string> {
   );
 }
 
-/** Раздел виден роли и набору модулей. */
-export function entryVisible(
-  e: SettingsEntry,
-  shop: { role: string; modules: Partial<Record<string, boolean>> },
-): boolean {
+/** Раздел виден роли, набору модулей и тому, продаёт ли клиент. */
+export function entryVisible(e: SettingsEntry, shop: SettingsShop): boolean {
+  if (e.sellsOnly && shop.sells === false) return false;
   if (e.ownerOnly && shop.role !== "owner") return false;
   if (e.adminOnly && !roleAllows(shop.role as AdminRole, "admin")) return false;
   if (e.anyModule && !e.anyModule.some((m) => shop.modules[m])) return false;

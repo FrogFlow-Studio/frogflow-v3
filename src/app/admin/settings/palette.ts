@@ -4,14 +4,14 @@
  * открывает тему этого раздела. Раздел с отдельной страницы ведёт туда.
  */
 import type { AdminKey } from "@/app/i18n/admin";
-import { entryMatches, entryVisible, SETTINGS_REGISTRY } from "./registry";
+import { entryMatches, entryVisible, SETTINGS_REGISTRY, type SettingsShop } from "./registry";
 
 export const SETTINGS_SHOWN = 5;
 
 export type SettingsHit = { label: string; theme: string; to: string; hash?: string };
 
 export function searchSettings(
-  shop: { role: string; modules: Partial<Record<string, boolean>> },
+  shop: SettingsShop,
   q: string,
   t: (k: AdminKey, vars?: Record<string, string>) => string,
 ): SettingsHit[] {

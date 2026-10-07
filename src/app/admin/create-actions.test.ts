@@ -34,6 +34,13 @@ describe("«Создать»: что предлагается", () => {
     expect(keys(shop({ vertical: "digital" }))).toEqual(["product", "broadcast", "promo", "reply"]);
   });
 
+  it("консультант без продаж (BOVI): ни «Заказа», ни «Товара», ни «Акции» — рассылка и ответ", () => {
+    const bovi = shop({ vertical: "consultant", sells: false });
+    expect(keys(bovi)).toEqual(["broadcast", "reply"]);
+    // Кондитерская, у которой sells не сказано, — как раньше.
+    expect(keys(shop({ sells: undefined }))).toContain("order");
+  });
+
   for (const lang of SUPPORTED_LOCALES)
     it(`${lang}: подписи действий на месте`, () => {
       const t = adminT(lang);

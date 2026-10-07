@@ -2,6 +2,7 @@ import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { myPlanFn, payPlanFn, requestModuleFn, requestPlanFn } from "@/app/admin/admin.functions";
 import { subscriptionLine } from "@/app/admin/subscription-banner";
+import { moduleOffered } from "@/app/admin/module-offer";
 import { adminT, intlLocale, type AdminT } from "@/app/i18n/admin";
 import type { Locale } from "@/core/i18n/locale";
 import { moduleDescKey, moduleGroupKey, moduleTitleKey } from "@/app/i18n/admin/catalog";
@@ -224,7 +225,7 @@ function ModulesPage() {
   // На плане модули по одному не продаются: вместо цены — в каком плане модуль есть.
   const onPlan = p.plan !== null && p.plan !== "custom" && niche !== null;
   const groups = new Map<ReturnType<typeof moduleGroupKey>, ModuleKey[]>();
-  for (const k of MODULE_KEYS)
+  for (const k of MODULE_KEYS.filter((x) => moduleOffered(x, shop)))
     groups.set(moduleGroupKey(k), [...(groups.get(moduleGroupKey(k)) ?? []), k]);
   return (
     <>

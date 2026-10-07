@@ -133,6 +133,8 @@ function SettingsPage() {
   } = Route.useLoaderData();
   const { shop } = Route.useRouteContext();
   const t = adminT(shop.locale);
+  // Консультанту без продаж разделов оплаты нет — и в заголовке её нет.
+  const pageTitle = shop.sells === false ? t("nav.groupSettings") : t("settings.title");
   const router = useRouter();
   const [saved, setSaved] = useState(false);
   // Темы слева, открыта одна («Магазин»); «Все» — отдельный пункт.
@@ -215,7 +217,7 @@ function SettingsPage() {
   );
   return (
     <>
-      <PageTitle title={t("settings.title")} />
+      <PageTitle title={pageTitle} />
       <div className="mb-4 space-y-2">
         <input
           type="search"
@@ -227,7 +229,7 @@ function SettingsPage() {
         />
       </div>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-[13rem_minmax(0,1fr)]">
-        <nav className="min-w-0" aria-label={t("settings.title")}>
+        <nav className="min-w-0" aria-label={pageTitle}>
           {themeChips}
         </nav>
         <div className="min-w-0">

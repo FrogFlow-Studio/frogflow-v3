@@ -29,7 +29,10 @@ export type NavShop = {
   pricelist?: unknown;
   /**
    * Продаёт ли клиент (`sellsNow`). Консультант без продаж (BOVI) не начинает
-   * с заказов и товаров: внизу — консультант и прайс. Нет значения — продаёт.
+   * с заказов и товаров: внизу — консультант и прайс, а в меню нет разделов
+   * про продажу (заказы, товары, склад, аналитика продаж, скидки, отзывы о
+   * покупках, «Поделиться магазином»). Страницы по прямой ссылке открываются.
+   * Нет значения — продаёт.
    */
   sells?: boolean;
   chatUnread?: number | null;
@@ -115,7 +118,7 @@ export function buildAdminNav(shop: NavShop): AdminNav {
     id: "sales",
     label: "nav.groupSales",
     items: compact<NavItem>([
-      orders,
+      sells && orders,
       { to: "/admin/notifications", label: "bell.nav" },
       customers,
       m.manager_chat && chat,
@@ -126,7 +129,7 @@ export function buildAdminNav(shop: NavShop): AdminNav {
           badge: shop.ticketsOpen > 0 ? { value: shop.ticketsOpen, tone: "accent" } : undefined,
         },
       m.crm_pipeline && { to: "/admin/pipeline", label: "nav.pipeline" },
-      m.review_request && { to: "/admin/reviews", label: "nav.reviews" },
+      sells && m.review_request && { to: "/admin/reviews", label: "nav.reviews" },
       shop.undelivered > 0 && {
         to: "/admin/undelivered",
         label: "nav.undelivered",
@@ -148,10 +151,10 @@ export function buildAdminNav(shop: NavShop): AdminNav {
     id: "catalog",
     label: "nav.groupCatalog",
     items: compact<NavItem>([
-      products,
-      { to: "/admin/categories", label: "nav.categories" },
-      m.web_storefront && { to: "/admin/collections", label: "collections.nav" },
-      m.warehouse && { to: "/admin/warehouse", label: "warehouse.nav" },
+      sells && products,
+      sells && { to: "/admin/categories", label: "nav.categories" },
+      sells && m.web_storefront && { to: "/admin/collections", label: "collections.nav" },
+      sells && m.warehouse && { to: "/admin/warehouse", label: "warehouse.nav" },
       Boolean(shop.pricelist) && pricelist,
     ]),
   };
@@ -160,15 +163,16 @@ export function buildAdminNav(shop: NavShop): AdminNav {
     id: "marketing",
     label: "nav.groupMarketing",
     items: compact<NavItem>([
-      { to: "/admin/share", label: "share.nav" },
+      sells && { to: "/admin/share", label: "share.nav" },
       (m.broadcasts || m.wa_broadcasts || m.winback || m.funnel) && {
         to: "/admin/broadcasts",
         label: "nav.broadcasts",
       },
-      (m.coupons || m.gift_certificates || m.referral || m.limited_offers) && {
-        to: "/admin/discounts",
-        label: "nav.discounts",
-      },
+      sells &&
+        (m.coupons || m.gift_certificates || m.referral || m.limited_offers) && {
+          to: "/admin/discounts",
+          label: "nav.discounts",
+        },
       m.giveaways && { to: "/admin/broadcasts", label: "nav.giveaways", hash: "giveaways" },
       m.instagram && { to: "/admin/instagram", label: "nav.instagram" },
       m.instagram && { to: "/admin/posts", label: "nav.posts" },
@@ -182,9 +186,10 @@ export function buildAdminNav(shop: NavShop): AdminNav {
     id: "analytics",
     label: "nav.groupAnalytics",
     items: compact<NavItem>([
-      m.dashboard && { to: "/admin/analytics", label: "nav.analytics" },
-      m.dashboard && { to: "/admin/reports", label: "reports.nav" },
-      m.profit && { to: "/admin/cost", label: "cost.nav" },
+      // Аналитика, отчёты и прибыль считают заказы и товары: без продаж там пусто.
+      sells && m.dashboard && { to: "/admin/analytics", label: "nav.analytics" },
+      sells && m.dashboard && { to: "/admin/reports", label: "reports.nav" },
+      sells && m.profit && { to: "/admin/cost", label: "cost.nav" },
     ]),
   };
 
@@ -194,7 +199,8 @@ export function buildAdminNav(shop: NavShop): AdminNav {
     items: compact<NavItem>([
       admin && {
         to: "/admin/settings",
-        label: physical ? "nav.settingsPhysical" : "nav.settings",
+        // Без продаж в настройках нет оплаты — подпись не обещает её.
+        label: physical ? "nav.settingsPhysical" : sells ? "nav.settings" : "nav.groupSettings",
       },
       owner && { to: "/admin/modules", label: "nav.modules" },
       owner && { to: "/admin/billing", label: "billing.nav" },

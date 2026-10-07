@@ -8,6 +8,7 @@ import {
   SETTINGS_REGISTRY,
   SETTINGS_THEMES,
   settingsEntry,
+  type SettingsShop,
   type SettingsTheme,
 } from "./registry";
 
@@ -32,10 +33,7 @@ export function themeShows(choice: ThemeChoice, theme: SettingsTheme, searching:
 }
 
 /** Темы, в которых для этой роли и модулей есть хотя бы один раздел: пустой темы в списке нет. */
-export function visibleThemes(shop: {
-  role: string;
-  modules: Partial<Record<string, boolean>>;
-}): SettingsTheme[] {
+export function visibleThemes(shop: SettingsShop): SettingsTheme[] {
   return SETTINGS_THEMES.filter((th) =>
     SETTINGS_REGISTRY.some((e) => e.theme === th && entryVisible(e, shop)),
   );

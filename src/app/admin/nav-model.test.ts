@@ -61,9 +61,8 @@ describe("меню админки", () => {
     // Без прайса и чата — покупатели.
     const bare = buildAdminNav(shop({ vertical: "consultant", sells: false })).primary;
     expect(bare.map((i) => i.to)).toEqual(["/admin", "/admin/consultant", "/admin/customers"]);
-    // Комиссия с продаж — не ему; группы меню на месте.
+    // Комиссия с продаж — не ему.
     expect(labels(bovi)).not.toContain("/admin/commission");
-    expect(labels(bovi)).toContain("/admin/orders");
     // Продаёт или не сказано — как раньше.
     for (const sells of [true, undefined]) {
       const n = buildAdminNav(shop({ vertical: "consultant", sells }));
@@ -73,6 +72,75 @@ describe("меню админки", () => {
         "/admin/products",
       ]);
       expect(labels(shop({ vertical: "consultant", sells }))).toContain("/admin/commission");
+    }
+  });
+
+  it("консультант без продаж (BOVI): в меню нет разделов про продажу, его разделы на месте", () => {
+    const all = {
+      shop: true,
+      dm_shop: true,
+      manager_chat: true,
+      web_storefront: true,
+      warehouse: true,
+      dashboard: true,
+      profit: true,
+      coupons: true,
+      review_request: true,
+      broadcasts: true,
+      crm_pipeline: true,
+      giveaways: true,
+    } as const;
+    const bovi = labels(
+      shop({ vertical: "consultant", modules: all, pricelist: {}, sells: false }),
+    );
+    for (const gone of [
+      "/admin/orders",
+      "/admin/products",
+      "/admin/categories",
+      "/admin/collections",
+      "/admin/warehouse",
+      "/admin/analytics",
+      "/admin/reports",
+      "/admin/cost",
+      "/admin/share",
+      "/admin/discounts",
+      "/admin/reviews",
+      "/admin/commission",
+    ])
+      expect(bovi, gone).not.toContain(gone);
+    for (const kept of [
+      "/admin/notifications",
+      "/admin/customers",
+      "/admin/chat",
+      "/admin/pipeline",
+      "/admin/pricelist",
+      "/admin/broadcasts",
+      "/admin/broadcasts#giveaways",
+      "/admin/consultant",
+      "/admin/settings",
+      "/admin/modules",
+      "/admin/billing",
+    ])
+      expect(bovi, kept).toContain(kept);
+    // Пустая группа «Аналитика» не рисуется; в «Каталоге» один прайс; «Настройки» без «Оплаты».
+    const n = buildAdminNav(
+      shop({ vertical: "consultant", modules: all, pricelist: {}, sells: false }),
+    );
+    expect(n.groups.map((g) => g.id)).not.toContain("analytics");
+    expect(n.groups.find((g) => g.id === "catalog")?.items.map((i) => i.to)).toEqual([
+      "/admin/pricelist",
+    ]);
+    const settingsLabel = (s: NavShop) =>
+      buildAdminNav(s)
+        .groups.flatMap((g) => g.items)
+        .find((i) => i.to === "/admin/settings")?.label;
+    expect(settingsLabel(shop({ vertical: "consultant", sells: false }))).toBe("nav.groupSettings");
+    expect(settingsLabel(shop({ vertical: "consultant" }))).toBe("nav.settings");
+    // Тот же набор модулей у продающего — всё на месте.
+    for (const sells of [true, undefined]) {
+      const selling = labels(shop({ vertical: "consultant", modules: all, sells }));
+      for (const x of ["/admin/orders", "/admin/products", "/admin/analytics", "/admin/share"])
+        expect(selling, x).toContain(x);
     }
   });
 

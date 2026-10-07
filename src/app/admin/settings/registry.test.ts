@@ -13,6 +13,8 @@ import {
   SETTINGS_REGISTRY,
   SETTINGS_THEMES,
 } from "./registry";
+import { visibleThemes } from "./nav";
+import { searchSettings } from "./palette";
 
 const page = readFileSync("src/routes/admin._authed.settings.tsx", "utf8");
 
@@ -72,6 +74,62 @@ describe("поиск и «изменено недавно»", () => {
     expect(entryVisible(stripe, { role: "owner", modules: { stripe: true } })).toBe(true);
     expect(entryVisible(stripe, { role: "owner", modules: {} })).toBe(false);
     expect(entryVisible(stripe, { role: "manager", modules: { stripe: true } })).toBe(false);
+  });
+
+  it("консультант без продаж (BOVI): оплаты, доставки и заказа нет, его разделы и тариф на месте", () => {
+    const all = Object.fromEntries(
+      SETTINGS_REGISTRY.flatMap((e) => [e.module, ...(e.anyModule ?? [])]).map((m) => [m, true]),
+    );
+    const visible = (sells: boolean | undefined) =>
+      SETTINGS_REGISTRY.filter((e) => entryVisible(e, { role: "owner", modules: all, sells })).map(
+        (e) => e.id,
+      );
+    const bovi = visible(false);
+    for (const gone of [
+      "payment-methods",
+      "commission",
+      "fulfillment",
+      "zones",
+      "free-delivery",
+      "min-order",
+      "pay-remind",
+      "marketplace",
+      "watermark",
+      "stripe",
+      "robokassa",
+      "crypto",
+      "stars",
+      "receipt-ocr",
+      "smart-search",
+      "low-stock",
+      "gift-wrap",
+      "referral",
+    ])
+      expect(bovi, gone).not.toContain(gone);
+    for (const kept of [
+      "shop",
+      "telegram",
+      "consultant",
+      "billing",
+      "ai-balance",
+      "team",
+      "invite",
+      "takeout",
+      "delete",
+    ])
+      expect(bovi, kept).toContain(kept);
+    // Тема «Оплата и доставка» пустеет и пропадает из списка тем.
+    expect(visibleThemes({ role: "owner", modules: all, sells: false })).not.toContain("payment");
+    expect(visibleThemes({ role: "owner", modules: all, sells: false })).toContain("money");
+    // Продаёт или не сказано — видно всё, как раньше.
+    expect(visible(true)).toEqual(SETTINGS_REGISTRY.map((e) => e.id));
+    expect(visible(undefined)).toEqual(SETTINGS_REGISTRY.map((e) => e.id));
+    // Быстрый поиск тоже не находит скрытое.
+    const t = adminT("ru");
+    expect(
+      searchSettings({ role: "owner", modules: all, sells: false }, "stripe_secret", t),
+    ).toEqual([]);
+    expect(searchSettings({ role: "owner", modules: all }, "stripe_secret", t)).toHaveLength(1);
   });
 
   it("недавно изменённый раздел — тот, у которого менялась хотя бы одна настройка", () => {

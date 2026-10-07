@@ -41,3 +41,48 @@ test("консультант без продаж: внизу на телефон
   await expect(bar.getByRole("link", { name: "Товары", exact: true })).toHaveCount(0);
   expect(errors).toEqual([]);
 });
+
+test("консультант без продаж: в меню нет заказов и товаров, в настройках — оплаты", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  const errors = await watch(page);
+  await login(page);
+  const menu = page.locator("aside");
+  // Группы меню раскрываются по одной: в каждой — его разделы, без продажи.
+  const group = async (name: string, has: string[], hasNot: string[]) => {
+    await menu.getByRole("button", { name, exact: true }).click();
+    for (const x of has)
+      await expect(menu.getByRole("link", { name: x, exact: true }), x).toBeVisible();
+    for (const x of hasNot)
+      await expect(menu.getByRole("link", { name: x, exact: true }), x).toHaveCount(0);
+  };
+  await group("Продажи", ["Покупатели"], ["Заказы"]);
+  await group("Каталог", ["Прайс консультанта"], ["Товары", "Категории"]);
+  await group("Маркетинг", ["ИИ-консультант"], ["Поделиться"]);
+  await group("Настройки", ["Настройки"], ["Оплата и настройки", "Комиссия"]);
+  await expect(menu.getByRole("button", { name: "Аналитика", exact: true })).toHaveCount(0);
+
+  await page.goto("/admin/settings");
+  await expect(page.getByRole("heading", { name: "Настройки", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Все", exact: true }).click();
+  await expect(page.getByText("Telegram-бот", { exact: true }).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "Оплата и доставка", exact: true })).toHaveCount(0);
+  for (const title of [
+    "Способы оплаты по странам",
+    "Физические товары: получение и оплата",
+    "Зоны доставки",
+    "Защита PDF от перепродажи",
+  ])
+    await expect(page.getByText(title, { exact: true }), title).toBeHidden();
+
+  // Скрытые из меню страницы по прямой ссылке открываются без ошибок.
+  for (const path of ["/admin/orders", "/admin/products"]) {
+    await page.goto(path);
+    await expect(page.locator("main")).toBeVisible();
+    await expect(page.locator("body"), path).not.toContainText(
+      /Cannot read|undefined|TypeError|Internal Server Error/,
+    );
+  }
+  expect(errors).toEqual([]);
+});

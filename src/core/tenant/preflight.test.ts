@@ -55,6 +55,14 @@ describe("консультант по прайсу и баллы", () => {
     expect(run({ channelOrders30d: 0, zernioAccounts: 0, zernioSecret: false }).ready).toBe(true);
   });
 
+  it("консультант без товаров с прайсом v1 и выключенным флагом — блок: иначе отвечать не по чему", () => {
+    const pricelist = { enabled: false, items: 788, rateFresh: true };
+    expect(check({ sells: false, paymentMethods: 0, pricelist }, "pricelist")).toMatchObject({
+      level: "block",
+    });
+    expect(check({ pricelist }, "pricelist")).toMatchObject({ level: "warn" });
+  });
+
   it("продаёт ли клиент: магазин — да, консультант — только с продажей товаров или курсами", () => {
     const shop = (vertical: string, modules: Record<string, boolean>, products = 5) =>
       sellsInBot({ vertical, modules } as unknown as Parameters<typeof sellsInBot>[0], products);
