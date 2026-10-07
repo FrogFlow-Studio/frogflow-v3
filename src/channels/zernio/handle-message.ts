@@ -501,6 +501,14 @@ async function notifyHandoff(
   // Товары разговора и кнопка «открыть диалог» (v1 consultant/notify.ts).
   const { handoffCardExtras } = await import("./handoff-card");
   const card = await handoffCardExtras(ctx, customer, m);
+  // Задача консультанта в админке — до уведомления: сбой отправки её не теряет.
+  const { taskFromHandoff } = await import("@/core/consultant/tasks");
+  await taskFromHandoff(ctx, customer, handoff, {
+    channel: m.platform,
+    products: card.products,
+    link: card.link,
+    sourceId: m.platformMessageId,
+  });
   const lines = [
     ...warn,
     ticket ? `📨 Обращение #${ticket.number}` : "",

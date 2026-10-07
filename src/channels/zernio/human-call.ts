@@ -182,6 +182,30 @@ export async function callHuman(
     PLATFORM_LABEL[m.platform],
     tail ? lastMessages(tail) : null,
   );
+  // Задача консультанта в админке (консультант по прайсу) — после метки «позвал»,
+  // поэтому повтор слова её не задваивает.
+  const { taskFromHandoff } = await import("@/core/consultant/tasks");
+  const { conversationProductLines } = await import("@/core/consultant/pricelist/handoff-products");
+  const { openDialogMarkup } = await import("./handoff-card");
+  await taskFromHandoff(
+    ctx,
+    claimed,
+    { reason: "human_requested", summary: `«${(m.text ?? "").trim().slice(0, 300)}»` },
+    {
+      channel: m.platform,
+      products: await conversationProductLines(ctx, claimed),
+      link:
+        openDialogMarkup(
+          m.platform,
+          {
+            username: m.senderUsername || customer.username,
+            phone: m.senderPhone || customer.contactPhone || m.senderId,
+          },
+          locale,
+        )?.inline_keyboard[0]?.[0]?.url ?? null,
+      sourceId: m.platformMessageId,
+    },
+  );
   const { handoffRefLine, issueHandoffRef } = await import("@/core/consultant/relay");
   const ref = await issueHandoffRef(ctx, customer.userKey).catch(() => null);
   const { notifyAdminsHtml } = await import("@/channels/telegram/notify");

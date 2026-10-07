@@ -3,20 +3,24 @@ import { useEffect, useState } from "react";
 import {
   addKnowledgeArticlesFn,
   addProductMediaFn,
+  clearConsultantTasksFn,
+  consultantTasksFn,
   deleteProductMediaFn,
   disconnectPricelistSheetFn,
   importPricelistFn,
   importPricelistSheetFn,
   previewKnowledgeImportFn,
   previewPricelistSheetFn,
+  markConsultantTaskFn,
   pricelistFn,
   refreshPricelistRateFn,
   savePricelistArticlesFn,
+  savePricelistPersonaFn,
   savePricelistSettingsFn,
   setPricelistRateFn,
 } from "@/app/admin/pricelist.functions";
 import { Badge, Card, ErrorBox, Field, PageTitle, useAction } from "@/app/ui";
-import { adminT, intlLocale, type AdminT } from "@/app/i18n/admin";
+import { adminT, intlLocale, type AdminKey, type AdminT } from "@/app/i18n/admin";
 import { KNOWLEDGE_FILE_MAX_MB } from "@/core/consultant/pricelist/knowledge-import";
 
 export const Route = createFileRoute("/admin/_authed/pricelist")({
@@ -53,6 +57,7 @@ function PricelistPage() {
           <SheetCard t={t} data={data} date={date} canEdit={canEdit} onDone={router.invalidate} />
           <RateCard t={t} data={data} date={date} canEdit={canEdit} onDone={router.invalidate} />
           <SettingsCard t={t} data={data} canEdit={canEdit} onDone={router.invalidate} />
+          <PersonaCard t={t} data={data} canEdit={canEdit} onDone={router.invalidate} />
           <Card title={t("pricelist.usage.title")}>
             <p className="text-sm">
               {data.usage.messages
@@ -67,6 +72,7 @@ function PricelistPage() {
           </Card>
         </div>
         <div className="space-y-4">
+          <TasksCard t={t} data={data} canEdit={canEdit} date={date} />
           <MediaCard t={t} data={data} canEdit={canEdit} onDone={router.invalidate} />
           <KnowledgeCard t={t} data={data} canEdit={canEdit} onDone={router.invalidate} />
         </div>
@@ -406,10 +412,13 @@ function SettingsCard({ t, data, canEdit, onDone }: CardProps) {
   const [store, setStore] = useState(data.store);
   const [followUp, setFollowUp] = useState(data.followUp);
   const [qualityDigest, setQualityDigest] = useState(data.qualityDigest);
+  const [hours, setHours] = useState(data.hours);
   const [saved, setSaved] = useState(false);
   const save = useAction(async () => {
     setSaved(false);
-    await savePricelistSettingsFn({ data: { synonyms, shopUrl, store, followUp, qualityDigest } });
+    await savePricelistSettingsFn({
+      data: { synonyms, shopUrl, store, followUp, qualityDigest, hours },
+    });
     setSaved(true);
     await onDone();
   });
@@ -459,8 +468,30 @@ function SettingsCard({ t, data, canEdit, onDone }: CardProps) {
             />
           </Field>
         </div>
+        <p className="label">{t("pricelist.settings.workHours")}</p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label={t("pricelist.settings.open")}>
+            <input
+              className="input"
+              inputMode="numeric"
+              value={String(hours.open)}
+              disabled={!canEdit}
+              onChange={(e) => setHours({ ...hours, open: Number(e.target.value.trim()) })}
+            />
+          </Field>
+          <Field label={t("pricelist.settings.close")}>
+            <input
+              className="input"
+              inputMode="numeric"
+              value={String(hours.close)}
+              disabled={!canEdit}
+              onChange={(e) => setHours({ ...hours, close: Number(e.target.value.trim()) })}
+            />
+          </Field>
+        </div>
+        <p className="text-xs text-muted">{t("pricelist.settings.workHoursHint")}</p>
         <p className="text-xs text-muted">
-          {t("pricelist.hours", { open: data.hours.open, close: data.hours.close })}
+          {t("pricelist.hours", { open: hours.open, close: hours.close })}
         </p>
         <label className="flex items-start gap-2 text-sm">
           <input
@@ -868,3 +899,214 @@ function KnowledgeImport({
     </div>
   );
 }
+
+/** Образ консультанта: название, о магазине, тон, особенности товаров. */
+function PersonaCard({ t, data, canEdit, onDone }: CardProps) {
+  const [persona, setPersona] = useState(data.persona);
+  const [custom, setCustom] = useState(data.personaCustom);
+  const [saved, setSaved] = useState(false);
+  const lim = data.personaLimits;
+  const save = useAction(async (next: typeof persona | null) => {
+    setSaved(false);
+    const r = await savePricelistPersonaFn({ data: { persona: next } });
+    setCustom(r.custom);
+    setSaved(true);
+    await onDone();
+  });
+  const set = (k: keyof typeof persona, v: string) => setPersona((p) => ({ ...p, [k]: v }));
+  const left = (k: keyof typeof persona) => lim[k] - persona[k].length;
+  return (
+    <Card title={t("pricelist.persona.title")}>
+      <p className="mb-3 text-sm text-muted">{t("pricelist.persona.hint")}</p>
+      <div className="space-y-3">
+        <Field label={t("pricelist.persona.brand")}>
+          <input
+            className="input"
+            value={persona.brand}
+            maxLength={lim.brand}
+            disabled={!canEdit}
+            onChange={(e) => set("brand", e.target.value)}
+          />
+        </Field>
+        <Field label={t("pricelist.persona.about")} hint={t("pricelist.persona.aboutHint")}>
+          <textarea
+            className="input min-h-16 text-sm"
+            value={persona.about}
+            maxLength={lim.about}
+            disabled={!canEdit}
+            onChange={(e) => set("about", e.target.value)}
+          />
+        </Field>
+        <Field label={t("pricelist.persona.tone")} hint={t("pricelist.persona.toneHint")}>
+          <textarea
+            className="input min-h-16 text-sm"
+            value={persona.tone}
+            maxLength={lim.tone}
+            disabled={!canEdit}
+            onChange={(e) => set("tone", e.target.value)}
+          />
+        </Field>
+        <Field
+          label={t("pricelist.persona.specialities")}
+          hint={t("pricelist.persona.specialitiesHint")}
+        >
+          <textarea
+            className="input min-h-32 text-sm"
+            value={persona.specialities}
+            maxLength={lim.specialities}
+            disabled={!canEdit}
+            onChange={(e) => set("specialities", e.target.value)}
+          />
+        </Field>
+        <p className="text-xs text-muted">
+          {t("pricelist.persona.left", { left: left("specialities") })}
+        </p>
+        <p className="text-sm text-muted">
+          {custom ? t("pricelist.persona.custom") : t("pricelist.persona.default")}
+        </p>
+        {canEdit && (
+          <div className="flex items-center gap-3">
+            <button
+              className="btn-primary"
+              disabled={save.busy || !persona.brand.trim()}
+              onClick={() => void save.run(persona).catch(() => {})}
+            >
+              {t("pricelist.save")}
+            </button>
+            {custom && (
+              <button
+                className="btn-secondary"
+                disabled={save.busy}
+                onClick={() => void save.run(null).catch(() => {})}
+              >
+                {t("pricelist.persona.reset")}
+              </button>
+            )}
+            {saved && <span className="text-sm text-ok">{t("pricelist.saved")}</span>}
+          </div>
+        )}
+        <ErrorBox error={save.error} />
+      </div>
+    </Card>
+  );
+}
+
+/**
+ * Задачи консультанта: каждая передача менеджеру. Список читается отдельным
+ * вызовом — в нём имена и телефоны покупателей, и роли «просмотр» он закрыт.
+ */
+function TasksCard({
+  t,
+  canEdit,
+  date,
+}: Omit<CardProps, "onDone"> & { date: (s: string) => string }) {
+  type Tasks = Awaited<ReturnType<typeof consultantTasksFn>>;
+  const [list, setList] = useState<Tasks | null>(null);
+  const load = useAction(async () => setList(await consultantTasksFn()));
+  useEffect(() => {
+    if (canEdit) void load.run().catch(() => {});
+    // Один раз при открытии страницы.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canEdit]);
+  const mark = useAction(async (id: string, done: boolean) => {
+    await markConsultantTaskFn({ data: { id, done } });
+    await load.run();
+  });
+  const clear = useAction(async (which: "done" | "all") => {
+    await clearConsultantTasksFn({ data: { which } });
+    await load.run();
+  });
+  if (!canEdit) return null;
+  const reason = (r: string) => {
+    const key = `pricelist.tasks.reason.${r}` as AdminKey;
+    return t(KNOWN_REASONS.includes(r) ? key : "pricelist.tasks.reason.other");
+  };
+  return (
+    <Card title={t("pricelist.tasks.title")}>
+      <p className="mb-3 text-sm text-muted">{t("pricelist.tasks.hint")}</p>
+      {list && list.tasks.length === 0 && <p className="text-sm">{t("pricelist.tasks.empty")}</p>}
+      {list && list.tasks.length > 0 && (
+        <>
+          <p className="mb-2 text-sm">{t("pricelist.tasks.open", { count: list.open })}</p>
+          <ul className="space-y-2">
+            {list.tasks.map((task) => (
+              <li
+                key={task.id}
+                className={`rounded-md border border-line p-3 text-sm ${task.done ? "opacity-60" : ""}`}
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge tone={task.done ? "neutral" : "accent"}>{reason(task.reason)}</Badge>
+                  {task.channel && (
+                    <span className="text-xs text-muted">
+                      {t(`pricelist.tasks.channel.${task.channel}` as AdminKey)}
+                    </span>
+                  )}
+                  <span className="text-xs text-muted">{date(task.at)}</span>
+                </div>
+                <div className="mt-1 font-medium">{task.name ?? task.userKey}</div>
+                {task.contact && <div className="text-muted">{task.contact}</div>}
+                {task.text && <p className="mt-1 whitespace-pre-wrap">{task.text}</p>}
+                {task.products && task.products.length > 0 && (
+                  <>
+                    <div className="mt-1 text-xs text-muted">{t("pricelist.tasks.products")}</div>
+                    <ul className="list-disc pl-5 text-xs">
+                      {task.products.map((p) => (
+                        <li key={p}>{p}</li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+                <div className="mt-2 flex flex-wrap items-center gap-3">
+                  {task.link && (
+                    <a
+                      className="btn-ghost text-xs"
+                      href={task.link}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {t("pricelist.tasks.openDialog")}
+                    </a>
+                  )}
+                  <button
+                    className="btn-secondary text-xs"
+                    disabled={mark.busy}
+                    onClick={() => void mark.run(task.id, !task.done).catch(() => {})}
+                  >
+                    {task.done ? t("pricelist.tasks.undo") : t("pricelist.tasks.done")}
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+          <div className="mt-3 flex flex-wrap gap-3">
+            <button
+              className="btn-secondary"
+              disabled={clear.busy}
+              onClick={() => void clear.run("done").catch(() => {})}
+            >
+              {t("pricelist.tasks.clearDone")}
+            </button>
+            <button
+              className="btn-ghost text-danger"
+              disabled={clear.busy}
+              onClick={() => void clear.run("all").catch(() => {})}
+            >
+              {t("pricelist.tasks.clearAll")}
+            </button>
+          </div>
+        </>
+      )}
+      <ErrorBox error={load.error ?? mark.error ?? clear.error} />
+    </Card>
+  );
+}
+
+/** Причины передачи, у которых есть своя подпись; остальное — «передача менеджеру». */
+const KNOWN_REASONS = [
+  "purchase",
+  "wholesale",
+  "complaint",
+  "human_requested",
+  "photo",
+  "unknown_question",
+];

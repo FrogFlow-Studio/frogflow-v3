@@ -168,6 +168,13 @@ describe("золотые диалоги", () => {
           const paused = Boolean(until) && Date.parse(until!) > Date.now();
           expect(paused, `${where}: консультант на паузе`).toBe(e.paused);
         }
+        if (e.tasks) {
+          const raw = r.db.tables.app_settings!.find((x) => x.key === "consultant_tasks_json")
+            ?.value as string | undefined;
+          const tasks = raw ? (JSON.parse(raw) as unknown[]) : [];
+          expect(tasks, `${where}: задачи консультанта`).toHaveLength(e.tasks.length);
+          e.tasks.forEach((t, i) => expect(tasks[i], `${where}: задача ${i + 1}`).toMatchObject(t));
+        }
       }
     });
 });

@@ -4,6 +4,14 @@ import type { TenantContext } from "@/core/tenant/resolve.server";
 import { settingsFromJson } from "@/core/tenant/directory";
 
 const removed: string[][] = [];
+/** Записи в bots.settings — через patchTenantSettings; здесь их видно и они возвращаются в контекст. */
+const patches: Array<{ botId: string; patch: Record<string, unknown> }> = [];
+vi.mock("@/core/tenant/resolve.server", async (orig) => ({
+  ...(await orig<typeof import("@/core/tenant/resolve.server")>()),
+  patchTenantSettings: async (botId: string, patch: Record<string, unknown>) => {
+    patches.push({ botId, patch });
+  },
+}));
 vi.mock("@/core/db/client.server", () => ({
   serviceDb: () => ({
     storage: {
@@ -20,6 +28,10 @@ vi.mock("@/core/db/client.server", () => ({
 const {
   addKnowledgeArticles,
   addProductMedia,
+  clearConsultantTasks,
+  consultantTasks,
+  markConsultantTask,
+  savePricelistPersona,
   deleteProductMedia,
   importPricelist,
   importPricelistSheetFor,
@@ -30,6 +42,8 @@ const {
   savePricelistSettings,
   setManualRate,
 } = await import("./pricelist.server");
+const { addTask } = await import("@/core/consultant/tasks");
+const { DEFAULT_PERSONA } = await import("@/core/consultant/pricelist/persona");
 
 /**
  * «Прайс консультанта» в админке (перенос панели BOVI v1): выгрузка 1С,
@@ -37,7 +51,7 @@ const {
  * операторе режиме «по прайсу».
  */
 let n = 0;
-function ctxOf(on = true): TenantContext {
+function ctxOf(on = true, extra: Record<string, unknown> = {}): TenantContext {
   const id = `10000000-0000-0000-0000-${String(++n).padStart(12, "0")}`;
   const db = fakeDb({ unique: { app_settings: [["bot_id", "key"]] } });
   db.tables.app_settings = [];
@@ -45,7 +59,7 @@ function ctxOf(on = true): TenantContext {
     tenant: {
       id,
       name: "BOVI",
-      settings: settingsFromJson(on ? { consultant_pricelist: { enabled: true } } : {}),
+      settings: settingsFromJson(on ? { consultant_pricelist: { enabled: true, ...extra } } : {}),
       modules: {},
       vertical: "consultant",
     },
@@ -139,6 +153,106 @@ describe("прайс консультанта в админке", () => {
     await deleteProductMedia(ctx, m.id);
     expect((await pricelistOverview(ctx)).media).toHaveLength(1);
     expect(removed.at(-1)).toEqual([key]);
+  });
+
+  it("рабочие часы консультанта: по умолчанию BOVI, свои пишутся в настройки, кривые отклоняются", async () => {
+    const ctx = ctxOf();
+    patches.length = 0;
+    const o = await pricelistOverview(ctx);
+    expect(o.hours).toEqual({ open: 10, close: 21 });
+    // Те же часы, что сейчас, настройку не пишут.
+    await savePricelistSettings(ctx, {
+      synonyms: "",
+      shopUrl: "",
+      store: o.store,
+      hours: { open: 10, close: 21 },
+    });
+    expect(patches).toEqual([]);
+    await savePricelistSettings(ctx, {
+      synonyms: "",
+      shopUrl: "",
+      store: o.store,
+      hours: { open: 9, close: 20 },
+    });
+    expect(patches).toEqual([
+      { botId: ctx.tenant.id, patch: { consultant_pricelist: { hours: { open: 9, close: 20 } } } },
+    ]);
+    for (const hours of [
+      { open: 10, close: 10 },
+      { open: 25, close: 3 },
+      { open: 1, close: 0 },
+    ])
+      await expect(
+        savePricelistSettings(ctx, { synonyms: "", shopUrl: "", store: o.store, hours }),
+      ).rejects.toMatchObject({ key: "err.pricelist.badHours" });
+    // Часы магазина читаются из настроек клиента.
+    expect((await pricelistOverview(ctxOf(true, { hours: { open: 9, close: 20 } }))).hours).toEqual(
+      {
+        open: 9,
+        close: 20,
+      },
+    );
+  });
+
+  it("образ консультанта: по умолчанию текст BOVI, свой пишется, стандартный убирает настройку", async () => {
+    const ctx = ctxOf();
+    patches.length = 0;
+    const o = await pricelistOverview(ctx);
+    expect(o.persona).toEqual(DEFAULT_PERSONA);
+    expect(o.personaCustom).toBe(false);
+    expect(await savePricelistPersona(ctx, DEFAULT_PERSONA)).toEqual({ custom: false });
+    expect(patches.at(-1)!.patch).toEqual({ consultant_pricelist: { persona: null } });
+    expect(
+      await savePricelistPersona(ctx, {
+        brand: "Хлопок",
+        about: "Детский текстиль.",
+        tone: "Тепло.",
+        specialities: "",
+      }),
+    ).toEqual({ custom: true });
+    expect(patches.at(-1)!.patch).toEqual({
+      consultant_pricelist: {
+        persona: { brand: "Хлопок", about: "Детский текстиль.", tone: "Тепло.", specialities: "" },
+      },
+    });
+    await expect(
+      savePricelistPersona(ctx, { brand: " ", about: "", tone: "", specialities: "" }),
+    ).rejects.toMatchObject({ key: "err.pricelist.noBrand" });
+    // Свой образ показывается как свой.
+    const saved = await pricelistOverview(
+      ctxOf(true, { persona: { brand: "Хлопок", about: "", tone: "", specialities: "" } }),
+    );
+    expect(saved.personaCustom).toBe(true);
+    expect(saved.persona.brand).toBe("Хлопок");
+  });
+
+  it("задачи консультанта: список, отметка, очистка сделанных, чужой id — ошибка", async () => {
+    const ctx = ctxOf();
+    const a = await addTask(ctx, { userKey: "ig:1", reason: "purchase", text: "Берёт полотенце" });
+    await addTask(ctx, { userKey: "ig:2", reason: "complaint", text: "Затяжка" });
+    const list = await consultantTasks(ctx);
+    expect(list.open).toBe(2);
+    expect(list.tasks.map((t) => t.reason)).toContain("purchase");
+    await markConsultantTask(ctx, a!.id, true);
+    expect((await consultantTasks(ctx)).open).toBe(1);
+    await expect(markConsultantTask(ctx, "tsk_нет", true)).rejects.toMatchObject({
+      key: "err.pricelist.noTask",
+    });
+    expect(await clearConsultantTasks(ctx, "done")).toEqual({ removed: 1 });
+    expect((await consultantTasks(ctx)).tasks.map((t) => t.userKey)).toEqual(["ig:2"]);
+    expect(await clearConsultantTasks(ctx, "all")).toEqual({ removed: 1 });
+    expect((await consultantTasks(ctx)).tasks).toEqual([]);
+  });
+
+  it("задачи и образ закрыты магазину без режима по прайсу", async () => {
+    const off = ctxOf(false);
+    await expect(consultantTasks(off)).rejects.toMatchObject({ key: "err.pricelist.off" });
+    await expect(clearConsultantTasks(off, "all")).rejects.toMatchObject({
+      key: "err.pricelist.off",
+    });
+    await expect(savePricelistPersona(off, null)).rejects.toMatchObject({
+      key: "err.pricelist.off",
+    });
   });
 
   it("статьи базы знаний: пустые отбрасываются", async () => {

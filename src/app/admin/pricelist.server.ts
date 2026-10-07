@@ -50,7 +50,15 @@ import {
   saveStoreInfo,
   type StoreInfo,
 } from "@/core/consultant/pricelist/store-info.server";
-import { pricelistHours, pricelistMode } from "@/core/consultant/pricelist/mode";
+import { pricelistHours, pricelistMode, type ShopHours } from "@/core/consultant/pricelist/mode";
+import {
+  cleanPersona,
+  DEFAULT_PERSONA,
+  isDefaultPersona,
+  PERSONA_LIMITS,
+  type PricelistPersona,
+} from "@/core/consultant/pricelist/persona";
+import { clearTasks, loadTasks, setTaskDone } from "@/core/consultant/tasks";
 import { getSetting, setSetting } from "@/core/settings/settings";
 import { FOLLOW_UP_SETTING_KEY } from "@/core/consultant/pricelist/follow-up";
 import { DIGEST_SETTING_KEY } from "@/core/consultant/pricelist/quality-digest";
@@ -62,6 +70,12 @@ import { isIssuedUploadKey } from "@/core/storage/upload";
  * синонимы марок, бутик, курс рубля, фотобаза и статьи базы знаний. Только
  * для магазинов, которым оператор включил консультанта по прайсу.
  */
+/** Запись в bots.settings — через справочник арендаторов (условно по rev). */
+async function patchSettings(botId: string, patch: Record<string, unknown>): Promise<void> {
+  const { patchTenantSettings } = await import("@/core/tenant/resolve.server");
+  await patchTenantSettings(botId, patch);
+}
+
 export function requirePricelist(ctx: TenantContext): TenantContext {
   if (!pricelistMode(ctx.tenant))
     throw new UserError(
@@ -93,6 +107,9 @@ export async function pricelistOverview(ctx: TenantContext) {
     shopUrl: snap.shopUrl,
     store,
     hours: pricelistHours(ctx.tenant),
+    persona: p.persona ?? DEFAULT_PERSONA,
+    personaCustom: Boolean(p.persona),
+    personaLimits: PERSONA_LIMITS,
     rateSource: p.rate_source ?? "vtb",
     rate: stored
       ? {
@@ -260,12 +277,22 @@ export async function savePricelistSettings(
     store: StoreInfo;
     followUp?: boolean;
     qualityDigest?: boolean;
+    /** Рабочие часы консультанта (нерабочее время — «менеджер ответит утром»). */
+    hours?: ShopHours;
   },
 ) {
   requirePricelist(ctx);
   const url = data.shopUrl.trim();
   if (url && !/^https:\/\/[^\s/]+/i.test(url))
     throw new UserError("err.pricelist.badUrl", "Адрес сайта должен начинаться с https://");
+  const h = data.hours;
+  // Открытие 0–23, закрытие 1–24 и не совпадают; 0–24 — консультант без нерабочего времени.
+  const hour = (n: number, lo: number, hi: number) => Number.isInteger(n) && n >= lo && n <= hi;
+  if (h && (!hour(h.open, 0, 23) || !hour(h.close, 1, 24) || h.open === h.close))
+    throw new UserError(
+      "err.pricelist.badHours",
+      "Часы работы: открытие с 0 до 23, закрытие с 1 до 24, и они не совпадают.",
+    );
   await saveSynonyms(ctx, data.synonyms);
   await setSetting(ctx, SHOP_URL_KEY, url);
   await saveStoreInfo(ctx, data.store);
@@ -273,7 +300,48 @@ export async function savePricelistSettings(
     await setSetting(ctx, FOLLOW_UP_SETTING_KEY, data.followUp ? "on" : "off");
   if (data.qualityDigest !== undefined)
     await setSetting(ctx, DIGEST_SETTING_KEY, data.qualityDigest ? "on" : "off");
+  // Часы пишутся, только если поменялись: не тронутые часы BOVI остаются «по умолчанию».
+  const cur = pricelistHours(ctx.tenant);
+  if (h && (h.open !== cur.open || h.close !== cur.close))
+    await patchSettings(ctx.tenant.id, {
+      consultant_pricelist: { hours: { open: h.open, close: h.close } },
+    });
   return { ok: true };
+}
+
+/**
+ * Образ консультанта: название, о магазине, тон, особенности товаров. null
+ * или текст BOVI без правок — настройка убирается, подсказка BOVI прежняя.
+ */
+export async function savePricelistPersona(
+  ctx: TenantContext,
+  persona: PricelistPersona | null,
+): Promise<{ custom: boolean }> {
+  requirePricelist(ctx);
+  const clean = persona ? cleanPersona(persona) : undefined;
+  if (persona && !clean) throw new UserError("err.pricelist.noBrand", "Укажите название магазина.");
+  const value = clean && !isDefaultPersona(clean) ? clean : null;
+  await patchSettings(ctx.tenant.id, { consultant_pricelist: { persona: value } });
+  return { custom: value !== null };
+}
+
+/** Задачи консультанта: каждая передача менеджеру (core/consultant/tasks). */
+export async function consultantTasks(ctx: TenantContext) {
+  requirePricelist(ctx);
+  const tasks = await loadTasks(ctx);
+  return { tasks, open: tasks.filter((t) => !t.done).length };
+}
+
+export async function markConsultantTask(ctx: TenantContext, id: string, done: boolean) {
+  requirePricelist(ctx);
+  if (!(await setTaskDone(ctx, id, done)))
+    throw new UserError("err.pricelist.noTask", "Задачи уже нет в списке — обновите страницу.");
+  return { ok: true };
+}
+
+export async function clearConsultantTasks(ctx: TenantContext, which: "done" | "all") {
+  requirePricelist(ctx);
+  return clearTasks(ctx, which);
 }
 
 /** Курс вручную — когда оператор выбрал ручной источник или банк молчит. */

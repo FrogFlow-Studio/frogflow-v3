@@ -3,6 +3,7 @@
  * (откуда — в `origin`). Новая найденная поломка диалога сначала становится
  * сценарием здесь, потом чинится (CLAUDE.md, «Перед PR»).
  */
+import { expect } from "vitest";
 import { COPY, type Msg } from "@/channels/telegram/copy";
 import type { Locale } from "@/core/i18n/locale";
 import type { Channel, Input, Product, Room } from "./harness";
@@ -85,6 +86,11 @@ export interface Expect {
   sellerQueued?: number;
   /** Консультант на паузе после реплики (state.consultant.paused_until в будущем). */
   paused?: boolean;
+  /**
+   * Задачи консультанта в админке (app_settings consultant_tasks_json) после
+   * реплики — все, по порядку записи; каждая сверяется подмножеством полей.
+   */
+  tasks?: Array<Record<string, unknown>>;
 }
 
 export interface Scenario {
@@ -804,6 +810,104 @@ export const SCENARIOS: Scenario[] = [
       {
         say: { text: "А в рублях за штуку?" },
         expect: { says: ["9 000 ₸ за штуку"], notSays: ["₽"], sellerQueued: 0 },
+      },
+    ],
+  },
+  // ───── Задачи консультанта: передача менеджеру — строка у продавца (перенос v1 tasks.ts) ─────
+  ...everyLocale(
+    (l) => ({
+      id: "pricelist-handoff-task",
+      title:
+        "передача менеджеру — задача в админке: причина, канал, суть, ответ покупателю прежний",
+      origin:
+        "BOVI 07.10: в v1 у продавца был список задач консультанта, в v2 передача жила только в Telegram",
+      channel: "instagram",
+      full: true,
+      vertical: "consultant",
+      modules: { shop: true },
+      pricelist: {
+        catalog: PL_CATALOG,
+        rounds: [
+          [
+            {
+              type: "tool_use",
+              id: "h1",
+              name: "handoff_to_manager",
+              input: { reason: "purchase", summary: "Берёт Uchino 50х100, самовывоз" },
+            },
+          ],
+        ],
+      },
+      steps: [
+        {
+          say: { text: "Беру полотенце Uchino, +77001112233, заберу сама" },
+          expect: {
+            says: [pricelistHandoffReply(l)],
+            sellerNotices: 1,
+            paused: true,
+            tasks: [
+              {
+                reason: "purchase",
+                done: false,
+                text: expect.stringContaining("Берёт Uchino 50х100, самовывоз"),
+              },
+            ],
+          },
+        },
+      ],
+    }),
+    ["instagram", "whatsapp"],
+  ),
+  {
+    id: "pricelist-handoff-task-tg-ru",
+    title: "передача менеджеру из Telegram — задача с каналом telegram",
+    origin: "BOVI 07.10: задачи консультанта из всех каналов, как в v1",
+    channel: "telegram",
+    locale: "ru",
+    vertical: "consultant",
+    modules: { shop: true },
+    pricelist: {
+      catalog: PL_CATALOG,
+      rounds: [
+        [
+          {
+            type: "tool_use",
+            id: "h1",
+            name: "handoff_to_manager",
+            input: { reason: "complaint", summary: "Пришло полотенце с затяжкой" },
+          },
+        ],
+      ],
+    },
+    steps: [
+      {
+        say: { text: "Мне пришло полотенце с затяжкой, хочу вернуть" },
+        expect: {
+          says: [pricelistHandoffReply("ru")],
+          tasks: [{ reason: "complaint", channel: "telegram", done: false }],
+        },
+      },
+    ],
+  },
+  {
+    id: "pricelist-human-call-task-ig-ru",
+    title:
+      "«позовите человека» у консультанта по прайсу — задача human, второй раз не задваивается",
+    origin: "BOVI 07.10: «позвать продавца» (Б9) шло мимо списка задач",
+    channel: "instagram",
+    locale: "ru",
+    full: true,
+    vertical: "consultant",
+    modules: { shop: true },
+    pricelist: { catalog: PL_CATALOG, rounds: [] },
+    steps: [
+      {
+        say: { text: "позовите менеджера" },
+        expect: { sellerNotices: 1, tasks: [{ reason: "human_requested", channel: "instagram" }] },
+      },
+      {
+        say: { text: "позовите менеджера" },
+        expect: { sellerNotices: 0, tasks: [{ reason: "human_requested" }] },
       },
     ],
   },

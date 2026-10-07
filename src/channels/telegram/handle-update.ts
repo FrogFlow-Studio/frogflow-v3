@@ -780,6 +780,16 @@ async function consultantReply(
     }
     const { leadFromHandoff } = await import("@/core/pipeline/sources");
     await leadFromHandoff(b.ctx, b.customer, r.handoff);
+    // Задача консультанта в админке (консультант по прайсу) — до уведомления.
+    const { taskFromHandoff, telegramDialogLink } = await import("@/core/consultant/tasks");
+    const { conversationProductLines } =
+      await import("@/core/consultant/pricelist/handoff-products");
+    await taskFromHandoff(b.ctx, b.customer, r.handoff, {
+      channel: "telegram",
+      products: await conversationProductLines(b.ctx, b.customer),
+      link: telegramDialogLink(b.customer.username),
+      sourceId: run.messageId || null,
+    });
     const who =
       [b.customer.firstName, b.customer.lastName].filter(Boolean).join(" ") ||
       (b.customer.username ? `@${b.customer.username}` : `id ${b.customer.telegramId}`);
@@ -3407,6 +3417,9 @@ async function relayManagerReply(
   }
   const { recordRelayedReply } = await import("@/core/consultant/engine.server");
   await recordRelayedReply(ctx, buyer, text);
+  // Менеджер ответил сам — его задача в админке сделана (v1 manager-reply.ts).
+  const { closeTaskAfterReply } = await import("@/core/consultant/tasks");
+  await closeTaskAfterReply(ctx, buyer.userKey);
   if (ctx.tenant.modules.manager_chat) {
     const { recordMessage } = await import("@/core/chat/chat");
     await recordMessage(ctx, {

@@ -133,12 +133,22 @@ export type TenantSettings = {
    */
   consultant_pricelist?: {
     enabled?: boolean;
-    /** Рабочие часы магазина по его поясу: с open до close (0–24). */
+    /** Рабочие часы магазина по его поясу: с open до close (0–24). Меняют оператор и продавец. */
     hours?: { open: number; close: number };
     /** Откуда курс рубля: ВТБ, finkaz или вручную (core/consultant/pricelist/rate). */
     rate_source?: "vtb" | "finkaz" | "manual";
     /** Страница банка на finkaz.kz (по умолчанию Kaspi). */
     rate_url?: string;
+    /**
+     * Образ консультанта, который правит продавец (core/consultant/pricelist/
+     * persona): название, о магазине, тон, особенности товаров. Нет — текст BOVI.
+     */
+    persona?: {
+      brand: string;
+      about: string;
+      tone: string;
+      specialities: string;
+    };
   };
   /**
    * Свои тексты бота (core/bot-texts): ключ текста → канал → язык → текст

@@ -56,6 +56,26 @@ export function seedBoviStories(db: StubDb, now: string) {
     own({ key: "shop_name", value: F.BOVI_E2E_NAME, updated_at: now }),
     own({ key: "consultant_enabled", value: "true", updated_at: now }),
     own({ key: "consultant_catalog_json", value: JSON.stringify(pricelist), updated_at: now }),
+    // Задача консультанта: передача менеджеру, которую продавец отмечает сделанной.
+    own({
+      key: "consultant_tasks_json",
+      value: JSON.stringify([
+        {
+          id: "tsk_e2e1",
+          at: now,
+          userKey: "ig:e2e-bovi-1",
+          reason: "purchase",
+          text: F.BOVI_E2E_TASK_SUMMARY,
+          contact: "+7 700 000 11 22",
+          name: F.BOVI_E2E_TASK_CUSTOMER,
+          channel: "instagram",
+          products: [F.BOVI_E2E_NEW_ITEM],
+          link: "https://ig.me/m/e2e_bovi_client",
+          done: false,
+        },
+      ]),
+      updated_at: now,
+    }),
   ]);
   add(db, "products", [
     own({

@@ -68,6 +68,8 @@ type Opts = {
   onToolCall?: (name: string) => void;
   /** Курс рубля; null — свежего нет (getFreshRate вернул null). */
   rate?: PricelistData["rate"];
+  hours?: PricelistData["hours"];
+  persona?: PricelistData["persona"];
 };
 
 function dataOf(o: Opts): PricelistData {
@@ -79,8 +81,9 @@ function dataOf(o: Opts): PricelistData {
     articles: knowledgeArticles,
     rate:
       o.rate !== undefined ? o.rate : { rate: 4.2, updatedAt: DAY.toISOString(), source: "test" },
-    hours: { open: 10, close: 21 },
+    hours: o.hours ?? { open: 10, close: 21 },
     timezone: "Asia/Almaty",
+    ...(o.persona ? { persona: o.persona } : {}),
     storyTags: [],
     loadMedia: async () => media,
     mediaUrl: (path) => `https://test.app/api/img/bot/${path}`,
@@ -110,6 +113,32 @@ async function decide(text: string, state: PricelistState = {}, o: Opts = {}) {
 const lastMessage = (i: number) => JSON.stringify(requests[i]!.messages.at(-1));
 
 describe("консультант по прайсу", () => {
+  it("образ, который задал продавец, доходит до подсказки модели между метками", async () => {
+    responses.push(reply([{ type: "text", text: "Здравствуйте. Что подсказать?" }]));
+    await decide(
+      "Здравствуйте",
+      {},
+      {
+        persona: { brand: "Хлопок", about: "Детский текстиль.", tone: "Тепло.", specialities: "" },
+      },
+    );
+    const system = requests[0]!.system[0]!.text;
+    expect(system).toContain("магазина «Хлопок»");
+    expect(system).toContain(
+      "<<<ТЕКСТ ПРОДАВЦА>>>\nМагазин: Хлопок\nО магазине: Детский текстиль.",
+    );
+    expect(system).not.toContain("BOVI");
+  });
+
+  it("свои рабочие часы продавца: 11:00 при часах 12–20 — нерабочее время, при 10–21 — нет", async () => {
+    responses.push(reply([{ type: "text", text: "Здравствуйте." }]));
+    await decide("Здравствуйте", {}, { hours: { open: 12, close: 20 } });
+    expect(lastMessage(0)).toContain("Сейчас нерабочее время магазина (с 20:00 до 12:00)");
+    responses.push(reply([{ type: "text", text: "Здравствуйте." }]));
+    await decide("Здравствуйте");
+    expect(lastMessage(1)).not.toContain("нерабочее время");
+  });
+
   it("обычный ответ: короткий промпт, прайс в нём, свои инструменты вместо ask_manager", async () => {
     responses.push(reply([{ type: "text", text: "50х100 — 9 000 ₸. Какой цвет?" }]));
     const { turn } = await decide("Есть полотенца для рук?");

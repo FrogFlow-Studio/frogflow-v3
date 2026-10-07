@@ -1,3 +1,4 @@
+import { cleanPersona } from "@/core/consultant/pricelist/persona";
 import { isReservedSlug } from "./slug";
 import { signupOrigin } from "@/core/signup/origin";
 import { MODULE_KEYS, type ModuleKey } from "@/core/modules/registry";
@@ -275,6 +276,7 @@ export function settingsFromJson(json: unknown): TenantSettings {
           /^https:\/\/finkaz\.kz\/[a-z0-9-]+\/exchange-rates/i.test(p.rate_url)
             ? p.rate_url
             : undefined,
+        persona: cleanPersona(p.persona),
       };
     })(),
     smart_search_limits:

@@ -9,3 +9,6 @@ export const BOVI_E2E_PASSWORD = "e2e-bovi-pass-12345";
 export const BOVI_E2E_IG = "e2e-ig-bovi";
 export const BOVI_E2E_NEW_ITEM = "Blomus Корзина для белья FRISCO 60 л, серая";
 export const BOVI_E2E_CATALOG_ITEM = "Корзина из каталога сайта";
+/** Задача консультанта в списке продавца (bovi-tasks.spec.ts): передача менеджеру из Direct. */
+export const BOVI_E2E_TASK_SUMMARY = "Берёт корзину FRISCO, самовывоз из бутика";
+export const BOVI_E2E_TASK_CUSTOMER = "Айгуль Е2Е";

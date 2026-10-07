@@ -3,6 +3,11 @@ import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Customer } from "@/core/customers/customers";
 import type { ConsultantProduct } from "@/core/consultant/pricelist/catalog";
 import { escapeHtml } from "@/channels/telegram/copy";
+import {
+  conversationProductLines,
+  productLine,
+  productLines,
+} from "@/core/consultant/pricelist/handoff-products";
 import type { ZernioPlatform } from "./platform";
 
 /**
@@ -43,15 +48,7 @@ const OPEN_DIALOG: Record<Locale, Record<"instagram" | "inbox" | "whatsapp", str
   },
 };
 
-/** Строка товара: «Название 70x140, белый (55 000 ₸)»; размер и цвет — если их нет в названии. */
-export function productLine(p: ConsultantProduct): string {
-  const size = p.size && !p.name.includes(p.size) ? ` ${p.size}` : "";
-  const lower = p.name.toLowerCase();
-  const own = (p.colors ?? []).filter((c) => c && !lower.includes(c.toLowerCase()));
-  const colors = own.length ? `, ${own.join("/")}` : "";
-  const price = p.price_kzt ? ` (${p.price_kzt.toLocaleString("ru-RU")} ₸)` : "";
-  return `${p.name}${size}${colors}${price}`;
-}
+export { productLine };
 
 /** Строки карточки о товарах (HTML): неизвестные коды пропускаются, повторы схлопываются. */
 export function handoffProductLines(
@@ -59,17 +56,12 @@ export function handoffProductLines(
   catalog: readonly ConsultantProduct[],
   locale: Locale,
 ): string[] {
-  const seen = new Set<string>();
-  const lines: string[] = [];
-  for (const id of ids ?? []) {
-    const p = catalog.find((c) => c.id === id);
-    if (!p) continue;
-    const line = productLine(p);
-    if (seen.has(line)) continue;
-    seen.add(line);
-    lines.push(escapeHtml(line));
-    if (lines.length >= 5) break;
-  }
+  return productCardLines(productLines(ids, catalog), locale);
+}
+
+/** Готовые строки товаров → строки карточки (HTML) с подписью на языке продавца. */
+export function productCardLines(products: readonly string[], locale: Locale): string[] {
+  const lines = products.map((l) => escapeHtml(l));
   if (!lines.length) return [];
   const label = LABEL[locale];
   return lines.length === 1
@@ -105,9 +97,10 @@ type Markup = ReturnType<typeof openDialogMarkup>;
 
 /**
  * Что добавить в карточку передачи: строки о товарах последних ответов
- * консультанта по прайсу (state.consultant.last_product_ids — перечитываем,
- * runConsultant только что записал их поверх свежего состояния) и кнопку
- * диалога. Сбой чтения прайса или покупателя — карточка уходит без товаров.
+ * консультанта по прайсу (core/consultant/pricelist/handoff-products) и кнопку
+ * диалога. `products` и `link` — те же товары строками и адрес кнопки, для
+ * задачи консультанта в админке. Сбой чтения прайса или покупателя — карточка
+ * уходит без товаров.
  */
 export async function handoffCardExtras(
   ctx: TenantContext,
@@ -118,7 +111,7 @@ export async function handoffCardExtras(
     senderPhone?: string | null;
     senderId: string;
   },
-): Promise<{ lines: string[]; replyMarkup: Markup }> {
+): Promise<{ lines: string[]; replyMarkup: Markup; products: string[]; link: string | null }> {
   const { sellerLocaleSafe } = await import("@/core/ai/seller-text");
   const locale = await sellerLocaleSafe(ctx);
   const replyMarkup = openDialogMarkup(
@@ -129,23 +122,7 @@ export async function handoffCardExtras(
     },
     locale,
   );
-  const { pricelistMode } = await import("@/core/consultant/pricelist/mode");
-  if (!pricelistMode(ctx.tenant)) return { lines: [], replyMarkup };
-  try {
-    const { getCustomer } = await import("@/core/customers/customers");
-    const { loadPricelist } = await import("@/core/consultant/pricelist/catalog.server");
-    const [fresh, snap] = await Promise.all([
-      getCustomer(ctx, customer.userKey),
-      loadPricelist(ctx),
-    ]);
-    const c = ((fresh ?? customer).state.consultant ?? {}) as { last_product_ids?: unknown };
-    const ids = Array.isArray(c.last_product_ids) ? c.last_product_ids.map(String) : [];
-    return {
-      lines: handoffProductLines(ids, [...snap.products, ...snap.hidden], locale),
-      replyMarkup,
-    };
-  } catch (e) {
-    console.warn(`[zernio:${ctx.tenant.id}] товары для карточки передачи не прочитаны`, e);
-    return { lines: [], replyMarkup };
-  }
+  const link = replyMarkup?.inline_keyboard[0]?.[0]?.url ?? null;
+  const products = await conversationProductLines(ctx, customer);
+  return { lines: productCardLines(products, locale), replyMarkup, products, link };
 }

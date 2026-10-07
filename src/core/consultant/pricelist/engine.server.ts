@@ -22,6 +22,7 @@ import { loadProductMedia, productMediaUrl } from "./media.server";
 import { isOffHours, offHoursNote, pricelistHours, type ShopHours } from "./mode";
 import { knowledgeAboutModels } from "./model-knowledge";
 import { buildV2SystemPrompt, formatAssortmentMapForV2 } from "./prompt";
+import type { PricelistPersona } from "./persona";
 import type { StoredVtbRate } from "./rate";
 import { getFreshRate } from "./rate.server";
 import { getStoreInfo, type StoreInfo } from "./store-info.server";
@@ -135,6 +136,8 @@ export type PricelistData = {
   rate: StoredVtbRate | null;
   hours: ShopHours;
   timezone: string;
+  /** Образ консультанта от продавца (persona.ts); нет — подсказка BOVI. */
+  persona?: PricelistPersona;
   storyTags: StoryTag[];
   loadMedia: () => Promise<ProductMedia[]>;
   mediaUrl: (path: string) => string;
@@ -167,6 +170,7 @@ export async function loadPricelistData(
     rate,
     hours: pricelistHours(ctx.tenant),
     timezone: ctx.timezone,
+    persona: ctx.tenant.settings.consultant_pricelist?.persona,
     storyTags,
     loadMedia: () => loadProductMedia(ctx),
     mediaUrl: (path) => productMediaUrl(ctx, path),
@@ -353,6 +357,7 @@ async function decide(data: PricelistData, input: PricelistInput): Promise<Price
     brandsSection: formatSynonymsForPrompt(data.synonyms),
     shopUrl: data.shopUrl,
     store: data.store,
+    persona: data.persona,
   });
 
   // Покупатель сам назвал Россию или российский город — страна и город в

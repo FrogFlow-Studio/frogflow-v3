@@ -9,6 +9,11 @@ const admin = async () => (await import("@/app/auth/guards.server")).requireAdmi
 const adminWrite = async () =>
   (await import("@/app/auth/guards.server")).requireAdminRole("manager");
 const server = () => import("./pricelist.server");
+/** Задачи консультанта — с именами и телефонами покупателей: не ниже менеджера. */
+const contacts = async () =>
+  (await import("@/app/auth/guards.server")).requireAdminRole(
+    (await import("@/core/auth/roles")).CONTACTS_MIN_ROLE,
+  );
 
 export const pricelistFn = createServerFn({ method: "GET" }).handler(async () => {
   const ctx = await admin();
@@ -37,6 +42,9 @@ export const savePricelistSettingsFn = createServerFn({ method: "POST" })
         }),
         followUp: z.boolean().optional(),
         qualityDigest: z.boolean().optional(),
+        hours: z
+          .object({ open: z.number().int().min(0).max(24), close: z.number().int().min(0).max(24) })
+          .optional(),
       })
       .parse(d),
   )
@@ -163,3 +171,44 @@ export const disconnectPricelistSheetFn = createServerFn({ method: "POST" }).han
   const ctx = await adminWrite();
   return (await server()).disconnectPricelistSheetFor(ctx);
 });
+
+export const savePricelistPersonaFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        persona: z
+          .object({
+            brand: z.string().max(200),
+            about: z.string().max(2000),
+            tone: z.string().max(2000),
+            specialities: z.string().max(10_000),
+          })
+          .nullable(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await adminWrite();
+    return (await server()).savePricelistPersona(ctx, data.persona);
+  });
+
+export const consultantTasksFn = createServerFn({ method: "GET" }).handler(async () => {
+  const ctx = await contacts();
+  return (await server()).consultantTasks(ctx);
+});
+
+export const markConsultantTaskFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z.object({ id: z.string().min(1).max(100), done: z.boolean() }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await contacts();
+    return (await server()).markConsultantTask(ctx, data.id, data.done);
+  });
+
+export const clearConsultantTasksFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ which: z.enum(["done", "all"]) }).parse(d))
+  .handler(async ({ data }) => {
+    const ctx = await contacts();
+    return (await server()).clearConsultantTasks(ctx, data.which);
+  });

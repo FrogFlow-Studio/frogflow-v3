@@ -17,6 +17,10 @@ export const ru = {
   "err.pricelist.empty":
     "В файле не нашлось ни одной позиции. Нужна выгрузка 1С в CSV: название, раздел, размер, цена.",
   "err.pricelist.badUrl": "Адрес сайта должен начинаться с https://",
+  "err.pricelist.badHours":
+    "Часы работы: открытие с 0 до 23, закрытие с 1 до 24, и они не совпадают.",
+  "err.pricelist.noBrand": "Укажите название магазина.",
+  "err.pricelist.noTask": "Задачи уже нет в списке — обновите страницу.",
   "err.pricelist.badRate": "Курс рубля к тенге — число от 1 до 20, например 4,79.",
   "err.pricelist.badFile": "Файл не найден — загрузите его ещё раз.",
   "err.pricelist.noMatch": "Укажите модель, как в прайсе: например «Uchino Zero Twist».",
@@ -253,6 +257,10 @@ export const kk: SectionDict<typeof ru> = {
   "err.pricelist.empty":
     "Файлда бірде-бір позиция табылмады. 1С-тен CSV түсірілімі керек: атауы, бөлімі, өлшемі, бағасы.",
   "err.pricelist.badUrl": "Сайт мекенжайы https:// деп басталуы керек",
+  "err.pricelist.badHours":
+    "Жұмыс уақыты: ашылуы 0-ден 23-ке дейін, жабылуы 1-ден 24-ке дейін және олар сәйкес келмеуі керек.",
+  "err.pricelist.noBrand": "Дүкен атауын көрсетіңіз.",
+  "err.pricelist.noTask": "Тапсырма тізімде жоқ — бетті жаңартыңыз.",
   "err.pricelist.badRate": "Рубльдің теңгеге бағамы — 1-ден 20-ға дейінгі сан, мысалы 4,79.",
   "err.pricelist.badFile": "Файл табылмады — қайта жүктеңіз.",
   "err.pricelist.noMatch": "Прайстағыдай модельді көрсетіңіз: мысалы «Uchino Zero Twist».",
@@ -486,6 +494,10 @@ export const en: SectionDict<typeof ru> = {
   "err.pricelist.empty":
     "No items found in the file. Upload a 1C export in CSV: name, section, size, price.",
   "err.pricelist.badUrl": "The website address must start with https://",
+  "err.pricelist.badHours":
+    "Working hours: opening from 0 to 23, closing from 1 to 24, and they must differ.",
+  "err.pricelist.noBrand": "Enter the shop name.",
+  "err.pricelist.noTask": "The task is no longer in the list — refresh the page.",
   "err.pricelist.badRate": "The RUB to KZT rate must be a number from 1 to 20, e.g. 4.79.",
   "err.pricelist.badFile": "File not found — please upload it again.",
   "err.pricelist.noMatch": "Enter the model as in the price list, e.g. “Uchino Zero Twist”.",
@@ -721,6 +733,10 @@ export const uz: SectionDict<typeof ru> = {
   "err.pricelist.empty":
     "Faylda birorta ham pozitsiya topilmadi. 1C dan CSV eksport kerak: nomi, bo‘lim, o‘lcham, narx.",
   "err.pricelist.badUrl": "Sayt manzili https:// bilan boshlanishi kerak",
+  "err.pricelist.badHours":
+    "Ish vaqti: ochilish 0 dan 23 gacha, yopilish 1 dan 24 gacha va ular bir xil bo‘lmasin.",
+  "err.pricelist.noBrand": "Do‘kon nomini kiriting.",
+  "err.pricelist.noTask": "Vazifa endi ro‘yxatda yo‘q — sahifani yangilang.",
   "err.pricelist.badRate": "Rublning tengega kursi — 1 dan 20 gacha son, masalan 4,79.",
   "err.pricelist.badFile": "Fayl topilmadi — qaytadan yuklang.",
   "err.pricelist.noMatch": "Modelni narxnomadagidek kiriting: masalan «Uchino Zero Twist».",
