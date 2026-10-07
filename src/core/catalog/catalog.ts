@@ -231,6 +231,63 @@ export async function searchProductsTolerant(
   return ids.map((id) => byId.get(id)).filter((p): p is Product => Boolean(p));
 }
 
+/** Метка из ключевых слов: целое слово без регистра и решётки («кпп», «#КПП» → «кпп»). */
+export function normalizeKeywordTag(tag: string): string {
+  return tag.trim().replace(/^#+/, "").toLowerCase();
+}
+
+/** Есть ли метка среди ключевых слов товара отдельным словом («кпп, план» — да, «кппх» — нет). */
+export function keywordsHaveTag(keywords: string | null | undefined, tag: string): boolean {
+  const want = normalizeKeywordTag(tag);
+  if (!want || !keywords) return false;
+  return keywords
+    .split(/[\s,;|/]+/)
+    .map(normalizeKeywordTag)
+    .some((w) => w === want);
+}
+
+/**
+ * Активные товары, у которых метка стоит в ключевых словах отдельным словом:
+ * покупатель пишет «#кпп», продавец вписал «кпп» в карточку. Без потолка —
+ * постранично; порядок как в каталоге (sort_order, название, id).
+ */
+export async function productsByKeywordTag(ctx: TenantContext, tag: string): Promise<Product[]> {
+  const want = normalizeKeywordTag(tag);
+  const pattern = searchPattern(want);
+  if (!want || !pattern) return [];
+  // База отбирает по вхождению, целое слово сверяем здесь.
+  const rows = await pageAll<{ id: string; keywords: string | null }>(
+    (from, to) =>
+      ctx.db
+        .from("products")
+        .select("id, keywords")
+        .eq("is_active", true)
+        .ilike("keywords", pattern)
+        .order("id")
+        .range(from, to),
+    "Товары по метке",
+  );
+  const ids = rows.filter((r) => keywordsHaveTag(r.keywords, want)).map((r) => r.id);
+  if (ids.length === 0) return [];
+  const full = await inChunks(
+    ids,
+    (chunk) =>
+      ctx.db
+        .from("products")
+        .select(PRODUCT_SELECT)
+        .eq("is_active", true)
+        .in("id", chunk)
+        .order("id"),
+    "Товары по метке",
+  );
+  return (full as Product[]).sort(
+    (a, b) =>
+      (a.sort_order ?? 0) - (b.sort_order ?? 0) ||
+      (a.name < b.name ? -1 : a.name > b.name ? 1 : 0) ||
+      (a.id < b.id ? -1 : 1),
+  );
+}
+
 export function sortedImages(p: Pick<Product, "product_images">): ProductImage[] {
   return (p.product_images ?? []).slice().sort((a, b) => a.sort_order - b.sort_order);
 }

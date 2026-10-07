@@ -77,6 +77,23 @@ export function taggedProductNumber(text: string): string | null {
   return codes.length === 1 ? codes[0]! : null;
 }
 
+/**
+ * Буквенный код с решёткой: «Хочу приобрести #кпп». Продавец вписывает
+ * «кпп» в ключевые слова карточки, покупатель пишет его с решёткой — без
+ * решётки слово остаётся обычной репликой (AATeach, 07.10). Ровно одна метка
+ * из букв (цифры после первой буквы можно); числовой код — taggedProductNumber.
+ */
+export function taggedKeyword(text: string): string | null {
+  const tags = Array.from(
+    new Set(
+      [...text.matchAll(/#(\p{L}[\p{L}\p{N}_-]{0,29})(?![\p{L}\p{N}_-])/gu)].map((m) =>
+        m[1]!.toLowerCase(),
+      ),
+    ),
+  );
+  return tags.length === 1 ? tags[0]! : null;
+}
+
 /** Номер из названия: «018. Набор …», «236) Пазлы …», «081 | Дни недели», «165 Календари». */
 export function productNumberFromName(name: string | null | undefined): string | null {
   if (!name) return null;
@@ -683,6 +700,7 @@ export type IncomingKind =
   | { kind: "phone"; digits: string }
   | { kind: "product_number"; number: string }
   | { kind: "product_numbers"; numbers: string[] }
+  | { kind: "product_tag"; tag: string }
   | { kind: "affirmative" }
   | { kind: "dismissal" }
   | { kind: "question"; text: string };
@@ -697,6 +715,8 @@ export function classifyIncoming(text: string): IncomingKind {
   if (numbers) return { kind: "product_numbers", numbers };
   const tagged = taggedProductNumber(text);
   if (tagged !== null) return { kind: "product_number", number: tagged };
+  const tag = taggedKeyword(text);
+  if (tag !== null) return { kind: "product_tag", tag };
   if (isDismissal(text)) return { kind: "dismissal" };
   if (isAffirmative(text)) return { kind: "affirmative" };
   return { kind: "question", text: text.trim() };

@@ -110,13 +110,30 @@ export async function recordSendFailure(
   return { notified: false };
 }
 
+/** Доходят ли события вебхука до магазина: true/false, null — не проверено. */
+export type WebhookOk = boolean | null | ((t: Tenant) => boolean | null);
+
+/**
+ * Вебхук для магазина по снимку записи v2: доходят, если профиль магазина в
+ * числе доставляемых. Нет снимка или профиля — не знаем (null): «не проверили»
+ * не повод будить продавца. Новый клиент вне записи не роняет остальных (07.10).
+ */
+export function webhookOkByProfile(delivered: readonly string[] | null | undefined) {
+  if (!delivered) return () => null;
+  const set = new Set(delivered);
+  return (t: Tenant): boolean | null => {
+    const profile = t.settings.zernio?.profile_id?.trim();
+    return profile ? set.has(profile) : null;
+  };
+}
+
 /**
  * Этап крона health: сверка записей стража со снимком аккаунтов и вебхуком.
- * `webhookOk` — одно чтение на прогон (вебхук общий); null — не проверен.
+ * `webhookOk` — одно чтение на прогон, решение на магазин; null — не проверен.
  */
 export async function runChannelGuardFor(
   tenants: readonly Tenant[],
-  webhookOk: boolean | null,
+  webhookOk: WebhookOk,
 ): Promise<GuardResult> {
   const r: GuardResult = { tenants: 0, down: 0, up: 0, errors: {} };
   for (const t of tenants) {
@@ -127,7 +144,8 @@ export async function runChannelGuardFor(
     try {
       const ctx = tenantContext(t);
       const current = await readZernioGuard(t.id);
-      for (const tr of planGuard(current, accounts, webhookOk, Date.now())) {
+      const hookOk = typeof webhookOk === "function" ? webhookOk(t) : webhookOk;
+      for (const tr of planGuard(current, accounts, hookOk, Date.now())) {
         if (!(await commit(ctx, tr))) continue;
         if (tr.kind === "down") r.down++;
         if (tr.kind === "up") r.up++;

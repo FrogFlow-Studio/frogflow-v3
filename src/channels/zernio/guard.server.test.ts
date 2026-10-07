@@ -19,7 +19,8 @@ vi.mock("@/channels/telegram/notify", () => ({
   }),
 }));
 
-const { runChannelGuardFor, markChannelDown, recordSendFailure } = await import("./guard.server");
+const { runChannelGuardFor, markChannelDown, recordSendFailure, webhookOkByProfile } =
+  await import("./guard.server");
 const { tenantContext } = await import("@/core/tenant/resolve.server");
 
 const BOT = "00000000-0000-4000-8000-0000000000aa";
@@ -182,5 +183,39 @@ describe("серия сбоев отправки", () => {
     const ctx = tenantContext(tenant(BOT, "v2", false));
     await Promise.all(Array.from({ length: 6 }, () => recordSendFailure(ctx, "whatsapp")));
     expect(sent.length).toBeLessThanOrEqual(1);
+  });
+});
+
+describe("вебхук отстал от нового клиента (ложная тревога 07.10)", () => {
+  const OTHER = "00000000-0000-4000-8000-0000000000cc";
+  const withProfile = (id: string, profile: string): Tenant => {
+    const t = tenant(id, "v2", false);
+    t.settings.zernio = { ...t.settings.zernio, profile_id: profile };
+    return t;
+  };
+
+  it("клиент в записи — тишина; «отвалился» только у того, чьего профиля в записи нет", async () => {
+    db.tables.bots!.push({
+      id: OTHER,
+      settings: { served_by: "v2", rev: 1, zernio: { accounts: [] } },
+    });
+    const old = withProfile(BOT, "p-old");
+    const fresh = withProfile(OTHER, "p-new");
+    await runChannelGuardFor([old, fresh], webhookOkByProfile(["p-old"]));
+    expect(sent).toHaveLength(1);
+    expect(guardOf(BOT)).toBeUndefined();
+    expect(guardOf(OTHER)).toMatchObject({ instagram: { reason: "webhook" } });
+  });
+
+  it("снимка записи нет (не прочитали) или у магазина нет профиля — никого не будим", async () => {
+    await runChannelGuardFor([withProfile(BOT, "p-old")], webhookOkByProfile(null));
+    await runChannelGuardFor([tenant(BOT, "v2", false)], webhookOkByProfile(["p-old"]));
+    expect(sent).toHaveLength(0);
+  });
+
+  it("запись выключена (пустой список) — «отвалился» у каждого клиента", async () => {
+    await runChannelGuardFor([withProfile(BOT, "p-old")], webhookOkByProfile([]));
+    expect(sent).toHaveLength(1);
+    expect(guardOf(BOT)).toMatchObject({ instagram: { reason: "webhook" } });
   });
 });

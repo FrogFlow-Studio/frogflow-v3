@@ -16,6 +16,7 @@ import {
   matchLocalePick,
   languagePickerText,
   extractNumberList,
+  taggedKeyword,
   taggedProductNumber,
   isStepStale,
   STEP_TTL_MS,
@@ -140,6 +141,19 @@ describe("код с решёткой в приветствии рекламы", 
       kind: "product_number",
       number: "245",
     });
+  });
+});
+
+describe("буквенный код с решёткой (AATeach, 07.10)", () => {
+  it("«Хочу приобрести #кпп» — метка «кпп»; без решётки, две метки или число — нет", () => {
+    expect(taggedKeyword("Здравствуйте. Хочу приобрести #кпп")).toBe("кпп");
+    expect(taggedKeyword("#КПП")).toBe("кпп");
+    expect(taggedKeyword("#план2026, пожалуйста")).toBe("план2026");
+    expect(taggedKeyword("Кпп")).toBeNull();
+    expect(taggedKeyword("#кпп и #план")).toBeNull();
+    expect(taggedKeyword("#245")).toBeNull();
+    expect(classifyIncoming("Хочу приобрести #кпп")).toEqual({ kind: "product_tag", tag: "кпп" });
+    expect(classifyIncoming("Хочу #245")).toEqual({ kind: "product_number", number: "245" });
   });
 });
 

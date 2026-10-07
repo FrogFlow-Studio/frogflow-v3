@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   ZERNIO_V2_WEBHOOK_NAME,
   ZERNIO_WEBHOOK_EVENTS,
+  deliveredProfiles,
   foreignWebhooks,
   planV2Webhook,
   v2ProfileIds,
@@ -129,5 +130,20 @@ describe("вебхук v2 в Zernio", () => {
         t("v2", " "),
       ]),
     ).toEqual(["p-a", "p-b"]);
+  });
+});
+
+describe("профили, до которых доходят события (страж каналов, 07.10)", () => {
+  it("запись отстала от нового клиента: старые профили по-прежнему доставляются", () => {
+    // Новый клиент p-c ещё не в записи: план — update, но p-a и p-b получают события.
+    expect(planV2Webhook([OWN], URL_V2, ["p-a", "p-b", "p-c"]).action).toBe("update");
+    expect(deliveredProfiles([V1_STORE, OWN], URL_V2)).toEqual(["p-a", "p-b"]);
+  });
+
+  it("записи нет, она выключена или сужена до аккаунтов — не доставляется никому", () => {
+    expect(deliveredProfiles([V1_STORE, V1_SAME_NAME], URL_V2)).toEqual([]);
+    expect(deliveredProfiles([{ ...OWN, isActive: false }], URL_V2)).toEqual([]);
+    expect(deliveredProfiles([{ ...OWN, accountIds: ["acc"] }], URL_V2)).toEqual([]);
+    expect(deliveredProfiles([{ ...OWN, events: ["comment.received"] }], URL_V2)).toEqual([]);
   });
 });

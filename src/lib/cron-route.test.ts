@@ -112,6 +112,7 @@ vi.mock("@/channels/zernio/health.server", () => ({
 }));
 vi.mock("@/channels/zernio/guard.server", () => ({
   runChannelGuardFor: hitList("channelGuard"),
+  webhookOkByProfile: () => () => null,
 }));
 vi.mock("@/channels/zernio/dispatch.server", () => ({
   retryStuckEventsFor: hitList("zernioRetry"),

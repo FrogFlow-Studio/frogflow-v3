@@ -29,6 +29,7 @@ import {
   getProduct,
   listChildCategories,
   listProductsInCategory,
+  productsByKeywordTag,
   searchProducts,
   sortedImages,
   sortedVariants,
@@ -955,6 +956,10 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
       if (!s.bot.features.search) return "question";
       return (await pickSeveral(s, kind.numbers)) ? "handled" : "question";
     }
+    case "product_tag": {
+      if (!s.bot.features.search) return "question";
+      return (await pickByTag(s, kind.tag)) ? "handled" : "question";
+    }
     case "affirmative": {
       // «Только по заказам»: «да» в переписке с продавцом бота не будит.
       if (!s.bot.features.catalog || s.bot.scope === "purchases") return "question";
@@ -1635,6 +1640,23 @@ async function pickSeveral(s: Shop, numbers: string[]): Promise<boolean> {
     return true;
   }
   await showCart(s, true, [plain(s.m.added), ...notes].join("\n"));
+  return true;
+}
+
+/**
+ * «#кпп»: товары, у которых метка стоит в ключевых словах. Один — карточка,
+ * несколько — список с номерами (страница каталога), ни одного — false:
+ * метку никто не заводил, реплика остаётся продавцу, как и до неё.
+ */
+async function pickByTag(s: Shop, tag: string): Promise<boolean> {
+  const found = await productsByKeywordTag(s.ctx, tag);
+  if (found.length === 0) return false;
+  if (found.length === 1) {
+    const p = found[0]!;
+    if (!(await askCountryFirst(s, `product:${p.id}`))) await sendProductCard(s, p, true);
+    return true;
+  }
+  await showProductList(s, found.slice(0, pageSize(s)), 0, null, true);
   return true;
 }
 

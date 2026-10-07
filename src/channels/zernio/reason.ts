@@ -38,6 +38,8 @@ export function explainIncoming(input: {
       return makeReason({ ...base, parsed: "code" });
     case "product_numbers":
       return makeReason({ ...base, parsed: "codes" });
+    case "product_tag":
+      return makeReason({ ...base, parsed: "tag" });
     case "affirmative":
       return makeReason({ ...base, parsed: "yes" });
     case "dismissal":

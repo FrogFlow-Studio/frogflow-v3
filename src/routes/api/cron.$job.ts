@@ -306,9 +306,15 @@ export const Route = createFileRoute("/api/cron/$job")({
                     const inUse = fresh.some((t) => t.settings.zernio?.accounts?.length);
                     const { v2WebhookStatus } = await import("@/channels/zernio/connect.server");
                     const hook = inUse ? await v2WebhookStatus().catch(() => null) : null;
-                    // Не удалось проверить — не повод будить продавца.
-                    const webhookOk = !hook || hook.action === "error" ? null : hook.ok;
-                    const { runChannelGuardFor } = await import("@/channels/zernio/guard.server");
+                    // Не удалось проверить — не повод будить продавца. Решение — по профилю
+                    // каждого магазина: запись, отставшая от нового клиента, не роняет
+                    // остальных (ложная тревога 07.10); оператору об отставании пишет
+                    // platform-alerts.
+                    const { runChannelGuardFor, webhookOkByProfile } =
+                      await import("@/channels/zernio/guard.server");
+                    const webhookOk = webhookOkByProfile(
+                      !hook || hook.action === "error" ? null : hook.delivered,
+                    );
                     results.channelGuard = await runChannelGuardFor(fresh, webhookOk);
                   },
                 },

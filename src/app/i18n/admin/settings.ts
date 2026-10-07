@@ -139,7 +139,7 @@ export const ru = {
   "settings.dbot.scope": "На что отвечать",
   "settings.dbot.scope.purchases": "Только по заказам",
   "settings.dbot.scope.purchasesHint":
-    "Бот отвечает, только когда к нему обращаются: «старт», «каталог» или ваше слово-вызов, код материала (#245), кнопки, чек к заказу — и пока покупатель с ним переписывается. На обычные сообщения молчит: диалог остаётся непрочитанным, и вы видите в приложении, кому ответить.",
+    "Бот отвечает, только когда к нему обращаются: «старт», «каталог» или ваше слово-вызов, код материала (#245 или слово из ключевых слов карточки, например #кпп), кнопки, чек к заказу — и пока покупатель с ним переписывается. На обычные сообщения молчит: диалог остаётся непрочитанным, и вы видите в приложении, кому ответить.",
   "settings.dbot.scope.all": "На все сообщения",
   "settings.dbot.scope.allHint": "Бот отвечает на любую реплику, вопросы передаёт вам.",
   "settings.dbot.triggers": "Команды, которыми покупатель зовёт бота",
@@ -619,7 +619,7 @@ export const kk: SectionDict<typeof ru> = {
   "settings.dbot.scope": "Неге жауап беру",
   "settings.dbot.scope.purchases": "Тек тапсырыстар бойынша",
   "settings.dbot.scope.purchasesHint":
-    "Бот оған жүгінгенде ғана жауап береді: «старт», «каталог» немесе сіздің шақыру сөзіңіз, материал коды (#245), батырмалар, тапсырыс чегі — және сатып алушы онымен жазысып жатқанда. Қарапайым хабарламаларға жауап бермейді: диалог оқылмаған болып қалады, кімге жауап беру керектігін қолданбадан көресіз.",
+    "Бот оған жүгінгенде ғана жауап береді: «старт», «каталог» немесе сіздің шақыру сөзіңіз, материал коды (#245 немесе карточканың кілт сөзі, мысалы #кпп), батырмалар, тапсырыс чегі — және сатып алушы онымен жазысып жатқанда. Қарапайым хабарламаларға жауап бермейді: диалог оқылмаған болып қалады, кімге жауап беру керектігін қолданбадан көресіз.",
   "settings.dbot.scope.all": "Барлық хабарламаларға",
   "settings.dbot.scope.allHint":
     "Бот кез келген хабарламаға жауап береді, сұрақтарды сізге жібереді.",
@@ -1095,7 +1095,7 @@ export const en: SectionDict<typeof ru> = {
   "settings.dbot.scope": "What to reply to",
   "settings.dbot.scope.purchases": "Orders only",
   "settings.dbot.scope.purchasesHint":
-    "The bot replies only when it is addressed: “start”, “catalog” or your trigger word, a material code (#245), buttons, a receipt for an order — and while the buyer is talking to it. It stays silent on ordinary messages, so the conversation stays unread and you can see in the app who needs a reply.",
+    "The bot replies only when it is addressed: “start”, “catalog” or your trigger word, a material code (#245 or a word from the product keywords, e.g. #kpp), buttons, a receipt for an order — and while the buyer is talking to it. It stays silent on ordinary messages, so the conversation stays unread and you can see in the app who needs a reply.",
   "settings.dbot.scope.all": "All messages",
   "settings.dbot.scope.allHint": "The bot answers every message and forwards questions to you.",
   "settings.dbot.triggers": "Words customers use to call the bot",
@@ -1572,7 +1572,7 @@ export const uz: SectionDict<typeof ru> = {
   "settings.dbot.scope": "Nimaga javob berish",
   "settings.dbot.scope.purchases": "Faqat buyurtmalar bo‘yicha",
   "settings.dbot.scope.purchasesHint":
-    "Bot faqat unga murojaat qilinganda javob beradi: «start», «katalog» yoki sizning chaqiruv soʻzingiz, material kodi (#245), tugmalar, buyurtma cheki — va xaridor u bilan yozishayotgan paytda. Oddiy xabarlarga javob bermaydi: dialog oʻqilmagan qoladi va ilovada kimga javob berish kerakligini koʻrasiz.",
+    "Bot faqat unga murojaat qilinganda javob beradi: «start», «katalog» yoki sizning chaqiruv soʻzingiz, material kodi (#245 yoki mahsulot kalit soʻzi, masalan #kpp), tugmalar, buyurtma cheki — va xaridor u bilan yozishayotgan paytda. Oddiy xabarlarga javob bermaydi: dialog oʻqilmagan qoladi va ilovada kimga javob berish kerakligini koʻrasiz.",
   "settings.dbot.scope.all": "Barcha xabarlarga",
   "settings.dbot.scope.allHint": "Bot har qanday xabarga javob beradi, savollarni sizga uzatadi.",
   "settings.dbot.triggers": "Xaridor botni chaqiradigan buyruqlar",

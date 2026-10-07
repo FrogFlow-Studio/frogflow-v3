@@ -40,6 +40,8 @@ export interface Product {
   id: string;
   name: string;
   price?: number;
+  /** Ключевые слова карточки («кпп, план»). */
+  keywords?: string;
 }
 
 /** Что видно после реплики: ответы бота, кнопки, корзина, состояние. */
@@ -93,7 +95,7 @@ const productRow = (p: Product, i: number) => ({
   id: p.id,
   bot_id: BOT,
   name: p.name,
-  keywords: null,
+  keywords: p.keywords ?? null,
   description: "",
   price: p.price ?? 1000,
   currency: "KZT",

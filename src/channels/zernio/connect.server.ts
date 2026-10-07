@@ -22,7 +22,13 @@ import {
   zernioConfigured,
 } from "./api.server";
 import { isZernioPlatform, type ZernioPlatform } from "./platform";
-import { foreignWebhooks, planV2Webhook, v2ProfileIds, type V2WebhookPlan } from "./webhook-fit";
+import {
+  deliveredProfiles,
+  foreignWebhooks,
+  planV2Webhook,
+  v2ProfileIds,
+  type V2WebhookPlan,
+} from "./webhook-fit";
 
 /**
  * Подключение Instagram/WhatsApp клиентом из админки. У каждого клиента —
@@ -169,6 +175,8 @@ export type V2WebhookState = {
   profiles?: number;
   /** Записи других деплоев (v1): только показываем, v2 их не трогает. */
   foreign?: { name?: string; url?: string }[];
+  /** Профили, чьи сообщения запись v2 доставляет сейчас (страж каналов судит по ним). */
+  delivered?: string[];
   error?: string;
 };
 
@@ -201,6 +209,7 @@ async function planFor(): Promise<
       url,
       profiles: profiles.length,
       foreign,
+      delivered: deliveredProfiles(webhooks, url),
     },
   };
 }

@@ -24,7 +24,8 @@ export const ru = {
     "Черновик по названию, цене и вашим заметкам в поле. Проверьте его перед сохранением.",
   "product.makePost": "Пост в Instagram",
   "product.keywords": "Ключевые слова для поиска",
-  "product.keywordsHint": "Через запятую: синонимы, класс, предмет.",
+  "product.keywordsHint":
+    "Через запятую: синонимы, класс, предмет. Короткое слово отсюда работает как код в Instagram и WhatsApp: покупатель пишет «#кпп» — бот показывает товар.",
   "product.categories": "Категории",
   "product.noCategories": "Категорий нет — товар покажется на первом экране.",
   "product.card.price": "Цена",
@@ -261,7 +262,8 @@ export const kk: SectionDict<typeof ru> = {
     "Атауы, бағасы және өрістегі жазбаларыңыз бойынша жоба. Сақтамас бұрын тексеріңіз.",
   "product.makePost": "Instagram-ға пост",
   "product.keywords": "Іздеуге арналған кілт сөздер",
-  "product.keywordsHint": "Үтір арқылы: синонимдер, сынып, пән.",
+  "product.keywordsHint":
+    "Үтір арқылы: синонимдер, сынып, пән. Осындағы қысқа сөз Instagram мен WhatsApp-та код ретінде жұмыс істейді: сатып алушы «#кпп» деп жазса, бот тауарды көрсетеді.",
   "product.categories": "Санаттар",
   "product.noCategories": "Санаттар жоқ — тауар бірінші экранда көрсетіледі.",
   "product.card.price": "Бағасы",
@@ -497,7 +499,8 @@ export const en: SectionDict<typeof ru> = {
     "A draft from the name, price and your notes in the field. Check it before saving.",
   "product.makePost": "Instagram post",
   "product.keywords": "Search keywords",
-  "product.keywordsHint": "Comma-separated: synonyms, grade, subject.",
+  "product.keywordsHint":
+    "Comma-separated: synonyms, grade, subject. A short word from here works as a code in Instagram and WhatsApp: when a buyer writes “#kpp”, the bot shows the product.",
   "product.categories": "Categories",
   "product.noCategories": "No categories yet — the product will appear on the first screen.",
   "product.card.price": "Price",
@@ -733,7 +736,8 @@ export const uz: SectionDict<typeof ru> = {
     "Nomi, narxi va maydondagi eslatmalaringiz asosida qoralama. Saqlashdan oldin tekshiring.",
   "product.makePost": "Instagram uchun post",
   "product.keywords": "Qidiruv uchun kalit so‘zlar",
-  "product.keywordsHint": "Vergul bilan: sinonimlar, sinf, fan.",
+  "product.keywordsHint":
+    "Vergul bilan: sinonimlar, sinf, fan. Bu yerdagi qisqa soʻz Instagram va WhatsApp’da kod boʻlib ishlaydi: xaridor «#kpp» deb yozsa, bot mahsulotni koʻrsatadi.",
   "product.categories": "Kategoriyalar",
   "product.noCategories": "Kategoriyalar yo‘q — mahsulot birinchi ekranda ko‘rsatiladi.",
   "product.card.price": "Narx",

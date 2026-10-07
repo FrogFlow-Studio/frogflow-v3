@@ -541,4 +541,63 @@ export const SCENARIOS: Scenario[] = [
     consultant: CONSULTANT_SAYS,
     steps: [{ say: { text: "/start" }, expect: { buttons: ["📚 Каталог", "🛒 Корзина"] } }],
   },
+  // ───── Буквенный код из ключевых слов: «#кпп» (AATeach, Instagram 07.10) ─────
+  ...everyLocale(
+    () => ({
+      id: "tag-keyword",
+      title: "«#кпп» в фразе открывает товар, у которого «кпп» в ключевых словах",
+      origin: "AATeach, скрин Якова 07.10: «Хочу приобрести #кпп» — бот промолчал",
+      channel: "instagram",
+      products: [
+        { id: P1, name: "018. Прописи", keywords: "кпп, план" },
+        { id: P2, name: "019. Пазлы" },
+      ],
+      steps: [
+        {
+          say: { text: "Здравствуйте. Хочу приобрести #кпп" },
+          expect: { says: ["018. Прописи"], notSays: ["019. Пазлы"], sellerNotices: 0 },
+        },
+      ],
+    }),
+    ["instagram", "whatsapp"],
+  ),
+  {
+    id: "tag-keyword-case-ig-ru",
+    title: "метка без учёта регистра и решётки у продавца: «#КПП» ↔ «#кпп»",
+    origin: "AATeach 07.10",
+    channel: "instagram",
+    locale: "ru",
+    products: [{ id: P1, name: "018. Прописи", keywords: "#кпп" }],
+    steps: [{ say: { text: "#КПП" }, expect: { says: ["018. Прописи"] } }],
+  },
+  {
+    id: "tag-keyword-several-ig-ru",
+    title: "метка у двух товаров — список обоих с номерами",
+    origin: "AATeach 07.10",
+    channel: "instagram",
+    locale: "ru",
+    products: [
+      { id: P1, name: "018. Прописи", keywords: "кпп" },
+      { id: P2, name: "019. Пазлы", keywords: "пазлы кпп" },
+    ],
+    steps: [{ say: { text: "Хочу #кпп" }, expect: { says: ["1. 018. Прописи", "2. 019. Пазлы"] } }],
+  },
+  {
+    id: "tag-keyword-part-ig-ru",
+    title: "метка — только целое слово: «кппх» в ключевых словах не подходит, бот молчит",
+    origin: "AATeach 07.10",
+    channel: "instagram",
+    locale: "ru",
+    products: [{ id: P1, name: "018. Прописи", keywords: "кппх" }],
+    steps: [{ say: { text: "Хочу #кпп" }, expect: { silent: true } }],
+  },
+  {
+    id: "tag-keyword-bare-ig-ru",
+    title: "«кпп» без решётки — обычная реплика: строгий режим оставляет её продавцу",
+    origin: "AATeach 07.10; Educational Bot: бот не просыпается на обычные слова",
+    channel: "instagram",
+    locale: "ru",
+    products: [{ id: P1, name: "018. Прописи", keywords: "кпп" }],
+    steps: [{ say: { text: "Кпп" }, expect: { silent: true } }],
+  },
 ];

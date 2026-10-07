@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { imageUrl, productSearchIds, searchProducts } from "./catalog";
+import {
+  imageUrl,
+  keywordsHaveTag,
+  productSearchIds,
+  productsByKeywordTag,
+  searchProducts,
+} from "./catalog";
 import { fakeDb } from "../../../tests/fake-db";
 import { decodeImageKey, encodeImageKey } from "./image-url";
 import type { TenantContext } from "@/core/tenant/resolve.server";
@@ -101,5 +107,37 @@ describe("searchProducts — поиск в боте", () => {
   it("витрина: 1500 вариантов с совпадением — набор id полный, без потолка в 1000", async () => {
     const c = shop(1500);
     expect((await productSearchIds(c, "%бел%")).size).toBe(1500);
+  });
+});
+
+describe("товары по метке из ключевых слов", () => {
+  it("метка — целое слово без регистра и решётки; «кппх» не подходит", () => {
+    expect(keywordsHaveTag("кпп, план", "кпп")).toBe(true);
+    expect(keywordsHaveTag("#КПП", "кпп")).toBe(true);
+    expect(keywordsHaveTag("план;кпп", "#кпп")).toBe(true);
+    expect(keywordsHaveTag("кппх", "кпп")).toBe(false);
+    expect(keywordsHaveTag(null, "кпп")).toBe(false);
+  });
+
+  it("из базы — только активные товары с этой меткой, по порядку каталога", async () => {
+    const db = fakeDb();
+    const row = (id: string, name: string, keywords: string | null, extra = {}) => ({
+      id,
+      name,
+      keywords,
+      is_active: true,
+      sort_order: 1,
+      product_images: [],
+      product_variants: [],
+      ...extra,
+    });
+    db.tables.products = [
+      row("p3", "Б-план", "кпп"),
+      row("p1", "А-план", "план, кпп"),
+      row("p2", "Скрытый", "кпп", { is_active: false }),
+      row("p4", "Похожий", "кппх"),
+    ];
+    const found = await productsByKeywordTag({ ...ctx, db } as unknown as TenantContext, "#КПП");
+    expect(found.map((p) => p.id)).toEqual(["p1", "p3"]);
   });
 });

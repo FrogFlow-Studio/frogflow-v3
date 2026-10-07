@@ -44,6 +44,20 @@ export function ownWebhook(
   return webhooks.find((w) => sameUrl(w.url, url) && recordId(w));
 }
 
+/**
+ * Профили, чьи сообщения запись v2 доставляет сейчас: запись есть, включена,
+ * слушает message.received и не сужена до аккаунтов. Список профилей в ней
+ * может отставать от клиентов (новый клиент ждёт кнопки оператора) — это беда
+ * нового клиента, а не тех, кто в записи уже есть (ложная тревога 07.10).
+ */
+export function deliveredProfiles(webhooks: readonly ZernioWebhookRecord[], url: string): string[] {
+  const own = ownWebhook(webhooks, url);
+  if (!own) return [];
+  const active = own.isActive !== false && own.active !== false;
+  if (!active || !own.events?.includes("message.received") || own.accountIds?.length) return [];
+  return [...new Set((own.profileIds ?? []).map((p) => p.trim()).filter(Boolean))].sort();
+}
+
 /** Профили Zernio клиентов, которых обслуживает v2, — фильтр записи v2. */
 export function v2ProfileIds(
   tenants: readonly {
