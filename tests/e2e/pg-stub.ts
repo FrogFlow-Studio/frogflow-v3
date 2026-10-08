@@ -879,7 +879,12 @@ function anthropic(db: StubDb, body: Buffer, res: ServerResponse) {
       usage: { input_tokens: 900, output_tokens: 30 },
     });
   }
-  const handoff = text.toLowerCase().includes(CONS_HANDOFF_WORD);
+  // Слово ищется в словах покупателя, не в служебных пометках движка в [скобках]:
+  // ночью пометка «нерабочее время… Менеджер ответит утром» давала передачу (e2e падал вечером).
+  const handoff = text
+    .replace(/\[[^\]]*\]/g, "")
+    .toLowerCase()
+    .includes(CONS_HANDOFF_WORD);
   return send(res, 200, {
     id: `msg_e2e_${db.anthropic.length}`,
     type: "message",
