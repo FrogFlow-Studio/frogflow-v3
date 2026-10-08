@@ -75,7 +75,7 @@ export const KEYS = {
   lastError: "consultant_last_error",
 } as const;
 
-const DEFAULT_MODEL = "claude-haiku-4-5";
+export const DEFAULT_MODEL = "claude-haiku-4-5";
 const TIMEOUT_MS = 20_000;
 export const HISTORY_TURNS = 16;
 /** Раундов с инструментами каталога на одно сообщение (v1: 4). */

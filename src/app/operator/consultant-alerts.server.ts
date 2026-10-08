@@ -7,14 +7,19 @@ import {
   LAST_ERROR_KEY,
   modelAlerts,
   modelAlertText,
+  outageAlertText,
+  outageStep,
   type AlertMarks,
   type ClientReading,
+  type OutageMarks,
 } from "./consultant-alerts";
 import { inChunks } from "@/lib/in-chunks";
 import { serverFailure } from "@/lib/server-failure";
 
 /** Когда оператору писали о каждом виде сбоя модели — operator_settings, JSON. */
 export const MODEL_ALERTS_KEY = "operator_consultant_model_alerts";
+/** Эпизоды затяжного сбоя Anthropic по клиентам — operator_settings, JSON. */
+export const OUTAGE_KEY = "operator_consultant_outage";
 
 type Scope = readonly Pick<Tenant, "id" | "name" | "vertical" | "settings" | "archived">[];
 
@@ -44,18 +49,20 @@ async function readings(tenants: Scope): Promise<ClientReading[]> {
   });
 }
 
-async function readMarks(): Promise<{ raw: string | null; exists: boolean; marks: AlertMarks }> {
+async function readMarks<T extends object = AlertMarks>(
+  key = MODEL_ALERTS_KEY,
+): Promise<{ raw: string | null; exists: boolean; marks: T }> {
   const { data, error } = await serviceDb()
     .from("operator_settings")
     .select("value")
-    .eq("key", MODEL_ALERTS_KEY)
+    .eq("key", key)
     .maybeSingle();
   if (error) throw serverFailure(`operator_settings: ${error.message}`);
-  let marks: AlertMarks = {};
+  let marks = {} as T;
   try {
-    marks = data?.value ? (JSON.parse(data.value) as AlertMarks) : {};
+    marks = data?.value ? (JSON.parse(data.value) as T) : marks;
   } catch {
-    marks = {};
+    marks = {} as T;
   }
   return { raw: data?.value ?? null, exists: Boolean(data), marks };
 }
@@ -65,15 +72,19 @@ async function readMarks(): Promise<{ raw: string | null; exists: boolean; marks
  * не пришлют одно и то же дважды. Значение маленькое (четыре даты), поэтому
  * условие — на прежнее значение целиком.
  */
-async function claim(prev: { raw: string | null; exists: boolean }, value: string) {
+async function claim(
+  prev: { raw: string | null; exists: boolean },
+  value: string,
+  key = MODEL_ALERTS_KEY,
+) {
   const db = serviceDb();
   if (!prev.exists) {
-    const { error } = await db.from("operator_settings").insert({ key: MODEL_ALERTS_KEY, value });
+    const { error } = await db.from("operator_settings").insert({ key, value });
     if (error?.code === "23505") return false;
     if (error) throw serverFailure(`operator_settings: ${error.message}`);
     return true;
   }
-  const q = db.from("operator_settings").update({ value }).eq("key", MODEL_ALERTS_KEY);
+  const q = db.from("operator_settings").update({ value }).eq("key", key);
   const { data, error } = await (
     prev.raw === null ? q.is("value", null) : q.eq("value", prev.raw)
   ).select("key");
@@ -91,29 +102,93 @@ export async function runConsultantModelAlerts(
 ): Promise<{ sent: number; kinds: string[] } | { error: string }> {
   try {
     const scope = tenants.filter((t) => t.settings.served_by === "v2" && !t.archived);
-    const [clients, state] = await Promise.all([readings(scope), readMarks()]);
-    const alerts = modelAlerts(clients, state.marks, Boolean(env().ANTHROPIC_API_KEY?.trim()), now);
-    if (!alerts.length) return { sent: 0, kinds: [] };
-    const { alertChannelStatus, sendOperatorAlert } = await import("./health-alerts.server");
-    // Канал не настроен — не отмечаем: сообщится, когда канал появится.
-    if (!(await alertChannelStatus()).configured) return { sent: 0, kinds: [] };
-    const nowIso = new Date(now).toISOString();
-    const marks = { ...state.marks };
-    for (const a of alerts) marks[a.kind] = nowIso;
-    if (!(await claim(state, JSON.stringify(marks)))) return { sent: 0, kinds: [] };
-    let sent = 0;
-    const back = { ...marks };
-    for (const a of alerts) {
-      const r = await sendOperatorAlert(modelAlertText(a));
-      if (r.ok) sent++;
-      else if (state.marks[a.kind]) back[a.kind] = state.marks[a.kind];
-      else delete back[a.kind];
-    }
-    // Не ушедшее — отметку назад, повтор на следующем прогоне.
-    if (sent < alerts.length)
-      await claim({ raw: JSON.stringify(marks), exists: true }, JSON.stringify(back));
-    return { sent, kinds: alerts.map((a) => a.kind) };
+    const clients = await readings(scope);
+    const model = await modelFailureAlerts(clients, now);
+    const outage = await outageAlerts(clients, now);
+    return { sent: model.sent + outage, kinds: [...model.kinds, ...(outage ? ["outage"] : [])] };
   } catch (e) {
     return { error: e instanceof Error ? e.message : String(e) };
   }
+}
+
+/** Деньги, ключ, лимит: раз в ALERT_EVERY_MS на вид сбоя. */
+async function modelFailureAlerts(
+  clients: ClientReading[],
+  now: number,
+): Promise<{ sent: number; kinds: string[] }> {
+  const state = await readMarks();
+  const alerts = modelAlerts(clients, state.marks, Boolean(env().ANTHROPIC_API_KEY?.trim()), now);
+  if (!alerts.length) return { sent: 0, kinds: [] };
+  const { alertChannelStatus, sendOperatorAlert } = await import("./health-alerts.server");
+  // Канал не настроен — не отмечаем: сообщится, когда канал появится.
+  if (!(await alertChannelStatus()).configured) return { sent: 0, kinds: [] };
+  const nowIso = new Date(now).toISOString();
+  const marks = { ...state.marks };
+  for (const a of alerts) marks[a.kind] = nowIso;
+  if (!(await claim(state, JSON.stringify(marks)))) return { sent: 0, kinds: [] };
+  let sent = 0;
+  const back = { ...marks };
+  for (const a of alerts) {
+    const r = await sendOperatorAlert(modelAlertText(a));
+    if (r.ok) sent++;
+    else if (state.marks[a.kind]) back[a.kind] = state.marks[a.kind];
+    else delete back[a.kind];
+  }
+  // Не ушедшее — отметку назад, повтор на следующем прогоне.
+  if (sent < alerts.length)
+    await claim({ raw: JSON.stringify(marks), exists: true }, JSON.stringify(back));
+  return { sent, kinds: alerts.map((a) => a.kind) };
+}
+
+/** Клиенты, у которых после `since` консультант ответил сам (журнал ответов). */
+async function answeredSince(prev: OutageMarks, ids: readonly string[]): Promise<Set<string>> {
+  const out = new Set<string>();
+  for (const id of ids) {
+    const since = prev[id]?.since;
+    if (!since) continue;
+    const { count, error } = await serviceDb()
+      .from("consultant_message_runs")
+      .select("id", { count: "exact", head: true })
+      .eq("bot_id", id)
+      .eq("reply_kind", "reply")
+      .gt("received_at", since);
+    if (error) throw serverFailure(`consultant_message_runs: ${error.message}`);
+    if ((count ?? 0) > 0) out.add(id);
+  }
+  return out;
+}
+
+/**
+ * Затяжной сбой Anthropic (5xx, 529, сеть, тайм-аут дольше OUTAGE_AFTER_MS):
+ * эпизоды по клиентам в operator_settings, одно сообщение на эпизод. Отметка
+ * «сообщено» — условной записью до отправки; не ушло — назад.
+ */
+async function outageAlerts(clients: ClientReading[], now: number): Promise<number> {
+  const state = await readMarks<OutageMarks>(OUTAGE_KEY);
+  const tracked = clients.filter((c) => state.marks[c.id]).map((c) => c.id);
+  const answered = await answeredSince(state.marks, tracked);
+  const { next, due } = outageStep(clients, state.marks, answered, now);
+  const nowIso = new Date(now).toISOString();
+  let configured = true;
+  if (due.length) {
+    const { alertChannelStatus } = await import("./health-alerts.server");
+    // Канал не настроен — не отмечаем: сообщится, когда канал появится.
+    configured = (await alertChannelStatus()).configured;
+    if (configured) for (const id of due) next[id] = { ...next[id]!, sent: nowIso };
+  }
+  const value = JSON.stringify(next);
+  if (value === (state.raw ?? "{}")) return 0;
+  if (!(await claim(state, value, OUTAGE_KEY))) return 0;
+  if (!due.length || !configured) return 0;
+  const { sendOperatorAlert } = await import("./health-alerts.server");
+  const names = clients.filter((c) => due.includes(c.id)).map((c) => c.name);
+  const since = due.map((id) => next[id]!.since).sort()[0]!;
+  const r = await sendOperatorAlert(outageAlertText(names, since));
+  if (r.ok) return 1;
+  // Не ушло — отметку назад, повтор на следующем прогоне.
+  const back: OutageMarks = {};
+  for (const [id, m] of Object.entries(next))
+    back[id] = due.includes(id) ? { since: m.since, last: m.last } : m;
+  await claim({ raw: value, exists: true }, JSON.stringify(back), OUTAGE_KEY);
+  return 0;
 }

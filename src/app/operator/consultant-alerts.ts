@@ -7,9 +7,10 @@
  *
  * Движок пишет сбой в `consultant_last_error` клиента («<время> — HTTP 400:
  * …») и стирает его при удачном ответе; крон здоровья читает эту настройку у
- * клиентов v2 с включённым консультантом. Перегрузка (529), 5xx и сеть
- * проходят сами — о них не пишем. Не чаще раза в ALERT_EVERY_MS на вид сбоя
- * и только о сбое новее прошлого сообщения.
+ * клиентов v2 с включённым консультантом. Не чаще раза в ALERT_EVERY_MS на
+ * вид сбоя и только о сбое новее прошлого сообщения. Перегрузка (529), 5xx и
+ * сеть обычно проходят сами — о них пишем, только если сбой затянулся
+ * (outageStep ниже).
  */
 
 export type ModelFailureKind = "billing" | "auth" | "no_key" | "limit";
@@ -109,4 +110,72 @@ export function modelAlertText(a: ModelAlert): string {
   const who = a.clients.slice(0, 10).map(esc).join(", ");
   const more = a.clients.length > 10 ? ` и ещё ${a.clients.length - 10}` : "";
   return `${head[a.kind]}\n${tail}\nКлиенты: ${who}${more}.\n${hint[a.kind]}`;
+}
+
+/**
+ * Затяжной сбой Anthropic: 5xx, 529 (перегрузка), обрыв связи или тайм-аут.
+ * Каждый такой сбой проходит сам, но если он держится дольше OUTAGE_AFTER_MS
+ * и всё это время приходят вопросы, консультант по сути выключен: каждый
+ * диалог уходит менеджеру. Об этом — одно сообщение оператору на эпизод.
+ */
+export const OUTAGE_AFTER_MS = 30 * 60 * 1000;
+
+/** Сбой временный (сервер Anthropic, перегрузка, сеть, тайм-аут)? */
+export function isTransientFailure(detail: string | null | undefined): boolean {
+  if (!detail) return false;
+  if (classifyModelFailure(detail)) return false;
+  const status = /HTTP (\d{3}|\?)/.exec(detail)?.[1];
+  if (status && /^5\d\d$/.test(status)) return true;
+  if (/overloaded/i.test(detail)) return true;
+  if (status === "?" && /timed? ?out|timeout|connection/i.test(detail)) return true;
+  return /не уложился в потолок времени/.test(detail);
+}
+
+/** Эпизод сбоя клиента: с какого сбоя, последний увиденный, когда сообщили. */
+export type OutageMark = { since: string; last: string; sent?: string };
+export type OutageMarks = Record<string, OutageMark>;
+
+/**
+ * Шаг крона: новые отметки эпизодов и клиенты, о которых пора сообщить.
+ * `answeredSince(id, since)` — был ли у клиента удачный ответ после `since`
+ * (журнал ответов): удачный ответ обрывает эпизод. Сбой не виден, не
+ * временный или между двумя увиденными сбоями прошло больше OUTAGE_AFTER_MS
+ * (входящих не было) — эпизод начинается заново.
+ */
+export function outageStep(
+  clients: readonly ClientReading[],
+  prev: OutageMarks,
+  answered: ReadonlySet<string>,
+  now: number,
+): { next: OutageMarks; due: string[] } {
+  const next: OutageMarks = {};
+  const due: string[] = [];
+  for (const c of clients) {
+    if (!c.enabled) continue;
+    const e = parseLastError(c.lastError);
+    if (!e || !isTransientFailure(e.detail)) continue;
+    const p = prev[c.id];
+    const goesOn =
+      p && !answered.has(c.id) && Date.parse(e.at) - Date.parse(p.last) <= OUTAGE_AFTER_MS;
+    const mark: OutageMark = goesOn
+      ? { since: p.since, last: e.at > p.last ? e.at : p.last, ...(p.sent ? { sent: p.sent } : {}) }
+      : { since: e.at, last: e.at };
+    const fresh = now - Date.parse(mark.last) <= OUTAGE_AFTER_MS;
+    const long = Date.parse(mark.last) - Date.parse(mark.since) >= OUTAGE_AFTER_MS;
+    if (!mark.sent && fresh && long) due.push(c.id);
+    next[c.id] = mark;
+  }
+  return { next, due };
+}
+
+export function outageAlertText(names: readonly string[], since: string): string {
+  const who = names.slice(0, 10).map(esc).join(", ");
+  const more = names.length > 10 ? ` и ещё ${names.length - 10}` : "";
+  const at = new Date(since).toISOString().slice(11, 16);
+  return [
+    "⚠️ ИИ-консультант: Anthropic не отвечает больше 30 минут (ошибки сервера, перегрузка 529 или тайм-ауты).",
+    `Сбой с ${at} UTC. Пока он идёт, вопросы покупателей уходят менеджеру.`,
+    `Клиенты: ${who}${more}.`,
+    "Статус Anthropic: status.anthropic.com. Когда ответы пойдут, сбой закроется сам.",
+  ].join("\n");
 }

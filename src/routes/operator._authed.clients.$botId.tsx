@@ -10,6 +10,7 @@ import { PlanCard } from "@/app/operator/client/plan";
 import { ModulesCard, AdminAccessCard, AddressingCard } from "@/app/operator/client/access";
 import { ZernioCard, MetaCard, ZernioInboxCard } from "@/app/operator/client/channels";
 import { ConsultantLimitsCard, SmartSearchLimitCard } from "@/app/operator/client/limits";
+import { ConsultantViewCard } from "@/app/operator/client/consultant";
 import { ShopGroupCard } from "@/app/operator/client/shop-group";
 import { CommunityModCard } from "@/app/operator/client/community";
 import { MarketplaceModCard } from "@/app/operator/client/marketplace";
@@ -143,6 +144,7 @@ function ClientPage() {
             />
           </div>
           <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-2">
+            {consultant.pricelist && <ConsultantViewCard c={c} />}
             <AdminAccessCard c={c} onDone={refresh} />
             <ModulesCard c={c} onDone={refresh} />
             <MetaCard c={c} onDone={refresh} />

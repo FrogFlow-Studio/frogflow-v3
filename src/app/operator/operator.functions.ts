@@ -1074,6 +1074,25 @@ export const setConsultantPricelistOptionsFn = createServerFn({ method: "POST" }
     return { ok: true };
   });
 
+/** Консультант по прайсу у оператора: сводка, модель и цена хода за 7 дней (null — выключен). */
+export const clientConsultantViewFn = createServerFn({ method: "GET" })
+  .validator((d: unknown) => z.object({ botId }).parse(d))
+  .handler(async ({ data }) => {
+    await guard();
+    return (await import("./consultant-view.server")).consultantOperatorView(data.botId);
+  });
+
+/** Модель консультанта по прайсу; "" — модель платформы. Список проверяет сервер. */
+export const setConsultantModelFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ botId, model: z.string().max(80) }).parse(d))
+  .handler(async ({ data }) => {
+    await guard();
+    await (
+      await import("./consultant-view.server")
+    ).setConsultantModel(data.botId, data.model, await actor());
+    return { ok: true };
+  });
+
 /** Дневной предел умного поиска клиента в долларах; null — общий предел. */
 export const setSmartSearchLimitFn = createServerFn({ method: "POST" })
   .validator((d: unknown) =>
