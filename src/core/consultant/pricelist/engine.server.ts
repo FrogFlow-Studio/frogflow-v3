@@ -66,12 +66,20 @@ export const PRICELIST_MAX_TOKENS = 800;
  * consultant_model выбирает из них без передеплоя (как в v1); чего нет в
  * списке — модель платформы.
  */
-export const PRICELIST_MODELS = ["claude-haiku-4-5-20251001", "claude-sonnet-5"] as const;
+export const PRICELIST_MODELS = [
+  "claude-haiku-4-5-20251001",
+  "claude-sonnet-5",
+  "claude-haiku-5-5",
+] as const;
 export const MODEL_KEY = "consultant_model";
 
-/** Sonnet 5 по умолчанию рассуждает — для чата это задержка, а не качество. */
+/**
+ * Sonnet 5 и Haiku 5.5 по умолчанию рассуждают — для чата это задержка, а не
+ * качество. У Haiku 5.5 выключение допустимо при effort до high (по
+ * умолчанию medium).
+ */
 export function modelParams(model: string): Record<string, unknown> {
-  if (/^claude-sonnet-5/.test(model)) return { thinking: { type: "disabled" } };
+  if (/^claude-(sonnet-5|haiku-5)/.test(model)) return { thinking: { type: "disabled" } };
   return {};
 }
 
@@ -303,6 +311,9 @@ function historyMessages(
   return out;
 }
 
+/** Срок кеша хвоста переписки (см. call в decide). */
+export const TAIL_CACHE_TTL = "5m" as const;
+
 /** Точка кеша на последнем сообщении: следующий раунд читает историю из кеша. */
 function withTailCache(
   messages: Anthropic.MessageParam[],
@@ -463,7 +474,11 @@ async function decide(data: PricelistData, input: PricelistInput): Promise<Price
     const got = await input.call({
       system: systemBlocks,
       tools,
-      messages: withTailCache(messages, ttl),
+      // Хвост — в пятиминутный кеш: он читается раундами этого хода (секунды),
+      // а следующий ход собирает сообщения заново (пометки к реплике, сдвиг
+      // окна истории) и часовую запись хвоста уже не читает. Инструменты и
+      // система с прайсом — в часовом (ttl): они одинаковы от хода к ходу.
+      messages: withTailCache(messages, TAIL_CACHE_TTL),
       max_tokens: PRICELIST_MAX_TOKENS,
       ...extra,
     });
@@ -479,9 +494,17 @@ async function decide(data: PricelistData, input: PricelistInput): Promise<Price
 
   // Последним в истории — результаты инструментов, а ответа на них ещё нет.
   let toolsPending = false;
+  let refused = false;
   for (let round = 0; round < maxRounds; round++) {
     const res = await call();
     if (!res) break;
+    // Модель отказалась отвечать (stop_reason "refusal", у Claude 4.5+ и Haiku 5.5
+    // без серверного запасного варианта): ответа нет — диалог менеджеру.
+    if (res.stop_reason === "refusal") {
+      refused = true;
+      toolsUsed.push("refusal");
+      break;
+    }
     const content = res.content ?? [];
     messages.push({ role: "assistant", content });
     const said = textOf(content);
@@ -564,7 +587,10 @@ async function decide(data: PricelistData, input: PricelistInput): Promise<Price
 
   // Ходы кончились, а модель всё ещё ищет: ещё один запрос без инструментов —
   // ответ по тому, что уже найдено (v1 25.09: покупателю ушло «Поищу иначе:»).
-  if (toolsPending && !stopped && !(handoff && lastText)) {
+  if (refused) {
+    handoff = handoff ?? { reason: "no_answer", summary: "" };
+    lastText = "";
+  } else if (toolsPending && !stopped && !(handoff && lastText)) {
     toolsUsed.push("fix:final_without_tools");
     const res = await call({ tool_choice: { type: "none" } });
     if (res) lastText = textOf(res.content ?? []);

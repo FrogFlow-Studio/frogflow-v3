@@ -96,22 +96,87 @@ const CATALOG_LIMIT = 120;
  * часовой кеш — вдвое дороже входа, чтение — десятая часть.
  */
 export const CACHE_TTL = "1h" as const;
-const PRICE = { in: 1, out: 5, cacheWrite: 2, cacheRead: 0.1 };
+/**
+ * cacheWrite — запись в часовой кеш (2× входа), cacheWrite5m — в пятиминутный
+ * (1,25×): консультант по прайсу держит в нём хвост переписки
+ * (pricelist/engine.server withTailCache).
+ */
+const PRICE = { in: 1, out: 5, cacheWrite: 2, cacheWrite5m: 1.25, cacheRead: 0.1 };
 /**
  * Sonnet — консультант по прайсу может работать на нём (настройка consultant_model).
  * Sonnet 5 вдвое дешевле на вводе, чем Sonnet 4.x: $2/$10, часовой кеш $4,
  * чтение $0,20. По старой ставке ИИ-баланс клиента и дневной предел
  * списывались в 1,5 раза больше реального.
  */
-const PRICE_SONNET_5 = { in: 2, out: 10, cacheWrite: 4, cacheRead: 0.2 };
-const PRICE_SONNET_4 = { in: 3, out: 15, cacheWrite: 6, cacheRead: 0.3 };
+const PRICE_SONNET_5 = { in: 2, out: 10, cacheWrite: 4, cacheWrite5m: 2.5, cacheRead: 0.2 };
+const PRICE_SONNET_4 = { in: 3, out: 15, cacheWrite: 6, cacheWrite5m: 3.75, cacheRead: 0.3 };
 
-/** Ставки модели, $ за миллион токенов; неизвестная — как Haiku 4.5. */
-export function modelPrice(model: string): typeof PRICE {
+/**
+ * Записи в кеш из ответа API: всего и сколько из них — в пятиминутный.
+ * Без разбивки (старые ответы, подставные в тестах) вся запись — часовая:
+ * так списание не меньше реального.
+ */
+export function cacheWrites(usage: {
+  cache_creation_input_tokens?: number | null;
+  cache_creation?: { ephemeral_5m_input_tokens?: number | null } | null;
+}): { total: number; fiveMin: number } {
+  const total = usage.cache_creation_input_tokens ?? 0;
+  const fiveMin = Math.min(total, usage.cache_creation?.ephemeral_5m_input_tokens ?? 0);
+  return { total, fiveMin };
+}
+
+/**
+ * Claude Haiku 5.5: $0,10/$0,50, кеш — запись 1,25× (5 мин) и 2× (час), чтение
+ * 0,1×. Запрос длиннее 100 тыс. токенов — в пять раз дороже (PRICE_HAIKU_55_LONG).
+ * Токенизатор новый: тот же текст — примерно на 30% больше токенов, чем у 4.5.
+ */
+const PRICE_HAIKU_55 = { in: 0.1, out: 0.5, cacheWrite: 0.2, cacheWrite5m: 0.125, cacheRead: 0.01 };
+const PRICE_HAIKU_55_LONG = {
+  in: 0.5,
+  out: 2.5,
+  cacheWrite: 1,
+  cacheWrite5m: 0.625,
+  cacheRead: 0.05,
+};
+/** Порог длинного запроса Haiku 5.5: вход вместе с кешем, токенов. */
+const HAIKU_55_LONG_PROMPT = 100_000;
+
+/**
+ * Ставки модели, $ за миллион токенов; неизвестная — как Haiku 4.5.
+ * `promptTokens` — вход запроса вместе с кешем (у Haiku 5.5 от него зависит ставка).
+ */
+export function modelPrice(model: string, promptTokens = 0): typeof PRICE {
   if (/sonnet-5/.test(model)) return PRICE_SONNET_5;
   if (/sonnet/.test(model)) return PRICE_SONNET_4;
+  if (/haiku-5/.test(model))
+    return promptTokens > HAIKU_55_LONG_PROMPT ? PRICE_HAIKU_55_LONG : PRICE_HAIKU_55;
   return PRICE;
 }
+
+/** Цена одного вызова модели по его usage, $. */
+export function callUsd(
+  model: string,
+  usage: {
+    input_tokens: number;
+    output_tokens: number;
+    cache_read_input_tokens?: number | null;
+    cache_creation_input_tokens?: number | null;
+    cache_creation?: { ephemeral_5m_input_tokens?: number | null } | null;
+  },
+): number {
+  const writes = cacheWrites(usage);
+  const read = usage.cache_read_input_tokens ?? 0;
+  const price = modelPrice(model, usage.input_tokens + writes.total + read);
+  return (
+    (usage.input_tokens * price.in +
+      (writes.total - writes.fiveMin) * price.cacheWrite +
+      writes.fiveMin * price.cacheWrite5m +
+      read * price.cacheRead +
+      usage.output_tokens * price.out) /
+    1_000_000
+  );
+}
+
 /**
  * Вызовов модели на одно сообщение консультанта по прайсу, на которые
  * бронируется бюджет: четыре раунда, переспрос о рублях, два на сверку
@@ -802,16 +867,9 @@ async function answerConsultant(
   // обе брони и уходит покупателю «сейчас не могу ответить» с передачей менеджеру.
   let model = env().CONSULTANT_MODEL?.trim() || DEFAULT_MODEL;
   const u = { input_tokens: 0, output_tokens: 0, cacheWrite: 0, cacheRead: 0 };
-  const costUsd = () => {
-    const price = modelPrice(model);
-    return (
-      (u.input_tokens * price.in +
-        u.cacheWrite * price.cacheWrite +
-        u.cacheRead * price.cacheRead +
-        u.output_tokens * price.out) /
-      1_000_000
-    );
-  };
+  // Цена считается по каждому вызову: у Haiku 5.5 ставка зависит от длины запроса.
+  let spentUsd = 0;
+  const costUsd = () => spentUsd;
   // Расход записан и бронь закрыта — catch второй раз их не трогает.
   let settled = false;
   // Вызов модели ушёл и не вернулся: Anthropic мог его списать (catch бронирует его цену).
@@ -844,6 +902,7 @@ async function answerConsultant(
     u.output_tokens += response.usage.output_tokens;
     u.cacheWrite += response.usage.cache_creation_input_tokens ?? 0;
     u.cacheRead += response.usage.cache_read_input_tokens ?? 0;
+    spentUsd += callUsd(model, response.usage);
     callInFlight = false;
     return response;
   };

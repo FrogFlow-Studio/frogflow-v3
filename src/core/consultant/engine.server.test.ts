@@ -30,6 +30,7 @@ type Usage = {
   input_tokens: number;
   output_tokens: number;
   cache_creation_input_tokens?: number | null;
+  cache_creation?: { ephemeral_5m_input_tokens?: number; ephemeral_1h_input_tokens?: number };
   cache_read_input_tokens?: number | null;
 };
 let content: Array<Record<string, unknown>> = [];
@@ -282,6 +283,44 @@ describe("консультант: цена ответа и кеш промпта
     // Часовая запись — $2 за миллион (вдвое дороже входа), а не $1.25 пятиминутной.
     expect(r!.usage.usd).toBeCloseTo(2, 9);
     expect((await spent(ctx)).usd).toBeCloseTo(2, 6);
+  });
+
+  it("запись в пятиминутный кеш (хвост переписки) — по своей ставке 1,25×, остальное — часовая", async () => {
+    usage = {
+      input_tokens: 0,
+      output_tokens: 0,
+      cache_creation_input_tokens: 1_000_000,
+      cache_creation: { ephemeral_5m_input_tokens: 400_000, ephemeral_1h_input_tokens: 600_000 },
+    };
+    const ctx = ctxOf();
+    const r = await runConsultant(ctx, null, "привет", { platform: "telegram" });
+    // Haiku 4.5: 600 тыс. × $2 + 400 тыс. × $1,25 за миллион.
+    expect(r!.usage.usd).toBeCloseTo(1.2 + 0.5, 9);
+    expect((await spent(ctx)).usd).toBeCloseTo(1.7, 6);
+  });
+
+  it("Haiku 5.5: свои ставки, длинный запрос (больше 100 тыс.) — по повышенной", async () => {
+    const { callUsd } = await import("./engine.server");
+    expect(callUsd("claude-haiku-5-5", { input_tokens: 1_000_000, output_tokens: 0 })).toBeCloseTo(
+      0.5,
+      9,
+    );
+    expect(
+      callUsd("claude-haiku-5-5", {
+        input_tokens: 10_000,
+        output_tokens: 1_000_000,
+        cache_creation_input_tokens: 0,
+        cache_read_input_tokens: 50_000,
+      }),
+    ).toBeCloseTo((10_000 * 0.1 + 1_000_000 * 0.5 + 50_000 * 0.01) / 1e6, 9);
+    expect(
+      callUsd("claude-haiku-5-5", {
+        input_tokens: 0,
+        output_tokens: 0,
+        cache_creation_input_tokens: 80_000,
+        cache_creation: { ephemeral_5m_input_tokens: 80_000 },
+      }),
+    ).toBeCloseTo((80_000 * 0.125) / 1e6, 9);
   });
 
   it("чтение из кеша попадает в стоимость и в дневной предел", async () => {

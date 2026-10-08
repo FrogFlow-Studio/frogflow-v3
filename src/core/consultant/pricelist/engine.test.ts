@@ -3,7 +3,9 @@ import type Anthropic from "@anthropic-ai/sdk";
 import type { ConsultantProduct } from "./catalog";
 import {
   decidePricelistReply,
+  modelParams,
   phoneIn,
+  PRICELIST_MODELS,
   type PricelistData,
   type PricelistState,
 } from "./engine.server";
@@ -128,6 +130,50 @@ describe("консультант по прайсу", () => {
       "<<<ТЕКСТ ПРОДАВЦА>>>\nМагазин: Хлопок\nО магазине: Детский текстиль.",
     );
     expect(system).not.toContain("BOVI");
+  });
+
+  it("кеш: инструменты и система с прайсом — на час, хвост переписки — на 5 минут", async () => {
+    responses.push(reply([{ type: "text", text: "Здравствуйте. Что подсказать?" }]));
+    await decide("Здравствуйте");
+    const sent = requests[0]! as unknown as {
+      system: Array<{ cache_control?: unknown }>;
+      tools: Array<{ cache_control?: unknown }>;
+      messages: Array<{ content: Array<{ cache_control?: unknown }> | string }>;
+    };
+    expect(sent.system[0]!.cache_control).toEqual({ type: "ephemeral", ttl: "1h" });
+    expect(sent.tools.at(-1)!.cache_control).toEqual({ type: "ephemeral", ttl: "1h" });
+    const tail = sent.messages.at(-1)!.content;
+    expect(Array.isArray(tail) && tail.at(-1)!.cache_control).toEqual({
+      type: "ephemeral",
+      ttl: "5m",
+    });
+  });
+
+  it("отказ модели (stop_reason refusal) — без текста покупателю, передача менеджеру", async () => {
+    const d = await decidePricelistReply(dataOf({}), {
+      text: "Есть полотенца?",
+      state: {},
+      now: DAY,
+      fetchImage: async () => null,
+      call: async (req) => {
+        requests.push(JSON.parse(JSON.stringify(req)) as Sent);
+        return {
+          content: [{ type: "text", text: "Не могу помочь." }],
+          stop_reason: "refusal",
+        } as unknown as Anthropic.Message;
+      },
+    });
+    expect(d.reply).toBe("");
+    expect(d.handoff).toMatchObject({ reason: "no_answer" });
+    expect(d.tools).toContain("refusal");
+    expect(requests).toHaveLength(1);
+  });
+
+  it("Haiku 5.5 и Sonnet 5 — без размышления, Haiku 4.5 — как есть", () => {
+    expect(modelParams("claude-haiku-5-5")).toEqual({ thinking: { type: "disabled" } });
+    expect(modelParams("claude-sonnet-5")).toEqual({ thinking: { type: "disabled" } });
+    expect(modelParams("claude-haiku-4-5-20251001")).toEqual({});
+    expect(PRICELIST_MODELS).toContain("claude-haiku-5-5");
   });
 
   it("свои рабочие часы продавца: 11:00 при часах 12–20 — нерабочее время, при 10–21 — нет", async () => {
