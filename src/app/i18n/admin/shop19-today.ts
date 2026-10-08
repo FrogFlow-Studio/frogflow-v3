@@ -1,6 +1,6 @@
 import type { SectionDict } from "../section";
 
-/** Главная админки: «Что сделать сегодня» (А2). */
+/** Главная админки: «Что сделать сегодня» (А2) и свои задачи продавца (todos.*). */
 export const ru = {
   "today.title": "Что сделать сегодня",
   "today.empty": "На сегодня задач нет: всё разобрано.",
@@ -14,6 +14,24 @@ export const ru = {
   "today.lowStock": "Товары на исходе",
   "today.rev1": "Выручка за сутки",
   "today.rev7": "Выручка за неделю",
+  "todos.hint": "Заказы и остатки появляются здесь сами; свои дела можно добавить ниже.",
+  "todos.systemEmpty": "От системы сейчас ничего не ждёт.",
+  "todos.mine": "Мои задачи",
+  "todos.placeholder": "Добавить задачу…",
+  "todos.day": "На какой день",
+  "todos.add": "Добавить",
+  "todos.done": "Отметить сделанной",
+  "todos.undo": "Вернуть в работу",
+  "todos.remove": "Удалить задачу",
+  "todos.doneBy": "отметил(а) {name}",
+  "todos.carried": "перенесено с {date}",
+  "todos.onDay": "на {date}",
+  "todos.later": "Позже ({n})",
+  "todos.doneList": "Сделано ({n})",
+  "todos.doneKeep": "Сделанные задачи хранятся 30 дней.",
+  "err.todos.empty": "Напишите, что нужно сделать.",
+  "err.todos.full": "В списке уже {limit} открытых задач — отметьте или удалите лишние.",
+  "err.todos.gone": "Задачи уже нет в списке — обновите страницу.",
 } as const;
 
 export const kk: SectionDict<typeof ru> = {
@@ -29,6 +47,25 @@ export const kk: SectionDict<typeof ru> = {
   "today.lowStock": "Қалдығы азайған тауарлар",
   "today.rev1": "Тәулік түсімі",
   "today.rev7": "Апта түсімі",
+  "todos.hint":
+    "Тапсырыстар мен қалдықтар мұнда өздігінен шығады; өз істеріңізді төменде қоса аласыз.",
+  "todos.systemEmpty": "Жүйеден қазір күтіп тұрған ештеңе жоқ.",
+  "todos.mine": "Менің тапсырмаларым",
+  "todos.placeholder": "Тапсырма қосу…",
+  "todos.day": "Қай күнге",
+  "todos.add": "Қосу",
+  "todos.done": "Орындалды деп белгілеу",
+  "todos.undo": "Жұмысқа қайтару",
+  "todos.remove": "Тапсырманы жою",
+  "todos.doneBy": "белгілеген: {name}",
+  "todos.carried": "{date} күнінен ауыстырылды",
+  "todos.onDay": "{date} күніне",
+  "todos.later": "Кейінірек ({n})",
+  "todos.doneList": "Орындалды ({n})",
+  "todos.doneKeep": "Орындалған тапсырмалар 30 күн сақталады.",
+  "err.todos.empty": "Не істеу керектігін жазыңыз.",
+  "err.todos.full": "Тізімде {limit} ашық тапсырма бар — артығын белгілеңіз немесе жойыңыз.",
+  "err.todos.gone": "Тапсырма тізімде жоқ — бетті жаңартыңыз.",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -44,6 +81,24 @@ export const en: SectionDict<typeof ru> = {
   "today.lowStock": "Products running low",
   "today.rev1": "Revenue, last 24 hours",
   "today.rev7": "Revenue, last 7 days",
+  "todos.hint": "Orders and stock show up here on their own; add your own tasks below.",
+  "todos.systemEmpty": "Nothing from the system is waiting right now.",
+  "todos.mine": "My tasks",
+  "todos.placeholder": "Add a task…",
+  "todos.day": "For which day",
+  "todos.add": "Add",
+  "todos.done": "Mark as done",
+  "todos.undo": "Move back to open",
+  "todos.remove": "Delete task",
+  "todos.doneBy": "marked by {name}",
+  "todos.carried": "carried over from {date}",
+  "todos.onDay": "for {date}",
+  "todos.later": "Later ({n})",
+  "todos.doneList": "Done ({n})",
+  "todos.doneKeep": "Done tasks are kept for 30 days.",
+  "err.todos.empty": "Write what needs to be done.",
+  "err.todos.full": "The list already has {limit} open tasks — mark or delete some first.",
+  "err.todos.gone": "The task is no longer in the list — refresh the page.",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -59,4 +114,24 @@ export const uz: SectionDict<typeof ru> = {
   "today.lowStock": "Qoldig‘i kamayayotgan tovarlar",
   "today.rev1": "Sutkalik tushum",
   "today.rev7": "Haftalik tushum",
+  "todos.hint":
+    "Buyurtmalar va qoldiqlar bu yerda o‘zi paydo bo‘ladi; o‘z ishlaringizni pastda qo‘shishingiz mumkin.",
+  "todos.systemEmpty": "Tizimdan hozir kutayotgan narsa yo‘q.",
+  "todos.mine": "Mening vazifalarim",
+  "todos.placeholder": "Vazifa qo‘shish…",
+  "todos.day": "Qaysi kunga",
+  "todos.add": "Qo‘shish",
+  "todos.done": "Bajarildi deb belgilash",
+  "todos.undo": "Ishga qaytarish",
+  "todos.remove": "Vazifani o‘chirish",
+  "todos.doneBy": "belgiladi: {name}",
+  "todos.carried": "{date} dan ko‘chirildi",
+  "todos.onDay": "{date} ga",
+  "todos.later": "Keyinroq ({n})",
+  "todos.doneList": "Bajarildi ({n})",
+  "todos.doneKeep": "Bajarilgan vazifalar 30 kun saqlanadi.",
+  "err.todos.empty": "Nima qilish kerakligini yozing.",
+  "err.todos.full":
+    "Ro‘yxatda allaqachon {limit} ta ochiq vazifa bor — ortiqchasini belgilang yoki o‘chiring.",
+  "err.todos.gone": "Vazifa ro‘yxatda yo‘q — sahifani yangilang.",
 };

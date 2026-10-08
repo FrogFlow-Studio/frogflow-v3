@@ -31,17 +31,23 @@ import { buildAdminNav, consultantWorkspace } from "@/app/admin/nav-model";
 import { consultantOverviewFn } from "@/app/admin/workspace.functions";
 import { WorkspaceOverview } from "@/app/admin/workspace-ui";
 import { roleAllows } from "@/core/auth/roles";
+import { sellerTodosFn } from "@/app/admin/todos.functions";
+import { SellerTodos, type SellerTodosData } from "@/app/admin/seller-todos-card";
 
 export const Route = createFileRoute("/admin/_authed/")({
   loader: async ({ context }) => {
     // Консультант без продаж (BOVI): сверху «Сегодня» рабочего места. Сбой — плашка, не пустой обзор.
-    const [d, workspace] = await Promise.all([
+    const [d, workspace, todos] = await Promise.all([
       dashboardFn(),
       consultantWorkspace(context.shop)
         ? consultantOverviewFn().catch((e: unknown) => ({ failed: e }))
         : null,
+      // Свои задачи продавца в «Что сделать сегодня»; бухгалтер блока не видит.
+      context.shop.role === "accountant"
+        ? null
+        : sellerTodosFn().catch((e: unknown) => ({ failed: e })),
     ]);
-    return { ...d, workspace };
+    return { ...d, workspace, todos };
   },
   component: Dashboard,
 });
@@ -118,7 +124,10 @@ function Dashboard() {
               // «Ждёт вас» уже показывает чеки, диалоги и обращения: здесь их нет.
               tasks={d.today.filter((x) => !["receipts", "dialogs", "tickets"].includes(x.key))}
               t={t}
+              loc={loc}
               modules={shop.modules}
+              todos={d.todos}
+              canEdit={roleAllows(shop.role, "manager")}
             />
           )}
         </div>
@@ -578,11 +587,17 @@ type Today = (typeof Route)["types"]["loaderData"]["today"];
 function TodayCard({
   tasks,
   t,
+  loc,
   modules,
+  todos,
+  canEdit,
 }: {
   tasks: Today;
   t: AdminT;
+  loc: string;
   modules: Record<string, boolean | undefined>;
+  todos: SellerTodosData | { failed: unknown } | null;
+  canEdit: boolean;
 }) {
   const router = useRouter();
   const row = (task: Today[number]) => {
@@ -652,8 +667,11 @@ function TodayCard({
         </button>
       }
     >
+      <p className="mb-2 text-xs text-muted">{t("todos.hint")}</p>
       {tasks.length === 0 ? (
-        <p className="text-sm text-muted">{t("today.empty")}</p>
+        <p className="text-sm text-muted">
+          {todos && !("failed" in todos) ? t("todos.systemEmpty") : t("today.empty")}
+        </p>
       ) : (
         <ul className="divide-y divide-line">
           {tasks.map((task) => (
@@ -661,6 +679,13 @@ function TodayCard({
           ))}
         </ul>
       )}
+      {todos && "failed" in todos ? (
+        <div className="mt-3">
+          <ErrorBox error={todos.failed} />
+        </div>
+      ) : todos ? (
+        <SellerTodos data={todos} t={t} loc={loc} canEdit={canEdit} />
+      ) : null}
     </Card>
   );
 }
