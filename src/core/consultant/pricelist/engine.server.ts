@@ -569,6 +569,11 @@ async function decide(data: PricelistData, input: PricelistInput): Promise<Price
     const res = await call({ tool_choice: { type: "none" } });
     if (res) lastText = textOf(res.content ?? []);
   }
+  // Модель ещё искала, а вызовы кончились (лимит частоты, потолок времени):
+  // её последний текст — фраза перед поиском («Сейчас посмотрю…»), а не
+  // ответ. Покупателю — передача менеджеру (toTurn). Готовый черновик, который
+  // не успели переписать, уходит, как раньше: цену в нём сверяет код ниже.
+  if (stopped && toolsPending) lastText = "";
 
   if (rublesRetried && writesRubles(lastText)) toolsUsed.push("fix:rubles_by_model_again");
   let priceBlocked = false;

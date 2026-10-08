@@ -1,5 +1,5 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
-import { getSettings, setSetting } from "@/core/settings/settings";
+import { getSettingsStrict, setSetting } from "@/core/settings/settings";
 import {
   isHiddenProduct,
   sellableProducts,
@@ -14,6 +14,9 @@ import { parseSynonymGroups } from "./synonyms";
  * `consultant_catalog_meta`, `consultant_synonyms`, `consultant_shop_url`.
  * Кэш на 45 с — по арендатору: в v1 он был общим на процесс, у v2 процесс
  * один на всех клиентов.
+ *
+ * Чтение строгое: сбой базы — ошибка, а не пустой прайс. Иначе покупатель
+ * слышит «такого нет», а пустой снимок ещё 45 с лежит в кэше.
  */
 export const CATALOG_KEY = "consultant_catalog_json";
 export const CATALOG_META_KEY = "consultant_catalog_meta";
@@ -84,7 +87,12 @@ export async function loadPricelist(
 ): Promise<PricelistSnapshot> {
   const hit = cache.get(ctx.tenant.id);
   if (hit && now - hit.at < CACHE_MS) return hit.snap;
-  const s = await getSettings(ctx, [CATALOG_KEY, CATALOG_META_KEY, SYNONYMS_KEY, SHOP_URL_KEY]);
+  const s = await getSettingsStrict(ctx, [
+    CATALOG_KEY,
+    CATALOG_META_KEY,
+    SYNONYMS_KEY,
+    SHOP_URL_KEY,
+  ]);
   const synonymsText = s[SYNONYMS_KEY] ?? "";
   const snap: PricelistSnapshot = {
     ...snapshotOf(s[CATALOG_KEY]),

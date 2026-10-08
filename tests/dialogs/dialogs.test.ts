@@ -3,7 +3,9 @@ import { setEnvForTests } from "@/config/env";
 import { COPY } from "@/channels/telegram/copy";
 import { commissionableAmount } from "@/core/commission/commission";
 import type { Locale } from "@/core/i18n/locale";
-import { notices, outbound, room, type Channel, type Product } from "./harness";
+import { notices, outbound, room, ROOM_BOT, type Channel, type Product } from "./harness";
+import type { TenantContext } from "@/core/tenant/resolve.server";
+import { invalidatePricelist } from "@/core/consultant/pricelist/catalog.server";
 import { SCENARIOS, type Says } from "./scenarios";
 
 /** Золотые диалоги (Б14): прогон сценариев из scenarios.ts на настоящем коде каналов. */
@@ -111,6 +113,8 @@ describe("золотые диалоги", () => {
       }
       if (s.pricelist) {
         setEnvForTests({ ANTHROPIC_API_KEY: "sk-test" });
+        // Прайс читается заново: сценарий со сбоем чтения не должен попасть в кэш соседа.
+        invalidatePricelist({ tenant: { id: ROOM_BOT } } as TenantContext);
         modelRounds.list = s.pricelist.rounds.map((round) => [...round]);
       }
       const r = room(

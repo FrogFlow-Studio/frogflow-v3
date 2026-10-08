@@ -292,6 +292,8 @@ function breakSetting(ctx: TenantContext, key: string, how: "throw" | "error") {
     const eqOrig = q.eq!.bind(q);
     q.in = (col: unknown, vs: unknown) => {
       if (how === "throw" && (vs as string[]).includes(key)) throw new Error("обрыв клиента базы");
+      if (how === "error" && (vs as string[]).includes(key))
+        return Promise.resolve({ data: null, error: { message: "timeout" } });
       return inOrig(col, vs);
     };
     q.eq = (col: unknown, v: unknown) => {
@@ -379,5 +381,53 @@ describe("консультант по прайсу: сбои и языки (BOVI
     expect(first?.rate).toBeNull();
     const queued = tables(ctx).zernio_logs!.filter((r) => r.event_type === "outbox.admin_notice");
     expect(queued).toHaveLength(1);
+  });
+});
+
+describe("консультант по прайсу: надёжность и деньги (разбор BOVI 08.10)", () => {
+  it("прайс не прочитался — не «товара нет», а «не могу ответить» с передачей", async () => {
+    rounds.push([{ type: "text", text: "Такого товара нет." }]);
+    const ctx = ctxOf();
+    breakSetting(ctx, "consultant_catalog_json", "error");
+    const r = await runConsultant(ctx, customer(), "Полотенца Uchino есть?", {
+      platform: "instagram",
+    });
+    expect(create).not.toHaveBeenCalled();
+    expect(r?.reply).toBe("Сейчас не могу ответить — передаю вопрос менеджеру, он напишет вам.");
+    expect(r?.handoff?.kind).toBe("handoff");
+    expect(setting(ctx, "consultant_last_error")).toContain("consultant_catalog_json");
+  });
+
+  it("нет ключа ИИ — покупателю «не могу ответить», менеджеру передача, в последней ошибке", async () => {
+    setEnvForTests({});
+    const ctx = ctxOf();
+    const r = await runConsultant(ctx, customer(), "Полотенца есть?", { platform: "instagram" });
+    expect(create).not.toHaveBeenCalled();
+    expect(r?.reply).toBe("Сейчас не могу ответить — передаю вопрос менеджеру, он напишет вам.");
+    expect(r?.handoff?.kind).toBe("handoff");
+    expect(setting(ctx, "consultant_last_error")).toContain("нет ключа ИИ");
+  });
+
+  it("нет ключа ИИ в тест-чате — как «ИИ недоступен», без передачи", async () => {
+    setEnvForTests({});
+    const r = await runConsultant(ctxOf(), null, "Полотенца есть?", {
+      platform: "instagram",
+      dryRun: true,
+    });
+    expect(r).toBeNull();
+  });
+
+  it("Sonnet 5 считается по $2/$10, а не по ставке Sonnet 4", async () => {
+    rounds.push([{ type: "text", text: "Uchino 50х100 - 9 000 ₸." }]);
+    const ctx = ctxOf();
+    tables(ctx).app_settings!.push({
+      bot_id: ctx.tenant.id,
+      key: "consultant_model",
+      value: "claude-sonnet-5",
+    });
+    const r = await runConsultant(ctx, customer(), "Полотенца есть?", { platform: "instagram" });
+    expect((create.mock.calls[0]![0] as { model: string }).model).toBe("claude-sonnet-5");
+    // 1000 входа × $2 + 200 вывода × $10 за миллион.
+    expect(r!.usage.usd).toBeCloseTo(0.004, 9);
   });
 });

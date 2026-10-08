@@ -62,4 +62,29 @@ describe("прайс консультанта из базы", () => {
     expect(meta.count).toBe(1);
     expect((await loadPricelist(ctx, 3)).products.map((p) => p.id)).toEqual(["9"]);
   });
+
+  it("сбой базы — ошибка, а не пустой прайс, и в кэш не попадает", async () => {
+    const ctx = shop("bot-e", [
+      { key: CATALOG_KEY, value: JSON.stringify([product("5", "Полотенце Hamam")]) },
+    ]);
+    const db = ctx.db as unknown as ReturnType<typeof fakeDb>;
+    const broken: unknown = new Proxy(() => undefined, {
+      get: (_t, prop) =>
+        prop === "then"
+          ? (ok: (v: unknown) => unknown) => ok({ data: null, error: { message: "boom" } })
+          : () => broken,
+    });
+    const failing = {
+      ...ctx,
+      db: new Proxy(db, {
+        get: (t, prop, r) =>
+          prop === "from"
+            ? (name: string) => (name === "app_settings" ? broken : t.from(name))
+            : Reflect.get(t, prop, r),
+      }),
+    } as unknown as TenantContext;
+    await expect(loadPricelist(failing, 1)).rejects.toThrow(/consultant_catalog_json/);
+    // Следующее чтение в пределах 45 с идёт в базу, а не в пустой кэш.
+    expect((await loadPricelist(ctx, 2)).products.map((p) => p.id)).toEqual(["5"]);
+  });
 });

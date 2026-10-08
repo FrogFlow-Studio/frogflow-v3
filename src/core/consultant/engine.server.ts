@@ -96,8 +96,21 @@ const CATALOG_LIMIT = 120;
  */
 export const CACHE_TTL = "1h" as const;
 const PRICE = { in: 1, out: 5, cacheWrite: 2, cacheRead: 0.1 };
-/** Sonnet — консультант по прайсу может работать на нём (настройка consultant_model). */
-const PRICE_SONNET = { in: 3, out: 15, cacheWrite: 6, cacheRead: 0.3 };
+/**
+ * Sonnet — консультант по прайсу может работать на нём (настройка consultant_model).
+ * Sonnet 5 вдвое дешевле на вводе, чем Sonnet 4.x: $2/$10, часовой кеш $4,
+ * чтение $0,20. По старой ставке ИИ-баланс клиента и дневной предел
+ * списывались в 1,5 раза больше реального.
+ */
+const PRICE_SONNET_5 = { in: 2, out: 10, cacheWrite: 4, cacheRead: 0.2 };
+const PRICE_SONNET_4 = { in: 3, out: 15, cacheWrite: 6, cacheRead: 0.3 };
+
+/** Ставки модели, $ за миллион токенов; неизвестная — как Haiku 4.5. */
+export function modelPrice(model: string): typeof PRICE {
+  if (/sonnet-5/.test(model)) return PRICE_SONNET_5;
+  if (/sonnet/.test(model)) return PRICE_SONNET_4;
+  return PRICE;
+}
 /**
  * Вызовов модели на одно сообщение консультанта по прайсу, на которые
  * бронируется бюджет: четыре раунда, переспрос о рублях, два на сверку
@@ -437,13 +450,32 @@ export async function runConsultant(
   if (previewReadonly()) return null;
   const bLocale = buyerLocale(ctx, customer);
   const apiKey = env().ANTHROPIC_API_KEY?.trim();
-  if (!apiKey) return null;
   const { pricelistMode } = await import("./pricelist/mode");
   const pricelist = pricelistMode(ctx.tenant);
   const photos = (opts.imageUrls?.length ?? 0) + (opts.images?.length ?? 0) > 0;
   let incoming = text.trim().slice(0, 1500);
   // По прайсу фото без подписи — тоже вопрос: модель смотрит на снимок.
   if (!incoming && !(pricelist && photos)) return null;
+  // Ключа ИИ платформы нет: покупатель не остаётся в тишине — «сейчас не могу
+  // ответить» и передача менеджеру. Оператору сигнал шлёт крон здоровья
+  // (operator/consultant-alerts, «no_key»). Тест-чат — как «ИИ недоступен».
+  if (!apiKey) {
+    if (opts.dryRun) return null;
+    await trySetSetting(
+      ctx,
+      KEYS.lastError,
+      `${new Date().toISOString()} — нет ключа ИИ платформы; вопрос передан менеджеру`,
+    );
+    return {
+      reply: unavailableReply(bLocale),
+      handoff: {
+        kind: "handoff",
+        reason: "unknown_question",
+        summary: handoffSummary(await sellerLocaleSafe(ctx), "failure", incoming),
+      },
+      usage: { inputTokens: 0, outputTokens: 0, usd: 0 },
+    };
+  }
   // По прайсу товары публикации приходят пометкой (pricelist/engine.server).
   if (!pricelist && opts.story && (opts.story.storyId || opts.story.mediaUrl)) {
     const { findStoryTag, listStoryTags, storyContextLine } = await import("./story-tags");
@@ -672,7 +704,7 @@ export async function runConsultant(
   let model = env().CONSULTANT_MODEL?.trim() || DEFAULT_MODEL;
   const u = { input_tokens: 0, output_tokens: 0, cacheWrite: 0, cacheRead: 0 };
   const costUsd = () => {
-    const price = /sonnet/.test(model) ? PRICE_SONNET : PRICE;
+    const price = modelPrice(model);
     return (
       (u.input_tokens * price.in +
         u.cacheWrite * price.cacheWrite +

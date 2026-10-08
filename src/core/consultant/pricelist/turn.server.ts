@@ -105,6 +105,15 @@ export function toTurn(
   const patch: Partial<ConsultantState> = { ...d.statePatch };
   const base = { patch, tools: [...d.tools], attachments: d.attachments };
   const handoffText = pricelistHandoffReply(opts.locale ?? "ru");
+  // Модель не ответила (лимит частоты, потолок времени, пустой ответ) — в
+  // последнюю ошибку: по ней оператор видит, что консультант сбоит.
+  const why =
+    d.stopped === "limited"
+      ? "лимит частоты"
+      : d.stopped === "late"
+        ? "долго искал"
+        : "пустой ответ модели";
+  const silentError = `ИИ-консультант не ответил (${why}); вопрос передан менеджеру`;
   if (d.handoff) {
     const reason = HANDOFF_REASON_LABEL[d.handoff.reason];
     // Цена не по прайсу и после переписывания: менеджеру — почему, на его языке.
@@ -117,13 +126,15 @@ export function toTurn(
       ...base,
       reply: d.reply || handoffText,
       historyReply: d.reply ? d.historyText : undefined,
-      clearError: !d.priceBlocked,
+      clearError: !d.priceBlocked && !(d.stopped && !d.reply),
       ...(d.priceBlocked
         ? {
             error:
               "ответ консультанта не отправлен: цена не по прайсу и после переписывания; вопрос передан менеджеру",
           }
-        : {}),
+        : d.stopped && !d.reply
+          ? { error: silentError }
+          : {}),
       handoff: {
         // Покупка и опт — заявка: менеджер получает готовый заказ.
         kind:
@@ -136,18 +147,12 @@ export function toTurn(
     };
   }
   if (!d.reply) {
-    // Модель не ответила (лимит частоты, потолок времени, пустой ответ).
     // Молчать нельзя — человек ждёт; отдаём менеджеру.
-    const why =
-      d.stopped === "limited"
-        ? "лимит частоты"
-        : d.stopped === "late"
-          ? "долго искал"
-          : "пустой ответ модели";
     return {
       ...base,
       reply: handoffText,
       clearError: false,
+      error: silentError,
       handoff: {
         kind: "handoff",
         reason: "unknown_question",

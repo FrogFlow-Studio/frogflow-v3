@@ -39,7 +39,7 @@ export type EvalScenarioResult = {
 /** Ставки за миллион токенов: ввод, вывод, запись в часовой кеш, чтение. */
 const PRICE: Record<string, { in: number; out: number; cw: number; cr: number }> = {
   haiku: { in: 1, out: 5, cw: 2, cr: 0.1 },
-  sonnet: { in: 3, out: 15, cw: 6, cr: 0.3 },
+  sonnet: { in: 2, out: 10, cw: 4, cr: 0.2 },
 };
 
 /** Вызов модели для прогона со счётчиком расхода. */

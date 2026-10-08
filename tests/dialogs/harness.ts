@@ -92,7 +92,8 @@ export interface RoomOptions {
 export const outbound: { sink: ((html: string) => void) | null } = { sink: null };
 export const SELLER_ID = 900;
 
-const BOT = "00000000-0000-4000-8000-0000000000aa";
+export const ROOM_BOT = "00000000-0000-4000-8000-0000000000aa";
+const BOT = ROOM_BOT;
 export const notices = { count: 0 };
 
 const plain = (s: string) => s.replace(/<[^>]+>/g, "").replace(/&amp;/g, "&");

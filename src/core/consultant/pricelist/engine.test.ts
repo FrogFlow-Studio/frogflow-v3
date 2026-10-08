@@ -617,6 +617,23 @@ describe("консультант по прайсу", () => {
     expect(turn.reply).toContain("менеджеру");
   });
 
+  it("модель не дошла до ответа после поиска — не «Сейчас посмотрю…», а передача и ошибка", async () => {
+    responses.push(
+      reply([
+        { type: "text", text: "Сейчас посмотрю наличие." },
+        { type: "tool_use", id: "s1", name: "search_products", input: { query: "полотенца" } },
+      ]),
+      "late",
+    );
+    const { d, turn } = await decide("Есть полотенца?");
+    expect(d.stopped).toBe("late");
+    expect(turn.reply).not.toContain("посмотрю");
+    expect(turn.reply).toContain("менеджеру");
+    expect(turn.handoff?.reason).toBe("unknown_question");
+    expect(turn.clearError).toBe(false);
+    expect(turn.error).toContain("долго искал");
+  });
+
   it("в ответе нет разметки, эмодзи и пересказа служебных пометок", async () => {
     responses.push(
       reply([

@@ -10,6 +10,8 @@ import type { Channel, Input, Product, Room } from "./harness";
 import { BOTS_20 } from "./scenarios-bots";
 import { handoffReply, pricelistHandoffReply, unavailableReply } from "@/core/consultant/messages";
 import { VOICE_WRITE_TEXT } from "@/channels/zernio/nontext";
+import { rateLimitKey } from "@/core/storefront/rate-limit";
+import { CLIENT_CALLS } from "@/core/consultant/rate.server";
 
 /** Позиция прайса консультанта BOVI (consultant_catalog_json). */
 export interface PricelistItem {
@@ -52,6 +54,32 @@ const failSettingRead =
       return q;
     };
   };
+
+/** Чтение настройки `key` возвращает ошибку базы (тайм-аут PostgREST), без исключения. */
+const errorSettingRead =
+  (key: string) =>
+  (r: Room): void => {
+    const from = r.db.from.bind(r.db);
+    r.db.from = (table: string) => {
+      const q = from(table);
+      if (table !== "app_settings") return q;
+      const inOrig = q.in.bind(q);
+      q.in = (col: string, vs: unknown[]) =>
+        vs.includes(key)
+          ? (Promise.resolve({ data: null, error: { message: "timeout" } }) as never)
+          : inOrig(col, vs);
+      return q;
+    };
+  };
+
+/** Лимит частоты вызовов модели почти исчерпан: пройдёт один вызов, второй — «limited». */
+const oneAiCallLeft = (r: Room): void => {
+  r.db.tables.app_settings!.push({
+    key: rateLimitKey("consultant_ai", "calls"),
+    // Окно «из будущего» (часы другого экземпляра спешат): счёт ведётся в нём.
+    value: JSON.stringify({ w: 9e15, c: CLIENT_CALLS.limit - 1, p: 0 }),
+  });
+};
 
 /** Ответ подменённой модели консультанта в сценариях. */
 const CONSULTANT_SAYS = "Консультант: кирпич М150 есть, 95 ₸ за штуку.";
@@ -756,6 +784,60 @@ export const SCENARIOS: Scenario[] = [
       {
         say: { text: "Есть полотенца?" },
         expect: { says: [unavailableReply(l)], sellerNotices: 1 },
+      },
+    ],
+  })),
+  ...everyLocale((l) => ({
+    id: "pricelist-catalog-read-error",
+    title: "прайс не прочитался (ошибка базы) — не «такого нет», а «не могу ответить» и передача",
+    origin: "разбор BOVI 08.10: мягкое чтение отдавало пустой прайс, и он 45 с лежал в кэше",
+    channel: "instagram",
+    full: true,
+    vertical: "consultant",
+    modules: { shop: true },
+    pricelist: { catalog: PL_CATALOG, rounds: [said("Такого товара сейчас нет.")] },
+    arrange: errorSettingRead("consultant_catalog_json"),
+    steps: [
+      {
+        say: { text: "Есть полотенца Uchino?" },
+        expect: { says: [unavailableReply(l)], notSays: ["нет."], sellerNotices: 1 },
+      },
+    ],
+  })),
+  ...everyLocale((l) => ({
+    id: "pricelist-interim-phrase-limited",
+    title:
+      "модель сказала «Сейчас посмотрю…» и упёрлась в лимит — покупателю передача, не обещание",
+    origin: "разбор BOVI 08.10: pricelist/engine.server — late/limited после поиска",
+    channel: "instagram",
+    full: true,
+    vertical: "consultant",
+    modules: { shop: true },
+    pricelist: {
+      catalog: PL_CATALOG,
+      rounds: [
+        [
+          { type: "text", text: "Сейчас посмотрю наличие." },
+          {
+            type: "tool_use",
+            id: "s1",
+            name: "search_products",
+            input: { query: "полотенца" },
+          },
+        ],
+        said("Uchino полотенце банное 50х100 - 9 000 ₸."),
+      ],
+    },
+    arrange: oneAiCallLeft,
+    steps: [
+      {
+        say: { text: "Есть полотенца?" },
+        expect: {
+          says: [pricelistHandoffReply(l)],
+          notSays: ["посмотрю"],
+          sellerNotices: 1,
+          paused: true,
+        },
       },
     ],
   })),
