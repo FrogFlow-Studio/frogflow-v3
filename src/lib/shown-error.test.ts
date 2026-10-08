@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { toCrossJSONAsync, fromCrossJSON } from "seroval";
 import { makeSerovalPlugin } from "@tanstack/router-core";
 import { defaultSerovalPlugins } from "@tanstack/router-core/ssr/client";
@@ -124,10 +124,10 @@ describe("toScreenError: что серверная функция отдаёт �
     // Текст из словаря (tr/t/shopT) без пометки ушёл бы как «сбой на сервере»
     // у магазинов на английском и узбекском.
     const unmarked = /throw new Error\(\s*(?:tr\(|t\(|\(await shopT)/;
-    for (const f of [
-      "src/app/admin/admin.functions.ts",
-      "src/app/storefront/storefront.functions.ts",
-    ])
+    const admin = readdirSync("src/app/admin")
+      .filter((f) => f.endsWith(".functions.ts"))
+      .map((f) => `src/app/admin/${f}`);
+    for (const f of [...admin, "src/app/storefront/storefront.functions.ts"])
       expect(readFileSync(f, "utf8"), f).not.toMatch(unmarked);
   });
 

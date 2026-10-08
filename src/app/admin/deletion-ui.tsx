@@ -1,6 +1,6 @@
 import { useRouter } from "@tanstack/react-router";
 import { useState } from "react";
-import { deleteShopFn, restoreShopFn } from "@/app/admin/admin.functions";
+import { deleteShopFn, restoreShopFn } from "@/app/admin/shop.functions";
 import { adminT } from "@/app/i18n/admin";
 import type { Locale } from "@/core/i18n/locale";
 import { Card, ErrorBox, Field, useAction } from "@/app/ui";

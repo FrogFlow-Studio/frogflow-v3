@@ -8,7 +8,7 @@ import {
   saveCustomerBirthdayFn,
   saveCustomerNoteFn,
   unlinkCustomerFn,
-} from "@/app/admin/admin.functions";
+} from "@/app/admin/customers.functions";
 import { adjustPointsFn } from "@/app/admin/loyalty.functions";
 import { adminT, intlLocale, type AdminKey } from "@/app/i18n/admin";
 import { Badge, Card, ErrorBox, Field, PageTitle, useAction } from "@/app/ui";

@@ -5,16 +5,18 @@ import { z } from "zod";
 import {
   bulkProductsFn,
   productIdsFn,
+  productsFn,
+  setProductActiveFn,
+} from "@/app/admin/products.functions";
+import {
   catalogSheetFn,
   disconnectCatalogSheetFn,
   importCatalogFn,
-  applyShopKindFn,
   previewCatalogSheetFn,
-  productsFn,
   saveCatalogSheetFn,
-  setProductActiveFn,
   reorderFn,
-} from "@/app/admin/admin.functions";
+} from "@/app/admin/catalog.functions";
+import { applyShopKindFn } from "@/app/admin/shop.functions";
 import { pruneUpsellFn, upsellHealthFn } from "@/app/admin/upsell.functions";
 import { adminT, intlLocale, type AdminKey, type AdminT } from "@/app/i18n/admin";
 import { EmptyState } from "@/app/ui/states";

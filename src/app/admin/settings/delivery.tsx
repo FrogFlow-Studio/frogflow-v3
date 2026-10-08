@@ -4,8 +4,8 @@ import {
   deleteDeliveryZoneFn,
   saveDeliveryZoneFn,
   deliveryZonesFn,
-  saveSettingsFn,
-} from "@/app/admin/admin.functions";
+} from "@/app/admin/delivery-zones.functions";
+import { saveSettingsFn } from "@/app/admin/settings.functions";
 import { Badge, Card, ErrorBox, Field, useAction } from "@/app/ui";
 import { adminT } from "@/app/i18n/admin";
 import { settingsRoute } from "./route";

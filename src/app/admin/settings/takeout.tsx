@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { takeoutLinkFn } from "@/app/admin/admin.functions";
+import { takeoutLinkFn } from "@/app/admin/settings.functions";
 import { Card, ErrorBox, useAction } from "@/app/ui";
 import { adminT, intlLocale } from "@/app/i18n/admin";
 import { settingsRoute } from "./route";

@@ -1,6 +1,6 @@
 import { useRouter } from "@tanstack/react-router";
 import { useState } from "react";
-import { saveSettingsFn, setPdfWatermarkFn } from "@/app/admin/admin.functions";
+import { saveSettingsFn, setPdfWatermarkFn } from "@/app/admin/settings.functions";
 import { Card, ErrorBox, Field, Switch, useAction } from "@/app/ui";
 import { SCHOOL_OFFER_RU, SCHOOL_PRIVACY_RU } from "@/app/admin/legal-templates";
 import { adminT, type AdminKey } from "@/app/i18n/admin";

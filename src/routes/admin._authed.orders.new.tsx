@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
-import { createManualOrderFn, manualOrderFormFn } from "@/app/admin/admin.functions";
+import { createManualOrderFn, manualOrderFormFn } from "@/app/admin/orders.functions";
 import { adminT } from "@/app/i18n/admin";
 import { ErrorBox, Field, useAction } from "@/app/ui";
 import { formatMoney } from "@/core/money/money";

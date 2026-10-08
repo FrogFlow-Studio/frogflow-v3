@@ -7,7 +7,7 @@ import {
   zernioConnectLinkFn,
   zernioStateFn,
   telegramStateFn,
-} from "@/app/admin/admin.functions";
+} from "@/app/admin/connections.functions";
 import { Badge, Card, ErrorBox, Field, Switch, useAction } from "@/app/ui";
 import {
   checkBotFn,

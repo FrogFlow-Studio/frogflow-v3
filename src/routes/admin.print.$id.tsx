@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { adminShopFn, orderFn } from "@/app/admin/admin.functions";
+import { adminShopFn } from "@/app/admin/shop.functions";
+import { orderFn } from "@/app/admin/orders.functions";
 import { adminT, intlLocale } from "@/app/i18n/admin";
 import { formatMoney } from "@/core/money/money";
 import { displayNo } from "@/core/orders/pure";

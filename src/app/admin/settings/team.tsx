@@ -1,7 +1,7 @@
 import { isStaffRole, type StaffRole } from "@/core/auth/roles";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { deleteTeamMemberFn, saveTeamMemberFn, teamFn } from "@/app/admin/admin.functions";
+import { deleteTeamMemberFn, saveTeamMemberFn, teamFn } from "@/app/admin/team.functions";
 import {
   createStaffInviteFn,
   revokeStaffInviteFn,

@@ -51,7 +51,7 @@ const PAGE = "список из одной страницы чтения (не �
 const FEW = "список из позиций одного заказа или одного покупателя — единицы";
 
 const ALLOWED: Record<string, string[]> = {
-  "src/app/admin/admin.functions.ts": [`${PAGE} (заказы из «Не доставлено», ≤ 200)`],
+  "src/app/admin/orders.functions.ts": [`${PAGE} (заказы из «Не доставлено», ≤ 200)`],
   "src/app/admin/invoice.server.ts": [FEW],
   "src/app/admin/onboarding.server.ts": [
     "получатели служебных сообщений: владелец и менеджеры магазина, не больше 21",

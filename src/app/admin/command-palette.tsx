@@ -1,6 +1,6 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { adminSearchFn } from "@/app/admin/admin.functions";
+import { adminSearchFn } from "@/app/admin/customers.functions";
 import { adminT } from "@/app/i18n/admin";
 import type { Locale } from "@/core/i18n/locale";
 import { formatMoney } from "@/core/money/money";

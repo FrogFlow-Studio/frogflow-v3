@@ -8,7 +8,7 @@ import {
   hideSetupFn,
   skipSetupStepFn,
   removeStarterFn,
-} from "@/app/admin/admin.functions";
+} from "@/app/admin/shop.functions";
 import { adminT, intlLocale, type AdminKey, type AdminT } from "@/app/i18n/admin";
 import { schoolLaunchFn, schoolOverviewFn } from "@/app/admin/courses.functions";
 import { verticalTitleKey } from "@/app/i18n/admin/catalog";

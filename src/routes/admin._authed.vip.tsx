@@ -1,6 +1,6 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
-import { saveSettingsFn } from "@/app/admin/admin.functions";
+import { saveSettingsFn } from "@/app/admin/settings.functions";
 import {
   addVipManualFn,
   connectVipBotFn,

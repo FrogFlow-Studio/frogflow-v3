@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, type FormEvent } from "react";
-import { adminLogin, adminTgLoginRequest } from "@/app/admin/admin.functions";
+import { adminLogin, adminTgLoginRequest } from "@/app/admin/admin-auth.functions";
 import { ADMIN_LOCALE_LABELS, adminT } from "@/app/i18n/admin";
 import { signupEnabledFn } from "@/app/signup/signup.functions";
 import { ErrorBox, Field, ThemeToggle, useAction } from "@/app/ui";

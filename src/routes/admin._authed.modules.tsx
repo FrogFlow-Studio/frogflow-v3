@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
-import { myPlanFn, payPlanFn, requestModuleFn, requestPlanFn } from "@/app/admin/admin.functions";
+import { myPlanFn, payPlanFn, requestPlanFn } from "@/app/admin/plan.functions";
+import { requestModuleFn } from "@/app/admin/settings.functions";
 import { subscriptionLine } from "@/app/admin/subscription-banner";
 import { moduleOffered } from "@/app/admin/module-offer";
 import { adminT, intlLocale, type AdminT } from "@/app/i18n/admin";

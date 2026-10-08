@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { auditAdminCall, type AuditDeps } from "./audit-call";
 
 const who = { botId: "b1", username: "masha" };
-const meta = { name: "saveProductFn", filename: "src/app/admin/admin.functions.ts" };
+const meta = { name: "saveProductFn", filename: "src/app/admin/products.functions.ts" };
 
 function deps(over: Partial<AuditDeps> = {}) {
   return {

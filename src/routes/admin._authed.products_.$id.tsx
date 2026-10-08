@@ -16,7 +16,7 @@ import {
   saveProductPreviewFn,
   saveProductSubscriptionFn,
   stockHistoryFn,
-} from "@/app/admin/admin.functions";
+} from "@/app/admin/products.functions";
 import { adminT, intlLocale, type AdminT } from "@/app/i18n/admin";
 import { uploadFile } from "@/app/admin/upload-client";
 import { CourseCard } from "@/app/admin/course-card";

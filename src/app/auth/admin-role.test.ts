@@ -122,26 +122,26 @@ describe("роль «Администратор»: ранг и гварды", ()
 /** Серверные функции админки: что закрыто администратору, а что открыто — список осознанный. */
 const OWNER_ONLY = new Set([
   // удаление магазина
-  "admin.functions.ts:deleteShopFn",
-  "admin.functions.ts:restoreShopFn",
+  "shop.functions.ts:deleteShopFn",
+  "shop.functions.ts:restoreShopFn",
   // команда и приглашения в команду
-  "admin.functions.ts:teamFn",
-  "admin.functions.ts:saveTeamMemberFn",
-  "admin.functions.ts:deleteTeamMemberFn",
+  "team.functions.ts:teamFn",
+  "team.functions.ts:saveTeamMemberFn",
+  "team.functions.ts:deleteTeamMemberFn",
   "team-invite.functions.ts:staffInvitesFn",
   "team-invite.functions.ts:createStaffInviteFn",
   "team-invite.functions.ts:revokeStaffInviteFn",
   // платежи и тариф
-  "admin.functions.ts:savePaymentMethodFn",
-  "admin.functions.ts:deletePaymentMethodFn",
-  "admin.functions.ts:requestModuleFn",
-  "admin.functions.ts:commissionPageFn",
-  "admin.functions.ts:requestPlanFn",
-  "admin.functions.ts:payPlanFn",
+  "settings.functions.ts:savePaymentMethodFn",
+  "settings.functions.ts:deletePaymentMethodFn",
+  "settings.functions.ts:requestModuleFn",
+  "plan.functions.ts:commissionPageFn",
+  "plan.functions.ts:requestPlanFn",
+  "plan.functions.ts:payPlanFn",
   "ai-balance.functions.ts:aiBalanceCardFn",
   "ai-balance.functions.ts:aiTopupFn",
   // выгрузка данных и ключ API
-  "admin.functions.ts:takeoutLinkFn",
+  "settings.functions.ts:takeoutLinkFn",
   "api-key.functions.ts:apiKeyStatusFn",
   "api-key.functions.ts:createApiKeyFn",
   "api-key.functions.ts:revokeApiKeyFn",
@@ -176,9 +176,9 @@ describe("что закрыто администратору на сервере
   it("настройки магазина открыты администратору (гвард «admin»), а не только владельцу", () => {
     const { admin } = guardedFns();
     for (const id of [
-      "admin.functions.ts:saveSettingsFn",
-      "admin.functions.ts:setShopTimezoneFn",
-      "admin.functions.ts:saveDeliveryZoneFn",
+      "settings.functions.ts:saveSettingsFn",
+      "settings.functions.ts:setShopTimezoneFn",
+      "delivery-zones.functions.ts:saveDeliveryZoneFn",
       "channels.functions.ts:saveDirectBotSettingsFn",
       "design.functions.ts:saveStoreDesignFn",
       "bot-texts.functions.ts:saveBotTextFn",
@@ -188,7 +188,7 @@ describe("что закрыто администратору на сервере
   });
 
   it("ключи платёжных систем администратор записать не может, а читать секреты не видит", () => {
-    const fn = readFileSync("src/app/admin/admin.functions.ts", "utf8");
+    const fn = readFileSync("src/app/admin/settings.functions.ts", "utf8");
     const body = fn.split(/^export const saveSettingsFn/m)[1]!.split(/^export const /m)[0]!;
     expect(body).toContain("PAYMENT_SETTING_KEYS.has(k)");
     expect(body).toContain('(await adminRole()) !== "owner"');

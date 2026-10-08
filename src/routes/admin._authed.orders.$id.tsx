@@ -1,7 +1,7 @@
 import { canEdit } from "@/core/auth/roles";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
-import { orderActionFn, orderFn, orderNoteFn, orderTrackingFn } from "@/app/admin/admin.functions";
+import { orderActionFn, orderFn, orderNoteFn, orderTrackingFn } from "@/app/admin/orders.functions";
 import { adminT, intlLocale, type AdminKey } from "@/app/i18n/admin";
 import { Badge, Card, ErrorBox, Field, useAction } from "@/app/ui";
 import { describeOrderEvent } from "@/core/orders/events";

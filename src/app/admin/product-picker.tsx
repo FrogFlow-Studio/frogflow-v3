@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { productPickerFn } from "@/app/admin/admin.functions";
+import { productPickerFn } from "@/app/admin/products.functions";
 import type { AdminT } from "@/app/i18n/admin";
 import { ErrorBox, useAction } from "@/app/ui";
 import { PICKER_LIMIT, type PickerProduct } from "@/core/catalog/picker";

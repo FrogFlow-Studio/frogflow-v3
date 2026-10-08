@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { consultantTestFn } from "./admin.functions";
+import { consultantTestFn } from "./consultant-settings.functions";
 import { Badge, Card, ErrorBox, useAction } from "@/app/ui";
 import type { AdminT } from "@/app/i18n/admin";
 import { taskReason } from "./workspace-ui";

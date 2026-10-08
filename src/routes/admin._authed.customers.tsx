@@ -2,7 +2,7 @@ import { canEdit } from "@/core/auth/roles";
 import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { z } from "zod";
-import { customersFn, setBlockedFn } from "@/app/admin/admin.functions";
+import { customersFn, setBlockedFn } from "@/app/admin/customers.functions";
 import { adminT, intlLocale } from "@/app/i18n/admin";
 import { CustomerSegments } from "@/app/admin/customer-segments";
 import { EmptyState } from "@/app/ui/states";

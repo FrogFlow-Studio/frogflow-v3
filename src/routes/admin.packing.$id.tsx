@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { adminShopFn } from "@/app/admin/admin.functions";
+import { adminShopFn } from "@/app/admin/shop.functions";
 import { packingSlipFn } from "@/app/admin/bundle.functions";
 import { PackingSheet } from "@/app/admin/packing-view";
 import { adminT, intlLocale } from "@/app/i18n/admin";

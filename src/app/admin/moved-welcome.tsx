@@ -1,5 +1,5 @@
 import { Link, useRouter } from "@tanstack/react-router";
-import { hideMovedWelcomeFn } from "@/app/admin/admin.functions";
+import { hideMovedWelcomeFn } from "@/app/admin/shop.functions";
 import { movedRows } from "@/app/admin/setup";
 import type { AdminT } from "@/app/i18n/admin";
 import { Card, ErrorBox, useAction } from "@/app/ui";

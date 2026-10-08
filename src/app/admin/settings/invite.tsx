@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { inviteCardFn } from "@/app/admin/admin.functions";
+import { inviteCardFn } from "@/app/admin/settings.functions";
 import { Card, ErrorBox, useAction } from "@/app/ui";
 import { adminT } from "@/app/i18n/admin";
 import { settingsRoute } from "./route";

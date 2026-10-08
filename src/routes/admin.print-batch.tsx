@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { z } from "zod";
-import { adminShopFn } from "@/app/admin/admin.functions";
+import { adminShopFn } from "@/app/admin/shop.functions";
 import { deliveryLabelsFn, packingBatchFn } from "@/app/admin/batch.functions";
 import { PackingSheet } from "@/app/admin/packing-view";
 import { adminErrorText } from "@/app/i18n/user-error";

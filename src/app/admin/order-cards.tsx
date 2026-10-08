@@ -8,7 +8,7 @@ import {
   rejectBalanceProofFn,
   sendApprovalFn,
   updateFulfillmentFn,
-} from "@/app/admin/admin.functions";
+} from "@/app/admin/orders.functions";
 import { adminT } from "@/app/i18n/admin";
 import { Badge, Card, ErrorBox, Field, useAction } from "@/app/ui";
 import { canEdit } from "@/core/auth/roles";

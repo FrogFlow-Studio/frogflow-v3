@@ -16,10 +16,10 @@ import {
   moreBroadcastsFn,
   createBroadcastFn,
   createWhatsAppTemplateFn,
-  saveSettingsFn,
   setExcludedPhonesFn,
   syncWhatsAppTemplatesFn,
-} from "@/app/admin/admin.functions";
+} from "@/app/admin/broadcasts.functions";
+import { saveSettingsFn } from "@/app/admin/settings.functions";
 import { adminT, intlLocale, type AdminKey, type AdminT } from "@/app/i18n/admin";
 import { uploadFile } from "@/app/admin/upload-client";
 import { ProductPicker, ProductSearch, type PickerProduct } from "@/app/admin/product-picker";

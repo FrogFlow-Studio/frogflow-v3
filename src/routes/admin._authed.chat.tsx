@@ -9,7 +9,6 @@ import {
   chatConversationsFn,
   chatCustomerPanelFn,
   chatSearchFn,
-  saveCustomerNoteFn,
   chatInboxPageFn,
   chatInboxPollFn,
   chatInvoiceFn,
@@ -24,7 +23,8 @@ import {
   invoiceProductsFn,
   quickRepliesSaveFn,
   quickReplyFillFn,
-} from "@/app/admin/admin.functions";
+} from "@/app/admin/chat.functions";
+import { saveCustomerNoteFn } from "@/app/admin/customers.functions";
 import { adminT, intlLocale, isAdminKey, type AdminT } from "@/app/i18n/admin";
 import { Badge, Empty, ErrorBox, PageTitle, useAction } from "@/app/ui";
 import { uploadFile } from "@/app/admin/upload-client";
