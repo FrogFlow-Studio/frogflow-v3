@@ -36,6 +36,38 @@ const PLANS: PlanKey[] = ["basic", "pro", "business"];
 /** Параметр языка в адресе: русский — без него. */
 export const langSearch = (l: Locale) => ({ lang: l === "ru" ? undefined : l });
 
+/** Шрифты публичных страниц: Exo 2 (как в логотипе) для заголовков, Onest для текста. */
+export const LANDING_FONT_LINKS = [
+  { rel: "preconnect", href: "https://fonts.googleapis.com" },
+  { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" as const },
+  {
+    rel: "stylesheet",
+    href: "https://fonts.googleapis.com/css2?family=Exo+2:ital,wght@1,800;1,900&family=Onest:wght@400;500;600;700&display=swap",
+  },
+];
+
+/** Знак FrogFlow: лягушка с иконки студии. */
+export function FrogMark({ className = "" }: { className?: string }) {
+  return (
+    <img
+      src="/brand/frog-mark.webp"
+      alt=""
+      width={240}
+      height={191}
+      className={`aspect-[240/191] shrink-0 object-cover ${className}`}
+    />
+  );
+}
+
+/** Подпись «FrogFlow» как на логотипе: Flow лаймом. */
+export function Wordmark() {
+  return (
+    <span className="font-display">
+      Frog<span className="text-accent">Flow</span>
+    </span>
+  );
+}
+
 export function SectionTitle({ children }: { children: ReactNode }) {
   return (
     <h2 className="font-display text-2xl leading-tight font-bold text-balance md:text-[32px]">
@@ -76,8 +108,14 @@ export function Header({
   return (
     <header className="sticky top-0 z-20 border-b border-line bg-bg/90 backdrop-blur">
       <div className="mx-auto flex w-full max-w-6xl items-center gap-6 px-4 py-3">
-        <Link to="/" search={langSearch(locale)} className="font-display text-lg font-bold">
-          🐸 FrogFlow
+        <Link
+          to="/"
+          search={langSearch(locale)}
+          aria-label="FrogFlow"
+          className="flex items-center gap-2.5 text-xl"
+        >
+          <FrogMark className="w-11 rounded-[10px]" />
+          <Wordmark />
         </Link>
         <nav className="hidden gap-5 text-sm md:flex">{links}</nav>
         <div className="ml-auto flex items-center gap-3">
@@ -142,14 +180,16 @@ export function Steps({ t }: { t: LandingT }) {
     <section id="how" className="scroll-mt-20 border-y border-line bg-surface">
       <div className="mx-auto w-full max-w-6xl px-4 py-16">
         <SectionTitle>{t("steps.title")}</SectionTitle>
-        <ol className="mt-8 grid gap-8 md:grid-cols-3">
+        <ol className="mt-9 grid gap-0.5 overflow-hidden rounded-3xl bg-line md:grid-cols-3">
           {([1, 2, 3] as const).map((n) => (
-            <li key={n} className="grid content-start gap-2">
+            <li key={n} className="grid content-start gap-2 bg-bg p-7">
               <span className="font-display text-4xl leading-none font-bold text-accent">{n}</span>
               <span className="text-sm font-semibold text-accent">
                 {t(`steps.${n}.time` as LandingKey)}
               </span>
-              <h3 className="font-semibold">{t(`steps.${n}.title` as LandingKey)}</h3>
+              <h3 className="font-display text-xl leading-tight">
+                {t(`steps.${n}.title` as LandingKey)}
+              </h3>
               <p className="text-sm text-muted">{t(`steps.${n}.text` as LandingKey)}</p>
             </li>
           ))}
@@ -417,15 +457,16 @@ export function FinalCta({ t, signup, page }: { t: LandingT; signup: boolean; pa
   return (
     <section className="mx-auto w-full max-w-6xl px-4">
       <div
-        className={`grid items-center gap-8 rounded-3xl bg-fg px-6 py-10 text-bg md:px-12 ${
-          contacts.length > 0 ? "md:grid-cols-[1.2fr_1fr]" : ""
+        className={`grid items-center gap-8 rounded-[30px] border border-line bg-[radial-gradient(120%_140%_at_0%_0%,var(--night-moss,var(--surface))_0%,var(--bg)_62%)] px-6 py-10 md:px-12 ${
+          contacts.length > 0 ? "md:grid-cols-[auto_1.2fr_1fr]" : "md:grid-cols-[auto_1fr]"
         }`}
       >
+        <FrogMark className="hidden w-28 rounded-3xl md:block" />
         <div>
-          <h2 className="font-display text-2xl leading-tight font-bold md:text-[32px]">
+          <h2 className="font-display text-3xl leading-tight font-bold md:text-[40px]">
             {t("final.title")}
           </h2>
-          <p className="mt-3 max-w-xl opacity-80">
+          <p className="mt-3 max-w-xl text-muted">
             {t("final.text")} {contacts.length > 0 && t("final.textContacts")}
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
@@ -438,10 +479,7 @@ export function FinalCta({ t, signup, page }: { t: LandingT; signup: boolean; pa
                 {t("final.cta")}
               </Link>
             )}
-            <Link
-              to="/admin/login"
-              className="inline-flex items-center rounded-md border border-bg/30 px-5 py-2.5 font-medium hover:bg-bg/10"
-            >
+            <Link to="/admin/login" className="btn-secondary px-5 py-2.5 text-base">
               {t("final.login")}
             </Link>
           </div>
@@ -454,7 +492,7 @@ export function FinalCta({ t, signup, page }: { t: LandingT; signup: boolean; pa
                 href={c.href}
                 target="_blank"
                 rel="noreferrer"
-                className="flex items-center gap-3 rounded-xl border border-bg/25 px-4 py-3 hover:bg-bg/10"
+                className="flex items-center gap-3 rounded-xl border border-line bg-surface px-4 py-3 hover:border-accent"
               >
                 <span
                   className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-xs font-bold text-white"
@@ -463,7 +501,7 @@ export function FinalCta({ t, signup, page }: { t: LandingT; signup: boolean; pa
                   {c.label === "Telegram" ? "TG" : "WA"}
                 </span>
                 <span>
-                  <span className="block text-xs opacity-70">{c.label}</span>
+                  <span className="block text-xs text-muted">{c.label}</span>
                   <span className="font-semibold">{c.value}</span>
                 </span>
               </a>
@@ -511,7 +549,12 @@ export function Footer({ t, locale, article }: { t: LandingT; locale: Locale; ar
   return (
     <footer className="mt-16 border-t border-line">
       <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-6 text-sm text-muted">
-        <span>© FrogFlow · {t("footer.tagline")}</span>
+        <span className="flex items-center gap-2.5">
+          <FrogMark className="w-9 rounded-lg" />
+          <span>
+            © <Wordmark /> · {t("footer.tagline")}
+          </span>
+        </span>
         <NicheLinks t={t} locale={locale} className="flex flex-wrap gap-x-5 gap-y-2" />
         <nav aria-label={t("articles.linksLabel")} className="flex flex-wrap gap-x-5 gap-y-2">
           {ARTICLE_SLUGS.map((slug) => (

@@ -20,6 +20,7 @@ import {
   FinalCta,
   Footer,
   Header,
+  LANDING_FONT_LINKS,
   NicheLinks,
   Pricing,
   SectionTitle,
@@ -75,12 +76,7 @@ export const Route = createFileRoute("/for/$niche")({
           href: nichePageUrl(niche, l),
         })),
         { rel: "alternate", hrefLang: "x-default", href: nichePageUrl(niche, "ru") },
-        { rel: "preconnect", href: "https://fonts.googleapis.com" },
-        { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-        {
-          rel: "stylesheet",
-          href: "https://fonts.googleapis.com/css2?family=Unbounded:wght@600;700&display=swap",
-        },
+        ...LANDING_FONT_LINKS,
       ],
     };
   },
@@ -100,7 +96,7 @@ function NichePageView() {
   const tier = niche === "courses" ? coursesFromTier() : null;
 
   return (
-    <div className="flex min-h-screen flex-col bg-bg">
+    <div className="theme-night flex min-h-screen flex-col bg-bg text-fg">
       <Header t={t} locale={locale} niche={niche} />
 
       <main>

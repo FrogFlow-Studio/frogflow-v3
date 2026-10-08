@@ -15,7 +15,13 @@ import {
 } from "@/app/landing/articles";
 import { OG_LOCALE } from "@/app/landing/config";
 import type { NichePage } from "@/app/landing/niches";
-import { Footer, Header, langSearch, signupSearch } from "@/app/landing/sections";
+import {
+  Footer,
+  Header,
+  LANDING_FONT_LINKS,
+  langSearch,
+  signupSearch,
+} from "@/app/landing/sections";
 import { articleJsonLd } from "@/app/landing/structured-data";
 import { SUPPORTED_LOCALES, isLocale, type Locale } from "@/core/i18n/locale";
 import { PLATFORM_SOURCE_SLUG } from "@/core/signup/origin";
@@ -75,12 +81,7 @@ export const Route = createFileRoute("/blog/$slug")({
           href: articleUrl(slug, l),
         })),
         { rel: "alternate", hrefLang: "x-default", href: articleUrl(slug, "ru") },
-        { rel: "preconnect", href: "https://fonts.googleapis.com" },
-        { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-        {
-          rel: "stylesheet",
-          href: "https://fonts.googleapis.com/css2?family=Unbounded:wght@600;700&display=swap",
-        },
+        ...LANDING_FONT_LINKS,
       ],
     };
   },
@@ -98,7 +99,7 @@ function ArticleView() {
   useEffect(() => rememberWebSource(PLATFORM_SOURCE_SLUG, window.location.search), []);
 
   return (
-    <div className="flex min-h-screen flex-col bg-bg">
+    <div className="theme-night flex min-h-screen flex-col bg-bg text-fg">
       <Header t={t} locale={locale} article={slug} />
       <main>
         <article className="mx-auto w-full max-w-3xl px-4 pt-10 pb-14 md:pt-16">

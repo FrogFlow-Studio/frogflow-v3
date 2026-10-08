@@ -152,3 +152,83 @@ body {
     line-height: 1.25rem;
   }
 }
+
+/*
+ * «Ночной пруд» — публичные страницы платформы (главная, ниши, статьи) в цветах
+ * иконки FrogFlow: ночной фон, лайм. Тема своя и не зависит от .dark панелей,
+ * поэтому токены переопределяются на обёртке страницы.
+ */
+.theme-night {
+  --bg: #05080b;
+  --surface: #0b1114;
+  --surface-2: #111a1e;
+  --fg: #f2f6f0;
+  --muted: #a3ada8;
+  --line: #1c262a;
+  --accent: #7dc437;
+  --accent-fg: #081003;
+  --ok: #7dc437;
+  --warn: #f2c14e;
+  --night-moss: #16260c;
+  --night-lime-hi: #a6e35f;
+  --night-lime-deep: #3f7a17;
+  color-scheme: dark;
+  font-family: "Onest", var(--font-sans);
+}
+.theme-night .font-display {
+  font-family: "Exo 2", "Onest", var(--font-sans);
+  font-style: italic;
+  font-weight: 900;
+  letter-spacing: -0.005em;
+}
+.theme-night .btn-primary,
+.theme-night .btn-secondary {
+  border-radius: 9999px;
+  font-weight: 600;
+}
+.theme-night .btn-primary:hover {
+  opacity: 1;
+  background: var(--night-lime-hi);
+}
+.theme-night .btn-secondary {
+  background: transparent;
+}
+.theme-night .btn-secondary:hover {
+  background: transparent;
+  border-color: var(--accent);
+}
+/* Большая кнопка продавца: «нажимается» вниз. */
+.night-press {
+  box-shadow: 0 8px 0 var(--night-lime-deep);
+  transition:
+    transform 70ms,
+    box-shadow 70ms;
+}
+.night-press:active,
+.night-press[aria-pressed="true"] {
+  transform: translateY(6px);
+  box-shadow: 0 2px 0 var(--night-lime-deep);
+}
+/* Чек с зубчатым нижним краем. */
+.night-receipt {
+  -webkit-mask: radial-gradient(circle 7px at 50% 100%, transparent 6.5px, #000 7px) 0 0 / 18px 100%
+    repeat-x;
+  mask: radial-gradient(circle 7px at 50% 100%, transparent 6.5px, #000 7px) 0 0 / 18px 100%
+    repeat-x;
+}
+@keyframes night-pop {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+.night-pop {
+  animation: night-pop 0.35s ease both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .night-press,
+  .night-pop {
+    transition: none;
+    animation: none;
+  }
+}
