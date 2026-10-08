@@ -778,6 +778,28 @@ export const SCENARIOS: Scenario[] = [
     }),
     ["instagram", "whatsapp"],
   ),
+  ...everyLocale(
+    () => ({
+      id: "inbox-poll-mongo-ids",
+      title:
+        "список Zernio даёт _id, вебхук — свой id: поздний вебхук того же сообщения всё равно молчит",
+      origin:
+        "BOVI 08.10, сверка v3 после #576 (риск R2): совпадение id сообщения в списке и в вебхуке не подтверждено — общий только id Meta",
+      channel: "instagram",
+      full: true,
+      vertical: "consultant",
+      modules: { shop: true },
+      consultant: CONSULTANT_SAYS,
+      steps: [
+        {
+          say: { missed: "Есть кирпич М150?", mongoIds: true },
+          expect: { says: [CONSULTANT_SAYS], count: 1 },
+        },
+        { say: { lateWebhook: true }, expect: { silent: true } },
+      ],
+    }),
+    ["instagram", "whatsapp"],
+  ),
   // ───── Консультант BOVI: надёжность ответа (07.10) ─────
   ...everyLocale(
     () => ({

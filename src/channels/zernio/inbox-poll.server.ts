@@ -9,7 +9,7 @@ import type { ZernioConversation, ZernioTransport } from "./api.server";
 import type { DispatchOutcome } from "./dispatch.server";
 import { keyRateLimitSec } from "./errors";
 import type { ZernioInboxMessage } from "./inbox-types";
-import { MAX_AGE_MS, missedIncoming, pollEventId, zernioMessageKey } from "./inbox-poll";
+import { MAX_AGE_MS, missedIncoming, pollEventId, zernioMessageKeys } from "./inbox-poll";
 import type { ZernioWebhookMessagePayload } from "./message";
 import { isZernioPlatform, type ZernioPlatform } from "./platform";
 
@@ -262,7 +262,7 @@ export async function pollTenantInbox(
           skip(verdict.why);
           continue;
         }
-        const key = zernioMessageKey(verdict.message);
+        const [key] = zernioMessageKeys(verdict.message);
         // Без id сообщения метку не поставить — позднему вебхуку было бы не видно, что ответ ушёл.
         if (!key) {
           skip("no_id");

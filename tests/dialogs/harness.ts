@@ -50,6 +50,12 @@ export type Input =
    * пришёл. Через две минуты крон опроса ящика (inbox-poll) находит сообщение.
    */
   | { missed: string }
+  /**
+   * Как `missed`, но список сообщений Zernio отдаёт id в виде Mongo `_id`, а
+   * вебхук — своим `id`: совпадает только id сообщения у Meta
+   * (platformMessageId). Так в живых данных или нет — не подтверждено.
+   */
+  | { missed: string; mongoIds: true }
   /** Поздний вебхук о последнем `missed` — то же сообщение Zernio, своё событие. */
   | { lateWebhook: true }
   /**
@@ -356,8 +362,11 @@ function directRoom(o: RoomOptions): Room {
       if ("missed" in i || "lateWebhook" in i) {
         if (!o.full) throw new Error("missed/lateWebhook — только в полном разборе (full)");
         if ("missed" in i) {
+          const n = inbox.length + 1;
           inbox.push({
-            id: `m-missed-${inbox.length + 1}`,
+            ...("mongoIds" in i
+              ? { _id: `zid-missed-${n}`, platformMessageId: `mid-missed-${n}` }
+              : { id: `m-missed-${n}` }),
             direction: "incoming",
             message: i.missed,
             createdAt: new Date(Date.now() - 2 * 60_000).toISOString(),
@@ -385,7 +394,10 @@ function directRoom(o: RoomOptions): Room {
           const msg = inbox.at(-1);
           if (!msg) throw new Error("lateWebhook без missed");
           const late = webhook({ text: msg.message ?? "" });
-          late.message.id = msg.id!;
+          if (msg._id) {
+            late.message.id = `wh-${msg._id}`;
+            Object.assign(late.message, { platformMessageId: msg.platformMessageId });
+          } else late.message.id = msg.id!;
           await dispatchZernioEvent(ctx, late.id, late as never, transport);
         }
         current.state = db.tables.bot_users![0]!.state as Customer["state"];

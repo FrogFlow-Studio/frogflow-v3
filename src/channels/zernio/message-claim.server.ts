@@ -57,3 +57,24 @@ export async function claimZernioMessage(
   const owner = (data?.payload as { by?: unknown } | null)?.by;
   return owner === by ? "won" : "lost";
 }
+
+/**
+ * Метка на все ключи сообщения (zernioMessageKeys): id Meta и id Zernio.
+ * Любой ключ уже чужой — lost (другой путь взял сообщение по общему id);
+ * сбой базы на любом — unknown. Свои строки от прежнего прохода того же
+ * события проходят снова (claimZernioMessage).
+ */
+export async function claimZernioMessageKeys(
+  ctx: TenantContext,
+  keys: readonly string[],
+  by: string,
+  conversationId: string,
+): Promise<MessageClaim> {
+  let unknown = false;
+  for (const key of keys) {
+    const claim = await claimZernioMessage(ctx, key, by, conversationId);
+    if (claim === "lost") return "lost";
+    if (claim === "unknown") unknown = true;
+  }
+  return unknown ? "unknown" : "won";
+}
