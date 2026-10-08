@@ -86,6 +86,22 @@ export function seedMiniappPhoto(db: StubDb, now: string) {
       }),
     ),
   );
+  // Цифровой товар без материала на витрине не показывается: у обоих есть файл.
+  add(
+    db,
+    "product_material_files",
+    [F.MINIAPP_PRODUCT_ID, F.MINIAPP_PLAIN_ID].map((product_id, i) =>
+      own({
+        id: `e2e00000-0000-4000-8000-0000000ba2${String(i).padStart(2, "0")}`,
+        product_id,
+        language: "ru",
+        file_path: `${F.MINIAPP_SHOP_ID}/material-${i}.pdf`,
+        file_name: `material-${i}.pdf`,
+        sort_order: 0,
+        created_at: now,
+      }),
+    ),
+  );
   for (const key of [...photos, ...samples])
     db.storage.set(`product-images/${key}`, { body: PIXEL_PNG, type: "image/png" });
 }
