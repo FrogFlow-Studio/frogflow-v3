@@ -189,7 +189,10 @@ describe("прайс консультанта в админке", () => {
     const m = await addProductMedia(ctx, { key, match: "Uchino Zero Twist" });
     const broken = breakMediaReads(ctx);
     await expect(
-      addProductMedia(ctx, { key: `${ctx.tenant.id}/0123456789abcdef0123456b.jpg`, match: "Aquanova" }),
+      addProductMedia(ctx, {
+        key: `${ctx.tenant.id}/0123456789abcdef0123456b.jpg`,
+        match: "Aquanova",
+      }),
     ).rejects.toThrow();
     await expect(deleteProductMedia(ctx, m.id)).rejects.toThrow();
     await expect(pricelistOverview(ctx)).rejects.toThrow();

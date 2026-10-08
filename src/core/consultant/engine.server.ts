@@ -4,13 +4,7 @@ import { env } from "@/config/env";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Customer } from "@/core/customers/customers";
 import { updateStateSection } from "@/core/customers/customers";
-import {
-  commitTurn,
-  isStaleIncoming,
-  joinTurn,
-  releaseUnanswered,
-  type InboxItem,
-} from "./burst";
+import { commitTurn, isStaleIncoming, joinTurn, releaseUnanswered, type InboxItem } from "./burst";
 import { handoffSummary, sellerLocaleSafe } from "@/core/ai/seller-text";
 import { offerForProductRow } from "@/core/offers/offers";
 import { activePreorder, preordersFor } from "@/core/preorder/preorder";

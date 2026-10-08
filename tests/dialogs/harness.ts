@@ -64,6 +64,11 @@ export type Input =
   /** Поздний вебхук о последнем `missed` — то же сообщение Zernio, своё событие. */
   | { lateWebhook: true }
   /**
+   * Instagram/WhatsApp (только `full`): продавец ответил прямо в приложении,
+   * события об исходящем Zernio не прислал; через минуту крон опроса ящика.
+   */
+  | { appReply: string }
+  /**
    * Instagram/WhatsApp (только `full`): продавец ответил покупателю руками в
    * приложении — Zernio присылает исходящее сообщение (sentVia: null — человек).
    */
@@ -365,9 +370,31 @@ function directRoom(o: RoomOptions): Room {
         }
         return;
       }
-      if ("missed" in i || "lateWebhook" in i) {
-        if (!o.full) throw new Error("missed/lateWebhook — только в полном разборе (full)");
-        if ("missed" in i) {
+      if ("missed" in i || "lateWebhook" in i || "appReply" in i) {
+        if (!o.full)
+          throw new Error("missed/lateWebhook/appReply — только в полном разборе (full)");
+        const poll = async (updatedTime: string | undefined) => {
+          // Опрос видит только клиента v2 с подключённым аккаунтом.
+          const t = ctx.tenant;
+          t.settings = {
+            ...t.settings,
+            served_by: "v2",
+            zernio: { account_ids: ["acc-1"], accounts: [{ id: "acc-1", platform }] },
+          };
+          await pollTenantInbox(ctx, {
+            listConversations: async () => [{ id: "conv-1", participantId: "1", updatedTime }],
+            transport,
+            dispatch: dispatchZernioEvent,
+            consultantEnabled: async (c) =>
+              (await import("@/core/consultant/engine.server")).consultantEnabled(c),
+            page: 50,
+          });
+        };
+        if ("appReply" in i) {
+          const at = new Date().toISOString();
+          inbox.push({ direction: "outgoing", message: i.appReply, sentVia: null, createdAt: at });
+          await poll(at);
+        } else if ("missed" in i) {
           const n = inbox.length + 1;
           inbox.push({
             ...("mongoIds" in i
@@ -378,24 +405,7 @@ function directRoom(o: RoomOptions): Room {
             createdAt: new Date(Date.now() - 2 * 60_000).toISOString(),
             sender: { id: "1", name: "Анна" },
           });
-          // Опрос видит только клиента v2 с подключённым аккаунтом.
-          const t = ctx.tenant;
-          t.settings = {
-            ...t.settings,
-            served_by: "v2",
-            zernio: { account_ids: ["acc-1"], accounts: [{ id: "acc-1", platform }] },
-          };
-          const msg = inbox.at(-1)!;
-          await pollTenantInbox(ctx, {
-            listConversations: async () => [
-              { id: "conv-1", participantId: "1", updatedTime: msg.createdAt },
-            ],
-            transport,
-            dispatch: dispatchZernioEvent,
-            consultantEnabled: async (c) =>
-              (await import("@/core/consultant/engine.server")).consultantEnabled(c),
-            page: 50,
-          });
+          await poll(inbox.at(-1)!.createdAt);
         } else {
           const msg = inbox.at(-1);
           if (!msg) throw new Error("lateWebhook без missed");
@@ -518,7 +528,7 @@ function telegramRoom(o: RoomOptions): Room {
         for (const text of r.buyer) calls.push(["sendMessage", { chat_id: TG, text }]);
         return;
       }
-      if ("sellerWrites" in i || "missed" in i || "lateWebhook" in i)
+      if ("sellerWrites" in i || "missed" in i || "lateWebhook" in i || "appReply" in i)
         throw new Error("в Telegram такой реплики нет — только в Instagram/WhatsApp");
       const from = { id: TG, is_bot: false, first_name: "Анна" };
       if ("burst" in i) {

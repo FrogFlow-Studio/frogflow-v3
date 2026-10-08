@@ -1142,6 +1142,46 @@ export const SCENARIOS: Scenario[] = [
       },
     ],
   })),
+  ...(["instagram", "whatsapp"] as const).map((channel, i): Scenario => ({
+    id: `pricelist-task-closes-on-poll-${channel === "instagram" ? "ig-ru" : "wa-uz"}`,
+    title:
+      "менеджер ответил в приложении, события Zernio нет и покупатель молчит — задачу закрывает опрос ящика",
+    origin:
+      "BOVI 08.10, сверка v3 после #579 (R5): подсказка обещала закрытие после ответа в Instagram, а оно ждало следующего сообщения покупателя",
+    channel,
+    locale: i === 0 ? "ru" : "uz",
+    full: true,
+    vertical: "consultant",
+    modules: { shop: true },
+    pricelist: {
+      catalog: PL_CATALOG,
+      rounds: [
+        [
+          {
+            type: "tool_use",
+            id: "h1",
+            name: "handoff_to_manager",
+            input: { reason: "purchase", summary: "Берёт Uchino 50х100" },
+          },
+        ],
+      ],
+    },
+    steps: [
+      {
+        say: { text: "Беру полотенце Uchino, +77001112233" },
+        expect: { paused: true, tasks: [{ reason: "purchase", done: false }] },
+      },
+      {
+        // Эхо собственного ответа бота в ленте — не ответ менеджера.
+        say: { appReply: pricelistHandoffReply(i === 0 ? "ru" : "uz") },
+        expect: { silent: true, tasks: [{ done: false }] },
+      },
+      {
+        say: { appReply: "Здравствуйте! Оформлю заказ, пришлю реквизиты" },
+        expect: { silent: true, tasks: [{ done: true, doneVia: channel }] },
+      },
+    ],
+  })),
   // ───── «💬 Связаться с менеджером» в Telegram без «Поддержки» — как передача (партия 3.3) ─────
   ...(
     [

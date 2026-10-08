@@ -96,9 +96,7 @@ export function zernioMessageKeys(m: {
   _id?: string | null;
   platformMessageId?: string | null;
 }): string[] {
-  const keys = [m.platformMessageId, m.id, m._id]
-    .map((k) => (k ?? "").trim())
-    .filter(Boolean);
+  const keys = [m.platformMessageId, m.id, m._id].map((k) => (k ?? "").trim()).filter(Boolean);
   return [...new Set(keys)];
 }
 
@@ -115,4 +113,27 @@ export function pollEventId(botId: string, key: string): string {
 
 export function isPollEvent(eventId: string | null | undefined): boolean {
   return Boolean(eventId?.startsWith(POLL_EVENT_PREFIX));
+}
+
+/**
+ * Ответ человека (продавец в приложении Instagram/WhatsApp или в инбоксе
+ * Zernio) позже `since`: время последнего такого исходящего или null. Эхо
+ * наших ответов (бот, пересланное из Telegram) — не ответ человека.
+ */
+export function personReplyAfter(
+  messages: ZernioInboxMessage[],
+  since: string,
+  ourReplies: string[],
+  isPerson: (m: ZernioInboxMessage, ours: string[]) => boolean,
+): number | null {
+  const from = Date.parse(since);
+  if (!Number.isFinite(from)) return null;
+  let last: number | null = null;
+  for (const m of messages) {
+    const at = Date.parse(m.createdAt ?? "");
+    if (!Number.isFinite(at) || at <= from) continue;
+    if (!isPerson(m, ourReplies)) continue;
+    if (last === null || at > last) last = at;
+  }
+  return last;
 }

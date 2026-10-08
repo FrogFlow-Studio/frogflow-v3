@@ -9,7 +9,13 @@ import type { ZernioConversation, ZernioTransport } from "./api.server";
 import type { DispatchOutcome } from "./dispatch.server";
 import { keyRateLimitSec } from "./errors";
 import type { ZernioInboxMessage } from "./inbox-types";
-import { MAX_AGE_MS, missedIncoming, pollEventId, zernioMessageKeys } from "./inbox-poll";
+import {
+  MAX_AGE_MS,
+  missedIncoming,
+  personReplyAfter,
+  pollEventId,
+  zernioMessageKeys,
+} from "./inbox-poll";
 import type { ZernioWebhookMessagePayload } from "./message";
 import { isZernioPlatform, type ZernioPlatform } from "./platform";
 
@@ -63,6 +69,8 @@ export type InboxPollResult = {
   errors: string[];
   /** Zernio ответил 429: пробовать снова через столько секунд. */
   rateLimitedSec?: number;
+  /** Задач консультанта, закрытых ответом менеджера прямо в приложении. */
+  tasks_closed?: number;
 };
 
 export type InboxPollSkip = { skipped: string };
@@ -90,6 +98,45 @@ function memoryOf(c: Customer | undefined, now: number) {
     resumedAt: str(m.resumed_at),
     lastReplyAt: str(m.last_reply_at),
   };
+}
+
+/**
+ * Открытые задачи консультанта (core/consultant/tasks): покупатель → время
+ * самой старой открытой. Только консультанту по прайсу; сбой чтения — пусто
+ * (задачи закроются на следующем запуске или следующем сообщении).
+ */
+async function openTaskSince(ctx: TenantContext): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  const { pricelistMode } = await import("@/core/consultant/pricelist/mode");
+  if (!pricelistMode(ctx.tenant)) return out;
+  const { loadTasks } = await import("@/core/consultant/tasks");
+  const tasks = await loadTasks(ctx).catch((e: unknown) => {
+    console.warn(`[inbox-poll:${ctx.tenant.id}] задачи не прочитаны: ${String(e)}`);
+    return [];
+  });
+  for (const t of tasks) {
+    if (t.done) continue;
+    const prev = out.get(t.userKey);
+    if (!prev || t.at < prev) out.set(t.userKey, t.at);
+  }
+  return out;
+}
+
+/** Наши ответы в диалоге: бот, пересланное из Telegram — не ответ человека. */
+function ourReplies(c: Customer): string[] {
+  const s = c.state.consultant;
+  const m = (s && typeof s === "object" && !Array.isArray(s) ? s : {}) as {
+    recent?: Array<{ role: string; text: string }>;
+    relayed?: string[];
+  };
+  const direct = c.state.direct as { last_reply?: string } | undefined;
+  return [
+    ...(Array.isArray(m.recent) ? m.recent : [])
+      .filter((t) => t.role === "assistant")
+      .map((t) => t.text),
+    ...(Array.isArray(m.relayed) ? m.relayed : []),
+    ...(typeof direct?.last_reply === "string" ? [direct.last_reply] : []),
+  ];
 }
 
 /** Покупатель по id диалога — тот же, кого записал вебхук; не второй ключ по username. */
@@ -210,6 +257,9 @@ export async function pollTenantInbox(
     }
   };
 
+  const taskSince = await openTaskSince(ctx);
+  const { isPersonMessage } = await import("./manager-guard");
+
   try {
     for (const account of accounts) {
       if (Date.now() > deadline) {
@@ -232,6 +282,41 @@ export async function pollTenantInbox(
         ctx,
         fresh.map((c) => c.id),
       );
+      // Менеджер ответил покупателю прямо в приложении: Zernio такого события
+      // не шлёт, а следующего сообщения покупателя может не быть — задача
+      // консультанта закрывается здесь, по хвосту переписки.
+      const tails = new Map<string, ZernioInboxMessage[]>();
+      let taskChecks = 0;
+      for (const convo of fresh) {
+        const customer = customers.get(convo.id);
+        const since = customer && taskSince.get(customer.userKey);
+        if (!customer || !since) continue;
+        const updated = Date.parse(convo.updatedTime ?? "");
+        if (Number.isFinite(updated) && updated <= Date.parse(since)) continue;
+        if (taskChecks >= MAX_CONVERSATIONS || Date.now() > deadline) {
+          res.deferred++;
+          continue;
+        }
+        taskChecks++;
+        const messages = await guard(
+          () => deps.transport.tail(account.id, convo.id),
+          `переписка ${convo.id}`,
+        );
+        if (!messages) continue;
+        tails.set(convo.id, messages);
+        const at = personReplyAfter(messages, since, ourReplies(customer), isPersonMessage);
+        if (at === null) continue;
+        const { closeTaskAfterReply } = await import("@/core/consultant/tasks");
+        const closed = await closeTaskAfterReply(ctx, customer.userKey, new Date(now), {
+          via: account.platform,
+          repliedAt: new Date(at),
+        });
+        if (closed) {
+          res.tasks_closed = (res.tasks_closed ?? 0) + 1;
+          taskSince.delete(customer.userKey);
+        }
+      }
+
       // Не читать переписку там, где и так ясно: пауза или бот ответил позже обновления диалога.
       const toRead: ZernioConversation[] = [];
       for (const convo of fresh) {
@@ -250,10 +335,9 @@ export async function pollTenantInbox(
           res.deferred++;
           continue;
         }
-        const messages = await guard(
-          () => deps.transport.tail(account.id, convo.id),
-          `переписка ${convo.id}`,
-        );
+        const messages =
+          tails.get(convo.id) ??
+          (await guard(() => deps.transport.tail(account.id, convo.id), `переписка ${convo.id}`));
         if (!messages) continue;
         res.checked++;
         const customer = customers.get(convo.id);

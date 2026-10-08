@@ -351,6 +351,9 @@ describe("ключи метки «уже обработано»", () => {
 
   it("сообщение списка с Mongo _id получает id", async () => {
     const { normalizeInboxMessage } = await import("./inbox-types");
-    expect(normalizeInboxMessage({ _id: "z3", text: "hi" })).toMatchObject({ id: "z3", message: "hi" });
+    expect(normalizeInboxMessage({ _id: "z3", text: "hi" })).toMatchObject({
+      id: "z3",
+      message: "hi",
+    });
   });
 });
