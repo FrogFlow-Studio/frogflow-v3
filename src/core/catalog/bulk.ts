@@ -6,6 +6,7 @@ import type { Json } from "@/core/db-types";
 import { pageAll } from "@/core/db/page";
 import { recordStockChanges } from "./stock-history";
 import { toJson } from "@/core/json";
+import { TOPIC_LEN_MAX, cleanTopics, withTopic } from "./topics";
 
 /**
  * Массовые действия над выбранными товарами списка админки. Запись — по
@@ -15,6 +16,9 @@ import { toJson } from "@/core/json";
  * с условием «цена та же, что мы читали»: если её успели поменять, товар
  * пропускается с причиной, а не перезаписывается. Чтение — до любой записи,
  * ошибка чтения не меняет ничего.
+ *
+ * Тема (core/catalog/topics) живёт в конце keywords: запись с условием «ключевые
+ * слова те же, что мы читали», пока строка короткая для адреса запроса.
  *
  * Архива товара в схеме нет (она не меняется), поэтому «в архив» — это
  * «скрыть с витрины»: карточка, файлы и заказы остаются.
@@ -29,11 +33,21 @@ export type BulkAction =
   | { kind: "category"; categoryId: string | null; mode: "add" | "set" }
   | { kind: "price"; percent: number }
   /** Остаток (модуль «Склад»): задать число или прибавить к текущему. */
-  | { kind: "stock"; mode: "set" | "add"; amount: number };
+  | { kind: "stock"; mode: "set" | "add"; amount: number }
+  /** Тема для «Похожих» (Т5): добавить выбранным или убрать у них. */
+  | { kind: "topic"; topic: string; mode: "add" | "remove" };
 
 /** Причина, по которой товар пропущен (переводится в админке). */
 export type SkipReason =
-  "notFound" | "same" | "tooLow" | "changed" | "failed" | "digital" | "untracked" | "stockChanged";
+  | "notFound"
+  | "same"
+  | "tooLow"
+  | "changed"
+  | "failed"
+  | "digital"
+  | "untracked"
+  | "stockChanged"
+  | "keywordsChanged";
 
 export type BulkResult = {
   changed: string[];
@@ -51,6 +65,7 @@ type Row = {
   stock_quantity: number | null;
   category_ids: Json;
   country_prices: Json;
+  keywords: string | null;
 };
 
 /** Цена после ±%: до целого, как цены на витрине (core/pricing). */
@@ -86,7 +101,7 @@ async function readProducts(ctx: TenantContext, ids: string[]): Promise<Map<stri
       ctx.db
         .from("products")
         .select(
-          "id, name, price, is_active, fulfillment_kind, stock_quantity, category_ids, country_prices",
+          "id, name, price, is_active, fulfillment_kind, stock_quantity, category_ids, country_prices, keywords",
         )
         .in("id", chunk)
         .order("id"),
@@ -160,6 +175,13 @@ export async function bulkUpdateProducts(
       );
   }
   if (
+    action.kind === "topic" &&
+    (cleanTopics([action.topic]).length === 0 || action.topic.trim().length > TOPIC_LEN_MAX)
+  )
+    throw new UserError("err.catalog.bulkTopic", "Тема — от 1 до {max} символов.", {
+      max: TOPIC_LEN_MAX,
+    });
+  if (
     action.kind === "category" &&
     action.categoryId &&
     !(await categoryExists(ctx, action.categoryId))
@@ -204,6 +226,7 @@ async function applyOne(
   result: BulkResult,
 ): Promise<SkipReason | null> {
   if (action.kind === "stock") return applyStock(ctx, p, action, result);
+  if (action.kind === "topic") return applyTopic(ctx, p, action);
   if (action.kind === "active") {
     if (p.is_active === action.active) return "same";
     const { error } = await ctx.db
@@ -290,5 +313,32 @@ async function applyStock(
       console.error(`[bulk] отметка «заканчивается» не снята: ${String(e)}`),
     );
   }
+  return null;
+}
+
+/**
+ * Длиннее этого (в адресе запроса, после кодирования) условие на keywords не
+ * ставим: больше ~8 КБ в адресе дают 431. Форма товара пишет до 1000 символов
+ * (кириллица — до 6 КБ), так что условие есть почти всегда.
+ */
+const KEYWORDS_GUARD_MAX = 6000;
+
+/**
+ * Тема: только поле keywords и с условием «те же, что мы читали» — продавец мог
+ * поправить карточку, пока шёл выбор; тогда товар пропускается, а не затирается.
+ */
+async function applyTopic(
+  ctx: TenantContext,
+  p: Row,
+  action: Extract<BulkAction, { kind: "topic" }>,
+): Promise<SkipReason | null> {
+  const next = withTopic(p.keywords, action.topic, action.mode);
+  if (next === null) return "same";
+  const before = p.keywords ?? "";
+  let q = ctx.db.from("products").update({ keywords: next }).eq("id", p.id);
+  if (encodeURIComponent(before).length <= KEYWORDS_GUARD_MAX) q = q.eq("keywords", before);
+  const { data, error } = await q.select("id");
+  if (error) return "failed";
+  if (!data || data.length === 0) return "keywordsChanged";
   return null;
 }

@@ -343,3 +343,63 @@ describe("массовые действия: остаток", () => {
     expect(stockOf(db)).toEqual([null]);
   });
 });
+
+describe("массовые действия: тема для «Похожих»", () => {
+  const kw = (db: FakeDb) => db.tables.products!.map((p) => p.keywords);
+
+  it("добавить: тема дописывается к словам, у кого уже есть — «уже так», чужие поля на месте", async () => {
+    const { ctx, db } = setup(3, (i) => ({
+      keywords: ["пропись", "линейка #тема: 1 Сентября", ""][i],
+    }));
+    const r = await bulkUpdateProducts(ctx, [pid(1), pid(2), pid(3)], {
+      kind: "topic",
+      topic: "1 сентября",
+      mode: "add",
+    });
+    expect(r.changed).toEqual([pid(1), pid(3)]);
+    expect(r.skipped.map((x) => x.reason)).toEqual(["same"]);
+    expect(kw(db)).toEqual([
+      "пропись #тема: 1 сентября",
+      "линейка #тема: 1 Сентября",
+      "#тема: 1 сентября",
+    ]);
+    expect(db.tables.products![0]!.description).toBe("описание 1");
+  });
+
+  it("убрать: тема уходит, слова и другие темы остаются", async () => {
+    const { ctx, db } = setup(1, () => ({ keywords: "пропись #тема: 1 сентября, осень" }));
+    await bulkUpdateProducts(ctx, [pid(1)], { kind: "topic", topic: "1 сентября", mode: "remove" });
+    expect(kw(db)).toEqual(["пропись #тема: осень"]);
+  });
+
+  it("продавец поправил ключевые слова после чтения — товар не затёрт, причина «keywordsChanged»", async () => {
+    const { ctx, db } = setup(1, () => ({ keywords: "пропись" }));
+    const from = db.from.bind(db);
+    db.from = (table: string) => {
+      const q = from(table);
+      if (table !== "products") return q;
+      const update = q.update.bind(q);
+      q.update = ((patch: Record<string, unknown>) => {
+        if ("keywords" in patch) db.tables.products![0]!.keywords = "пропись, азбука";
+        return update(patch);
+      }) as typeof q.update;
+      return q;
+    };
+    const r = await bulkUpdateProducts(ctx, [pid(1)], {
+      kind: "topic",
+      topic: "1 сентября",
+      mode: "add",
+    });
+    expect(r.skipped.map((x) => x.reason)).toEqual(["keywordsChanged"]);
+    expect(kw(db)).toEqual(["пропись, азбука"]);
+  });
+
+  it("пустая или слишком длинная тема — отказ до записи", async () => {
+    const { ctx, db } = setup(1, () => ({ keywords: "пропись" }));
+    for (const topic of ["  ", "#", "я".repeat(61)])
+      await expect(
+        bulkUpdateProducts(ctx, [pid(1)], { kind: "topic", topic, mode: "add" }),
+      ).rejects.toMatchObject({ key: "err.catalog.bulkTopic" });
+    expect(kw(db)).toEqual(["пропись"]);
+  });
+});

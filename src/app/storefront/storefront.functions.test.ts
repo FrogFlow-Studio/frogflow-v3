@@ -134,7 +134,7 @@ function tenantWith(db: FakeDb, products: Row[] = []) {
   } as unknown as TenantContext;
 }
 
-function product(id: string, categoryIds: string[]): Row {
+function product(id: string, categoryIds: string[], extra: Row = {}): Row {
   return {
     id,
     name: `Материал ${id}`,
@@ -148,6 +148,9 @@ function product(id: string, categoryIds: string[]): Row {
     product_images: [],
     product_variants: [],
     product_material_files: [{ language: "ru", file_path: `${BOT}/${id}.pdf`, file_name: "a.pdf" }],
+    keywords: "",
+    created_at: "2026-01-01T00:00:00Z",
+    ...extra,
   };
 }
 
@@ -208,6 +211,62 @@ describe("storeProductFn: похожие товары", () => {
     tenantWith(db, [product(T, []), product("open", ["math"]), product("hidden", ["secret"])]);
     const r = await storeProductFn({ data: { slug: "shop", id: T } });
     expect(r.related.map((p) => p.id)).toEqual(["open"]);
+  });
+
+  it("тема важнее категории: материалы «1 сентября» из других разделов идут первыми", async () => {
+    const topic = (k: string) => ({ keywords: k });
+    expect(
+      await related(
+        [
+          product(T, ["math"], topic("пропись #тема: 1 сентября")),
+          product("cat-1", ["math"]),
+          product("cat-2", ["math"]),
+          product("topic-hist", ["history"], topic("линейка #тема: 1 Сентября")),
+          product("topic-none", [], topic("#тема: Части речи, 1 сентября")),
+          product("cat-3", ["math"]),
+        ],
+        T,
+      ),
+    ).toEqual(["topic-hist", "topic-none", "cat-1", "cat-2"]);
+  });
+
+  it("без темы — общие ключевые слова раньше категории, числа и коды не в счёт", async () => {
+    expect(
+      await related(
+        [
+          product(T, ["math"], { keywords: "дроби, 5-кл, кпп2024" }),
+          product("cat-1", ["math"]),
+          product("code-only", ["history"], { keywords: "5-кл кпп2024" }),
+          product("word", ["history"], { keywords: "Дроби" }),
+        ],
+        T,
+      ),
+    ).toEqual(["word", "cat-1"]);
+  });
+
+  it("среди одной темы — сначала с тем же языком материала, затем новые; скрытые не попадают", async () => {
+    const db = fakeDb();
+    db.tables.categories = [
+      { id: "math", name: "math", parent_id: null, is_visible: true, sort_order: 0 },
+      { id: "secret", name: "secret", parent_id: null, is_visible: false, sort_order: 0 },
+    ];
+    const kz = [{ language: "kk", file_path: `${BOT}/kz.pdf`, file_name: "a.pdf" }];
+    const k = "#тема: 1 сентября";
+    tenantWith(db, [
+      product(T, [], { keywords: k, product_material_files: kz }),
+      product("ru-new", [], { keywords: k, created_at: "2026-09-01T00:00:00Z" }),
+      product("kz-old", [], { keywords: k, product_material_files: kz }),
+      product("kz-new", [], {
+        keywords: k,
+        product_material_files: kz,
+        created_at: "2026-08-01T00:00:00Z",
+      }),
+      product("hidden", ["secret"], { keywords: k }),
+      product("off", [], { keywords: k, is_active: false }),
+    ]);
+    (ctx.tenant.modules as Record<string, boolean>).multi_language = true;
+    const r = await storeProductFn({ data: { slug: "shop", id: T } });
+    expect(r.related.map((p) => p.id)).toEqual(["kz-new", "kz-old", "ru-new"]);
   });
 });
 

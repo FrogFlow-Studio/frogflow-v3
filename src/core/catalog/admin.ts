@@ -18,6 +18,7 @@ import type { Locale } from "@/core/i18n/locale";
 import { pickerTerm } from "./picker";
 import { toJson } from "@/core/json";
 import { isCourseProduct } from "@/core/courses/marker";
+import { TOPIC_MARK } from "./topics";
 
 type ProductInsert = Database["public"]["Tables"]["products"]["Insert"];
 type CategoryRow = Database["public"]["Tables"]["categories"]["Row"];
@@ -139,6 +140,8 @@ export type ProductListOpts = {
   onlyInactive?: boolean;
   sort?: ProductSort;
   lang?: ProductLangFilter | null;
+  /** Только товары без темы для «Похожих» (core/catalog/topics) — что ещё не размечено. */
+  noTopic?: boolean;
   offset?: number;
 };
 
@@ -146,6 +149,7 @@ type Filterable<Q> = {
   or(filters: string): Q;
   contains(column: "category_ids", value: string): Q;
   eq(column: "is_active", value: boolean): Q;
+  not(column: "keywords", operator: "ilike", value: string): Q;
 };
 
 type Orderable<Q> = { order(column: string, o?: { ascending?: boolean }): Q };
@@ -162,6 +166,7 @@ function productFilter(opts: ProductListOpts) {
     if (term) r = r.or(`name.ilike.%${term}%,keywords.ilike.%${term}%`);
     if (opts.categoryId) r = r.contains("category_ids", JSON.stringify([opts.categoryId]));
     if (opts.onlyInactive) r = r.eq("is_active", false);
+    if (opts.noTopic) r = r.not("keywords", "ilike", `%${TOPIC_MARK}%`);
     return r;
   };
 }

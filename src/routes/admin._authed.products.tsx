@@ -28,6 +28,7 @@ import type { BulkAction } from "@/core/catalog/bulk";
 import { runBulkInBatches, type BulkRun } from "@/core/catalog/bulk-batches";
 import { STALE_OFFER_MAX } from "@/core/stock/stale-const";
 import type { Locale } from "@/core/i18n/locale";
+import { TopicBulk } from "@/app/admin/topic-field";
 
 const SORTS = ["catalog", "new", "old", "name", "price"] as const;
 type Sort = (typeof SORTS)[number];
@@ -47,6 +48,7 @@ function listQuery(s: {
   inactive?: boolean;
   sort?: Sort;
   lang?: string;
+  notopic?: boolean;
 }) {
   return {
     q: s.q,
@@ -54,6 +56,7 @@ function listQuery(s: {
     onlyInactive: s.inactive,
     sort: s.sort,
     lang: langFilter(s.lang),
+    noTopic: s.notopic,
   };
 }
 
@@ -64,6 +67,7 @@ export const Route = createFileRoute("/admin/_authed/products")({
     inactive: z.boolean().optional(),
     sort: z.enum(SORTS).optional(),
     lang: z.string().optional(),
+    notopic: z.boolean().optional(),
   }),
   loaderDeps: ({ search }) => search,
   loader: ({ deps }) => productsFn({ data: listQuery(deps) }),
@@ -169,7 +173,7 @@ function ProductsPage() {
     });
   // Порядок перетаскиванием — когда виден весь каталог без фильтров: иначе
   // перенумерованная часть перемешалась бы с невидимыми товарами.
-  const filtered = Boolean(s.q || s.category || s.inactive || lf);
+  const filtered = Boolean(s.q || s.category || s.inactive || s.notopic || lf);
   const canReorder = canEdit(shop.role) && !filtered && sort === "catalog" && !hasMore;
   const [drag, setDrag] = useState<string | null>(null);
   const reorder = useAction(async (fromId: string, toId: string) => {
@@ -288,6 +292,19 @@ function ProductsPage() {
             </option>,
           ])}
         </select>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={Boolean(s.notopic)}
+            onChange={(e) =>
+              void navigate({
+                to: "/admin/products",
+                search: { ...s, notopic: e.target.checked || undefined },
+              })
+            }
+          />{" "}
+          {t("products.noTopic")}
+        </label>
         <button className="btn-secondary">{t("common.search")}</button>
       </form>
       {canEdit(shop.role) && !canReorder && !hasMore && products.length > 1 && (
@@ -371,6 +388,7 @@ function ProductsPage() {
                 })
               }
               categories={categories}
+              topics={first.topics}
               stockOn={Boolean(shop.modules.stock)}
               busy={bulk.busy}
               onClear={() => setPicked(new Set())}
@@ -546,6 +564,7 @@ function BulkBar({
   onPickAll,
   onOffer,
   categories,
+  topics,
   stockOn,
   busy,
   onClear,
@@ -558,6 +577,7 @@ function BulkBar({
   onPickAll: () => void;
   onOffer: () => void;
   categories: Array<{ id: string; name: string }>;
+  topics: readonly string[];
   stockOn: boolean;
   busy: boolean;
   onClear: () => void;
@@ -693,6 +713,7 @@ function BulkBar({
           </button>
         </>
       )}
+      <TopicBulk t={t} existing={topics} busy={busy} onRun={onRun} />
     </div>
   );
 }

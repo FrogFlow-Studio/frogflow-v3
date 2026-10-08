@@ -903,6 +903,7 @@ export const productsFn = createServerFn({ method: "GET" })
         onlyInactive: z.boolean().optional(),
         sort: productSort,
         lang: productLang,
+        noTopic: z.boolean().optional(),
         offset: z.number().int().min(0).max(1_000_000).optional(),
       })
       .parse(d ?? {}),
@@ -930,8 +931,19 @@ export const productsFn = createServerFn({ method: "GET" })
       !data.q &&
       !data.categoryId &&
       !data.onlyInactive &&
-      !data.lang;
-    return { products, total: page.total, hasMore: page.hasMore, categories, kindTemplate };
+      !data.lang &&
+      !data.noTopic;
+    // Темы магазина — подсказки для массового назначения темы (core/catalog/topics).
+    const { listShopTopics } = await import("@/core/catalog/topics.server");
+    const topics = data.offset ? [] : await listShopTopics(ctx);
+    return {
+      products,
+      total: page.total,
+      hasMore: page.hasMore,
+      categories,
+      kindTemplate,
+      topics,
+    };
   });
 
 /**
@@ -984,9 +996,12 @@ export const productFn = createServerFn({ method: "GET" })
     const preorderPast = preorder
       ? (await import("@/core/preorder/preorder")).preorderDatePast(preorder, ctx.timezone)
       : false;
+    const { listShopTopics } = await import("@/core/catalog/topics.server");
     return {
       preorderPast,
       product,
+      /** Подсказки для поля «Тема»: темы, уже заведённые в магазине. */
+      topics: await listShopTopics(ctx),
       waiting,
       waitlistRun,
       lowStock: low,
@@ -1015,6 +1030,8 @@ const productInput = z.object({
   name: z.string().min(1).max(200),
   description: z.string().max(4000).default(""),
   keywords: z.string().max(1000).default(""),
+  /** Темы для «Похожих» (core/catalog/topics); не передали — ключевые слова пишутся как есть. */
+  topics: z.array(z.string().max(200)).max(20).optional(),
   price: z.number().min(0),
   currency: z.string().length(3),
   countryPrices: z.record(z.string(), z.number().positive()).default({}),
@@ -1108,8 +1125,12 @@ export const saveProductFn = createServerFn({ method: "POST" })
       lowStockAt,
       preorderOn,
       preorderFrom,
-      ...fields
+      topics,
+      ...rest
     } = data.product;
+    // Тема хранится в конце ключевых слов служебной частью «#тема: …».
+    const { joinKeywords } = await import("@/core/catalog/topics");
+    const fields = topics ? { ...rest, keywords: joinKeywords(rest.keywords, topics) } : rest;
     // Курс продаётся, когда у него появятся уроки: без них товар не попадёт
     // на витрину (core/courses/course.server syncCourseMarker).
     const course = isCourse && ctx.tenant.modules.courses;
@@ -1224,6 +1245,7 @@ export const productIdsFn = createServerFn({ method: "GET" })
         onlyInactive: z.boolean().optional(),
         sort: productSort,
         lang: productLang,
+        noTopic: z.boolean().optional(),
       })
       .parse(d ?? {}),
   )
@@ -1251,6 +1273,11 @@ export const bulkProductsFn = createServerFn({ method: "POST" })
             kind: z.literal("stock"),
             mode: z.enum(["set", "add"]),
             amount: z.number().int().min(0).max(1_000_000),
+          }),
+          z.object({
+            kind: z.literal("topic"),
+            topic: z.string().max(200),
+            mode: z.enum(["add", "remove"]),
           }),
         ]),
       })
