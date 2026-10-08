@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useRouteContext, useRouter } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import {
   automationLogsFn,
   catchupPrivateFn,
@@ -14,12 +14,16 @@ import {
 } from "@/app/admin/instagram.functions";
 import { adminT, intlLocale, type AdminKey, type AdminT } from "@/app/i18n/admin";
 import { ProductSearch } from "@/app/admin/product-picker";
-import { Badge, Card, Empty, ErrorBox, Field, PageTitle, Switch, useAction } from "@/app/ui";
 import {
-  DEFAULT_REPLY_PROMPT,
-  DM_LIMIT_PLAIN,
-  withReplyPrompt,
-} from "@/core/instagram/comment-rules";
+  copyRuleFormValues,
+  RULE_NAME_MAX,
+  ruleFormDirty,
+  ruleFormValues,
+  type RuleFormValues,
+  type RuleTarget,
+} from "@/app/admin/instagram-rule-form";
+import { Badge, Card, Empty, ErrorBox, Field, PageTitle, Switch, useAction } from "@/app/ui";
+import { DM_LIMIT_PLAIN, withReplyPrompt } from "@/core/instagram/comment-rules";
 
 export const Route = createFileRoute("/admin/_authed/instagram")({
   loader: () => instagramFn(),
@@ -55,10 +59,65 @@ function useAdminI18n() {
   return { t: adminT(shop.locale), intl: intlLocale(shop.locale) };
 }
 
+/** Что открыто в форме правила: новое, правка или копия существующего. */
+type EditTarget =
+  { kind: "new" } | { kind: "edit"; rule: Automation } | { kind: "copy"; rule: Automation };
+type Editing = EditTarget & { key: number };
+
+/** Якорь правила в списке — для прокрутки к нему после сохранения. */
+const ruleAnchor = (id: string) => `ig-rule-${id}`;
+
+/** Плавная прокрутка, если пользователь не просил убрать анимацию. */
+function scrollToEl(el: Element | null, block: ScrollLogicalPosition) {
+  if (!el) return;
+  const reduce =
+    typeof window !== "undefined" &&
+    window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  el.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block });
+}
+
 function InstagramPage() {
   const data = Route.useLoaderData();
   const { t } = useAdminI18n();
-  const [editing, setEditing] = useState<Automation | null | "new">(null);
+  const [editing, setEditing] = useState<Editing | null>(null);
+  // Несохранённые изменения в открытой форме: RuleForm обновляет при каждой отрисовке.
+  const dirty = useRef(false);
+  const formRef = useRef<HTMLDivElement>(null);
+  const seq = useRef(0);
+  const [highlight, setHighlight] = useState<string | null>(null);
+  const editingKey = editing?.key;
+
+  // Форма открывается над списком правил — прокручиваем к ней (и на ПК, и на телефоне).
+  useEffect(() => {
+    if (editingKey !== undefined) scrollToEl(formRef.current, "start");
+  }, [editingKey]);
+
+  // После «Сохранить» — к сохранённому правилу в списке и короткая подсветка.
+  useEffect(() => {
+    if (!highlight) return;
+    scrollToEl(document.getElementById(ruleAnchor(highlight)), "center");
+    const timer = setTimeout(() => setHighlight(null), 2500);
+    return () => clearTimeout(timer);
+  }, [highlight]);
+
+  /** Отбросить несохранённое в открытой форме — только с согласия продавца. */
+  const mayDiscard = () => !dirty.current || confirm(t("instagram.form.discardConfirm"));
+  const open = (next: EditTarget) => {
+    if (editing?.kind === "edit" && next.kind === "edit" && next.rule.id === editing.rule.id) {
+      // То же правило уже открыто — только вернуть форму в поле зрения.
+      scrollToEl(formRef.current, "start");
+      return;
+    }
+    if (editing && !mayDiscard()) return;
+    dirty.current = false;
+    setEditing({ ...next, key: ++seq.current });
+  };
+  const close = () => {
+    if (!mayDiscard()) return;
+    dirty.current = false;
+    setEditing(null);
+  };
+
   if (!data.configured)
     return (
       <>
@@ -87,14 +146,29 @@ function InstagramPage() {
       <PageTitle title="Instagram" subtitle={t("instagram.subtitle")} />
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <div className="space-y-4">
-          <RulesCard data={data} onEdit={setEditing} />
           {editing !== null && (
-            <RuleForm
-              data={data}
-              initial={editing === "new" ? null : editing}
-              onClose={() => setEditing(null)}
-            />
+            <div ref={formRef} className="scroll-mt-4">
+              <RuleForm
+                key={editing.key}
+                data={data}
+                editing={editing}
+                dirtyRef={dirty}
+                onClose={close}
+                onSaved={(id) => {
+                  dirty.current = false;
+                  setEditing(null);
+                  setHighlight(id);
+                }}
+              />
+            </div>
           )}
+          <RulesCard
+            data={data}
+            highlight={highlight}
+            onNew={() => open({ kind: "new" })}
+            onEdit={(rule) => open({ kind: "edit", rule })}
+            onCopy={(rule) => open({ kind: "copy", rule })}
+          />
         </div>
         <div className="space-y-4">
           <CatchupCard data={data} />
@@ -113,7 +187,20 @@ function targetLabel(t: AdminT, a: Automation): string {
     : t("instagram.target.postId", { id: a.platformPostId });
 }
 
-function RulesCard({ data, onEdit }: { data: Data; onEdit: (a: Automation | "new") => void }) {
+function RulesCard({
+  data,
+  highlight,
+  onNew,
+  onEdit,
+  onCopy,
+}: {
+  data: Data;
+  /** Только что сохранённое правило — подсвечивается на пару секунд. */
+  highlight: string | null;
+  onNew: () => void;
+  onEdit: (a: Automation) => void;
+  onCopy: (a: Automation) => void;
+}) {
   const router = useRouter();
   const { t } = useAdminI18n();
   const toggle = useAction(async (a: Automation) => {
@@ -129,7 +216,7 @@ function RulesCard({ data, onEdit }: { data: Data; onEdit: (a: Automation | "new
     <Card
       title={t("instagram.rules.title")}
       actions={
-        <button className="btn-primary text-xs" onClick={() => onEdit("new")}>
+        <button className="btn-primary text-xs" onClick={onNew}>
           {t("instagram.rules.new")}
         </button>
       }
@@ -143,7 +230,14 @@ function RulesCard({ data, onEdit }: { data: Data; onEdit: (a: Automation | "new
       ) : (
         <ul className="divide-y divide-line">
           {data.automations.map((a) => (
-            <li key={a.id} className="py-3">
+            <li
+              key={a.id}
+              id={ruleAnchor(a.id)}
+              data-highlighted={highlight === a.id ? "true" : undefined}
+              className={`-mx-2 scroll-mt-4 rounded-md px-2 py-3 transition-colors duration-700 ${
+                highlight === a.id ? "bg-accent/10" : ""
+              }`}
+            >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
@@ -188,6 +282,9 @@ function RulesCard({ data, onEdit }: { data: Data; onEdit: (a: Automation | "new
                   />
                   <button className="btn-ghost text-xs" onClick={() => onEdit(a)}>
                     {t("common.edit")}
+                  </button>
+                  <button className="btn-ghost text-xs" onClick={() => onCopy(a)}>
+                    {t("instagram.rules.copy")}
                   </button>
                   <button
                     className="btn-ghost text-xs text-danger"
@@ -511,44 +608,63 @@ function ButtonsEditor({
 
 function RuleForm({
   data,
-  initial,
+  editing,
+  dirtyRef,
   onClose,
+  onSaved,
 }: {
   data: Data;
-  initial: Automation | null;
+  editing: Editing;
+  /** Сюда форма пишет, есть ли несохранённые изменения (спросить перед заменой). */
+  dirtyRef: RefObject<boolean>;
   onClose: () => void;
+  onSaved: (id: string) => void;
 }) {
   const router = useRouter();
   const { t } = useAdminI18n();
-  const [accountId, setAccountId] = useState(initial?.accountId ?? data.accounts[0]!.id);
-  const [name, setName] = useState(initial?.name ?? "");
-  const [trigger, setTrigger] = useState<"comment" | "story_reply">(initial?.trigger ?? "comment");
-  const [target, setTarget] = useState(
-    initial?.platformPostId
-      ? {
-          platformPostId: initial.platformPostId,
-          postId: initial.postId ?? "",
-          title: initial.postTitle,
-        }
-      : null,
+  // Правка существующего правила; у копии и нового правила id нет — сохраняются созданием.
+  const initial = editing.kind === "edit" ? editing.rule : null;
+  const [init] = useState<RuleFormValues>(() =>
+    editing.kind === "copy"
+      ? copyRuleFormValues(editing.rule, (name) => t("instagram.form.copyName", { name }))
+      : ruleFormValues(initial, data.accounts[0]!.id),
   );
-  const [keywords, setKeywords] = useState(initial?.keywords.join(", ") ?? "");
-  const [replyToAll, setReplyToAll] = useState(Boolean(initial && initial.keywords.length === 0));
-  const [matchMode, setMatchMode] = useState<"exact" | "contains">(
-    initial?.matchMode ?? "contains",
-  );
-  const [dmMessage, setDmMessage] = useState(initial?.dmMessage ?? "");
-  const [buttons, setButtons] = useState<Button[]>(initial?.buttons ?? []);
+  const [accountId, setAccountId] = useState(init.accountId);
+  const [name, setName] = useState(init.name);
+  const [trigger, setTrigger] = useState<"comment" | "story_reply">(init.trigger);
+  const [target, setTarget] = useState<RuleTarget | null>(init.target);
+  const [keywords, setKeywords] = useState(init.keywords);
+  const [replyToAll, setReplyToAll] = useState(init.replyToAll);
+  const [matchMode, setMatchMode] = useState<"exact" | "contains">(init.matchMode);
+  const [dmMessage, setDmMessage] = useState(init.dmMessage);
+  const [buttons, setButtons] = useState<Button[]>(init.buttons);
   // Публичный ответ: основной и варианты — Zernio чередует их, чтобы одинаковые
   // ответы под постом не выглядели как спам.
-  const [commentReplies, setCommentReplies] = useState<string[]>(() => {
-    const all = [initial?.commentReply ?? "", ...(initial?.commentReplyVariations ?? [])];
-    return all.filter((r, i) => i === 0 || r.trim());
+  const [commentReplies, setCommentReplies] = useState<string[]>(init.commentReplies);
+  const [twoStepDm, setTwoStepDm] = useState(init.twoStepDm);
+  const [secondDmMessage, setSecondDmMessage] = useState(init.secondDmMessage);
+  const [unresolvedPrompt, setUnresolvedPrompt] = useState(init.unresolvedPrompt);
+  const [replyPrompt, setReplyPrompt] = useState(init.replyPrompt);
+  // Порядок полей — как в ruleFormValues: сравнение идёт по JSON.
+  const current: RuleFormValues = {
+    accountId,
+    name,
+    trigger,
+    target,
+    keywords,
+    replyToAll,
+    matchMode,
+    dmMessage,
+    buttons,
+    commentReplies,
+    twoStepDm,
+    secondDmMessage,
+    unresolvedPrompt,
+    replyPrompt,
+  };
+  useEffect(() => {
+    dirtyRef.current = ruleFormDirty(current, init);
   });
-  const [twoStepDm, setTwoStepDm] = useState(initial?.twoStepDm ?? false);
-  const [secondDmMessage, setSecondDmMessage] = useState(initial?.secondDmMessage ?? "");
-  const [unresolvedPrompt, setUnresolvedPrompt] = useState(initial?.unresolvedPrompt ?? "");
-  const [replyPrompt, setReplyPrompt] = useState(initial?.replyPrompt ?? DEFAULT_REPLY_PROMPT);
 
   // Кнопки всегда уходят вторым сообщением (первое — private-reply без кнопок),
   // поэтому с кнопками два шага включены всегда.
@@ -557,7 +673,7 @@ function RuleForm({
   // Предел — у первого сообщения целиком, вместе с призывом ответить.
   const firstLength = (twoStepOn ? withReplyPrompt(dmMessage, replyPrompt) : dmMessage).length;
   const save = useAction(async () => {
-    await saveAutomationFn({
+    const saved = await saveAutomationFn({
       data: {
         id: initial?.id,
         original: initial
@@ -592,12 +708,18 @@ function RuleForm({
       },
     });
     await router.invalidate();
-    onClose();
+    onSaved(saved.id);
   });
 
   return (
     <Card
-      title={initial ? t("instagram.form.editTitle") : t("instagram.form.newTitle")}
+      title={
+        initial
+          ? t("instagram.form.editTitle")
+          : editing.kind === "copy"
+            ? t("instagram.form.copyTitle")
+            : t("instagram.form.newTitle")
+      }
       actions={
         <button className="btn-ghost text-xs" onClick={onClose}>
           {t("common.close")}
@@ -611,12 +733,17 @@ function RuleForm({
           void save.run().catch(() => {});
         }}
       >
+        {editing.kind === "copy" && (
+          <p className="text-sm text-muted">
+            {t("instagram.form.copyHint", { name: editing.rule.name })}
+          </p>
+        )}
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label={t("instagram.form.name")}>
             <input
               className="input"
               value={name}
-              maxLength={120}
+              maxLength={RULE_NAME_MAX}
               required
               onChange={(e) => setName(e.target.value)}
               placeholder={t("instagram.form.namePlaceholder")}

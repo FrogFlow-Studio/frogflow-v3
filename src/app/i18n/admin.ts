@@ -28,6 +28,7 @@ import * as outbox from "./admin/outbox";
 import * as crmLog from "./admin/crm-log";
 import * as apiUse from "./admin/api-use";
 import * as freeDelivery from "./admin/free-delivery";
+import * as productList from "./admin/product-list";
 import * as audit from "./admin/audit";
 import * as posts from "./admin/posts";
 import * as quiz from "./admin/quiz";
@@ -378,7 +379,7 @@ const baseRu = {
   "products.count": "{n} позиций",
   "products.importExport": "Импорт / экспорт",
   "products.new": "+ Товар",
-  "products.searchPlaceholder": "Поиск по названию",
+  "products.searchPlaceholder": "Название или ключевые слова",
   "products.allCategories": "Все категории",
   "products.onlyHidden": "только скрытые",
   "products.empty": "Товаров нет.",
@@ -489,6 +490,7 @@ const ru = {
   ...crmLog.ru,
   ...apiUse.ru,
   ...freeDelivery.ru,
+  ...productList.ru,
   ...audit.ru,
   ...posts.ru,
   ...quiz.ru,
@@ -837,7 +839,7 @@ const baseKk: Dict = {
   "products.count": "{n} позиция",
   "products.importExport": "Импорт / экспорт",
   "products.new": "+ Тауар",
-  "products.searchPlaceholder": "Атауы бойынша іздеу",
+  "products.searchPlaceholder": "Атауы немесе кілт сөздер",
   "products.allCategories": "Барлық санаттар",
   "products.onlyHidden": "тек жасырындар",
   "products.empty": "Тауарлар жоқ.",
@@ -1195,7 +1197,7 @@ const baseEn: Dict = {
   "products.count": "{n} items",
   "products.importExport": "Import / export",
   "products.new": "+ Product",
-  "products.searchPlaceholder": "Search by name",
+  "products.searchPlaceholder": "Name or keywords",
   "products.allCategories": "All categories",
   "products.onlyHidden": "hidden only",
   "products.empty": "No products.",
@@ -1559,7 +1561,7 @@ const baseUz: Dict = {
   "products.count": "{n} ta pozitsiya",
   "products.importExport": "Import / eksport",
   "products.new": "+ Mahsulot",
-  "products.searchPlaceholder": "Nomi bo‘yicha qidirish",
+  "products.searchPlaceholder": "Nomi yoki kalit so‘zlar",
   "products.allCategories": "Barcha kategoriyalar",
   "products.onlyHidden": "faqat yashirinlar",
   "products.empty": "Mahsulotlar yo‘q.",
@@ -1667,6 +1669,7 @@ const kk: Dict = {
   ...crmLog.kk,
   ...apiUse.kk,
   ...freeDelivery.kk,
+  ...productList.kk,
   ...audit.kk,
   ...posts.kk,
   ...quiz.kk,
@@ -1761,6 +1764,7 @@ const en: Dict = {
   ...crmLog.en,
   ...apiUse.en,
   ...freeDelivery.en,
+  ...productList.en,
   ...audit.en,
   ...posts.en,
   ...quiz.en,
@@ -1855,6 +1859,7 @@ const uz: Dict = {
   ...crmLog.uz,
   ...apiUse.uz,
   ...freeDelivery.uz,
+  ...productList.uz,
   ...audit.uz,
   ...posts.uz,
   ...quiz.uz,

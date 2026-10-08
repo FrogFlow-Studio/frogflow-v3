@@ -887,6 +887,13 @@ export const deleteCategoryFn = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+/** Порядок и фильтр «Язык материалов» списка товаров (core/catalog/admin). */
+const productSort = z.enum(["catalog", "new", "old", "name", "price"]).optional();
+const productLang = z
+  .object({ lang: z.enum(["ru", "kk", "en", "uz"]), has: z.boolean() })
+  .nullable()
+  .optional();
+
 export const productsFn = createServerFn({ method: "GET" })
   .validator((d: unknown) =>
     z
@@ -894,6 +901,8 @@ export const productsFn = createServerFn({ method: "GET" })
         q: z.string().optional(),
         categoryId: uuid.nullable().optional(),
         onlyInactive: z.boolean().optional(),
+        sort: productSort,
+        lang: productLang,
         offset: z.number().int().min(0).max(1_000_000).optional(),
       })
       .parse(d ?? {}),
@@ -920,7 +929,8 @@ export const productsFn = createServerFn({ method: "GET" })
       categories.length === 0 &&
       !data.q &&
       !data.categoryId &&
-      !data.onlyInactive;
+      !data.onlyInactive &&
+      !data.lang;
     return { products, total: page.total, hasMore: page.hasMore, categories, kindTemplate };
   });
 
@@ -1212,6 +1222,8 @@ export const productIdsFn = createServerFn({ method: "GET" })
         q: z.string().optional(),
         categoryId: uuid.nullable().optional(),
         onlyInactive: z.boolean().optional(),
+        sort: productSort,
+        lang: productLang,
       })
       .parse(d ?? {}),
   )

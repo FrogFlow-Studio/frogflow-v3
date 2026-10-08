@@ -7,7 +7,14 @@ import type { Database, Json } from "@/core/db-types";
 import { serviceDb } from "@/core/db/client.server";
 import { isAdminInputStorageKey, isTenantStorageKey } from "@/core/storage/keys";
 import { PRODUCT_SELECT, type Product } from "./catalog";
-import { materialCount } from "./materials";
+import {
+  MATERIAL_COLUMNS,
+  MATERIAL_LANGUAGES,
+  materialCount,
+  materialsForProduct,
+  type ProductWithFiles,
+} from "./materials";
+import type { Locale } from "@/core/i18n/locale";
 import { pickerTerm } from "./picker";
 import { toJson } from "@/core/json";
 import { isCourseProduct } from "@/core/courses/marker";
@@ -107,6 +114,8 @@ export type ProductListRow = {
   created_at: string;
   images: number;
   files: number;
+  /** Языки, на которых у товара есть файлы (как при выдаче, со старыми полями v1). */
+  langs: Locale[];
   variants: number;
   cover: string | null;
   /** Для «Готовности» в списке: текст описания не отдаём, только есть он или нет. */
@@ -117,29 +126,102 @@ export type ProductListRow = {
 /** Строк на странице списка товаров; следующая — кнопкой «Показать ещё». */
 export const PRODUCT_PAGE = 100;
 
+/** Порядок списка товаров в админке. «catalog» — как в каталоге (перетаскиванием). */
+export const PRODUCT_SORTS = ["catalog", "new", "old", "name", "price"] as const;
+export type ProductSort = (typeof PRODUCT_SORTS)[number];
+
+/** Фильтр «Язык материалов»: есть / нет файлов на этом языке. */
+export type ProductLangFilter = { lang: Locale; has: boolean };
+
 export type ProductListOpts = {
   q?: string;
   categoryId?: string | null;
   onlyInactive?: boolean;
+  sort?: ProductSort;
+  lang?: ProductLangFilter | null;
   offset?: number;
 };
 
 type Filterable<Q> = {
-  ilike(column: "name", pattern: string): Q;
+  or(filters: string): Q;
   contains(column: "category_ids", value: string): Q;
   eq(column: "is_active", value: boolean): Q;
 };
 
-/** Фильтр списка товаров (поиск, категория, «только скрытые») — один для страницы и для «выбрать все по фильтру». */
+type Orderable<Q> = { order(column: string, o?: { ascending?: boolean }): Q };
+
+/**
+ * Фильтр списка товаров (поиск, категория, «только скрытые») — один для
+ * страницы и для «выбрать все по фильтру». Поиск — по названию и ключевым
+ * словам: код материала продавцы часто пишут в ключевые слова.
+ */
 function productFilter(opts: ProductListOpts) {
   return <Q extends Filterable<Q>>(q: Q): Q => {
     let r = q;
     const term = pickerTerm(opts.q ?? "");
-    if (term) r = r.ilike("name", `%${term}%`);
+    if (term) r = r.or(`name.ilike.%${term}%,keywords.ilike.%${term}%`);
     if (opts.categoryId) r = r.contains("category_ids", JSON.stringify([opts.categoryId]));
     if (opts.onlyInactive) r = r.eq("is_active", false);
     return r;
   };
+}
+
+/** Порядок списка; в хвосте всегда id — иначе равные строки переезжают между страницами. */
+function productOrder(sort: ProductSort | undefined) {
+  return <Q extends Orderable<Q>>(q: Q): Q => {
+    switch (sort) {
+      case "new":
+        return q.order("created_at", { ascending: false }).order("id", { ascending: false });
+      case "old":
+        return q.order("created_at").order("id");
+      case "name":
+        return q.order("name").order("id");
+      case "price":
+        return q.order("price").order("name").order("id");
+      default:
+        return q.order("sort_order").order("name").order("id");
+    }
+  };
+}
+
+/**
+ * Подходит ли товар под фильтр «Язык материалов». Файлы считаются так же,
+ * как при выдаче (`materialsForProduct`): товар v1 с казахским файлом в
+ * старом поле file_path_kz — «есть на KZ». «Нет на языке» — список того, что
+ * надо перевести, поэтому физические товары и курсы (им нечего переводить
+ * файлом) в него не попадают.
+ */
+export function matchesLangFilter(p: ProductWithFiles, f: ProductLangFilter): boolean {
+  const has = materialsForProduct(p, f.lang).length > 0;
+  if (f.has) return has;
+  if (p.fulfillment_kind === "physical" || isCourseProduct(p)) return false;
+  return !has;
+}
+
+/**
+ * id товаров под фильтром языка в порядке списка. Язык считается по файлам
+ * (новая таблица и старые поля v1), в запросе это не выразить — читаем весь
+ * отфильтрованный каталог постранично (без обрезки) и отбираем здесь.
+ */
+async function idsByLang(
+  ctx: TenantContext,
+  opts: Omit<ProductListOpts, "offset">,
+  f: ProductLangFilter,
+): Promise<string[]> {
+  const filtered = productFilter(opts);
+  const ordered = productOrder(opts.sort);
+  const rows = await pageAll(
+    (from, to) =>
+      ordered(
+        filtered(
+          ctx.db
+            .from("products")
+            .select(`id, name, price, sort_order, created_at, ${MATERIAL_COLUMNS}`),
+        ),
+      ).range(from, to),
+    "Товары по языку",
+  );
+  return rows.filter((p) => matchesLangFilter(p as ProductWithFiles, f)).map((p) => p.id);
 }
 
 /** Все id товаров по фильтру списка, постранично и без обрезки (порядок — по id). */
@@ -147,6 +229,7 @@ export async function listProductIdsForAdmin(
   ctx: TenantContext,
   opts: Omit<ProductListOpts, "offset"> = {},
 ): Promise<string[]> {
+  if (opts.lang) return (await idsByLang(ctx, opts, opts.lang)).sort();
   const filtered = productFilter(opts);
   const rows = await pageAll(
     (from, to) => filtered(ctx.db.from("products").select("id")).order("id").range(from, to),
@@ -155,10 +238,14 @@ export async function listProductIdsForAdmin(
   return rows.map((r) => r.id);
 }
 
+const LIST_SELECT =
+  "id, name, description, price, currency, is_active, sort_order, fulfillment_kind, stock_quantity, category_ids, created_at, file_path, file_url, file_path_kz, file_url_kz, product_images(image_path, sort_order), product_material_files(language, file_path), product_variants(id)";
+
 /**
- * Страница списка товаров. Порядок — sort_order, название и в конце id:
+ * Страница списка товаров. Порядок — выбранный (`sort`), в конце всегда id:
  * без уникального ключа в хвосте товары с одинаковыми позицией и
  * названием могли переезжать между страницами (повтор или пропуск).
+ * С фильтром языка страница режется из полного списка подходящих id.
  */
 export async function listProductsForAdmin(
   ctx: TenantContext,
@@ -166,23 +253,35 @@ export async function listProductsForAdmin(
 ): Promise<{ rows: ProductListRow[]; total: number; hasMore: boolean }> {
   const offset = Math.max(0, Math.floor(opts.offset ?? 0));
   const filtered = productFilter(opts);
-  const [page, count] = await Promise.all([
-    filtered(
-      ctx.db
-        .from("products")
-        .select(
-          "id, name, description, price, currency, is_active, sort_order, fulfillment_kind, stock_quantity, category_ids, created_at, file_path, file_url, file_path_kz, file_url_kz, product_images(image_path, sort_order), product_material_files(language, file_path), product_variants(id)",
-        ),
-    )
-      .order("sort_order")
-      .order("name")
-      .order("id")
-      .range(offset, offset + PRODUCT_PAGE - 1),
-    filtered(ctx.db.from("products").select("id", { count: "exact", head: true })),
-  ]);
-  if (page.error) throw serverFailure(page.error.message);
-  if (count.error) throw serverFailure(count.error.message);
-  const rows = (page.data ?? []).map((p) => ({
+  const ordered = productOrder(opts.sort);
+  let data: ProductListSource[];
+  let total: number;
+  if (opts.lang) {
+    const ids = await idsByLang(ctx, opts, opts.lang);
+    const pageIds = ids.slice(offset, offset + PRODUCT_PAGE);
+    const pos = new Map(pageIds.map((id, i) => [id, i]));
+    const page = pageIds.length
+      ? await ctx.db.from("products").select(LIST_SELECT).in("id", pageIds)
+      : { data: [], error: null };
+    if (page.error) throw serverFailure(page.error.message);
+    data = ((page.data ?? []) as ProductListSource[])
+      .slice()
+      .sort((a, b) => pos.get(a.id)! - pos.get(b.id)!);
+    total = ids.length;
+  } else {
+    const [page, count] = await Promise.all([
+      ordered(filtered(ctx.db.from("products").select(LIST_SELECT))).range(
+        offset,
+        offset + PRODUCT_PAGE - 1,
+      ),
+      filtered(ctx.db.from("products").select("id", { count: "exact", head: true })),
+    ]);
+    if (page.error) throw serverFailure(page.error.message);
+    if (count.error) throw serverFailure(count.error.message);
+    data = (page.data ?? []) as ProductListSource[];
+    total = count.count ?? offset + data.length;
+  }
+  const rows = data.map((p) => ({
     id: p.id,
     name: p.name,
     price: Number(p.price),
@@ -196,15 +295,36 @@ export async function listProductsForAdmin(
     images: p.product_images?.length ?? 0,
     // Товар v1 с файлом в старых полях — не «нет файла» (core/catalog/materials).
     files: materialCount(p),
+    langs: MATERIAL_LANGUAGES.filter((l) => materialsForProduct(p, l).length > 0),
     variants: p.product_variants?.length ?? 0,
     has_description: Boolean(p.description?.trim()),
     is_course: isCourseProduct(p),
     cover:
       p.product_images?.slice().sort((a, b) => a.sort_order - b.sort_order)[0]?.image_path ?? null,
   }));
-  const total = count.count ?? offset + rows.length;
   return { rows, total, hasMore: offset + rows.length < total };
 }
+
+type ProductListSource = {
+  id: string;
+  name: string;
+  description: string | null;
+  price: number | string;
+  currency: string;
+  is_active: boolean;
+  sort_order: number;
+  fulfillment_kind: string;
+  stock_quantity: number | null;
+  category_ids: Json;
+  created_at: string;
+  file_path: string | null;
+  file_url: string | null;
+  file_path_kz: string | null;
+  file_url_kz: string | null;
+  product_images: Array<{ image_path: string; sort_order: number }> | null;
+  product_material_files: Array<{ language: string | null; file_path: string | null }> | null;
+  product_variants: Array<{ id: string }> | null;
+};
 
 export async function getProductForAdmin(ctx: TenantContext, id: string): Promise<Product | null> {
   const { data, error: dataError } = await ctx.db
