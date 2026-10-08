@@ -9,6 +9,7 @@ import { shopLinks, shopMeta } from "@/core/storefront/share";
 import { CartProvider, useCart, useTelegramWebApp } from "@/app/storefront/cart";
 import { FavoritesProvider, useFavorites } from "@/app/storefront/favorites";
 import { MarketBand } from "@/app/storefront/market-band";
+import { TelegramBackButton } from "@/app/storefront/telegram-back";
 import { InstallPrompt } from "@/app/storefront/install";
 import { StorefrontLocaleProvider, useStorefrontLocale } from "@/app/storefront/locale";
 import { storefrontT } from "@/app/i18n/storefront";
@@ -219,6 +220,7 @@ function StoreFrame() {
         </div>
       </footer>
       {wa && <TabBar slug={shop.slug} vertical={shop.vertical} />}
+      <TelegramBackButton wa={wa} slug={shop.slug} />
       {!wa && <MobileCartBar slug={shop.slug} />}
     </div>
   );

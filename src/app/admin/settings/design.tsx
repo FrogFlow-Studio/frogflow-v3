@@ -3,9 +3,11 @@ import { Card, ErrorBox, useAction } from "@/app/ui";
 import { saveStoreDesignFn, storeDesignFn } from "@/app/admin/design.functions";
 import { adminT } from "@/app/i18n/admin";
 import {
+  PHOTO_SHAPES,
   STORE_BLOCKS,
   STORE_THEMES,
   themeClass,
+  type PhotoShape,
   type StoreBlock,
   type StoreTheme,
 } from "@/core/storefront/design";
@@ -22,6 +24,7 @@ export function DesignCard() {
   const [theme, setTheme] = useState<StoreTheme>("fresh");
   const [cover, setCover] = useState(false);
   const [blocks, setBlocks] = useState<StoreBlock[]>([]);
+  const [photo, setPhoto] = useState<PhotoShape>("square");
   const [ready, setReady] = useState(false);
   const [saved, setSaved] = useState(false);
   useEffect(() => {
@@ -29,13 +32,14 @@ export function DesignCard() {
       setTheme(d.theme);
       setCover(d.cover);
       setBlocks(d.blocks);
+      setPhoto(d.photo);
       setReady(true);
     });
   }, []);
   const owner = roleAllows(shop.role, "admin");
   const locked = !owner || !ready;
   const save = useAction(async () => {
-    await saveStoreDesignFn({ data: { theme, cover, blocks } });
+    await saveStoreDesignFn({ data: { theme, cover, blocks, photo } });
     setSaved(true);
   });
   const toggle = (b: StoreBlock) => {
@@ -113,6 +117,38 @@ export function DesignCard() {
             <span className="block text-xs text-muted">{t("settings.design.coverHint")}</span>
           </span>
         </label>
+        <fieldset className="space-y-2" disabled={locked}>
+          <legend className="label">{t("settings.design.photo")}</legend>
+          <p className="text-xs text-muted">{t("settings.design.photoHint")}</p>
+          <div className="grid gap-2 sm:grid-cols-3">
+            {PHOTO_SHAPES.map((k) => (
+              <label key={k} className="cursor-pointer">
+                <input
+                  type="radio"
+                  name="photo"
+                  className="peer sr-only"
+                  checked={photo === k}
+                  onChange={() => {
+                    setSaved(false);
+                    setPhoto(k);
+                  }}
+                />
+                <span
+                  className="block rounded-lg border-2 border-line bg-bg p-3 text-sm peer-checked:border-accent peer-focus-visible:ring-2 peer-focus-visible:ring-accent"
+                  data-testid={`photo-${k}`}
+                >
+                  <span className="block font-medium text-fg">
+                    {t(`settings.design.photo.${k}`)}
+                  </span>
+                  <PhotoShapePreview shape={k} />
+                  <span className="mt-2 block text-xs text-muted">
+                    {t(`settings.design.photo.${k}Hint`)}
+                  </span>
+                </span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
         <div>
           <div className="label">{t("settings.design.blocks")}</div>
           <p className="mb-2 text-xs text-muted">{t("settings.design.blocksHint")}</p>
@@ -174,5 +210,41 @@ export function DesignCard() {
         <ErrorBox error={save.error} />
       </form>
     </Card>
+  );
+}
+
+/**
+ * Предпросмотр формы фото: условное вертикальное фото 4:5 (надпись у верхнего
+ * края) в рамке карточки — видно, что квадрат срезает верх и низ, а 4:5 и
+ * «целиком» показывают фото полностью.
+ */
+function PhotoShapePreview({ shape }: { shape: PhotoShape }) {
+  const sample = (
+    <span className="flex aspect-[4/5] h-full flex-col items-center justify-between bg-gradient-to-b from-accent/70 to-accent/30 py-1 text-[10px] font-semibold text-accent-fg">
+      <span>Aa</span>
+      <span>Aa</span>
+    </span>
+  );
+  return (
+    <span className="mt-2 flex justify-center" aria-hidden>
+      {shape === "square" ? (
+        <span className="flex aspect-square w-20 items-center justify-center overflow-hidden rounded border border-line">
+          <span className="block w-full">
+            <span className="flex aspect-[4/5] w-full flex-col items-center justify-between bg-gradient-to-b from-accent/70 to-accent/30 py-1 text-[10px] font-semibold text-accent-fg">
+              <span>Aa</span>
+              <span>Aa</span>
+            </span>
+          </span>
+        </span>
+      ) : shape === "portrait" ? (
+        <span className="flex aspect-[4/5] w-20 overflow-hidden rounded border border-line">
+          {sample}
+        </span>
+      ) : (
+        <span className="flex aspect-square w-20 justify-center overflow-hidden rounded border border-line bg-surface-2">
+          {sample}
+        </span>
+      )}
+    </span>
   );
 }

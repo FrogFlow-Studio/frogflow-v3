@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { usePhotoFrame } from "@/app/storefront/photo-frame";
 import { imageSrcSet } from "@/core/catalog/image-url";
 import { formatMoney } from "@/core/money/money";
 import type { ShowcaseSection } from "@/core/storefront/showcase.server";
@@ -7,6 +8,7 @@ import { useStorefrontLocale } from "./locale";
 /** Блоки главной над каталогом: новинки, хиты, наборы, отзывы (core/storefront/design). */
 export function ShowcaseBlocks({ slug, sections }: { slug: string; sections: ShowcaseSection[] }) {
   const { t } = useStorefrontLocale();
+  const frame = usePhotoFrame();
   if (sections.length === 0) return null;
   return (
     <div className="mb-8 space-y-8" data-testid="showcase">
@@ -52,10 +54,10 @@ export function ShowcaseBlocks({ slug, sections }: { slug: string; sections: Sho
                       alt={p.name}
                       loading="lazy"
                       decoding="async"
-                      className="aspect-square w-full object-cover"
+                      className={frame.img}
                     />
                   ) : (
-                    <div className="aspect-square bg-surface-2" />
+                    <div className={`${frame.box} bg-surface-2`} />
                   )}
                   <div className="p-2 text-xs">
                     <div className="line-clamp-2">{p.name}</div>

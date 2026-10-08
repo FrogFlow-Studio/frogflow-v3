@@ -116,6 +116,13 @@ export type TgWebApp = {
   expand?: () => void;
   ready?: () => void;
   colorScheme?: "light" | "dark";
+  /** Кнопка «Назад» в шапке Mini App (app/storefront/telegram-back). */
+  BackButton?: {
+    show: () => void;
+    hide: () => void;
+    onClick: (cb: () => void) => void;
+    offClick: (cb: () => void) => void;
+  };
 };
 
 export function useTelegramWebApp(): TgWebApp | null {

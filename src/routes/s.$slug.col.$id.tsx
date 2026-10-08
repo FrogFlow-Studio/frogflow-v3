@@ -1,4 +1,5 @@
 import { publicHeaders } from "@/app/cache-policy";
+import { usePhotoFrame } from "@/app/storefront/photo-frame";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { storeCollectionFn } from "@/app/storefront/catalog.functions";
 import { FavoriteButton } from "@/app/storefront/favorites";
@@ -35,6 +36,7 @@ function CollectionPage() {
   const page = Route.useLoaderData();
   const { slug } = Route.useParams();
   const { t } = useStorefrontLocale();
+  const frame = usePhotoFrame();
   return (
     <div>
       <h1 className="mb-4 text-xl font-semibold">{page.name}</h1>
@@ -51,13 +53,11 @@ function CollectionPage() {
             <article key={p.id} className="card relative flex flex-col overflow-hidden">
               <Link to="/s/$slug/p/$id" params={{ slug, id: p.id }} className="block">
                 {p.images[0] ? (
-                  <img
-                    src={p.images[0]}
-                    alt={p.name}
-                    className="aspect-square w-full object-cover"
-                  />
+                  <img src={p.images[0]} alt={p.name} className={frame.img} />
                 ) : (
-                  <div className="flex aspect-square items-center justify-center bg-surface-2 text-4xl">
+                  <div
+                    className={`flex ${frame.box} items-center justify-center bg-surface-2 text-4xl`}
+                  >
                     {p.kind === "digital" ? "📄" : "📦"}
                   </div>
                 )}

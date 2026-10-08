@@ -557,6 +557,16 @@ const ru = {
   "about.delivery": "Доставка",
   "about.payment": "Оплата",
   "footer.aboutShop": "О магазине",
+  // Т2: возврат к результатам поиска; Т6: просмотр фото на весь экран
+  "product.backToResults": "← Результаты: «{q}»",
+  "viewer.title": "Просмотр фото",
+  "viewer.counter": "{n} из {m}",
+  "viewer.close": "Закрыть просмотр",
+  "viewer.prev": "Предыдущее фото",
+  "viewer.next": "Следующее фото",
+  "viewer.open": "Открыть фото целиком",
+  "viewer.openPreview": "Открыть пример {n} целиком",
+  "viewer.hint": "Двойной тап — увеличить, свайп вниз — закрыть",
 } as const;
 
 export type StorefrontKey = keyof typeof ru;
@@ -1112,6 +1122,15 @@ const kk: Dict = {
   "about.delivery": "Жеткізу",
   "about.payment": "Төлем",
   "footer.aboutShop": "Дүкен туралы",
+  "product.backToResults": "← Нәтижелер: «{q}»",
+  "viewer.title": "Фотоны қарау",
+  "viewer.counter": "{n} / {m}",
+  "viewer.close": "Қарауды жабу",
+  "viewer.prev": "Алдыңғы фото",
+  "viewer.next": "Келесі фото",
+  "viewer.open": "Фотоны толық ашу",
+  "viewer.openPreview": "{n}-үлгіні толық ашу",
+  "viewer.hint": "Екі рет түрту — үлкейту, төмен сырғыту — жабу",
 };
 
 const en: Dict = {
@@ -1661,6 +1680,15 @@ const en: Dict = {
   "about.delivery": "Delivery",
   "about.payment": "Payment",
   "footer.aboutShop": "About the shop",
+  "product.backToResults": "← Results: “{q}”",
+  "viewer.title": "Photo viewer",
+  "viewer.counter": "{n} of {m}",
+  "viewer.close": "Close viewer",
+  "viewer.prev": "Previous photo",
+  "viewer.next": "Next photo",
+  "viewer.open": "Open the full photo",
+  "viewer.openPreview": "Open sample {n} in full",
+  "viewer.hint": "Double-tap to zoom, swipe down to close",
 };
 
 const uz: Dict = {
@@ -2215,6 +2243,15 @@ const uz: Dict = {
   "about.delivery": "Yetkazib berish",
   "about.payment": "To‘lov",
   "footer.aboutShop": "Do‘kon haqida",
+  "product.backToResults": "← Natijalar: «{q}»",
+  "viewer.title": "Suratni ko‘rish",
+  "viewer.counter": "{n} / {m}",
+  "viewer.close": "Ko‘rishni yopish",
+  "viewer.prev": "Oldingi surat",
+  "viewer.next": "Keyingi surat",
+  "viewer.open": "Suratni to‘liq ochish",
+  "viewer.openPreview": "{n}-namunani to‘liq ochish",
+  "viewer.hint": "Ikki marta bosish — kattalashtirish, pastga surish — yopish",
 };
 
 const DICTS: Record<Locale, Dict> = { ru, kk, en, uz };

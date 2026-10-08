@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { usePhotoFrame } from "@/app/storefront/photo-frame";
 import { useState } from "react";
 import { storeQuizFn, storeQuizResultFn } from "@/app/storefront/quiz.functions";
 import { useStorefrontLocale } from "@/app/storefront/locale";
@@ -19,6 +20,7 @@ function QuizPage() {
   const { slug } = Route.useParams();
   const quiz = Route.useLoaderData();
   const { t } = useStorefrontLocale();
+  const frame = usePhotoFrame();
   const [answers, setAnswers] = useState<number[]>([]);
   const [found, setFound] = useState<StoreProduct[] | null>(null);
   const finish = useAction(async (all: number[]) => {
@@ -57,13 +59,11 @@ function QuizPage() {
                   className="card flex flex-col overflow-hidden"
                 >
                   {p.images[0] ? (
-                    <img
-                      src={p.images[0]}
-                      alt={p.name}
-                      className="aspect-square w-full object-cover"
-                    />
+                    <img src={p.images[0]} alt={p.name} className={frame.img} />
                   ) : (
-                    <div className="flex aspect-square items-center justify-center bg-surface-2 text-4xl">
+                    <div
+                      className={`flex ${frame.box} items-center justify-center bg-surface-2 text-4xl`}
+                    >
                       {p.kind === "digital" ? "📄" : "📦"}
                     </div>
                   )}

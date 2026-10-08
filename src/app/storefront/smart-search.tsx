@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { usePhotoFrame } from "@/app/storefront/photo-frame";
 import { Link } from "@tanstack/react-router";
 import { storeSmartSearchFn } from "./smart-search.functions";
 import { useStorefrontLocale } from "./locale";
@@ -31,6 +32,7 @@ function searchSession(slug: string): string {
  */
 export function SmartSearchResults({ slug, q }: { slug: string; q: string }) {
   const { t } = useStorefrontLocale();
+  const frame = usePhotoFrame();
   const [state, setState] = useState<"loading" | "ok" | "busy" | "none">("loading");
   const [items, setItems] = useState<StoreProduct[]>([]);
   useEffect(() => {
@@ -58,16 +60,13 @@ export function SmartSearchResults({ slug, q }: { slug: string; q: string }) {
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
         {items.map((p) => (
           <article key={p.id} className="card flex flex-col overflow-hidden">
-            <Link to="/s/$slug/p/$id" params={{ slug, id: p.id }} className="block">
+            <Link to="/s/$slug/p/$id" params={{ slug, id: p.id }} search={{ q }} className="block">
               {p.images[0] ? (
-                <img
-                  src={p.images[0]}
-                  alt={p.name}
-                  className="aspect-square w-full object-cover"
-                  loading="lazy"
-                />
+                <img src={p.images[0]} alt={p.name} className={frame.img} loading="lazy" />
               ) : (
-                <div className="flex aspect-square items-center justify-center bg-surface-2 text-4xl">
+                <div
+                  className={`flex ${frame.box} items-center justify-center bg-surface-2 text-4xl`}
+                >
                   {p.kind === "digital" ? "📄" : "📦"}
                 </div>
               )}
@@ -76,6 +75,7 @@ export function SmartSearchResults({ slug, q }: { slug: string; q: string }) {
               <Link
                 to="/s/$slug/p/$id"
                 params={{ slug, id: p.id }}
+                search={{ q }}
                 className="line-clamp-2 text-sm font-medium hover:underline"
               >
                 {p.name}
