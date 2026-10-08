@@ -20,8 +20,10 @@ import {
   toScreenError,
 } from "./server-fn-errors";
 import {
+  claimStaleReload,
   clientErrorReport,
   isBrowserFailure,
+  isStaleChunkError,
   screenErrorText,
   shownError,
   shownErrorAdapter,
@@ -239,5 +241,39 @@ describe("/api/client-error", () => {
     expect(r!.message).toHaveLength(500);
     expect(pageArea("/s/demo/cart")).toBe("storefront");
     expect(pageArea("/")).toBe("site");
+  });
+});
+
+describe("старая сборка после выкладки", () => {
+  it("узнаёт отказ загрузить кусок в Chrome, Firefox и Safari, остальное — нет", () => {
+    for (const m of [
+      "Failed to fetch dynamically imported module: https://www.frogflow.tech/assets/admin._authed.instagram-CXMWFVFK.js",
+      "error loading dynamically imported module: https://www.frogflow.tech/assets/x.js",
+      "Importing a module script failed.",
+      "Unable to preload CSS for /assets/admin-1.css",
+    ])
+      expect(isStaleChunkError(new TypeError(m)), m).toBe(true);
+    expect(isStaleChunkError(new TypeError("Failed to fetch"))).toBe(false);
+    expect(isStaleChunkError(new Error("Unauthorized"))).toBe(false);
+  });
+
+  it("перезагружает не чаще раза в минуту и без хранилища не перезагружает", () => {
+    const store = new Map<string, string>();
+    const storage = {
+      getItem: (k: string) => store.get(k) ?? null,
+      setItem: (k: string, v: string) => void store.set(k, v),
+    };
+    const t0 = Date.parse("2026-10-08T21:00:00Z");
+    expect(claimStaleReload(storage, t0)).toBe(true);
+    expect(claimStaleReload(storage, t0 + 30_000)).toBe(false);
+    expect(claimStaleReload(storage, t0 + 60_000)).toBe(true);
+    expect(claimStaleReload(null, t0)).toBe(false);
+    const broken = {
+      getItem: () => null,
+      setItem: () => {
+        throw new Error("QuotaExceededError");
+      },
+    };
+    expect(claimStaleReload(broken, t0)).toBe(false);
   });
 });

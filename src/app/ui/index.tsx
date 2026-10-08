@@ -1,6 +1,6 @@
 import { Link, type LinkProps } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
-import { retryText, screenErrorText } from "@/lib/shown-error";
+import { claimStaleReload, isStaleChunkError, retryText, screenErrorText } from "@/lib/shown-error";
 import { reportBrowserFailure } from "./report-client";
 
 /* Маленькая библиотека компонентов платформы: без Radix, без зависимостей. */
@@ -137,13 +137,38 @@ export function ErrorBox({ error }: { error: unknown }) {
   );
 }
 
+const staleDecision = new WeakMap<object, boolean>();
+
+/** Решение «перезагрузить» принимается один раз на объект ошибки (повторный рендер не тратит минуту паузы). */
+function reloadsForStaleChunk(error: unknown): boolean {
+  if (typeof window === "undefined" || !isStaleChunkError(error)) return false;
+  const key = error && typeof error === "object" ? error : null;
+  const known = key ? staleDecision.get(key) : undefined;
+  if (known !== undefined) return known;
+  let storage: Storage | null = null;
+  try {
+    storage = window.sessionStorage;
+  } catch {
+    // Хранилище закрыто (приватный режим): без отметки не перезагружаем.
+  }
+  const decision = claimStaleReload(storage);
+  if (key) staleDecision.set(key, decision);
+  return decision;
+}
+
 /**
  * Страница, у которой не загрузились данные (ошибка в loader/beforeLoad):
  * понятная фраза и кнопка «Обновить» вместо стандартного экрана с текстом
  * исключения. Подключена как defaultErrorComponent роутера.
  */
 export function RouteError({ error }: { error: unknown }) {
+  const reload = reloadsForStaleChunk(error);
+  useEffect(() => {
+    if (reload) window.location.reload();
+  }, [reload]);
   const lang = typeof document === "undefined" ? undefined : document.documentElement.lang;
+  // Старая сборка после выкладки: молча перезагружаемся, без ошибки на экране и в Sentry.
+  if (reload) return <main className="min-h-[50vh]" />;
   return (
     <main className="mx-auto flex min-h-[50vh] max-w-md flex-col justify-center gap-3 px-4">
       <ErrorBox error={error} />
