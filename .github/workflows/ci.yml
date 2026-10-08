@@ -8,10 +8,6 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
-    # Живые тесты в одной базе с ночным прогоном — по очереди, не вместе.
-    concurrency:
-      group: live-db
-      cancel-in-progress: false
     # tsc по всему проекту не помещается в куче Node по умолчанию (~2 ГБ на раннере):
     # падал с «JavaScript heap out of memory» на typecheck.
     env:
@@ -25,9 +21,30 @@ jobs:
       - run: npm ci --legacy-peer-deps
       - run: npm run lint
       - run: npm run typecheck
-      # Интеграционные тесты (tests/integration) ходят в настоящую базу и
-      # сами пропускают себя, если секреты не заданы.
-      - run: npm test
+      # Живые тесты (tests/integration) — в задаче live ниже.
+      - run: npx vitest run --exclude "tests/integration/**"
+      - run: npx vite build
+        env:
+          APP_URL: https://ci.invalid
+
+  # Живые тесты (tests/integration) ходят в настоящую базу, в одного
+  # демо-клиента, поэтому по очереди с ночным прогоном (группа live-db).
+  # Гоняются после вливания в master (решение Якова, 08.10.2026): в PR
+  # очередь из нескольких веток отменяла ждущие проверки.
+  live:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: live-db
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --legacy-peer-deps
+      - run: npx vitest run tests/integration
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
@@ -40,9 +57,6 @@ jobs:
           CRON_SECRET: ci-cron-secret-0000
           OPERATOR_USERNAME: operator
           OPERATOR_PASSWORD: ci-operator-password
-      - run: npx vite build
-        env:
-          APP_URL: https://ci.invalid
 
   # Сквозной прогон в браузере: собранное приложение против подставной базы
   # с демо-магазином (tests/e2e/pg-stub.ts, seed.ts) — ключи настоящей базы здесь не нужны.
