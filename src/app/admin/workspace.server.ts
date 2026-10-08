@@ -5,13 +5,14 @@ import { getSettingsStrict } from "@/core/settings/settings";
 import { limitsFor, parseDaily, today } from "@/core/consultant/budget";
 import { loadPricelist } from "@/core/consultant/pricelist/catalog.server";
 import { loadKnowledge } from "@/core/consultant/pricelist/knowledge.server";
-import { getStoredRate } from "@/core/consultant/pricelist/rate.server";
+import { getStoredRateStrict } from "@/core/consultant/pricelist/rate.server";
 import { isRateFresh } from "@/core/consultant/pricelist/rate";
 import { loadSheetLink } from "@/core/consultant/pricelist/sheet.server";
 import { isConsultantVertical } from "@/core/verticals/registry";
 import {
   dayStats,
   journalEntries,
+  weekTotal,
   lastLocalDays,
   workspaceAlerts,
   type JournalRow,
@@ -46,7 +47,7 @@ export async function consultantOverview(
       (from, to) =>
         ctx.db
           .from("consultant_message_runs")
-          .select("id, conversation_id, status, reply_kind, received_at")
+          .select("id, conversation_id, status, reply_kind, received_at, token_usage")
           .gte("received_at", since)
           .order("received_at")
           .order("id")
@@ -55,12 +56,14 @@ export async function consultantOverview(
     ),
     getSettingsStrict(ctx, [ENABLED_KEY, DAILY_KEY, LAST_ERROR_KEY]),
     loadPricelist(ctx),
-    getStoredRate(ctx),
+    // Сбой чтения курса — ошибка «Обзора», а не ложное «курса нет».
+    getStoredRateStrict(ctx),
     loadSheetLink(ctx),
     loadKnowledge(ctx),
     opts.contacts ? consultantTasks(ctx) : Promise.resolve(null),
   ]);
   const week = dayStats(rows, ctx.timezone, days);
+  const weekSum = weekTotal(rows, ctx.timezone, days);
   // Дневной предел считается по суткам UTC (core/consultant/budget).
   const daily = parseDaily(s[DAILY_KEY], today(now));
   const limitUsd = limitsFor(ctx.tenant.settings.consultant_limits).dailyUsd;
@@ -75,6 +78,7 @@ export async function consultantOverview(
     enabled,
     today: week.at(-1)!,
     week,
+    weekTotal: weekSum,
     spend: { usd: daily.usd, limitUsd },
     tasks: tasks ? { open: tasks.open, top: open.slice(0, OVERVIEW_TASKS) } : null,
     pricelist: { count: snap.products.length, at: pricelistAt },

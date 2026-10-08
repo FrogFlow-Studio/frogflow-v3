@@ -1,6 +1,8 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { env } from "@/config/env";
 import { getSetting, setSetting } from "@/core/settings/settings";
+import { serverFailure } from "@/lib/server-failure";
+import { attemptText, errorAttempt, parseAttempts, type RateAttempt } from "./rate-attempts";
 import { bankNameFromFinkazUrl, parseFinkazRubQuote } from "./finkaz-parse";
 import { isRateFresh, parseStoredRate, type StoredVtbRate } from "./rate";
 import {
@@ -34,7 +36,13 @@ const CACHE_MS = 60_000;
 const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
 
-export type VtbAttemptLog = { at: string; ok: boolean; attempts: string[] };
+/** `attempts` — русские строки (оператор, v1); `entries` — коды для панели на языке продавца. */
+export type VtbAttemptLog = {
+  at: string;
+  ok: boolean;
+  attempts: string[];
+  entries?: RateAttempt[];
+};
 type Fetch = typeof fetch;
 
 const cache = new Map<string, { at: number; value: StoredVtbRate | null }>();
@@ -48,6 +56,26 @@ export async function getStoredRate(
   ctx: TenantContext,
   now = Date.now(),
 ): Promise<StoredVtbRate | null> {
+  return readStoredRate(ctx, now, false);
+}
+
+/**
+ * Курс для панели («Обзор»): сбой чтения — ошибка, а не «курса нет». Бот
+ * берёт `getStoredRate` (там сбой отдаёт последнее прочитанное), а продавцу
+ * ложное предупреждение «курса нет» при живом курсе не нужно.
+ */
+export async function getStoredRateStrict(
+  ctx: TenantContext,
+  now = Date.now(),
+): Promise<StoredVtbRate | null> {
+  return readStoredRate(ctx, now, true);
+}
+
+async function readStoredRate(
+  ctx: TenantContext,
+  now: number,
+  strict: boolean,
+): Promise<StoredVtbRate | null> {
   const hit = cache.get(ctx.tenant.id);
   if (hit && now - hit.at < CACHE_MS) return hit.value;
   const { data, error } = await ctx.db
@@ -56,6 +84,7 @@ export async function getStoredRate(
     .eq("key", VTB_RATE_KEY)
     .maybeSingle();
   if (error) {
+    if (strict) throw serverFailure(`курс не прочитан: ${error.message}`);
     console.warn(`[rate:${ctx.tenant.id}] курс не прочитан: ${error.message}`);
     return hit?.value ?? null;
   }
@@ -97,6 +126,23 @@ export async function saveAttemptLog(ctx: TenantContext, log: VtbAttemptLog): Pr
   await setSetting(ctx, VTB_LAST_ERROR_KEY, JSON.stringify(log)).catch(() => {});
 }
 
+/** Журнал попытки в двух формах сразу: строки и коды. */
+function attemptLog() {
+  const entries: RateAttempt[] = [];
+  const lines: string[] = [];
+  return {
+    entries,
+    lines,
+    push(a: RateAttempt) {
+      entries.push(a);
+      lines.push(attemptText(a));
+    },
+    save(ctx: TenantContext, at: string, ok: boolean) {
+      return saveAttemptLog(ctx, { at, ok, attempts: [...lines], entries: [...entries] });
+    },
+  };
+}
+
 export async function loadAttemptLog(ctx: TenantContext): Promise<VtbAttemptLog | null> {
   try {
     const p = JSON.parse(
@@ -107,6 +153,7 @@ export async function loadAttemptLog(ctx: TenantContext): Promise<VtbAttemptLog 
       at: String(p.at),
       ok: Boolean(p.ok),
       attempts: Array.isArray(p.attempts) ? p.attempts.map(String).slice(0, 8) : [],
+      ...(parseAttempts(p.entries) ? { entries: parseAttempts(p.entries) } : {}),
     };
   } catch {
     return null;
@@ -124,11 +171,7 @@ export function rateSourceLabel(source: string | undefined): string {
 }
 
 export function errorText(err: unknown): string {
-  const raw = err instanceof Error ? err.message : String(err);
-  if (/timeout|timed out|aborted/i.test(raw)) return "не ответил за 6 секунд (таймаут)";
-  if (/fetch failed|ECONNRESET|reset|EAI_AGAIN|ENOTFOUND|socket/i.test(raw))
-    return `соединение не установлено (${raw})`;
-  return raw;
+  return attemptText(errorAttempt(err));
 }
 
 /** Скачок курса к прошлому (доля) или null — в норме или сравнивать не с чем. */
@@ -144,20 +187,30 @@ export function rateJump(
   return diff > MAX_RATE_JUMP ? diff : null;
 }
 
-async function readFinkaz(url: string, fetchImpl: Fetch, now: number) {
+async function readFinkaz(
+  url: string,
+  fetchImpl: Fetch,
+  now: number,
+): Promise<{
+  quote: ReturnType<typeof parseFinkazRubQuote>;
+  note: Pick<RateAttempt, "code" | "vars"> | null;
+}> {
   const res = await fetchImpl(url, {
     headers: { accept: "text/html,application/xhtml+xml,*/*;q=0.8", "user-agent": UA },
     signal: AbortSignal.timeout(FETCH_MS),
   });
-  if (!res.ok) return { quote: null, note: `ответ ${res.status}` };
+  if (!res.ok) return { quote: null, note: { code: "http", vars: { status: res.status } } };
   const quote = parseFinkazRubQuote(await res.text());
-  if (!quote) return { quote: null, note: "страница открылась, но строки RUB / KZT в ней нет" };
+  if (!quote) return { quote: null, note: { code: "noRubRow" } };
   if (quote.sourceUpdatedAt) {
     const ageHours = (now - Date.parse(quote.sourceUpdatedAt)) / 36e5;
     if (Number.isFinite(ageHours) && ageHours > SOURCE_MAX_AGE_HOURS)
-      return { quote: null, note: `курс на сайте от ${quote.sourceUpdatedAt}, старше суток` };
+      return {
+        quote: null,
+        note: { code: "sourceStale", vars: { at: quote.sourceUpdatedAt } },
+      };
   }
-  return { quote, note: "" };
+  return { quote, note: null };
 }
 
 async function readVtb(
@@ -181,59 +234,84 @@ export async function fetchRate(
   ctx: TenantContext,
   fetchImpl: Fetch = fetch,
   now = Date.now(),
-): Promise<{ rate: number; sell?: number; source: string; log: string[] } | null> {
+): Promise<{
+  rate: number;
+  sell?: number;
+  source: string;
+  log: string[];
+  entries: RateAttempt[];
+} | null> {
   const cfg = ctx.tenant.settings.consultant_pricelist;
-  const log: string[] = [];
+  const log = attemptLog();
   const at = new Date(now).toISOString();
   if (cfg?.rate_source !== "vtb") {
     const url = cfg?.rate_url || FINKAZ_KASPI_URL;
     try {
       const { quote, note } = await readFinkaz(url, fetchImpl, now);
       if (quote) {
-        log.push(
-          `${rateSourceLabel(url)}: OK (покупка ${quote.buy}${quote.sell ? `, продажа ${quote.sell}` : ""}${
-            quote.sourceUpdatedAt ? `, обновлено ${quote.sourceUpdatedAt}` : ""
-          })`,
-        );
-        await saveAttemptLog(ctx, { at, ok: true, attempts: log });
-        return { rate: quote.buy, sell: quote.sell, source: url, log };
+        log.push({
+          src: rateSourceLabel(url),
+          code: "ok",
+          vars: {
+            buy: quote.buy,
+            ...(quote.sell ? { sell: quote.sell } : {}),
+            ...(quote.sourceUpdatedAt ? { updated: quote.sourceUpdatedAt } : {}),
+          },
+        });
+        await log.save(ctx, at, true);
+        return {
+          rate: quote.buy,
+          sell: quote.sell,
+          source: url,
+          log: log.lines,
+          entries: log.entries,
+        };
       }
-      log.push(`${url}: ${note}`);
+      if (note) log.push({ src: url, ...note });
     } catch (e) {
-      log.push(`${url}: ${errorText(e)}`);
+      log.push({ src: url, ...errorAttempt(e) });
     }
-    await saveAttemptLog(ctx, { at, ok: false, attempts: log });
+    await log.save(ctx, at, false);
     return null;
   }
   // ВТБ рвёт соединения из-за рубежа: ретранслятор в Казахстане идёт первым.
   const relay = env().CONSULTANT_VTB_RELAY_URL?.trim();
-  const sources: Array<{ url: string; referer: boolean; label: string }> = [];
-  if (relay) sources.push({ url: relay, referer: false, label: `ретранслятор ${relay}` });
+  const sources: Array<{ url: string; referer: boolean; via?: RateAttempt["via"] }> = [];
+  if (relay) sources.push({ url: relay, referer: false, via: "relay" });
   for (const url of [VTB_ONLINE_API_URL, VTB_ONLINE_API_URL.replace(/\/$/, "")]) {
-    sources.push({ url, referer: true, label: url });
-    sources.push({ url, referer: false, label: `${url} (без referer)` });
+    sources.push({ url, referer: true });
+    sources.push({ url, referer: false, via: "noReferer" });
   }
   const started = Date.now();
   for (const s of sources) {
     if (Date.now() - started > TOTAL_BUDGET_MS) {
-      log.push("дальше не пробовали: вышло время на обход источников");
+      log.push({ code: "outOfTime" });
       break;
     }
+    const src = { src: s.url, ...(s.via ? { via: s.via } : {}) };
     try {
       const quote = await readVtb(s.url, s.referer, fetchImpl);
       if (quote) {
-        log.push(
-          `${s.label}: OK (покупка ${quote.buy}${quote.sell ? `, продажа ${quote.sell}` : ""})`,
-        );
-        await saveAttemptLog(ctx, { at, ok: true, attempts: log });
-        return { rate: quote.buy, sell: quote.sell, source: s.url, log };
+        log.push({
+          ...src,
+          code: "ok",
+          vars: { buy: quote.buy, ...(quote.sell ? { sell: quote.sell } : {}) },
+        });
+        await log.save(ctx, at, true);
+        return {
+          rate: quote.buy,
+          sell: quote.sell,
+          source: s.url,
+          log: log.lines,
+          entries: log.entries,
+        };
       }
-      log.push(`${s.label}: ответ получен, но курса рубля в нём нет`);
+      log.push({ ...src, code: "noRubInResponse" });
     } catch (e) {
-      log.push(`${s.label}: ${errorText(e)}`);
+      log.push({ ...src, ...errorAttempt(e) });
     }
   }
-  await saveAttemptLog(ctx, { at, ok: false, attempts: log });
+  await log.save(ctx, at, false);
   return null;
 }
 
@@ -260,13 +338,20 @@ export async function refreshRate(
   if (fetched) {
     const jump = rateJump(previous, fetched.rate, now);
     if (jump) {
-      const note = `курс ${fetched.rate} отличается от прошлого ${previous?.rate} на ${Math.round(
-        jump * 100,
-      )}% — не приняли, оставили прежний`;
+      const jumpEntry: RateAttempt = {
+        code: "jumpRejected",
+        vars: {
+          rate: fetched.rate,
+          prev: previous?.rate ?? "",
+          pct: Math.round(jump * 100),
+        },
+      };
+      const note = attemptText(jumpEntry);
       await saveAttemptLog(ctx, {
         at: new Date(now).toISOString(),
         ok: false,
         attempts: [...fetched.log, note],
+        entries: [...fetched.entries, jumpEntry],
       });
       return {
         ok: Boolean(previous),

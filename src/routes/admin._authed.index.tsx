@@ -99,10 +99,14 @@ function Dashboard() {
               modulesLink={roleAllows(shop.role, "admin")}
             />
           )}
-          <WaitingCard
-            tiles={waitingTiles(buildAdminNav(shop), shop, d.counts.awaiting_confirmation ?? 0)}
-            t={t}
-          />
+          {/* Рабочее место консультанта само показывает задачи и диалоги: магазинные «Ждёт вас»,
+              «Что сделать сегодня» и «Покупателей» на нём лишние. */}
+          {!d.workspace && (
+            <WaitingCard
+              tiles={waitingTiles(buildAdminNav(shop), shop, d.counts.awaiting_confirmation ?? 0)}
+              t={t}
+            />
+          )}
           {sells && d.pace && <PaceCard pace={d.pace} t={t} />}
           {sells && (
             <GrowthCard
@@ -113,7 +117,7 @@ function Dashboard() {
               t={t}
             />
           )}
-          {shop.role !== "accountant" && (
+          {shop.role !== "accountant" && !d.workspace && (
             <TodayCard
               // «Ждёт вас» уже показывает чеки, диалоги и обращения: здесь их нет.
               tasks={d.today.filter((x) => !["receipts", "dialogs", "tickets"].includes(x.key))}
@@ -272,29 +276,36 @@ function Dashboard() {
           {shop.role === "owner" && <AiBalanceCard t={t} />}
         </aside>
         <div className="lg:col-start-1">
-          <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-            {sells && shop.role !== "accountant" && (
-              <>
-                <Stat label={t("today.rev1")} value={formatMoney(d.rev1.total, d.rev1.currency)} />
-                <Stat
-                  label={t("today.rev7")}
-                  value={formatMoney(d.rev7.total, d.rev7.currency)}
-                  hint={t("overview.paidOrders", { n: d.rev7.orders })}
-                />
-              </>
-            )}
-            {sells && (
-              <>
-                <Stat
-                  label={t("overview.revenue30")}
-                  value={formatMoney(d.rev30.total, d.rev30.currency)}
-                  hint={t("overview.paidOrders", { n: d.rev30.orders })}
-                />
-                <Stat label={t("overview.productsOnSale")} value={d.products} />
-              </>
-            )}
-            <Stat label={t("overview.customers")} value={d.customers.toLocaleString(loc)} />
-          </div>
+          {(sells || !d.workspace) && (
+            <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+              {sells && shop.role !== "accountant" && (
+                <>
+                  <Stat
+                    label={t("today.rev1")}
+                    value={formatMoney(d.rev1.total, d.rev1.currency)}
+                  />
+                  <Stat
+                    label={t("today.rev7")}
+                    value={formatMoney(d.rev7.total, d.rev7.currency)}
+                    hint={t("overview.paidOrders", { n: d.rev7.orders })}
+                  />
+                </>
+              )}
+              {sells && (
+                <>
+                  <Stat
+                    label={t("overview.revenue30")}
+                    value={formatMoney(d.rev30.total, d.rev30.currency)}
+                    hint={t("overview.paidOrders", { n: d.rev30.orders })}
+                  />
+                  <Stat label={t("overview.productsOnSale")} value={d.products} />
+                </>
+              )}
+              {!d.workspace && (
+                <Stat label={t("overview.customers")} value={d.customers.toLocaleString(loc)} />
+              )}
+            </div>
+          )}
           <div className="mt-6 grid gap-4 [&>*]:min-w-0">
             {sells && (
               <Card

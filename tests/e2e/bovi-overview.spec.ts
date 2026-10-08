@@ -18,7 +18,16 @@ async function login(page: Page) {
 test("консультант без продаж: «Обзор» без карточек магазина", async ({ page }) => {
   const errors = await watch(page);
   await login(page);
-  await expect(page.getByText("Покупателей", { exact: true })).toBeVisible();
+  // Наверху рабочее место консультанта; магазинные «Ждёт вас», «Что сделать сегодня» и
+  // «Покупателей» под ним лишние (партия 11): задачи и диалоги рабочее место показывает само.
+  await expect(page.getByTestId("ws-overview")).toBeVisible();
+  await expect(page.getByText("Покупателей", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Ждёт вас", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Что сделать сегодня", exact: true })).toHaveCount(
+    0,
+  );
+  // В таблице по дням — расход ИИ.
+  await expect(page.getByTestId("ws-week").getByText("Расход ИИ", { exact: true })).toBeVisible();
   // У консультанта в «Запуске» только Telegram и уведомления: оба сделаны — карточки нет.
   await expect(page.getByText(/^Запуск (магазина|консультанта)/)).toHaveCount(0);
   await expect(page.getByText("Первые 7 дней", { exact: true })).toHaveCount(0);

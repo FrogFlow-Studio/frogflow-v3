@@ -17,11 +17,18 @@ async function openChat(page: Page, name: string) {
   await page.getByRole("button", { name }).click();
 }
 
+/** На телефоне открытый диалог закрывает список: вернуться к нему кнопкой «К списку». */
+async function backToList(page: Page) {
+  if (test.info().project.name === "phone")
+    await page.getByRole("button", { name: "← К списку", exact: true }).click();
+}
+
 test("чат: список постранично — «Показать ещё», поиск на сервере, непрочитанные", async ({
   page,
 }) => {
   const errors = await watch(page);
   await openChat(page, F.CHAT_TG_NAME);
+  await backToList(page);
   const dialog = (n: number) =>
     page.getByRole("button", { name: new RegExp(`^${F.chatManyName(n)}(?!\\d)`) });
   // Первая страница — 50 диалогов: самый свежий «Клиент 1» есть, самый старый — ещё нет.
@@ -71,6 +78,7 @@ test("чат: ссылка из напоминания открывает диа
   await page.goto(`/admin/chat?c=${F.chatManyId(last)}`);
   // Имя в шапке диалога; в списке этого покупателя ещё нет (он на второй странице).
   await expect(page.getByText(`${F.chatManyName(last)} id ${F.chatManyId(last)}`)).toBeVisible();
+  await backToList(page);
   await expect(page.getByRole("button", { name: "Показать ещё", exact: true })).toBeVisible();
   expect(errors).toEqual([]);
 });
@@ -124,7 +132,7 @@ test("чат: поиск по тексту — ничего не найдено"
   expect(errors).toEqual([]);
 });
 
-test("чат на телефоне: панель — полоса над перепиской, список и диалог не налезают друг на друга", async ({
+test("чат на телефоне: список и переписка раздельно, панель — полоса над перепиской", async ({
   page,
 }) => {
   test.skip(test.info().project.name !== "phone", "раскладка для узкого экрана");
@@ -134,11 +142,13 @@ test("чат на телефоне: панель — полоса над пер�
   await expect(panel).toBeVisible();
   const send = page.getByRole("button", { name: "Отправить", exact: true });
   await expect(send).toBeVisible();
+  // Открытый диалог — на весь экран: списка, его поиска и фильтров не видно.
+  await expect(page.getByTestId("chat-list")).toBeHidden();
+  await expect(page.getByPlaceholder("Поиск по имени или @username")).toBeHidden();
 
   const box = async (l: ReturnType<Page["locator"]>) => (await l.boundingBox())!;
   const width = page.viewportSize()!.width;
-  const search = await box(page.getByPlaceholder("Поиск по имени или @username"));
-  const row = await box(page.getByRole("button", { name: new RegExp(`^${F.CHAT_PANEL_NAME}`) }));
+  const back = await box(page.getByRole("button", { name: "← К списку", exact: true }));
   const strip = await box(panel);
   const composer = await box(send);
 
@@ -149,9 +159,8 @@ test("чат на телефоне: панель — полоса над пер�
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
   );
-  // Сверху вниз без пересечений: список диалогов → полоса покупателя → поле ответа.
-  expect(search.y + search.height).toBeLessThanOrEqual(row.y + 1);
-  expect(row.y + row.height).toBeLessThanOrEqual(strip.y + 1);
+  // Сверху вниз без пересечений: «К списку» → полоса покупателя → поле ответа.
+  expect(back.y + back.height).toBeLessThanOrEqual(strip.y + 1);
   expect(strip.y + strip.height).toBeLessThanOrEqual(composer.y + 1);
   // Полоса прокручивается внутри себя, а не раздвигает экран.
   await panel
@@ -160,6 +169,14 @@ test("чат на телефоне: панель — полоса над пер�
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
   );
+
+  // «К списку» — снова список с поиском, переписки нет; другой диалог открывается из него.
+  await page.getByRole("button", { name: "← К списку", exact: true }).click();
+  await expect(page.getByPlaceholder("Поиск по имени или @username")).toBeVisible();
+  await expect(send).toBeHidden();
+  await page.getByRole("button", { name: new RegExp(`^${F.CHAT_TG_NAME}`) }).click();
+  await expect(send).toBeVisible();
+  await expect(page.getByTestId("chat-list")).toBeHidden();
   expect(errors).toEqual([]);
 });
 

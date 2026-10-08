@@ -334,22 +334,18 @@ export const adminShopFn = createServerFn({ method: "GET" }).handler(async () =>
       sells,
       /**
        * Открытые задачи консультанта — бейдж «Задачи» рабочего места (консультант
-       * без продаж, менеджер и выше). Сбой чтения — null: бейджа нет, а не «0».
+       * без продаж, менеджер и выше). Сбой чтения — null: бейджа нет, а не «0». Шапка — на
+       * каждой странице: весь список задач читается, только когда он изменился.
        */
       consultantTasksOpen:
         !accountant && roleAllows(role, "manager") && consultantWorkspace({ sells, pricelist })
-          ? await (
-              await import("@/core/consultant/tasks")
-            )
-              .loadTasks(ctx)
-              .then((ts) => ts.filter((t) => !t.done).length)
-              .catch((e) => {
-                console.error(
-                  `[admin:${ctx.tenant.id}] бейдж задач`,
-                  e instanceof Error ? e.message : e,
-                );
-                return null;
-              })
+          ? await (await import("@/core/consultant/tasks-badge")).openTasksCount(ctx).catch((e) => {
+              console.error(
+                `[admin:${ctx.tenant.id}] бейдж задач`,
+                e instanceof Error ? e.message : e,
+              );
+              return null;
+            })
           : null,
       status: ctx.tenant.status,
       /** Пробный период на виду: до какого дня, сколько осталось и что будет после (плашка в шапке). */
@@ -461,15 +457,17 @@ export const setAdminLocaleFn = createServerFn({ method: "POST" })
 export const dashboardFn = createServerFn({ method: "GET" }).handler(async () => {
   const { ctx, accountant } = await finance();
   const { orderCounts, revenue, listOrdersForAdmin } = await import("@/core/orders/admin");
+  // Консультант без продаж (BOVI): без карточек про товары, оплату, заказы и выручку —
+  // и без их чтений: выручка, последние заказы, темп и рост на его «Обзоре» не показываются.
+  const sells = await sellsOrAsBefore(ctx, "обзор");
+  const noRevenue = { total: 0, currency: "KZT", orders: 0 };
   const [counts, rev30, recent] = await Promise.all([
     orderCounts(ctx),
-    revenue(ctx, 30),
-    listOrdersForAdmin(ctx, { limit: 5 }),
+    sells ? revenue(ctx, 30) : noRevenue,
+    sells ? listOrdersForAdmin(ctx, { limit: 5 }) : [],
   ]);
   const { listPaymentMethods } = await import("@/core/settings/payment-methods");
   const { getSettings } = await import("@/core/settings/settings");
-  // Консультант без продаж (BOVI): без карточек про товары, оплату, заказы и выручку.
-  const sells = await sellsOrAsBefore(ctx, "обзор");
   const [
     { count: products },
     { count: customers },
@@ -539,13 +537,15 @@ export const dashboardFn = createServerFn({ method: "GET" }).handler(async () =>
   // Продажи к этому же времени вчера и по часам (Ж3): сбой чтения — «не удалось загрузить», страница живёт.
   let pace: import("@/core/overview/pace").SalesPace | "failed" | null = null;
   // Блок «Рост» (У5): три числа за 30 суток против прежних; видят все роли, сбой чтения — «не удалось загрузить».
-  const growth: import("@/core/overview/growth").Growth | "failed" =
-    await import("@/core/overview/growth.server")
-      .then((m) => m.loadGrowth(ctx))
-      .catch((e): "failed" => {
-        console.error(`[admin:${ctx.tenant.id}] рост`, e instanceof Error ? e.message : e);
-        return "failed";
-      });
+  // Без продаж блок «Рост» не рисуется — и не читается.
+  const growth: import("@/core/overview/growth").Growth | "failed" = !sells
+    ? "failed"
+    : await import("@/core/overview/growth.server")
+        .then((m) => m.loadGrowth(ctx))
+        .catch((e): "failed" => {
+          console.error(`[admin:${ctx.tenant.id}] рост`, e instanceof Error ? e.message : e);
+          return "failed";
+        });
   // «Первые 7 дней» (Р3): не прочиталось — карточку просто не показываем.
   const firstWeek = accountant
     ? null
@@ -561,17 +561,19 @@ export const dashboardFn = createServerFn({ method: "GET" }).handler(async () =>
   if (!accountant) {
     [today, rev1, rev7, pace] = await Promise.all([
       (await import("@/core/overview/today")).todayTasks(ctx),
-      revenue(ctx, 1),
-      revenue(ctx, 7),
-      import("@/core/overview/pace.server")
-        .then((m) => m.loadSalesPace(ctx))
-        .catch((e): "failed" => {
-          console.error(
-            `[admin:${ctx.tenant.id}] продажи за сегодня`,
-            e instanceof Error ? e.message : e,
-          );
-          return "failed";
-        }),
+      sells ? revenue(ctx, 1) : noRevenue,
+      sells ? revenue(ctx, 7) : noRevenue,
+      !sells
+        ? null
+        : import("@/core/overview/pace.server")
+            .then((m) => m.loadSalesPace(ctx))
+            .catch((e): "failed" => {
+              console.error(
+                `[admin:${ctx.tenant.id}] продажи за сегодня`,
+                e instanceof Error ? e.message : e,
+              );
+              return "failed";
+            }),
     ]);
   }
   return {

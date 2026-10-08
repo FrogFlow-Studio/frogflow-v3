@@ -26,6 +26,7 @@ import { Badge, Card, ErrorBox, Field, useAction } from "@/app/ui";
 import { intlLocale, type AdminKey, type AdminT } from "@/app/i18n/admin";
 import type { Locale } from "@/core/i18n/locale";
 import { KNOWLEDGE_FILE_MAX_MB } from "@/core/consultant/pricelist/knowledge-import";
+import type { RateAttempt } from "@/core/consultant/pricelist/rate-attempts";
 
 /** Выгрузка 1С бывает в UTF-8 и в Windows-1251: сначала строгий UTF-8, иначе 1251. */
 export async function readCsv(file: File): Promise<string> {
@@ -296,6 +297,19 @@ export function SheetCard({
   );
 }
 
+/** Строка журнала попытки курса на языке продавца. */
+export function rateAttemptText(t: AdminT, a: RateAttempt): string {
+  const vars = Object.fromEntries(
+    Object.entries(a.vars ?? {}).map(([k, v]) => [k, String(v)]),
+  ) as Record<string, string>;
+  let body = t(`pricelist.rate.attempt.${a.code}` as AdminKey, vars);
+  if (a.code === "ok" && vars.sell) body += t("pricelist.rate.attempt.okSell", vars);
+  if (a.code === "ok" && vars.updated) body += t("pricelist.rate.attempt.okUpdated", vars);
+  if (!a.src) return body;
+  const src = a.via ? t(`pricelist.rate.attempt.via.${a.via}` as AdminKey, { src: a.src }) : a.src;
+  return `${src}: ${body}`;
+}
+
 export function RateCard({
   t,
   data,
@@ -337,9 +351,10 @@ export function RateCard({
         <details className="mt-2 text-xs text-muted">
           <summary>{t("pricelist.rate.lastAttempt", { date: date(data.attempt.at) })}</summary>
           <ul className="list-disc pl-5">
-            {data.attempt.attempts.map((a, i) => (
-              <li key={i}>{a}</li>
-            ))}
+            {/* Коды — на языке продавца; старый журнал (и журнал v1) — строками как есть. */}
+            {data.attempt.entries
+              ? data.attempt.entries.map((a, i) => <li key={i}>{rateAttemptText(t, a)}</li>)
+              : data.attempt.attempts.map((a, i) => <li key={i}>{a}</li>)}
           </ul>
         </details>
       )}

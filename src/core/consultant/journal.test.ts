@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   dayStats,
+  weekTotal,
   flagId,
   journalEntries,
   lastLocalDays,
@@ -102,10 +103,34 @@ describe("журнал ответов консультанта", () => {
       days,
     );
     expect(stats).toEqual([
-      { date: "2026-10-07", dialogs: 0, replies: 0, handoffs: 0, silent: 0 },
-      { date: "2026-10-08", dialogs: 2, replies: 2, handoffs: 1, silent: 1 },
-      { date: "2026-10-09", dialogs: 0, replies: 0, handoffs: 0, silent: 0 },
+      { date: "2026-10-07", dialogs: 0, replies: 0, handoffs: 0, silent: 0, usd: 0 },
+      { date: "2026-10-08", dialogs: 2, replies: 2, handoffs: 1, silent: 1, usd: 0 },
+      { date: "2026-10-09", dialogs: 0, replies: 0, handoffs: 0, silent: 0, usd: 0 },
     ]);
+  });
+
+  it("расход по дням из журнала; «Итого» считает диалог, писавший два дня, один раз", () => {
+    const days = ["2026-10-07", "2026-10-08"];
+    const rows = [
+      row({ id: "1", conversation_id: "x", received_at: "2026-10-07T06:00:00Z" }),
+      row({ id: "2", conversation_id: "x", received_at: "2026-10-08T06:00:00Z" }),
+      row({ id: "3", conversation_id: "y", received_at: "2026-10-08T07:00:00Z" }),
+      // Вне недели — не считается ни в днях, ни в «Итого».
+      row({ id: "4", conversation_id: "z", received_at: "2026-10-01T07:00:00Z" }),
+    ].map((r, i) => ({ ...r, token_usage: { usd: [0.01, 0.02, 0.03, 0.5][i] } }));
+    const stats = dayStats(rows, "Asia/Almaty", days);
+    expect(stats.map((d) => [d.dialogs, Number(d.usd.toFixed(2))])).toEqual([
+      [1, 0.01],
+      [2, 0.05],
+    ]);
+    const total = weekTotal(rows, "Asia/Almaty", days);
+    expect(total.dialogs).toBe(2); // а не 1 + 2
+    expect(total.replies).toBe(3);
+    expect(Number(total.usd.toFixed(2))).toBe(0.06);
+    // Кривой token_usage — ноль, а не NaN.
+    expect(
+      dayStats([{ ...rows[0]!, token_usage: { usd: "x" } }], "Asia/Almaty", days)[0]!.usd,
+    ).toBe(0);
   });
 });
 

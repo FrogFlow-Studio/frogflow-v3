@@ -27,7 +27,10 @@ test("чат: WhatsApp вне окна 24 часов — подсказка о �
 test("чат: Telegram — окна и подсказки нет", async ({ page }) => {
   const errors = await watch(page);
   await openChat(page, F.CHAT_TG_NAME);
-  await expect(page.getByText("Здравствуйте, есть в наличии?").first()).toBeVisible();
+  // В переписке (на телефоне список с тем же превью скрыт, пока диалог открыт).
+  await expect(
+    page.locator('[id^="msg-"]', { hasText: "Здравствуйте, есть в наличии?" }).first(),
+  ).toBeVisible();
   await expect(page.getByText("окно 24 часа закрыто")).toHaveCount(0);
   await expect(page.getByText("одобренным шаблоном")).toHaveCount(0);
   expect(errors).toEqual([]);

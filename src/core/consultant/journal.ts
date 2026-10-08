@@ -114,6 +114,19 @@ export type DayStats = {
   replies: number;
   handoffs: number;
   silent: number;
+  /** Расход ИИ за сутки магазина по журналу ответов (`token_usage.usd`), в долларах. */
+  usd: number;
+};
+
+/** Строка журнала для счёта по дням; `token_usage` — для расхода. */
+type StatRow = Pick<JournalRow, "conversation_id" | "status" | "reply_kind" | "received_at"> & {
+  token_usage?: unknown;
+};
+
+const rowUsd = (r: StatRow): number => {
+  const u = r.token_usage;
+  const usd = u && typeof u === "object" ? Number((u as Record<string, unknown>).usd) : 0;
+  return Number.isFinite(usd) && usd > 0 ? usd : 0;
 };
 
 /** Дата по поясу магазина. */
@@ -135,18 +148,18 @@ export function lastLocalDays(now: Date, timeZone: string, n = 7): string[] {
 }
 
 /** Счёт по дням: диалоги, ответы бота, передачи менеджеру, сообщения без ответа бота. Дни без строк — нули. */
-export function dayStats(
-  rows: Array<Pick<JournalRow, "conversation_id" | "status" | "reply_kind" | "received_at">>,
-  timeZone: string,
-  days: string[],
-): DayStats[] {
+export function dayStats(rows: StatRow[], timeZone: string, days: string[]): DayStats[] {
   const by = new Map(
-    days.map((d) => [d, { date: d, convs: new Set<string>(), replies: 0, handoffs: 0, silent: 0 }]),
+    days.map((d) => [
+      d,
+      { date: d, convs: new Set<string>(), replies: 0, handoffs: 0, silent: 0, usd: 0 },
+    ]),
   );
   for (const r of rows) {
     const day = by.get(localDay(r.received_at, timeZone));
     if (!day) continue;
     day.convs.add(r.conversation_id ?? "");
+    day.usd += rowUsd(r);
     const o = runOutcome(r);
     // «Вошло в соседний ответ» и «ждало соседнего» — ответ был, просто одним сообщением.
     if (o.kind === "silent" && o.why !== "folded" && o.why !== "busy") day.silent += 1;
@@ -161,8 +174,34 @@ export function dayStats(
       replies: x.replies,
       handoffs: x.handoffs,
       silent: x.silent,
+      usd: x.usd,
     };
   });
+}
+
+/**
+ * «Итого» за все дни: ответы, передачи, молчание и расход складываются, а
+ * диалоги — уникальные за весь период (покупатель, писавший три дня, — один
+ * диалог, а не три).
+ */
+export function weekTotal(rows: StatRow[], timeZone: string, days: string[]): DayStats {
+  const stats = dayStats(rows, timeZone, days);
+  const inRange = new Set(days);
+  const convs = new Set(
+    rows
+      .filter((r) => inRange.has(localDay(r.received_at, timeZone)))
+      .map((r) => r.conversation_id ?? ""),
+  );
+  return stats.reduce<DayStats>(
+    (s, d) => ({
+      ...s,
+      replies: s.replies + d.replies,
+      handoffs: s.handoffs + d.handoffs,
+      silent: s.silent + d.silent,
+      usd: s.usd + d.usd,
+    }),
+    { date: "", dialogs: convs.size, replies: 0, handoffs: 0, silent: 0, usd: 0 },
+  );
 }
 
 /** Что проверить на «Обзоре» консультанта. Куда вести — путь страницы панели. */
