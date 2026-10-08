@@ -96,8 +96,10 @@ test("список товаров показывает готовность и �
   await expect(row).toContainText("описание");
   await expect(row).toContainText("категория");
   await expect(row).toContainText("5");
-  // Поиск по названию остаётся.
-  await page.getByPlaceholder("Поиск по названию", { exact: true }).fill("нет такого товара");
+  // Поиск (по названию и ключевым словам) остаётся.
+  await page
+    .getByPlaceholder("Название или ключевые слова", { exact: true })
+    .fill("нет такого товара");
   await page.keyboard.press("Enter");
   await expect(page.getByText(F.PRODUCT21_ITEM_NAME)).toHaveCount(0);
 });
