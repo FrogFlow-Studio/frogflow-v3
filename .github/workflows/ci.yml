@@ -12,6 +12,10 @@ jobs:
     concurrency:
       group: live-db
       cancel-in-progress: false
+    # tsc по всему проекту не помещается в куче Node по умолчанию (~2 ГБ на раннере):
+    # падал с «JavaScript heap out of memory» на typecheck.
+    env:
+      NODE_OPTIONS: --max-old-space-size=6144
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
