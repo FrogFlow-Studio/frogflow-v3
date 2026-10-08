@@ -1,6 +1,6 @@
 import { publicHeaders } from "@/app/cache-policy";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState } from "react";
 import { z } from "zod";
 import { signupEnabledFn } from "@/app/signup/signup.functions";
 import { siteVerificationFn } from "@/app/landing/verification.functions";
@@ -84,7 +84,6 @@ export const Route = createFileRoute("/")({
   component: Landing,
 });
 
-type Channel = "tg" | "wa" | "ig";
 type Niche = "dig" | "phy" | "ai";
 
 /** Главная платформы — для владельцев магазинов. */
@@ -145,7 +144,7 @@ function Landing() {
               ))}
             </ul>
           </div>
-          <ChatDemo t={t} />
+          <SellerConfirm t={t} />
         </section>
 
         {CLIENTS.length > 0 && (
@@ -181,6 +180,10 @@ function Landing() {
           </section>
         )}
 
+        <PaymentWays t={t} />
+
+        <ReceiptChecks t={t} />
+
         <Scenarios t={t} locale={locale} />
 
         <Steps t={t} />
@@ -215,138 +218,121 @@ function Landing() {
   );
 }
 
-const CHANNEL_COLORS: Record<Channel, string> = { tg: "#2a9bd8", wa: "#25a55a", ig: "#c1407a" };
-const CHANNELS: { key: Channel; name: string }[] = [
-  { key: "tg", name: "Telegram" },
-  { key: "wa", name: "WhatsApp" },
-  { key: "ig", name: "Instagram" },
-];
-
-/** Макет переписки: как магазин выглядит у покупателя в каждом канале. */
-function ChatDemo({ t }: { t: LandingT }) {
-  const [channel, setChannel] = useState<Channel>("tg");
-  const color = CHANNEL_COLORS[channel];
-  const shop = t(`chat.${channel}.shop` as LandingKey);
-  const out = (text: string) => (
-    <div
-      className="max-w-[86%] self-end rounded-2xl rounded-br-sm px-3 py-2 text-white"
-      style={{ background: color }}
-    >
-      {text}
-    </div>
-  );
-  const bot = (body: ReactNode) => (
-    <div className="max-w-[88%] rounded-2xl rounded-bl-sm border border-line bg-surface px-3 py-2">
-      {body}
-    </div>
-  );
-  const sub = (text: string) => <div className="mt-1 text-xs text-muted">{text}</div>;
-  const messages: Record<Channel, ReactNode[]> = {
-    tg: [
-      out(t("chat.tg.m1")),
-      bot(
-        <>
-          <div className="font-semibold">{t("chat.tg.product")}</div>
-          {sub(t("chat.tg.productSub"))}
-          <div className="mt-1 font-bold">1 900 ₸</div>
-          <div className="mt-2 flex gap-1.5 text-xs">
-            <span className="rounded-md border border-line bg-surface-2 px-2 py-1">
-              🛒 {t("chat.tg.addToCart")}
-            </span>
-            <span className="rounded-md border border-line bg-surface-2 px-2 py-1">★ 4.9 (37)</span>
-          </div>
-        </>,
-      ),
-      out(t("chat.tg.m3")),
-      bot(t("chat.tg.m4")),
-      bot(
-        <>
-          {t("chat.tg.m5")}
-          {sub(`📎 ${t("chat.tg.file")}`)}
-        </>,
-      ),
-    ],
-    wa: [
-      out(t("chat.wa.m1")),
-      bot(
-        <>
-          {t("chat.wa.m2")}
-          <div className="mt-2 grid gap-1 text-xs">
-            <span className="rounded-md border border-line bg-surface-2 px-2 py-1">
-              {t("chat.wa.item1")}
-            </span>
-            <span className="rounded-md border border-line bg-surface-2 px-2 py-1">
-              {t("chat.wa.item2")}
-            </span>
-          </div>
-        </>,
-      ),
-      out("1"),
-      bot(t("chat.wa.m4")),
-      bot(
-        <>
-          {t("chat.wa.m5")}
-          {sub(t("chat.wa.m5sub"))}
-        </>,
-      ),
-    ],
-    ig: [
-      out(t("chat.ig.m1")),
-      bot(t("chat.ig.m2")),
-      out(t("chat.ig.m3")),
-      bot(t("chat.ig.m4")),
-      bot(
-        <>
-          {t("chat.ig.m5")}
-          {sub(t("chat.ig.m5sub"))}
-        </>,
-      ),
-    ],
-  };
+/** Первый экран: заказ у продавца и одна кнопка «Деньги пришли» — что остаётся ему после бота. */
+function SellerConfirm({ t }: { t: LandingT }) {
+  const [sent, setSent] = useState(false);
   return (
-    <div className="mx-auto w-full max-w-sm overflow-hidden rounded-3xl border border-line bg-surface shadow-xl">
-      <div role="tablist" className="flex gap-1 border-b border-line bg-surface-2 p-2">
-        {CHANNELS.map((c) => (
-          <button
-            key={c.key}
-            type="button"
-            role="tab"
-            aria-selected={c.key === channel}
-            onClick={() => setChannel(c.key)}
-            className={`flex-1 rounded-md px-1 py-2 text-xs font-semibold ${
-              c.key === channel ? "bg-surface text-fg shadow-sm" : "text-muted hover:text-fg"
-            }`}
-          >
-            <span
-              className="mr-1.5 inline-block h-2 w-2 rounded-full"
-              style={{ background: CHANNEL_COLORS[c.key] }}
-            />
-            {c.name}
-          </button>
-        ))}
-      </div>
-      <div className="flex items-center gap-3 border-b border-line px-4 py-3">
-        <span
-          className="grid h-9 w-9 place-items-center rounded-full text-sm font-bold text-white"
-          style={{ background: color }}
-        >
-          {shop.charAt(0)}
-        </span>
-        <div>
-          <div className="text-sm font-semibold">{shop}</div>
-          <div className="text-xs text-muted">
-            {channel === "ig" ? t("chat.ig.status") : t("chat.online")}
+    <div className="mx-auto grid w-full max-w-sm justify-items-center gap-6">
+      <div className="w-full rounded-3xl border border-line bg-surface p-4" aria-live="polite">
+        <div className="mb-3 text-xs text-muted">{t("confirm.shop")}</div>
+        <div className="rounded-2xl bg-bg p-4">
+          <div className="font-semibold">{t("confirm.order")}</div>
+          <div className="text-2xl font-bold tracking-tight tabular-nums">1 900 ₸</div>
+          <div className="text-sm text-muted">{t("confirm.product")}</div>
+          <ul className="mt-3 grid gap-1.5 text-sm">
+            {(["confirm.c1", "confirm.c2", "confirm.c3"] as const).map((k) => (
+              <li key={k} className="flex items-baseline gap-2">
+                <span className="h-2 w-2 shrink-0 rounded-full bg-accent" aria-hidden />
+                {t(k)}
+              </li>
+            ))}
+          </ul>
+          <div className={`mt-3 text-sm font-semibold ${sent ? "text-accent" : "text-warn"}`}>
+            {t(sent ? "confirm.done" : "confirm.wait")}
           </div>
         </div>
       </div>
-      <div className="flex min-h-[21rem] flex-col gap-2 bg-bg p-4 text-sm leading-snug">
-        {messages[channel].map((m, i) => (
-          <div key={`${channel}-${i}`} className="flex flex-col">
-            {m}
-          </div>
-        ))}
-      </div>
+      <button
+        type="button"
+        aria-pressed={sent}
+        onClick={() => setSent((v) => !v)}
+        className={`w-full rounded-3xl bg-accent px-4 py-7 text-center text-accent-fg transition-[transform,box-shadow] duration-75 focus-visible:outline-3 focus-visible:outline-offset-4 focus-visible:outline-fg motion-reduce:transition-none ${
+          sent
+            ? "translate-y-2 shadow-[0_2px_0_color-mix(in_oklab,var(--accent),black_35%)]"
+            : "shadow-[0_10px_0_color-mix(in_oklab,var(--accent),black_35%)] active:translate-y-2 active:shadow-[0_2px_0_color-mix(in_oklab,var(--accent),black_35%)]"
+        }`}
+      >
+        <span className="block font-display text-2xl font-bold">
+          {t(sent ? "confirm.buttonDone" : "confirm.button")}
+        </span>
+        <span className="mt-2 block text-sm opacity-90">{t("confirm.buttonSub")}</span>
+      </button>
+      <p className="-mt-2 max-w-xs text-center text-sm text-muted">
+        {t(sent ? "confirm.hintDone" : "confirm.hint")}
+      </p>
     </div>
+  );
+}
+
+/** Две ступени оплаты: перевод на Kaspi с кнопкой продавца или своя касса без кнопки. */
+function PaymentWays({ t }: { t: LandingT }) {
+  const card = (key: "kaspi" | "own") => (
+    <div
+      className={`flex flex-col gap-2.5 rounded-2xl bg-surface p-6 ${
+        key === "own" ? "border-2 border-accent" : "border border-line"
+      }`}
+    >
+      <h3 className="text-lg font-semibold">{t(`pay.${key}.title`)}</h3>
+      <p className="text-sm font-medium">{t(`pay.${key}.who`)}</p>
+      <p className="text-muted">{t(`pay.${key}.text`)}</p>
+      <p className="mt-auto flex items-center gap-2.5 pt-3 text-sm font-medium">
+        <span
+          className={`h-2.5 w-2.5 shrink-0 rounded-full ${key === "own" ? "bg-accent" : "bg-warn"}`}
+          aria-hidden
+        />
+        {t(`pay.${key}.status`)}
+      </p>
+    </div>
+  );
+  return (
+    <section id="pay" className="mx-auto w-full max-w-6xl px-4 py-16">
+      <SectionTitle>{t("pay.title")}</SectionTitle>
+      <p className="mt-2 max-w-2xl text-muted">{t("pay.sub")}</p>
+      <div className="mt-8 grid gap-5 md:grid-cols-2">
+        {card("kaspi")}
+        {card("own")}
+      </div>
+      <p className="mt-4 max-w-2xl text-sm text-muted">{t("pay.note")}</p>
+    </section>
+  );
+}
+
+const CHECK_ROWS = ["r1", "r2", "r3", "r4", "r5", "r6"] as const;
+
+/** Что бот сверяет в чеке и чего не может: последняя строка — почему деньги подтверждает человек. */
+function ReceiptChecks({ t }: { t: LandingT }) {
+  return (
+    <section className="mx-auto w-full max-w-6xl px-4 pb-16">
+      <SectionTitle>{t("check.title")}</SectionTitle>
+      <p className="mt-2 max-w-2xl text-muted">{t("check.sub")}</p>
+      <div className="mt-8 overflow-x-auto rounded-2xl border border-line bg-surface">
+        <table className="w-full border-collapse text-left text-sm">
+          <thead>
+            <tr className="border-b border-line text-muted">
+              <th scope="col" className="px-4 py-3 font-semibold">
+                {t("check.what")}
+              </th>
+              <th scope="col" className="px-4 py-3 font-semibold">
+                {t("check.how")}
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {CHECK_ROWS.map((r) => (
+              <tr
+                key={r}
+                className={`border-b border-line last:border-0 ${r === "r6" ? "text-warn" : ""}`}
+              >
+                <th scope="row" className="w-1/3 px-4 py-3 align-top font-semibold">
+                  {t(`check.${r}.what`)}
+                </th>
+                <td className="px-4 py-3 align-top">{t(`check.${r}.how`)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
   );
 }
 
