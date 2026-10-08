@@ -85,6 +85,7 @@ export const ru = {
   "audit.action.saveHwRepliesFn": "сохранил быстрые ответы куратора",
   "audit.action.saveCuratorsFn": "изменил список кураторов",
   "audit.action.importPricelistFn": "загрузил прайс консультанта из 1С",
+  "audit.action.importPricelistDriveFn": "загрузил прайс консультанта по ссылке Google Drive",
   "audit.action.savePricelistSettingsFn": "изменил синонимы, сайт и адрес бутика",
   "audit.action.setPricelistRateFn": "ввёл курс рубля вручную",
   "audit.action.refreshPricelistRateFn": "обновил курс рубля",
@@ -293,6 +294,7 @@ export const kk: SectionDict<typeof ru> = {
   "audit.action.saveHwRepliesFn": "куратордың жылдам жауаптарын сақтады",
   "audit.action.saveCuratorsFn": "кураторлар тізімін өзгертті",
   "audit.action.importPricelistFn": "кеңесші прайсын 1С-тен жүктеді",
+  "audit.action.importPricelistDriveFn": "кеңесші прайсын Google Drive сілтемесі арқылы жүктеді",
   "audit.action.savePricelistSettingsFn": "синонимдерді, сайт пен бутик мекенжайын өзгертті",
   "audit.action.setPricelistRateFn": "рубль бағамын қолмен енгізді",
   "audit.action.refreshPricelistRateFn": "рубль бағамын жаңартты",
@@ -501,6 +503,8 @@ export const en: SectionDict<typeof ru> = {
   "audit.action.saveHwRepliesFn": "saved the curator’s quick replies",
   "audit.action.saveCuratorsFn": "changed the curators list",
   "audit.action.importPricelistFn": "uploaded the consultant price list from 1C",
+  "audit.action.importPricelistDriveFn":
+    "uploaded the consultant price list from a Google Drive link",
   "audit.action.savePricelistSettingsFn": "changed synonyms, website and store address",
   "audit.action.setPricelistRateFn": "entered the ruble rate manually",
   "audit.action.refreshPricelistRateFn": "refreshed the ruble rate",
@@ -709,6 +713,8 @@ export const uz: SectionDict<typeof ru> = {
   "audit.action.saveHwRepliesFn": "kuratorning tezkor javoblarini saqladi",
   "audit.action.saveCuratorsFn": "kuratorlar ro‘yxatini o‘zgartirdi",
   "audit.action.importPricelistFn": "maslahatchi narxnomasini 1C dan yukladi",
+  "audit.action.importPricelistDriveFn":
+    "maslahatchi narxnomasini Google Drive havolasi orqali yukladi",
   "audit.action.savePricelistSettingsFn": "sinonimlar, sayt va butik manzilini o‘zgartirdi",
   "audit.action.setPricelistRateFn": "rubl kursini qo‘lda kiritdi",
   "audit.action.refreshPricelistRateFn": "rubl kursini yangiladi",

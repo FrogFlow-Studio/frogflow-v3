@@ -205,5 +205,42 @@ const RATE_STALE: Record<Locale, string> = {
   uz: "🟡 <b>Maslahatchi uchun rubl kursi eskirgan yoki olinmagan.</b>\n\nXaridorlar narxni rublda so‘rayapti, ammo yangi kurssiz rubl hisoblanmaydi: maslahatchi narxlarni tengeda aytadi. Kursni panelda yangilang: «Maslahatchi narxnomasi» → «Rubl kursi».",
 };
 
+const SHEET_FAIL: Record<Locale, string> = {
+  ru: "🟡 <b>Прайс из Google Таблицы не обновляется.</b>\n\nТри попытки подряд не прошли ({why}). Консультант отвечает по прежнему прайсу. Проверьте таблицу и загрузите её заново: «Прайс консультанта» → «Google Таблица».",
+  kk: "🟡 <b>Google Кестедегі прайс жаңармай тұр.</b>\n\nҚатарынан үш әрекет сәтсіз болды ({why}). Кеңесші бұрынғы прайс бойынша жауап береді. Кестені тексеріп, қайта жүктеңіз: «Кеңесші прайсы» → «Google Кесте».",
+  en: "🟡 <b>The price list from Google Sheets is not updating.</b>\n\nThree attempts in a row failed ({why}). The consultant answers from the previous price list. Check the sheet and load it again: “Consultant price list” → “Google Sheet”.",
+  uz: "🟡 <b>Google Jadvaldagi narxnoma yangilanmayapti.</b>\n\nKetma-ket uchta urinish muvaffaqiyatsiz bo‘ldi ({why}). Maslahatchi avvalgi narxnoma bo‘yicha javob beradi. Jadvalni tekshirib, qayta yuklang: «Maslahatchi narxnomasi» → «Google Jadval».",
+};
+
+const SHEET_FAIL_WHY: Record<Locale, Record<"pricesJumped" | "shrunk" | "other", string>> = {
+  ru: {
+    pricesJumped: "цены изменились подозрительно сильно — возможно, сдвинулся столбец",
+    shrunk: "позиций стало вдвое меньше",
+    other: "таблица не скачалась или в ней нет позиций",
+  },
+  kk: {
+    pricesJumped: "бағалар күдікті түрде қатты өзгерді — бағана жылжыған болуы мүмкін",
+    shrunk: "позициялар екі есе азайды",
+    other: "кесте жүктелмеді немесе онда позиция жоқ",
+  },
+  en: {
+    pricesJumped: "prices changed suspiciously much — a column may have shifted",
+    shrunk: "the number of items halved",
+    other: "the sheet did not download or has no items",
+  },
+  uz: {
+    pricesJumped: "narxlar shubhali darajada keskin o‘zgardi — ustun siljigan bo‘lishi mumkin",
+    shrunk: "pozitsiyalar ikki baravar kamaydi",
+    other: "jadval yuklanmadi yoki unda pozitsiya yo‘q",
+  },
+};
+
+/** Продавцу, один раз на серию: таблица прайса не обновляется (pricelist/sheet.server). */
+export const sheetFailNotice = (locale: Locale, reason: string): string => {
+  const why =
+    SHEET_FAIL_WHY[locale][reason === "pricesJumped" || reason === "shrunk" ? reason : "other"];
+  return SHEET_FAIL[locale].replace("{why}", why);
+};
+
 /** Продавцу, не чаще раза в сутки: рубли просят, а свежего курса нет (pricelist/rate-notice). */
 export const rateStaleNotice = (locale: Locale): string => RATE_STALE[locale];

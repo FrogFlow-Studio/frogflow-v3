@@ -1,4 +1,17 @@
 import { describe, expect, it, vi } from "vitest";
+
+// Сообщение продавцу о неудачах таблицы: кому и что ушло в очередь.
+const queued = vi.hoisted(() => [] as Array<{ text: string; chatId: string }>);
+vi.mock("@/core/notify/recipients", () => ({ adminRecipients: async () => ["900"] }));
+vi.mock("@/core/outbox/outbox", () => ({
+  enqueueOutbox: async (_ctx: unknown, m: { text: string; target: { chatId: string } }) => {
+    queued.push({ text: m.text, chatId: m.target.chatId });
+  },
+}));
+vi.mock("@/core/ai/seller-text", async (orig) => ({
+  ...(await orig<typeof import("@/core/ai/seller-text")>()),
+  sellerLocaleSafe: async () => "ru",
+}));
 import { fakeDb } from "../../../../tests/fake-db";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { sheetCsvUrl } from "@/core/catalog/sheet";
@@ -9,6 +22,7 @@ import {
   diffPricelists,
   nextSheetStatus,
   pricelistFingerprint,
+  pricesJumped,
   shrunkTooMuch,
   SHEETS_STATUS_KEY,
   SHEETS_URL_KEY,
@@ -133,7 +147,14 @@ describe("ссылка и разница", () => {
       reason: "closed",
       lastOkAt: now.toISOString(),
       count: 5,
+      fails: 1,
     });
+    const second = nextSheetStatus(
+      nextSheetStatus(ok, { ok: false, reason: "closed" }, later),
+      { ok: false, reason: "download" },
+      later,
+    );
+    expect(second.fails).toBe(2);
   });
 });
 
@@ -250,6 +271,7 @@ describe("автообновление", () => {
       reason: "download",
       lastOkAt: "2026-10-07T09:45:00.000Z",
       count: 2,
+      fails: 1,
     });
   });
 
@@ -316,6 +338,49 @@ describe("автообновление", () => {
     expect(catalogOf(ctx)).toHaveLength(30);
   });
 
+  it("цены прыгнули (сдвиг столбца) — автообновление не применяет, причина продавцу", async () => {
+    const big = Array.from({ length: 30 }, (_, i) => p(`Товар ${i}`, 1000 + i));
+    const ctx = connected({ [CATALOG_KEY]: JSON.stringify(big) });
+    // Вместо цены — остаток: у всех позиций «цена» 1–30.
+    const shifted = csv(big.map((x, i): [string, number] => [x.name, i + 1]));
+    expect(await refreshPricelistSheet(ctx, now, fetchOf(shifted))).toEqual({
+      ok: false,
+      reason: "pricesJumped",
+    });
+    expect(catalogOf(ctx).map((x) => x.price_kzt)).toEqual(big.map((x) => x.price_kzt));
+  });
+
+  it("три неудачи подряд — одно сообщение продавцу на серию, два крона сразу — тоже одно", async () => {
+    queued.length = 0;
+    const ctx = connected();
+    await refreshPricelistSheet(ctx, now, fetchOf());
+    await refreshPricelistSheet(ctx, now, fetchOf());
+    expect(queued).toHaveLength(0);
+    await Promise.all([
+      refreshPricelistSheet(ctx, now, fetchOf()),
+      refreshPricelistSheet(ctx, now, fetchOf()),
+    ]);
+    await refreshPricelistSheet(ctx, now, fetchOf());
+    expect(queued).toHaveLength(1);
+    expect(queued[0]!.text).toContain("не обновляется");
+    expect(JSON.parse(setting(ctx, SHEETS_STATUS_KEY)!).fails).toBe(5);
+    // Удача обрывает серию; новая серия — новое сообщение.
+    await refreshPricelistSheet(
+      ctx,
+      now,
+      fetchOf(
+        csv([
+          ["Uchino", 21000],
+          ["Feiler", 30000],
+        ]),
+      ),
+    );
+    expect(JSON.parse(setting(ctx, SHEETS_STATUS_KEY)!).fails).toBeUndefined();
+    const later = new Date(now.getTime() + 60_000);
+    for (let i = 0; i < 3; i++) await refreshPricelistSheet(ctx, later, fetchOf());
+    expect(queued).toHaveLength(2);
+  });
+
   it("два крона одновременно: прайс один, статус не теряет удачу", async () => {
     const body = csv([
       ["Uchino", 25000],
@@ -333,6 +398,41 @@ describe("автообновление", () => {
       ok: true,
       lastOkAt: now.toISOString(),
     });
+  });
+
+  it("скачок цен: больше половины цен или многие в разы; мелкий прайс не охраняется", () => {
+    const base = Array.from({ length: 40 }, (_, i) => p(`Т${i}`, 10_000 + i));
+    const bump = (k: number, f: (x: number) => number) =>
+      base.map((x, i) => (i < k ? { ...x, price_kzt: f(x.price_kzt) } : x));
+    // Обычная переоценка: четверть позиций +10% — не подозрительно.
+    expect(
+      pricesJumped(
+        base,
+        bump(10, (x) => Math.round(x * 1.1)),
+      ),
+    ).toBe(false);
+    // Больше половины цен изменилось.
+    expect(
+      pricesJumped(
+        base,
+        bump(21, (x) => x + 100),
+      ),
+    ).toBe(true);
+    // Четыре позиции подешевели в 10 раз (10% от 40).
+    expect(
+      pricesJumped(
+        base,
+        bump(4, (x) => Math.round(x / 10)),
+      ),
+    ).toBe(true);
+    expect(
+      pricesJumped(
+        base,
+        bump(3, (x) => Math.round(x / 10)),
+      ),
+    ).toBe(false);
+    // Маленький прайс — без охраны.
+    expect(pricesJumped(base.slice(0, 10), bump(10, (x) => x * 10).slice(0, 10))).toBe(false);
   });
 
   it("отпечаток зависит от содержимого прайса", () => {

@@ -31,7 +31,12 @@ export type PricelistSheetFailure =
   /** Позиций стало вдвое меньше — автообновление не применило таблицу. */
   | "shrunk"
   /** Таблица изменилась между предпросмотром и загрузкой. */
-  | "changed";
+  | "changed"
+  /**
+   * Цены изменились подозрительно сильно (больше половины позиций или
+   * многие в разы) — похоже на сдвиг столбца: автообновление не применило.
+   */
+  | "pricesJumped";
 
 export type PricelistDiff = {
   added: number;
@@ -55,7 +60,12 @@ export type SheetStatus = {
   lastOkAt?: string;
   /** Позиций в последней удачно прочитанной таблице. */
   count?: number;
+  /** Неудачных попыток подряд (сбрасывается удачной). */
+  fails?: number;
 };
+
+/** После стольких неудач подряд продавцу уходит одно сообщение в Telegram. */
+export const SHEET_FAIL_NOTICE_AT = 3;
 
 const SAMPLES = 5;
 
@@ -121,6 +131,30 @@ export function pricelistFingerprint(products: ConsultantProduct[]): string {
   return `${(h >>> 0).toString(36)}-${products.length}`;
 }
 
+/**
+ * Цены прыгнули подозрительно (сдвиг столбца, курс вместо цены): среди
+ * совпавших позиций (от SHRINK_GUARD_MIN) изменилась больше половины цен,
+ * или у 10% (не меньше трёх) цена выросла или упала втрое и сильнее.
+ */
+export function pricesJumped(before: ConsultantProduct[], after: ConsultantProduct[]): boolean {
+  const a = keyed(before);
+  let matched = 0;
+  let changed = 0;
+  let wild = 0;
+  for (const [k, p] of keyed(after)) {
+    const old = a.get(k);
+    if (!old) continue;
+    matched++;
+    if (old.price_kzt === p.price_kzt) continue;
+    changed++;
+    const lo = Math.min(old.price_kzt, p.price_kzt);
+    const hi = Math.max(old.price_kzt, p.price_kzt);
+    if (lo <= 0 || hi / lo >= 3) wild++;
+  }
+  if (matched < SHRINK_GUARD_MIN) return false;
+  return changed * 2 > matched || wild >= Math.max(3, Math.ceil(matched * 0.1));
+}
+
 /** Таблица подозрительно короче прайса — автообновлением не применять. */
 export function shrunkTooMuch(before: number, after: number): boolean {
   return before >= SHRINK_GUARD_MIN && after * 2 < before;
@@ -137,6 +171,7 @@ export function parseSheetStatus(raw: string | null | undefined): SheetStatus | 
       ...(typeof o.reason === "string" ? { reason: o.reason } : {}),
       ...(typeof o.lastOkAt === "string" ? { lastOkAt: o.lastOkAt } : {}),
       ...(typeof o.count === "number" ? { count: o.count } : {}),
+      ...(typeof o.fails === "number" ? { fails: o.fails } : {}),
     };
   } catch {
     return null;
@@ -157,5 +192,6 @@ export function nextSheetStatus(
     reason: run.reason,
     ...(prev?.lastOkAt ? { lastOkAt: prev.lastOkAt } : {}),
     ...(prev?.count !== undefined ? { count: prev.count } : {}),
+    fails: (prev && !prev.ok ? (prev.fails ?? 1) : 0) + 1,
   };
 }

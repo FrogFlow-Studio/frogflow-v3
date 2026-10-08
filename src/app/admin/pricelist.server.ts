@@ -29,7 +29,9 @@ import {
   previewPricelistSheet,
   storedRows,
 } from "@/core/consultant/pricelist/sheet.server";
-import { diffPricelists } from "@/core/consultant/pricelist/sheet";
+import { diffPricelists, pricesJumped } from "@/core/consultant/pricelist/sheet";
+import { downloadDriveFile } from "@/core/consultant/pricelist/drive.server";
+import { xlsxToCsv } from "@/core/catalog/xlsx.server";
 import { sheetCsvUrl } from "@/core/catalog/sheet";
 import type { FetchLike } from "@/core/catalog/sheet.server";
 import {
@@ -128,6 +130,18 @@ export async function pricelistOverview(ctx: TenantContext) {
       /** К скольким позициям прайса подходит (то же правило, что при ответе покупателю). */
       matches: snap.products.filter((p) => mediaMatchesProduct(m, p)).length,
     })),
+    /**
+     * Названия и цвета позиций для фотобазы: подсказка модели при вводе и
+     * проверка «подходит ли хоть одной позиции» до сохранения (без повторов).
+     */
+    mediaCandidates: [
+      ...new Map(
+        snap.products.map((p) => [
+          `${p.name}|${p.colors.join(",")}`,
+          { name: p.name, colors: p.colors },
+        ]),
+      ).values(),
+    ],
     articles: articles.map((a) => ({
       id: a.id,
       title: a.title,
@@ -142,30 +156,66 @@ export async function pricelistOverview(ctx: TenantContext) {
 }
 
 /**
- * Выгрузка 1С (CSV): разбор, проверка, замена прайса. Ошибки строк и разница
- * с прежним прайсом — продавцу. Подключённая таблица отключается: иначе
- * автообновление через четверть часа заменило бы загруженный файл таблицей.
+ * Выгрузка 1С (CSV или Excel, уже переведённый в CSV): разбор, проверка,
+ * замена прайса. Ошибки строк и разница с прежним прайсом — продавцу.
+ * Цены изменились подозрительно сильно (pricesJumped: сдвиг столбца, курс
+ * вместо цены) — без `confirm` ничего не пишем, продавец видит разницу и
+ * подтверждает. Подключённая таблица отключается: иначе автообновление через
+ * четверть часа заменило бы загруженный файл таблицей.
  */
-export async function importPricelist(ctx: TenantContext, csv: string, fileName: string) {
+export async function importPricelist(
+  ctx: TenantContext,
+  csv: string,
+  fileName: string,
+  opts: { confirm?: boolean } = {},
+) {
   requirePricelist(ctx);
   const parsed = parseCatalogCsv(csv);
   if (parsed.products.length === 0)
     throw new UserError(
       "err.pricelist.empty",
-      "В файле не нашлось ни одной позиции. Нужна выгрузка 1С в CSV: название, раздел, размер, цена.",
+      "В файле не нашлось ни одной позиции. Нужна выгрузка 1С в CSV или Excel: название, раздел, размер, цена.",
     );
   const [before, sheet] = await Promise.all([storedRows(ctx), loadSheetLink(ctx)]);
   const diff = diffPricelists(before, parsed.products);
+  const errors = parsed.errors.slice(0, 20);
+  if (!opts.confirm && pricesJumped(before, parsed.products))
+    return {
+      needsConfirm: true as const,
+      count: parsed.products.length,
+      diff,
+      errors,
+      errorCount: parsed.errors.length,
+    };
   const meta = await savePricelist(ctx, parsed.products, fileName.slice(0, 120) || "CSV");
   const sheetDisconnected = Boolean(sheet);
   if (sheetDisconnected) await disconnectPricelistSheet(ctx);
   return {
+    needsConfirm: false as const,
     meta,
     diff,
     sheetDisconnected,
-    errors: parsed.errors.slice(0, 20),
+    errors,
     errorCount: parsed.errors.length,
   };
+}
+
+/** Файл Excel (.xlsx) — в CSV для того же разбора: перевод строки в ячейке — пробел. */
+export function pricelistCsvFromXlsx(data: Buffer): string {
+  return xlsxToCsv(data, { singleLine: true });
+}
+
+/** Разовая загрузка по ссылке Google Drive на файл (CSV или Excel), как файл из админки. */
+export async function importPricelistDrive(
+  ctx: TenantContext,
+  url: string,
+  opts: { confirm?: boolean } = {},
+  fetchImpl?: FetchLike,
+) {
+  requirePricelist(ctx);
+  const file = await downloadDriveFile(url, fetchImpl);
+  const csv = file.kind === "xlsx" ? pricelistCsvFromXlsx(file.data) : file.text;
+  return importPricelist(ctx, csv, "Google Drive", opts);
 }
 
 function requireSheetLink(url: string): string {

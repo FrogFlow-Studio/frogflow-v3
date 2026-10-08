@@ -21,6 +21,8 @@ import {
   nextSheetStatus,
   parseSheetStatus,
   pricelistFingerprint,
+  pricesJumped,
+  SHEET_FAIL_NOTICE_AT,
   shrunkTooMuch,
   SHEETS_STATUS_KEY,
   SHEETS_URL_KEY,
@@ -73,6 +75,8 @@ export type SheetPreview =
       count: number;
       current: number;
       diff: PricelistDiff;
+      /** Цены изменились подозрительно сильно — продавцу предупреждение перед загрузкой. */
+      jumped: boolean;
       errors: CatalogImportError[];
       errorCount: number;
       fingerprint: string;
@@ -92,6 +96,7 @@ export async function previewPricelistSheet(
     count: r.products.length,
     current: current.length,
     diff: diffPricelists(current, r.products),
+    jumped: pricesJumped(current, r.products),
     errors: r.errors.slice(0, 20),
     errorCount: r.errors.length,
     fingerprint: pricelistFingerprint(r.products),
@@ -102,12 +107,47 @@ async function writeStatus(
   ctx: TenantContext,
   run: Parameters<typeof nextSheetStatus>[1],
   now: Date,
-): Promise<void> {
+): Promise<SheetStatus | null> {
   // Условная запись по маленькому значению статуса: крон и ручная загрузка
   // одновременно не затрут друг другу lastOkAt.
-  await updateSettingAtomic(ctx, SHEETS_STATUS_KEY, (raw) =>
-    JSON.stringify(nextSheetStatus(parseSheetStatus(raw), run, now)),
-  );
+  let written: SheetStatus | null = null;
+  const r = await updateSettingAtomic(ctx, SHEETS_STATUS_KEY, (raw) => {
+    written = nextSheetStatus(parseSheetStatus(raw), run, now);
+    return JSON.stringify(written);
+  });
+  return r === "written" ? written : null;
+}
+
+/** Отметка «о неудачах таблицы сообщили»: значение — начало серии (последний удачный раз). */
+export const SHEET_FAIL_NOTICE_KEY = "consultant_sheets_fail_noticed";
+
+/**
+ * SHEET_FAIL_NOTICE_AT неудач подряд — продавцу одно сообщение в Telegram на
+ * серию. Отметку ставит условная запись (значение — lastOkAt серии), шлёт
+ * только выигравший: два крона одновременно дают одно сообщение.
+ */
+async function noticeSheetFailures(ctx: TenantContext, status: SheetStatus | null) {
+  if (!status || status.ok || (status.fails ?? 0) < SHEET_FAIL_NOTICE_AT) return;
+  try {
+    const streak = status.lastOkAt ?? "never";
+    const claimed = await updateSettingAtomic(ctx, SHEET_FAIL_NOTICE_KEY, (raw) =>
+      raw?.trim() === streak ? null : streak,
+    );
+    if (claimed !== "written") return;
+    const { sheetFailNotice } = await import("../messages");
+    const { sellerLocaleSafe } = await import("@/core/ai/seller-text");
+    const text = sheetFailNotice(await sellerLocaleSafe(ctx), status.reason ?? "download");
+    const { adminRecipients } = await import("@/core/notify/recipients");
+    const { enqueueOutbox } = await import("@/core/outbox/outbox");
+    for (const chatId of await adminRecipients(ctx))
+      await enqueueOutbox(
+        ctx,
+        { kind: "admin_notice", target: { channel: "telegram", chatId }, text, audience: "admin" },
+        null,
+      );
+  } catch (e) {
+    console.error(`[sheet:${ctx.tenant.id}] сообщение о таблице не поставлено: ${String(e)}`);
+  }
 }
 
 /**
@@ -153,8 +193,9 @@ export type SheetRefresh =
 /**
  * Автообновление (крон консультанта, как в v1 — раз в 15 минут): скачать
  * подключённую таблицу и, если позиции изменились, заменить прайс. Неудача —
- * только запись в статус, прайс не трогаем; таблица вдвое короче прайса —
- * тоже не применяем (shrunkTooMuch).
+ * только запись в статус, прайс не трогаем; таблица вдвое короче прайса или
+ * с подозрительным скачком цен — тоже не применяем (shrunkTooMuch,
+ * pricesJumped). После SHEET_FAIL_NOTICE_AT неудач подряд — сообщение продавцу.
  */
 export async function refreshPricelistSheet(
   ctx: TenantContext,
@@ -163,16 +204,15 @@ export async function refreshPricelistSheet(
 ): Promise<SheetRefresh> {
   const link = await loadSheetLink(ctx);
   if (!link) return { skipped: "none" };
+  const fail = async (reason: PricelistSheetFailure): Promise<SheetRefresh> => {
+    await noticeSheetFailures(ctx, await writeStatus(ctx, { ok: false, reason }, now));
+    return { ok: false, reason };
+  };
   const r = await readSheetPricelist(link.url, fetchImpl);
-  if (!r.ok) {
-    await writeStatus(ctx, r, now);
-    return r;
-  }
+  if (!r.ok) return fail(r.reason);
   const current = await storedRows(ctx);
-  if (shrunkTooMuch(current.length, r.products.length)) {
-    await writeStatus(ctx, { ok: false, reason: "shrunk" }, now);
-    return { ok: false, reason: "shrunk" };
-  }
+  if (shrunkTooMuch(current.length, r.products.length)) return fail("shrunk");
+  if (pricesJumped(current, r.products)) return fail("pricesJumped");
   const changed = pricelistFingerprint(current) !== pricelistFingerprint(r.products);
   if (changed) await savePricelist(ctx, r.products, SHEET_SOURCE, now);
   await writeStatus(ctx, { ok: true, count: r.products.length }, now);
