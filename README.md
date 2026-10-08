@@ -34,7 +34,7 @@ src/config/env.ts      единственное место чтения process.
 src/core/              домен: канала не знает, арендатора получает параметром
 src/channels/          адаптеры каналов: telegram/, zernio/ (фаза 4)
 src/routes/api/        вебхуки, кроны, API оператора
-scripts/onboard.mjs    подключить клиента к v2 одной командой
+scripts/onboard.mjs    подключить клиента к v3 одной командой
 ```
 
 Ядро принимает `TenantContext` первым аргументом. Подключение к базе в нём —
