@@ -4,6 +4,7 @@ import { previewWebhookResponse } from "@/lib/preview";
 import { env } from "@/config/env";
 import { isCronAuthorized } from "@/lib/cron-auth";
 import { reportError } from "@/lib/errors";
+import { isUserError } from "@/core/i18n/user-error";
 import { cronBudget, eachWithin, inTurn, mapWithin, resumeOf } from "@/lib/cron-budget";
 
 /** Опрос ящика Zernio идёт раз в минуту — укладываемся в 45 с, с запасом до следующего. */
@@ -48,7 +49,14 @@ export const Route = createFileRoute("/api/cron/$job")({
           }).catch(() => undefined);
         };
         // Сбой у одного клиента — в итог крона и в учёт ошибок, остальные идут дальше.
+        // Отказ с текстом для человека (UserError: «vip_group_id не настроен») — не сбой
+        // кода, а настройка клиента: его видно оператору в итоге крона, в Sentry он
+        // только шумит каждые полчаса (FROGFLOW-V2-F).
         const tenantFailure = async (botId: string, e: unknown) => {
+          if (isUserError(e)) {
+            console.warn(`[cron:${params.job}] ${botId}: ${e.message}`);
+            return { ok: false, setup: true, error: e.message };
+          }
           await reportError(e, { where: `cron:${params.job}`, botId });
           return { ok: false, error: e instanceof Error ? e.message : String(e) };
         };
