@@ -92,6 +92,7 @@ function run(bot: string, id: string, conv: string, status: string, kind: string
     reply_text: status === "replied" ? `ответ ${id}` : null,
     reply_kind: kind,
     received_at: at,
+    token_usage: { usd: id === "a" ? 0.01 : id === "b" ? 0.02 : 0.03 },
   };
 }
 
@@ -99,7 +100,17 @@ describe("«Обзор» консультанта", () => {
   it("сегодня по журналу, открытые задачи со ссылкой в диалог, расход и предел", async () => {
     const { ctx } = ctxOf();
     const o = await consultantOverview(ctx, { contacts: true }, new Date("2026-10-08T07:00:00Z"));
-    expect(o.today).toEqual({ date: "2026-10-08", dialogs: 1, replies: 2, handoffs: 1, silent: 0 });
+    expect(o.today).toEqual({
+      date: "2026-10-08",
+      dialogs: 1,
+      replies: 2,
+      handoffs: 1,
+      silent: 0,
+      usd: expect.closeTo(0.03, 6),
+    });
+    // «Итого» за неделю: два разных диалога (c1, c2), расход по журналу ответов.
+    expect(o.weekTotal).toMatchObject({ dialogs: 2, replies: 2, handoffs: 1, silent: 1 });
+    expect(o.weekTotal.usd).toBeCloseTo(0.06, 6);
     expect(o.week.find((d) => d.date === "2026-10-07")).toMatchObject({ silent: 1 });
     expect(o.tasks?.open).toBe(1);
     expect(o.tasks?.top).toEqual([expect.objectContaining({ id: "t1", telegramId: -501 })]);

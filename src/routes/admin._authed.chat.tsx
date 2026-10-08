@@ -541,22 +541,33 @@ function ChatPage() {
           waiting.failed
         }
       />
-      <UnansweredAlert
-        t={t}
-        initial={initial.unansweredMinutes}
-        initialEscalate={initial.unansweredEscalate}
-        canWrite={canWrite}
-      />
-      <InboxFilters
-        t={t}
-        filter={filter}
-        counts={counts}
-        search={searchText}
-        onSearch={setSearchText}
-        onChange={changeFilter}
-      />
-      <div className="card grid h-[calc(100vh-14rem)] min-h-[28rem] grid-cols-1 overflow-hidden md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
-        <div className="overflow-y-auto border-b border-line md:border-r md:border-b-0">
+      {/* На телефоне открытый диалог занимает экран: напоминание и фильтры — только у списка. */}
+      <div className={selected ? "hidden md:block" : undefined}>
+        <UnansweredAlert
+          t={t}
+          initial={initial.unansweredMinutes}
+          initialEscalate={initial.unansweredEscalate}
+          canWrite={canWrite}
+        />
+        <InboxFilters
+          t={t}
+          filter={filter}
+          counts={counts}
+          search={searchText}
+          onSearch={setSearchText}
+          onChange={changeFilter}
+        />
+      </div>
+      {/* Телефон: список и переписка раздельно (выбрал — переписка, «К списку» — назад);
+          с md — две колонки рядом. */}
+      <div
+        className={`card grid min-h-[28rem] grid-cols-1 overflow-hidden md:h-[calc(100vh-14rem)] md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] ${selected ? "h-[calc(100dvh-8rem)]" : "h-[calc(100dvh-14rem)]"}`}
+        data-testid="chat-split"
+      >
+        <div
+          className={`overflow-y-auto border-line md:border-r ${selected ? "hidden md:block" : ""}`}
+          data-testid="chat-list"
+        >
           <div className="sticky top-0 z-10 border-b border-line bg-surface p-2">
             <input
               type="search"
@@ -661,11 +672,20 @@ function ChatPage() {
             </button>
           )}
         </div>
-        <div className="flex min-h-0 flex-col lg:flex-row">
+        <div className={`min-h-0 flex-col lg:flex-row ${selected ? "flex" : "hidden md:flex"}`}>
           {selected === null ? (
             <p className="m-auto text-sm text-muted">{t("chat.pickDialog")}</p>
           ) : (
             <>
+              <div className="flex shrink-0 items-center gap-2 border-b border-line px-2 py-1 md:hidden">
+                <button
+                  type="button"
+                  className="btn-ghost text-xs"
+                  onClick={() => setSelectedId(null)}
+                >
+                  ← {t("chat.backToList")}
+                </button>
+              </div>
               <CustomerPanelView
                 key={selected.telegram_id}
                 t={t}

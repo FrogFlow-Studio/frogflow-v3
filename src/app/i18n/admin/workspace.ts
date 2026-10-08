@@ -64,6 +64,7 @@ export const ru = {
   "ws.week.handoffs": "Передач",
   "ws.week.silent": "Молчал",
   "ws.week.total": "За 7 дней",
+  "ws.week.spend": "Расход ИИ",
 
   "ws.tasks.title": "Задачи",
   "ws.tasks.subtitle":
@@ -228,6 +229,7 @@ export const kk: SectionDict<typeof ru> = {
   "ws.week.handoffs": "Берілгендер",
   "ws.week.silent": "Үндемеді",
   "ws.week.total": "7 күнде",
+  "ws.week.spend": "ЖИ шығыны",
 
   "ws.tasks.title": "Тапсырмалар",
   "ws.tasks.subtitle":
@@ -393,6 +395,7 @@ export const en: SectionDict<typeof ru> = {
   "ws.week.handoffs": "Handoffs",
   "ws.week.silent": "Silent",
   "ws.week.total": "7 days",
+  "ws.week.spend": "AI spend",
 
   "ws.tasks.title": "Tasks",
   "ws.tasks.subtitle":
@@ -558,6 +561,7 @@ export const uz: SectionDict<typeof ru> = {
   "ws.week.handoffs": "Uzatishlar",
   "ws.week.silent": "Jim turdi",
   "ws.week.total": "7 kunda",
+  "ws.week.spend": "SI xarajati",
 
   "ws.tasks.title": "Vazifalar",
   "ws.tasks.subtitle":

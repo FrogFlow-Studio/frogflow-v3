@@ -2,6 +2,7 @@ import { useState } from "react";
 import { consultantTestFn } from "./admin.functions";
 import { Badge, Card, ErrorBox, useAction } from "@/app/ui";
 import type { AdminT } from "@/app/i18n/admin";
+import { taskReason } from "./workspace-ui";
 
 /**
  * «Проверить консультанта» с историей: пробный диалог из нескольких реплик.
@@ -17,7 +18,12 @@ export function WorkspaceTestChat({ configured, t }: { configured: boolean; t: A
   // Что видно на экране — весь пробный диалог; на сервер уходит история, которую он вернул
   // (последние реплики, core/consultant/test-chat).
   const [log, setLog] = useState<
-    Array<{ q: string; a: string; usd: number; handoff: string | null }>
+    Array<{
+      q: string;
+      a: string;
+      usd: number;
+      handoff: { reason: string; summary: string } | null;
+    }>
   >([]);
   const ask = useAction(async () => {
     const text = q.trim();
@@ -31,7 +37,7 @@ export function WorkspaceTestChat({ configured, t }: { configured: boolean; t: A
         q: text,
         a: r.reply,
         usd: r.usage.usd,
-        handoff: r.handoff ? `${r.handoff.reason} — ${r.handoff.summary}` : null,
+        handoff: r.handoff ? { reason: r.handoff.reason, summary: r.handoff.summary } : null,
       },
     ]);
     setQ("");
@@ -71,7 +77,10 @@ export function WorkspaceTestChat({ configured, t }: { configured: boolean; t: A
               {m.handoff && (
                 <>
                   {" "}
-                  · <Badge tone="warn">{t("ws.test.handoff")}</Badge> {m.handoff}
+                  · <Badge tone="warn">{t("ws.test.handoff")}</Badge>{" "}
+                  {/* Причина — словами продавца, как в «Задачах», а не кодом `purchase`. */}
+                  {taskReason(t, m.handoff.reason)}
+                  {m.handoff.summary ? ` — ${m.handoff.summary}` : ""}
                 </>
               )}
             </div>

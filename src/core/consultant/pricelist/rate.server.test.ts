@@ -1,7 +1,16 @@
 import { describe, expect, it, vi } from "vitest";
 import { fakeDb } from "../../../../tests/fake-db";
 import type { TenantContext } from "@/core/tenant/resolve.server";
-import { VTB_LAST_ERROR_KEY, VTB_RATE_KEY, getFreshRate, refreshRate } from "./rate.server";
+import {
+  VTB_LAST_ERROR_KEY,
+  VTB_RATE_KEY,
+  getFreshRate,
+  getStoredRateStrict,
+  loadAttemptLog,
+  refreshRate,
+} from "./rate.server";
+import { adminT } from "@/app/i18n/admin";
+import { rateAttemptText } from "@/app/admin/pricelist-cards";
 
 vi.mock("@/config/env", () => ({ env: () => ({}) }));
 
@@ -76,5 +85,51 @@ describe("курс рубля магазина", () => {
     const r = await refreshRate(ctx, page as unknown as typeof fetch, NOW);
     expect(r.error).toBe("manual");
     expect(r.stored?.rate).toBe(4.5);
+  });
+
+  it("журнал попытки — коды для панели: продавец читает его на своём языке", async () => {
+    const { ctx } = shop(
+      JSON.stringify({ rate: 6, updatedAt: new Date(NOW - 3600_000).toISOString() }),
+    );
+    await refreshRate(ctx, page as unknown as typeof fetch, NOW);
+    const log = await loadAttemptLog(ctx);
+    // Строки для оператора и v1 — по-русски, как раньше.
+    expect(log?.attempts.at(-1)).toMatch(/не приняли, оставили прежний/);
+    expect(log?.entries?.map((e) => e.code)).toEqual(["ok", "jumpRejected"]);
+    const en = log!.entries!.map((e) => rateAttemptText(adminT("en"), e));
+    expect(en[0]).toBe("Kaspi (finkaz.kz): OK, buy 4.45, sell 4.95");
+    expect(en[1]).toBe(
+      "rate 4.45 differs from the previous 6 by 26% — not accepted, kept the previous one",
+    );
+    const kk = rateAttemptText(adminT("kk"), log!.entries![1]!);
+    expect(kk).toMatch(/қабылданбады/);
+  });
+
+  it("журнал без кодов (старый или от v1) читается строками", async () => {
+    const { ctx, db } = shop();
+    db.tables.app_settings!.push({
+      bot_id: "b",
+      key: VTB_LAST_ERROR_KEY,
+      value: JSON.stringify({ at: "2026-09-22T06:00:00Z", ok: false, attempts: ["ВТБ: таймаут"] }),
+    });
+    const log = await loadAttemptLog(ctx);
+    expect(log).toMatchObject({ attempts: ["ВТБ: таймаут"] });
+    expect(log?.entries).toBeUndefined();
+  });
+
+  it("«Обзор»: сбой чтения курса — ошибка, а не «курса нет»", async () => {
+    const { ctx } = shop();
+    const broken = {
+      ...ctx,
+      tenant: { ...ctx.tenant, id: "bot-broken" },
+      db: {
+        from: () => ({
+          select: () => ({
+            eq: () => ({ maybeSingle: async () => ({ data: null, error: { message: "boom" } }) }),
+          }),
+        }),
+      },
+    } as unknown as TenantContext;
+    await expect(getStoredRateStrict(broken, NOW)).rejects.toThrow();
   });
 });

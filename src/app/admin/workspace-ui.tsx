@@ -197,15 +197,9 @@ export function WorkspaceOverview({
     await router.invalidate();
   });
   const yesterday = data.week.at(-2);
-  const total = data.week.reduce(
-    (s, d) => ({
-      dialogs: s.dialogs + d.dialogs,
-      replies: s.replies + d.replies,
-      handoffs: s.handoffs + d.handoffs,
-      silent: s.silent + d.silent,
-    }),
-    { dialogs: 0, replies: 0, handoffs: 0, silent: 0 },
-  );
+  // «Итого» считает сервер: диалоги за неделю — уникальные, а не сумма по дням.
+  const total = data.weekTotal;
+  const usd = (n: number) => `$${n.toFixed(2)}`;
   return (
     <div className="mb-6 space-y-4" data-testid="ws-overview">
       <Card
@@ -315,7 +309,8 @@ export function WorkspaceOverview({
                 <th className="py-1 pr-3 text-right font-normal">{t("ws.stat.dialogs")}</th>
                 <th className="py-1 pr-3 text-right font-normal">{t("ws.week.replies")}</th>
                 <th className="py-1 pr-3 text-right font-normal">{t("ws.week.handoffs")}</th>
-                <th className="py-1 text-right font-normal">{t("ws.week.silent")}</th>
+                <th className="py-1 pr-3 text-right font-normal">{t("ws.week.silent")}</th>
+                <th className="py-1 text-right font-normal">{t("ws.week.spend")}</th>
               </tr>
             </thead>
             <tbody className="tabular-nums">
@@ -325,7 +320,8 @@ export function WorkspaceOverview({
                   <td className="py-1 pr-3 text-right">{d.dialogs}</td>
                   <td className="py-1 pr-3 text-right">{d.replies}</td>
                   <td className="py-1 pr-3 text-right">{d.handoffs}</td>
-                  <td className="py-1 text-right">{d.silent}</td>
+                  <td className="py-1 pr-3 text-right">{d.silent}</td>
+                  <td className="py-1 text-right">{usd(d.usd)}</td>
                 </tr>
               ))}
               <tr className="border-t border-line font-medium">
@@ -333,7 +329,8 @@ export function WorkspaceOverview({
                 <td className="py-1 pr-3 text-right">{total.dialogs}</td>
                 <td className="py-1 pr-3 text-right">{total.replies}</td>
                 <td className="py-1 pr-3 text-right">{total.handoffs}</td>
-                <td className="py-1 text-right">{total.silent}</td>
+                <td className="py-1 pr-3 text-right">{total.silent}</td>
+                <td className="py-1 text-right">{usd(total.usd)}</td>
               </tr>
             </tbody>
           </table>
