@@ -16,7 +16,7 @@ import {
   reorderFn,
 } from "@/app/admin/admin.functions";
 import { pruneUpsellFn, upsellHealthFn } from "@/app/admin/upsell.functions";
-import { adminT, type AdminKey, type AdminT } from "@/app/i18n/admin";
+import { adminT, intlLocale, type AdminKey, type AdminT } from "@/app/i18n/admin";
 import { EmptyState } from "@/app/ui/states";
 import { Badge, Card, Empty, ErrorBox, PageTitle, Switch, useAction } from "@/app/ui";
 import { ReadinessBadge } from "@/app/admin/product-readiness";
@@ -27,18 +27,46 @@ import { nextPageOffset } from "@/core/catalog/picker";
 import type { BulkAction } from "@/core/catalog/bulk";
 import { runBulkInBatches, type BulkRun } from "@/core/catalog/bulk-batches";
 import { STALE_OFFER_MAX } from "@/core/stock/stale-const";
+import type { Locale } from "@/core/i18n/locale";
+
+const SORTS = ["catalog", "new", "old", "name", "price"] as const;
+type Sort = (typeof SORTS)[number];
+const SORT_KEY = "ff-admin-products-sort";
+const LANG_LABEL: Record<Locale, string> = { ru: "RU", kk: "KZ", en: "EN", uz: "UZ" };
+
+/** `?lang=kk` — есть на казахском, `?lang=-kk` — нет на казахском. */
+function langFilter(v: string | undefined): { lang: Locale; has: boolean } | null {
+  const m = /^(-?)(ru|kk|en|uz)$/.exec(v ?? "");
+  return m ? { lang: m[2] as Locale, has: !m[1] } : null;
+}
+
+/** Фильтр и порядок списка — одни для первой страницы, «Показать ещё» и «Выбрать все». */
+function listQuery(s: {
+  q?: string;
+  category?: string;
+  inactive?: boolean;
+  sort?: Sort;
+  lang?: string;
+}) {
+  return {
+    q: s.q,
+    categoryId: s.category ?? null,
+    onlyInactive: s.inactive,
+    sort: s.sort,
+    lang: langFilter(s.lang),
+  };
+}
 
 export const Route = createFileRoute("/admin/_authed/products")({
   validateSearch: z.object({
     q: z.string().optional(),
     category: z.string().optional(),
     inactive: z.boolean().optional(),
+    sort: z.enum(SORTS).optional(),
+    lang: z.string().optional(),
   }),
   loaderDeps: ({ search }) => search,
-  loader: ({ deps }) =>
-    productsFn({
-      data: { q: deps.q, categoryId: deps.category ?? null, onlyInactive: deps.inactive },
-    }),
+  loader: ({ deps }) => productsFn({ data: listQuery(deps) }),
   component: ProductsPage,
 });
 
@@ -52,6 +80,40 @@ function ProductsPage() {
   const navigate = useNavigate();
   const router = useRouter();
   const [q, setQ] = useState(s.q ?? "");
+  const lf = langFilter(s.lang);
+  const langs = (["ru", "kk", "en", "uz"] as const).filter(
+    (l) => l === "ru" || l === "kk" || shop.modules.multi_language,
+  );
+  const sort: Sort = s.sort ?? "catalog";
+  // Выбранный порядок запоминается в браузере: завтра «Товары» откроются так же.
+  useEffect(() => {
+    if (s.sort) return;
+    let saved: string | null = null;
+    try {
+      saved = localStorage.getItem(SORT_KEY);
+    } catch {
+      /* без localStorage — порядок каталога */
+    }
+    if (saved && saved !== "catalog" && (SORTS as readonly string[]).includes(saved))
+      void navigate({
+        to: "/admin/products",
+        search: (p) => ({ ...(p as typeof s), sort: saved as Sort }),
+        replace: true,
+      });
+    // Только при входе на страницу.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const setSort = (v: Sort) => {
+    try {
+      localStorage.setItem(SORT_KEY, v);
+    } catch {
+      /* без localStorage — только в адресе */
+    }
+    void navigate({
+      to: "/admin/products",
+      search: (p) => ({ ...(p as typeof s), sort: v === "catalog" ? undefined : v }),
+    });
+  };
   const [importOpen, setImportOpen] = useState(false);
   // Первая страница — из загрузчика, следующие дописываются кнопкой «Показать ещё».
   const [products, setProducts] = useState(first.products);
@@ -62,12 +124,7 @@ function ProductsPage() {
   }, [first]);
   const more = useAction(async () => {
     const r = await productsFn({
-      data: {
-        q: s.q,
-        categoryId: s.category ?? null,
-        onlyInactive: s.inactive,
-        offset: nextPageOffset(products.length),
-      },
+      data: { ...listQuery(s), offset: nextPageOffset(products.length) },
     });
     setProducts((p) => {
       const seen = new Set(p.map((x) => x.id));
@@ -100,9 +157,7 @@ function ProductsPage() {
   });
   // «Выбрать все N по фильтру»: id всех товаров под текущим фильтром, не только дочитанных страниц.
   const pickAll = useAction(async () => {
-    const r = await productIdsFn({
-      data: { q: s.q, categoryId: s.category ?? null, onlyInactive: s.inactive },
-    });
+    const r = await productIdsFn({ data: listQuery(s) });
     setPicked(new Set(r.ids));
   });
   const togglePick = (id: string, on: boolean) =>
@@ -114,7 +169,8 @@ function ProductsPage() {
     });
   // Порядок перетаскиванием — когда виден весь каталог без фильтров: иначе
   // перенумерованная часть перемешалась бы с невидимыми товарами.
-  const canReorder = canEdit(shop.role) && !s.q && !s.category && !s.inactive && !hasMore;
+  const filtered = Boolean(s.q || s.category || s.inactive || lf);
+  const canReorder = canEdit(shop.role) && !filtered && sort === "catalog" && !hasMore;
   const [drag, setDrag] = useState<string | null>(null);
   const reorder = useAction(async (fromId: string, toId: string) => {
     const { moveItem } = await import("@/core/catalog/reorder");
@@ -156,7 +212,10 @@ function ProductsPage() {
         className="mb-4 flex flex-wrap gap-2"
         onSubmit={(e) => {
           e.preventDefault();
-          void navigate({ to: "/admin/products", search: { ...s, q: q || undefined } });
+          void navigate({
+            to: "/admin/products",
+            search: (p) => ({ ...(p as typeof s), q: q || undefined }),
+          });
         }}
       >
         <input
@@ -171,7 +230,7 @@ function ProductsPage() {
           onChange={(e) =>
             void navigate({
               to: "/admin/products",
-              search: { ...s, category: e.target.value || undefined },
+              search: (p) => ({ ...(p as typeof s), category: e.target.value || undefined }),
             })
           }
         >
@@ -189,14 +248,51 @@ function ProductsPage() {
             onChange={(e) =>
               void navigate({
                 to: "/admin/products",
-                search: { ...s, inactive: e.target.checked || undefined },
+                search: (p) => ({ ...(p as typeof s), inactive: e.target.checked || undefined }),
               })
             }
           />{" "}
           {t("products.onlyHidden")}
         </label>
+        <select
+          className="input w-48"
+          aria-label={t("products.sort.label")}
+          value={sort}
+          onChange={(e) => setSort(e.target.value as Sort)}
+        >
+          {SORTS.map((v) => (
+            <option key={v} value={v}>
+              {t(`products.sort.${v}`)}
+            </option>
+          ))}
+        </select>
+        <select
+          className="input w-48"
+          aria-label={t("products.lang.label")}
+          title={t("products.lang.missingHint")}
+          value={s.lang && lf ? s.lang : ""}
+          onChange={(e) =>
+            void navigate({
+              to: "/admin/products",
+              search: (p) => ({ ...(p as typeof s), lang: e.target.value || undefined }),
+            })
+          }
+        >
+          <option value="">{t("products.lang.all")}</option>
+          {langs.flatMap((l) => [
+            <option key={l} value={l}>
+              {t("products.lang.has", { lang: LANG_LABEL[l] })}
+            </option>,
+            <option key={`-${l}`} value={`-${l}`}>
+              {t("products.lang.missing", { lang: LANG_LABEL[l] })}
+            </option>,
+          ])}
+        </select>
         <button className="btn-secondary">{t("common.search")}</button>
       </form>
+      {canEdit(shop.role) && !canReorder && !hasMore && products.length > 1 && (
+        <p className="-mt-2 mb-3 text-xs text-muted">{t("products.reorderHint")}</p>
+      )}
       {(bulkResult || bulk.error) && (
         <div className="mb-3 text-sm">
           <ErrorBox error={bulk.error} />
@@ -246,7 +342,7 @@ function ProductsPage() {
         </div>
       )}
       {products.length === 0 ? (
-        s.q || s.category || s.inactive ? (
+        filtered ? (
           <Empty>{t(school ? "products.emptyCourses" : "products.empty")}</Empty>
         ) : (
           <EmptyState
@@ -304,6 +400,7 @@ function ProductsPage() {
                 <th>{t("products.col.ready")}</th>
                 {shop.modules.stock && <th className="text-right">{t("products.col.daysLeft")}</th>}
                 <th>{t("products.col.files")}</th>
+                <th>{t("products.col.added")}</th>
                 <th>{t("products.col.onSale")}</th>
               </tr>
             </thead>
@@ -391,6 +488,19 @@ function ProductsPage() {
                     ) : (
                       <span className="text-muted">—</span>
                     )}
+                    {p.langs.length > 0 && (
+                      <div className="mt-1 text-xs text-muted" aria-label={t("products.col.langs")}>
+                        {p.langs.map((l) => LANG_LABEL[l]).join(" ")}
+                      </div>
+                    )}
+                  </td>
+                  <td className="whitespace-nowrap text-muted tabular-nums">
+                    {new Date(p.created_at).toLocaleDateString(intlLocale(shop.locale), {
+                      timeZone: "UTC",
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })}
                   </td>
                   <td>
                     <Switch

@@ -66,3 +66,4 @@ export * from "./fixtures/bovi-workspace.ts";
 export * from "./fixtures/bovi-leftovers.ts";
 export * from "./fixtures/kb-import.ts";
 export * from "./fixtures/miniapp-photo.ts";
+export * from "./fixtures/kd-products.ts";

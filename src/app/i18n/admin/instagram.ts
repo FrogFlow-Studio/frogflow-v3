@@ -28,6 +28,7 @@ export const ru = {
   // список правил
   "instagram.rules.title": "Правила Comment-to-DM",
   "instagram.rules.new": "+ Новое правило",
+  "instagram.rules.copy": "Скопировать",
   "instagram.rules.empty":
     "Правил пока нет. Создайте первое: пост, ключевое слово и текст для Direct.",
   "instagram.rules.deleteConfirm": "Удалить правило «{name}»? Статистика срабатываний пропадёт.",
@@ -69,6 +70,11 @@ export const ru = {
   "instagram.buttons.productConsultantLink": "Открыть страницу консультанта",
   // форма правила
   "instagram.form.editTitle": "Изменить правило",
+  "instagram.form.copyTitle": "Новое правило — копия",
+  "instagram.form.copyName": "{name} (копия)",
+  "instagram.form.copyHint":
+    "Тексты, кнопки и настройки взяты из правила «{name}». Выберите пост для нового правила.",
+  "instagram.form.discardConfirm": "В открытой форме есть несохранённые изменения. Отбросить их?",
   "instagram.form.newTitle": "Новое правило",
   "instagram.form.name": "Название",
   "instagram.form.namePlaceholder": "Рилс про курс",
@@ -163,6 +169,7 @@ export const kk: SectionDict<typeof ru> = {
   "instagram.target.postId": "пост {id}",
   "instagram.rules.title": "Comment-to-DM ережелері",
   "instagram.rules.new": "+ Жаңа ереже",
+  "instagram.rules.copy": "Көшіру",
   "instagram.rules.empty":
     "Ережелер әзірге жоқ. Біріншісін жасаңыз: пост, кілт сөз және Direct үшін мәтін.",
   "instagram.rules.deleteConfirm":
@@ -201,6 +208,12 @@ export const kk: SectionDict<typeof ru> = {
     "Мұнда тауар түймесі жоқ: хат алмасуда кеңесші прайс бойынша жауап береді. Жарияланымда қай тауар көрсетілгенін кеңесші бетіндегі «{section}» бөлімінде белгілейді.",
   "instagram.buttons.productConsultantLink": "Кеңесші бетін ашу",
   "instagram.form.editTitle": "Ережені өзгерту",
+  "instagram.form.copyTitle": "Жаңа ереже — көшірме",
+  "instagram.form.copyName": "{name} (көшірме)",
+  "instagram.form.copyHint":
+    "Мәтіндер, батырмалар мен баптаулар «{name}» ережесінен алынды. Жаңа ереже үшін постты таңдаңыз.",
+  "instagram.form.discardConfirm":
+    "Ашық формада сақталмаған өзгерістер бар. Оларды тастау керек пе?",
   "instagram.form.newTitle": "Жаңа ереже",
   "instagram.form.name": "Атауы",
   "instagram.form.namePlaceholder": "Курс туралы рилс",
@@ -295,6 +308,7 @@ export const en: SectionDict<typeof ru> = {
   "instagram.target.postId": "post {id}",
   "instagram.rules.title": "Comment-to-DM rules",
   "instagram.rules.new": "+ New rule",
+  "instagram.rules.copy": "Copy",
   "instagram.rules.empty":
     "No rules yet. Create the first one: a post, a keyword and a text for Direct.",
   "instagram.rules.deleteConfirm": "Delete rule “{name}”? Trigger statistics will be lost.",
@@ -332,6 +346,11 @@ export const en: SectionDict<typeof ru> = {
     "There is no product button here: the consultant answers from the price list in the chat. Mark which product a post shows in the “{section}” section on the consultant page.",
   "instagram.buttons.productConsultantLink": "Open the consultant page",
   "instagram.form.editTitle": "Edit rule",
+  "instagram.form.copyTitle": "New rule — copy",
+  "instagram.form.copyName": "{name} (copy)",
+  "instagram.form.copyHint":
+    "Texts, buttons and settings are copied from the rule “{name}”. Choose the post for the new rule.",
+  "instagram.form.discardConfirm": "The open form has unsaved changes. Discard them?",
   "instagram.form.newTitle": "New rule",
   "instagram.form.name": "Name",
   "instagram.form.namePlaceholder": "Reel about the course",
@@ -426,6 +445,7 @@ export const uz: SectionDict<typeof ru> = {
   "instagram.target.postId": "post {id}",
   "instagram.rules.title": "Comment-to-DM qoidalari",
   "instagram.rules.new": "+ Yangi qoida",
+  "instagram.rules.copy": "Nusxalash",
   "instagram.rules.empty":
     "Hozircha qoidalar yo‘q. Birinchisini yarating: post, kalit so‘z va Direct uchun matn.",
   "instagram.rules.deleteConfirm":
@@ -464,6 +484,12 @@ export const uz: SectionDict<typeof ru> = {
     "Bu yerda mahsulot tugmasi yo‘q: yozishmada maslahatchi narxlar ro‘yxati bo‘yicha javob beradi. Nashrda qaysi mahsulot ko‘rsatilganini maslahatchi sahifasidagi «{section}» bo‘limida belgilang.",
   "instagram.buttons.productConsultantLink": "Maslahatchi sahifasini ochish",
   "instagram.form.editTitle": "Qoidani o‘zgartirish",
+  "instagram.form.copyTitle": "Yangi qoida — nusxa",
+  "instagram.form.copyName": "{name} (nusxa)",
+  "instagram.form.copyHint":
+    "Matnlar, tugmalar va sozlamalar «{name}» qoidasidan olindi. Yangi qoida uchun postni tanlang.",
+  "instagram.form.discardConfirm":
+    "Ochiq formada saqlanmagan o‘zgarishlar bor. Ularni bekor qilasizmi?",
   "instagram.form.newTitle": "Yangi qoida",
   "instagram.form.name": "Nomi",
   "instagram.form.namePlaceholder": "Kurs haqida rils",
