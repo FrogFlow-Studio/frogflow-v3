@@ -86,11 +86,17 @@ export type LandingClient = {
   note: Record<Locale, string>;
   /** Ссылка на основного бота магазина (не VIP); нет — имя без ссылки. */
   url?: string;
+  /** Главная цифра крупно; нет — крупно имя магазина. Должна быть среди цифр в `note`. */
+  stat?: { value: string; label: Record<Locale, string> };
 };
 
 export const CLIENTS: LandingClient[] = [
   {
     name: "AATeach",
+    stat: {
+      value: "1 100+",
+      label: { ru: "заказов", kk: "тапсырыс", en: "orders", uz: "buyurtma" },
+    },
     url: "https://t.me/maga21zzzbot",
     note: {
       ru: "дидактика для педагогов · 450+ товаров, 1 100+ заказов",
@@ -101,6 +107,15 @@ export const CLIENTS: LandingClient[] = [
   },
   {
     name: "Развивашка",
+    stat: {
+      value: "180+",
+      label: {
+        ru: "VIP-подписчиков",
+        kk: "VIP-жазылушы",
+        en: "VIP subscribers",
+        uz: "VIP-obunachi",
+      },
+    },
     url: "https://t.me/razvivashka_kaz_bot",
     note: {
       ru: "развивающие материалы, магазин и VIP-бот · 180+ VIP-подписчиков, 370+ покупателей",
@@ -111,6 +126,10 @@ export const CLIENTS: LandingClient[] = [
   },
   {
     name: "Дидактика 03",
+    stat: {
+      value: "650+",
+      label: { ru: "покупателей", kk: "сатып алушы", en: "customers", uz: "xaridor" },
+    },
     url: "https://t.me/didaktika_03_bot",
     note: {
       ru: "магазин материалов и VIP-бот · 120+ заказов, 650+ покупателей",

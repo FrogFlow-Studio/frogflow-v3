@@ -22,6 +22,13 @@ test("главная: страница рисуется, серверная фу
     await expect(page.getByText(setup)).toBeVisible();
   await expect(page.getByText(/2 мес\. в подарок/)).toBeVisible();
   await expect(page.getByText(/5\s000\s₸ в месяц за канал/)).toBeVisible();
+  // Первый экран: продавец жмёт «Деньги пришли», и в переписке покупатель получает файл.
+  await page.getByRole("button", { name: /^Деньги пришли/ }).click();
+  await expect(page.getByRole("button", { name: /^Файл отправлен/ })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(page.getByText("Рабочие_листы_1_класс.pdf")).toBeVisible();
   expect(errors).toEqual([]);
 });
 
