@@ -256,16 +256,16 @@ const ru = {
   "niche.materials.link": "Для учебных материалов",
   "niche.materials.title": "Бот для продажи учебных материалов и PDF в Telegram — FrogFlow",
   "niche.materials.description":
-    "Бот продаёт методички, прописи и дидактику: проверяет чек и сразу отправляет файл, в том числе ночью. Материалы на русском и казахском. {days} дней бесплатно.",
+    "Бот продаёт методички, прописи и дидактику: даёт реквизиты, сверяет чек и отправляет файл, как только вы подтвердите оплату, а с Робокассой или Продамусом сам, даже ночью. Материалы на русском и казахском. {days} дней бесплатно.",
   "niche.materials.h1": "Бот, который продаёт учебные материалы и сам отправляет файлы",
   "niche.materials.lead":
-    "Педагоги и родители выбирают материал в каталоге бота, оплачивают и сразу получают файл. Вам не нужно сидеть в личке и проверять чеки ночью.",
-  "niche.materials.f1.title": "Файл сразу после оплаты",
+    "Педагоги и родители выбирают материал в каталоге бота и оплачивают. Бот сверяет чек, вы нажимаете «Деньги пришли», и файл уходит сразу. С договором Робокассы или Продамуса оплату подтверждает касса, и нажимать ничего не нужно даже ночью.",
+  "niche.materials.f1.title": "Файл, как только оплата подтверждена",
   "niche.materials.f1.text":
     "Покупатель получает PDF или архив в бот, как только оплата подтверждена, в любое время суток.",
-  "niche.materials.f2.title": "Автопроверка чеков",
+  "niche.materials.f2.title": "Сверка чеков",
   "niche.materials.f2.text":
-    "Бот читает чек перевода: сумма сошлась — файлы уходят сразу, вы не проверяете чеки руками.",
+    "Бот читает чек перевода и сверяет сумму, получателя, дату и номер квитанции. Поступление в Kaspi подтверждаете вы одной кнопкой.",
   "niche.materials.f3.title": "Русский и казахский",
   "niche.materials.f3.text":
     "У материала может быть отдельная версия файла на каждом языке, покупатель выбирает нужную.",
@@ -276,8 +276,8 @@ const ru = {
   "niche.materials.b2": "Проверяете каждый чек глазами",
   "niche.materials.b3": "Отправляете файлы вручную, иногда ночью",
   "niche.materials.a1": "Покупатель сам выбирает материал в каталоге бота",
-  "niche.materials.a2": "Чек проверяется автоматически: сумма и получатель сверяются",
-  "niche.materials.a3": "Файл уходит сразу после оплаты, в том числе ночью",
+  "niche.materials.a2": "Бот читает чек и сверяет сумму, получателя и дату",
+  "niche.materials.a3": "Вы нажимаете «Деньги пришли», и файл уходит сразу, а с кассой и без вас",
   "niche.courses.link": "Для онлайн-курсов",
   "niche.courses.title": "Продажа онлайн-курсов через Telegram-бота — FrogFlow",
   "niche.courses.description":
@@ -564,16 +564,16 @@ const kk: Dict = {
   "niche.materials.link": "Оқу материалдарына",
   "niche.materials.title": "Telegram-да оқу материалдары мен PDF сататын бот — FrogFlow",
   "niche.materials.description":
-    "Бот әдістемелік құралдарды, жазу дәптерлерін және дидактиканы сатады: чекті тексеріп, файлды бірден, түнде де жібереді. Материалдар орыс және қазақ тілдерінде. {days} күн тегін.",
+    "Бот әдістемелерді, жазу дәптерлерін және дидактиканы сатады: деректемелерді береді, чекті салыстырады және сіз төлемді растағанда файлды жібереді, ал Robokassa немесе Prodamus-пен өзі, түнде де. Материалдар орыс және қазақ тілдерінде. {days} күн тегін.",
   "niche.materials.h1": "Оқу материалдарын сатып, файлдарды өзі жіберетін бот",
   "niche.materials.lead":
-    "Педагогтер мен ата-аналар бот каталогынан материал таңдап, төлейді және файлды бірден алады. Сізге жеке хатта отырып, түнде чек тексерудің қажеті жоқ.",
-  "niche.materials.f1.title": "Төлемнен кейін бірден файл",
+    "Педагогтер мен ата-аналар бот каталогынан материал таңдап, төлейді. Бот чекті салыстырады, сіз «Ақша түсті» батырмасын басасыз, файл бірден кетеді. Robokassa немесе Prodamus келісімшартымен төлемді касса растайды, түнде де ештеңе басудың қажеті жоқ.",
+  "niche.materials.f1.title": "Төлем расталғанда бірден файл",
   "niche.materials.f1.text":
     "Төлем расталған бойда сатып алушы PDF немесе архивті ботқа кез келген уақытта алады.",
-  "niche.materials.f2.title": "Чектерді автотексеру",
+  "niche.materials.f2.title": "Чектерді салыстыру",
   "niche.materials.f2.text":
-    "Бот аударым чегін оқиды: сома сәйкес келсе, файлдар бірден жіберіледі, чектерді қолмен тексермейсіз.",
+    "Бот аударым чегін оқып, соманы, алушыны, күнді және түбіртек нөмірін салыстырады. Kaspi-ге түсімді сіз бір батырмамен растайсыз.",
   "niche.materials.f3.title": "Орыс және қазақ тілдері",
   "niche.materials.f3.text":
     "Материалдың әр тілде жеке файл нұсқасы болуы мүмкін, сатып алушы керегін таңдайды.",
@@ -585,8 +585,9 @@ const kk: Dict = {
   "niche.materials.b2": "Әр чекті көзбен тексересіз",
   "niche.materials.b3": "Файлдарды қолмен, кейде түнде жібересіз",
   "niche.materials.a1": "Сатып алушы материалды бот каталогынан өзі таңдайды",
-  "niche.materials.a2": "Чек автоматты тексеріледі: сома мен алушы салыстырылады",
-  "niche.materials.a3": "Файл төлемнен кейін бірден, түнде де жіберіледі",
+  "niche.materials.a2": "Бот чекті оқып, соманы, алушыны және күнді салыстырады",
+  "niche.materials.a3":
+    "Сіз «Ақша түсті» батырмасын басасыз, файл бірден кетеді, ал кассамен сізсіз де",
   "niche.courses.link": "Онлайн-курстарға",
   "niche.courses.title": "Telegram-бот арқылы онлайн-курстар сату — FrogFlow",
   "niche.courses.description":
@@ -868,16 +869,16 @@ const en: Dict = {
   "niche.materials.link": "For learning materials",
   "niche.materials.title": "A Telegram bot for selling learning materials and PDFs — FrogFlow",
   "niche.materials.description":
-    "The bot sells worksheets, handwriting books and teaching aids: it checks the receipt and sends the file right away, even at night. Materials in Russian and Kazakh. {days} days free.",
+    "The bot sells guides, workbooks and teaching materials: it sends your details, checks the receipt and delivers the file once you confirm payment, or on its own with Robokassa or Prodamus, even at night. Materials in Russian and Kazakh. {days} days free.",
   "niche.materials.h1": "A bot that sells learning materials and sends the files itself",
   "niche.materials.lead":
-    "Teachers and parents pick a material in the bot catalog, pay and get the file right away. No more answering DMs and checking receipts at night.",
-  "niche.materials.f1.title": "The file right after payment",
+    "Teachers and parents pick a material in the bot's catalogue and pay. The bot checks the receipt, you press “Money received”, and the file goes out at once. With a Robokassa or Prodamus contract the provider confirms payment, so there is nothing to press, even at night.",
+  "niche.materials.f1.title": "The file as soon as payment is confirmed",
   "niche.materials.f1.text":
     "The customer gets the PDF or archive in the bot as soon as payment is confirmed, any time of day.",
-  "niche.materials.f2.title": "Automatic receipt checks",
+  "niche.materials.f2.title": "Receipt checks",
   "niche.materials.f2.text":
-    "The bot reads the transfer receipt: if the amount matches, the files go out at once and you don't check receipts by hand.",
+    "The bot reads the transfer receipt and checks the amount, recipient, date and receipt number. You confirm the money in Kaspi with one button.",
   "niche.materials.f3.title": "Russian and Kazakh",
   "niche.materials.f3.text":
     "A material can have a separate file in each language, and the customer picks the one they need.",
@@ -888,8 +889,9 @@ const en: Dict = {
   "niche.materials.b2": "You check every receipt by eye",
   "niche.materials.b3": "You send files by hand, sometimes at night",
   "niche.materials.a1": "The customer picks a material in the bot catalog",
-  "niche.materials.a2": "Receipts are checked automatically: amount and recipient are matched",
-  "niche.materials.a3": "The file goes out right after payment, even at night",
+  "niche.materials.a2": "The bot reads the receipt and checks the amount, recipient and date",
+  "niche.materials.a3":
+    "You press “Money received” and the file goes out at once, or without you if you use a payment provider",
   "niche.courses.link": "For online courses",
   "niche.courses.title": "Sell online courses with a Telegram bot — FrogFlow",
   "niche.courses.description":
@@ -1172,16 +1174,16 @@ const uz: Dict = {
   "niche.materials.link": "O‘quv materiallari uchun",
   "niche.materials.title": "Telegram’da o‘quv materiallari va PDF sotadigan bot — FrogFlow",
   "niche.materials.description":
-    "Bot metodik qo‘llanmalar, husnixat daftarlari va didaktikani sotadi: chekni tekshirib, faylni darhol, tunda ham yuboradi. Materiallar rus va qozoq tillarida. {days} kun bepul.",
+    "Bot metodik qo‘llanmalar, yozuv daftarlari va didaktikani sotadi: rekvizitlarni beradi, chekni solishtiradi va siz to‘lovni tasdiqlaganingizda faylni yuboradi, Robokassa yoki Prodamus bilan esa o‘zi, hatto tunda ham. Materiallar rus va qozoq tillarida. {days} kun bepul.",
   "niche.materials.h1": "O‘quv materiallarini sotib, fayllarni o‘zi yuboradigan bot",
   "niche.materials.lead":
-    "O‘qituvchilar va ota-onalar bot katalogidan material tanlab, to‘laydi va faylni darhol oladi. Sizga shaxsiy xabarlarda o‘tirib, tunda chek tekshirish kerak emas.",
-  "niche.materials.f1.title": "To‘lovdan keyin darhol fayl",
+    "O‘qituvchilar va ota-onalar bot katalogidan material tanlab, to‘laydi. Bot chekni solishtiradi, siz «Pul tushdi»ni bosasiz va fayl darhol ketadi. Robokassa yoki Prodamus shartnomasi bilan to‘lovni kassa tasdiqlaydi, tunda ham hech narsa bosish shart emas.",
+  "niche.materials.f1.title": "To‘lov tasdiqlanishi bilan fayl",
   "niche.materials.f1.text":
     "To‘lov tasdiqlanishi bilan xaridor PDF yoki arxivni botda kunning istalgan vaqtida oladi.",
-  "niche.materials.f2.title": "Cheklarni avtomatik tekshirish",
+  "niche.materials.f2.title": "Cheklarni solishtirish",
   "niche.materials.f2.text":
-    "Bot o‘tkazma chekini o‘qiydi: summa mos kelsa, fayllar darhol yuboriladi, cheklarni qo‘lda tekshirmaysiz.",
+    "Bot o‘tkazma chekini o‘qiydi va summa, oluvchi, sana hamda kvitansiya raqamini solishtiradi. Kaspi’ga tushumni siz bitta tugma bilan tasdiqlaysiz.",
   "niche.materials.f3.title": "Rus va qozoq tillari",
   "niche.materials.f3.text":
     "Materialning har bir tilda alohida fayli bo‘lishi mumkin, xaridor keraklisini tanlaydi.",
@@ -1193,8 +1195,9 @@ const uz: Dict = {
   "niche.materials.b2": "Har bir chekni ko‘z bilan tekshirasiz",
   "niche.materials.b3": "Fayllarni qo‘lda, ba’zan tunda yuborasiz",
   "niche.materials.a1": "Xaridor materialni bot katalogidan o‘zi tanlaydi",
-  "niche.materials.a2": "Chek avtomatik tekshiriladi: summa va oluvchi solishtiriladi",
-  "niche.materials.a3": "Fayl to‘lovdan keyin darhol, tunda ham yuboriladi",
+  "niche.materials.a2": "Bot chekni o‘qiydi va summa, oluvchi hamda sanani solishtiradi",
+  "niche.materials.a3":
+    "Siz «Pul tushdi»ni bosasiz va fayl darhol ketadi, kassa bilan esa sizsiz ham",
   "niche.courses.link": "Onlayn kurslar uchun",
   "niche.courses.title": "Telegram-bot orqali onlayn kurslar sotish — FrogFlow",
   "niche.courses.description":
