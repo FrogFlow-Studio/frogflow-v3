@@ -14,6 +14,7 @@ import { OfferNote, OfferPrice } from "@/app/storefront/offer";
 import { pageBadge } from "@/core/catalog/lead-time";
 import { ProductReviews } from "@/app/storefront/reviews";
 import { RecentlyViewed, useRememberViewed } from "@/app/storefront/recent";
+import { ListNavBar, SwipeArea, useListNav } from "@/app/storefront/list-nav";
 import { productMeta } from "@/core/storefront/share";
 import { storeProductSeoFn } from "@/app/storefront/share.functions";
 import {
@@ -91,14 +92,21 @@ export const Route = createFileRoute("/s/$slug/p/$id")({
         : [],
     };
   },
-  component: ProductPage,
+  component: ProductPageKeyed,
 });
+
+/** Другой товар — новая страница: выбранные фото и вариант не переносятся при листании. */
+function ProductPageKeyed() {
+  const { id } = Route.useParams();
+  return <ProductPage key={id} />;
+}
 
 function ProductPage() {
   const { product: p, related, preview, course, waitlistUrl, onMarket } = Route.useLoaderData();
   const { slug } = Route.useParams();
   const shop = useLoaderData({ from: "/s/$slug" });
   useRememberViewed(slug, p.id);
+  const nav = useListNav(slug, p.id);
   // Счётчик визитов (У1): раз за сессию. Зашли сразу на товар — сначала визит, потом просмотр товара.
   useEffect(() => {
     try {
@@ -151,6 +159,7 @@ function ProductPage() {
   return (
     <>
       <Breadcrumbs slug={slug} shop={shop} categoryIds={p.categoryIds} leaf={p.name} t={t} />
+      <ListNavBar nav={nav} />
       <div className="mt-3 grid gap-6 md:grid-cols-2">
         <div>
           {p.images.length > 1 && (
@@ -194,7 +203,7 @@ function ProductPage() {
             </div>
           )}
         </div>
-        <div>
+        <SwipeArea nav={nav}>
           <h1 className="text-2xl font-semibold">{p.name}</h1>
           <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted">
             <span className="badge">{t(pageBadge(p))}</span>
@@ -395,7 +404,7 @@ function ProductPage() {
               <p className="text-sm leading-relaxed whitespace-pre-line">{p.description}</p>
             </div>
           )}
-        </div>
+        </SwipeArea>
       </div>
       {course && (
         <section className="mt-10">
