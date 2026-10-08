@@ -21,7 +21,8 @@ test("товары: выбрать все по фильтру и скрыть п
 
   await page.getByRole("button", { name: /^Выбрать все \d+ по фильтру$/ }).click();
   const sel = page.getByText(/^Выбрано: (\d+) из (\d+)$/);
-  await expect(sel).toBeVisible();
+  // «Выбрано: 1 из N» видно и до ответа сервера: ждём, пока выбор станет полным.
+  await expect(sel).toHaveText(/^Выбрано: (\d+) из \1$/);
   const [picked = 0, total = 0] = (await sel.textContent())!.match(/\d+/g)!.map(Number);
   expect(picked).toBe(total);
   expect(total).toBeGreaterThanOrEqual(F.ORD19_BULK_COUNT);

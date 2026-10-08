@@ -1,3 +1,4 @@
+import { withNoStore } from "@/app/cache-policy";
 import { createFileRoute } from "@tanstack/react-router";
 import { previewWebhookResponse } from "@/lib/preview";
 
@@ -11,7 +12,7 @@ import { previewWebhookResponse } from "@/lib/preview";
 export const Route = createFileRoute("/api/prodamus/$botId")({
   server: {
     handlers: {
-      POST: ({ request, params }) => handle(request, params.botId),
+      POST: async ({ request, params }) => withNoStore(await handle(request, params.botId)),
     },
   },
 });
