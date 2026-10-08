@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   ALERT_EVERY_MS,
   classifyModelFailure,
+  isTransientFailure,
   modelAlerts,
+  outageAlertText,
+  outageStep,
   modelAlertText,
   parseLastError,
   type ClientReading,
@@ -71,5 +74,74 @@ describe("когда писать оператору", () => {
   it("имя клиента экранируется", () => {
     const t = modelAlertText({ kind: "auth", clients: ["<b>A&B</b>"], at: ago(1) });
     expect(t).toContain("&lt;b&gt;A&amp;B&lt;/b&gt;");
+  });
+});
+
+describe("затяжной сбой Anthropic", () => {
+  const at = (min: number, detail = "HTTP 529: overloaded_error") => `${ago(min)} — ${detail}`;
+
+  it("временные сбои: 5xx, 529, обрыв и тайм-аут; баланс и ключ — нет", () => {
+    expect(isTransientFailure("HTTP 529: overloaded")).toBe(true);
+    expect(isTransientFailure("HTTP 500: internal server error")).toBe(true);
+    expect(isTransientFailure("HTTP ?: Request timed out.")).toBe(true);
+    expect(isTransientFailure("HTTP ?: Connection error.")).toBe(true);
+    expect(isTransientFailure("не уложился в потолок времени; вопрос передан менеджеру")).toBe(
+      true,
+    );
+    expect(isTransientFailure("HTTP 400: Your credit balance is too low")).toBe(false);
+    expect(isTransientFailure("HTTP 401: invalid x-api-key")).toBe(false);
+    expect(isTransientFailure("HTTP 400: bad request")).toBe(false);
+    expect(isTransientFailure("лимит частоты вызовов ИИ; вопрос передан менеджеру")).toBe(false);
+  });
+
+  it("первый сбой — только отметка; держится 30 мин при входящих — сообщить один раз", () => {
+    const first = outageStep([client({ lastError: at(40) })], {}, new Set(), NOW - 39 * 60_000);
+    expect(first.due).toEqual([]);
+    expect(first.next.b1).toEqual({ since: ago(40), last: ago(40) });
+    const mid = outageStep(
+      [client({ lastError: at(22) })],
+      first.next,
+      new Set(),
+      NOW - 20 * 60_000,
+    );
+    expect(mid.due).toEqual([]);
+    const later = outageStep([client({ lastError: at(5) })], mid.next, new Set(), NOW);
+    expect(later.due).toEqual(["b1"]);
+    const sent = { b1: { ...later.next.b1!, sent: ago(0) } };
+    const again = outageStep([client({ lastError: at(1) })], sent, new Set(), NOW + 15 * 60_000);
+    expect(again.due).toEqual([]);
+    expect(again.next.b1!.sent).toBe(ago(0));
+  });
+
+  it("удачный ответ между прогонами — эпизод заново", () => {
+    const prev = { b1: { since: ago(40), last: ago(25) } };
+    const r = outageStep([client({ lastError: at(5) })], prev, new Set(["b1"]), NOW);
+    expect(r.due).toEqual([]);
+    expect(r.next.b1).toEqual({ since: ago(5), last: ago(5) });
+  });
+
+  it("старый сбой без новых входящих — не тревога; ошибка стёрлась — эпизод закрыт", () => {
+    const prev = { b1: { since: ago(120), last: ago(80) } };
+    expect(outageStep([client({ lastError: at(80) })], prev, new Set(), NOW).due).toEqual([]);
+    expect(outageStep([client({ lastError: "" })], prev, new Set(), NOW).next).toEqual({});
+    // Новый сбой через час тишины — новый эпизод, а не «сбой два часа».
+    const r = outageStep([client({ lastError: at(1) })], prev, new Set(), NOW);
+    expect(r.due).toEqual([]);
+    expect(r.next.b1!.since).toBe(ago(1));
+  });
+
+  it("консультант выключен или сбой не временный — не следим", () => {
+    expect(
+      outageStep([client({ enabled: false, lastError: at(1) })], {}, new Set(), NOW).next,
+    ).toEqual({});
+    expect(outageStep([client({ lastError: billing(1) })], {}, new Set(), NOW).next).toEqual({});
+  });
+
+  it("текст: с какого времени, клиенты, куда смотреть", () => {
+    const t = outageAlertText(["BOVI <1>"], "2026-10-08T10:05:00.000Z");
+    expect(t).toContain("больше 30 минут");
+    expect(t).toContain("10:05 UTC");
+    expect(t).toContain("BOVI &lt;1&gt;");
+    expect(t).toContain("status.anthropic.com");
   });
 });

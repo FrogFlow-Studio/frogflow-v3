@@ -13,7 +13,8 @@ vi.mock("./health-alerts.server", () => ({
     return tgOk ? { ok: true } : { ok: false, reason: "failed", error: "x" };
   },
 }));
-const { runConsultantModelAlerts, MODEL_ALERTS_KEY } = await import("./consultant-alerts.server");
+const { runConsultantModelAlerts, MODEL_ALERTS_KEY, OUTAGE_KEY } =
+  await import("./consultant-alerts.server");
 
 const NOW = Date.parse("2026-09-27T21:00:00Z");
 const tenant = (id: string, served_by = "v2") => ({
@@ -67,5 +68,89 @@ describe("сигнал оператору о сбое модели консул�
     tgOk = true;
     expect(await runConsultantModelAlerts([tenant("a")], NOW + 60_000)).toMatchObject({ sent: 1 });
     expect(db.tables.operator_settings!.find((r) => r.key === MODEL_ALERTS_KEY)).toBeTruthy();
+  });
+});
+
+describe("затяжной сбой Anthropic — оператору", () => {
+  const overload = (min: number) =>
+    `${new Date(NOW - min * 60_000).toISOString()} — HTTP 529: overloaded`;
+  const setError = (v: string) => {
+    db.tables.app_settings = [
+      { bot_id: "a", key: "consultant_enabled", value: "true" },
+      { bot_id: "a", key: "consultant_last_error", value: v },
+    ];
+  };
+  const outage = () =>
+    JSON.parse(
+      String(db.tables.operator_settings!.find((r) => r.key === OUTAGE_KEY)?.value ?? "{}"),
+    ) as Record<string, { since: string; sent?: string }>;
+  beforeEach(() => {
+    db.tables.consultant_message_runs = [];
+  });
+
+  it("сбой держится 30 мин при входящих — одно сообщение за эпизод", async () => {
+    setError(overload(40));
+    expect(await runConsultantModelAlerts([tenant("a")], NOW - 39 * 60_000)).toEqual({
+      sent: 0,
+      kinds: [],
+    });
+    setError(overload(22));
+    await runConsultantModelAlerts([tenant("a")], NOW - 20 * 60_000);
+    setError(overload(4));
+    expect(await runConsultantModelAlerts([tenant("a")], NOW)).toEqual({
+      sent: 1,
+      kinds: ["outage"],
+    });
+    expect(sent[0]).toContain("Anthropic не отвечает больше 30 минут");
+    expect(sent[0]).toContain("Клиент a");
+    setError(overload(1));
+    await runConsultantModelAlerts([tenant("a")], NOW + 15 * 60_000);
+    expect(sent).toHaveLength(1);
+  });
+
+  it("удачный ответ в журнале после начала — эпизод заново, без сообщения", async () => {
+    setError(overload(40));
+    await runConsultantModelAlerts([tenant("a")], NOW - 39 * 60_000);
+    db.tables.consultant_message_runs = [
+      {
+        id: "r1",
+        bot_id: "a",
+        reply_kind: "reply",
+        received_at: new Date(NOW - 30 * 60_000).toISOString(),
+      },
+    ];
+    setError(overload(22));
+    await runConsultantModelAlerts([tenant("a")], NOW - 20 * 60_000);
+    setError(overload(4));
+    await runConsultantModelAlerts([tenant("a")], NOW);
+    expect(sent).toHaveLength(0);
+    expect(outage().a!.since).toBe(new Date(NOW - 22 * 60_000).toISOString());
+  });
+
+  it("два прогона разом — одно сообщение; Telegram не принял — повтор на следующем", async () => {
+    setError(overload(40));
+    await runConsultantModelAlerts([tenant("a")], NOW - 39 * 60_000);
+    setError(overload(22));
+    await runConsultantModelAlerts([tenant("a")], NOW - 20 * 60_000);
+    setError(overload(4));
+    tgOk = false;
+    await runConsultantModelAlerts([tenant("a")], NOW);
+    expect(outage().a!.sent).toBeUndefined();
+    tgOk = true;
+    setError(overload(2));
+    await Promise.all([
+      runConsultantModelAlerts([tenant("a")], NOW + 60_000),
+      runConsultantModelAlerts([tenant("a")], NOW + 60_000),
+    ]);
+    expect(sent.filter((s) => s.includes("30 минут"))).toHaveLength(2);
+    expect(outage().a!.sent).toBeTruthy();
+  });
+
+  it("ошибка стёрлась (консультант снова отвечает) — эпизод закрыт", async () => {
+    setError(overload(40));
+    await runConsultantModelAlerts([tenant("a")], NOW - 39 * 60_000);
+    setError("");
+    await runConsultantModelAlerts([tenant("a")], NOW);
+    expect(outage()).toEqual({});
   });
 });
