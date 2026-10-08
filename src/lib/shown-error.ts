@@ -96,6 +96,40 @@ export function isBrowserFailure(e: unknown): boolean {
   return screenErrorKind(e) === "failure";
 }
 
+/**
+ * Страница открыта на старой сборке: после выкладки браузер просит кусок,
+ * которого на сервере уже нет. Тексты — Chrome, Firefox, Safari и Vite (CSS).
+ */
+export function isStaleChunkError(e: unknown): boolean {
+  return /Failed to fetch dynamically imported module|error loading dynamically imported module|Importing a module script failed|Unable to preload CSS/i.test(
+    errorMessage(e),
+  );
+}
+
+export const STALE_RELOAD_KEY = "ff-stale-reload";
+const STALE_RELOAD_PAUSE_MS = 60_000;
+
+/**
+ * Перезагрузить страницу из-за старой сборки — не чаще раза в минуту: если
+ * кусок не нашёлся и после перезагрузки, человек видит обычную ошибку, а не
+ * бесконечные перезагрузки. Без sessionStorage не перезагружаем.
+ */
+export function claimStaleReload(
+  storage: Pick<Storage, "getItem" | "setItem"> | null,
+  now = Date.now(),
+): boolean {
+  if (!storage) return false;
+  try {
+    const last = Number(storage.getItem(STALE_RELOAD_KEY));
+    if (Number.isFinite(last) && now - last >= 0 && now - last < STALE_RELOAD_PAUSE_MS)
+      return false;
+    storage.setItem(STALE_RELOAD_KEY, String(now));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export type ClientErrorReport = { name: string; message: string; stack?: string; path: string };
 
 const cut = (s: unknown, n: number) => (typeof s === "string" ? s.slice(0, n) : "");
