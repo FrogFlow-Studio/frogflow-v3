@@ -261,7 +261,11 @@ export async function listProductsForAdmin(
     const pageIds = ids.slice(offset, offset + PRODUCT_PAGE);
     const pos = new Map(pageIds.map((id, i) => [id, i]));
     const page = pageIds.length
-      ? await ctx.db.from("products").select(LIST_SELECT).in("id", pageIds)
+      ? // Не больше страницы списка (100) — короче лимита в 200.
+        await ctx.db
+          .from("products")
+          .select(LIST_SELECT)
+          .in("id", ids.slice(offset, offset + PRODUCT_PAGE))
       : { data: [], error: null };
     if (page.error) throw serverFailure(page.error.message);
     data = ((page.data ?? []) as ProductListSource[])
