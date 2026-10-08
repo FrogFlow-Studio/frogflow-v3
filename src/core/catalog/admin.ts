@@ -11,6 +11,7 @@ import { materialCount } from "./materials";
 import { pickerTerm } from "./picker";
 import { toJson } from "@/core/json";
 import { isCourseProduct } from "@/core/courses/marker";
+import { TOPIC_MARK } from "./topics";
 
 type ProductInsert = Database["public"]["Tables"]["products"]["Insert"];
 type CategoryRow = Database["public"]["Tables"]["categories"]["Row"];
@@ -121,6 +122,8 @@ export type ProductListOpts = {
   q?: string;
   categoryId?: string | null;
   onlyInactive?: boolean;
+  /** Только товары без темы для «Похожих» (core/catalog/topics) — что ещё не размечено. */
+  noTopic?: boolean;
   offset?: number;
 };
 
@@ -128,6 +131,7 @@ type Filterable<Q> = {
   ilike(column: "name", pattern: string): Q;
   contains(column: "category_ids", value: string): Q;
   eq(column: "is_active", value: boolean): Q;
+  not(column: "keywords", operator: "ilike", value: string): Q;
 };
 
 /** Фильтр списка товаров (поиск, категория, «только скрытые») — один для страницы и для «выбрать все по фильтру». */
@@ -138,6 +142,7 @@ function productFilter(opts: ProductListOpts) {
     if (term) r = r.ilike("name", `%${term}%`);
     if (opts.categoryId) r = r.contains("category_ids", JSON.stringify([opts.categoryId]));
     if (opts.onlyInactive) r = r.eq("is_active", false);
+    if (opts.noTopic) r = r.not("keywords", "ilike", `%${TOPIC_MARK}%`);
     return r;
   };
 }

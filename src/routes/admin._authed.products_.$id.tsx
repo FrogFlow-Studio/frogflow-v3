@@ -33,6 +33,8 @@ import { editableMaterials, MATERIAL_LANGUAGES } from "@/core/catalog/materials"
 import { isCourseProduct } from "@/core/courses/marker";
 import { categoryPaths, type CategoryOption } from "@/app/admin/category-paths";
 import { localeNames, type Locale } from "@/core/i18n/locale";
+import { TopicField } from "@/app/admin/topic-field";
+import { cleanTopics, splitKeywords } from "@/core/catalog/topics";
 
 export const Route = createFileRoute("/admin/_authed/products_/$id")({
   loader: ({ params }) => productFn({ data: { id: params.id === "new" ? null : params.id } }),
@@ -162,6 +164,7 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
     categories,
     countries,
     defaultFulfillment,
+    topics: shopTopics,
   } = Route.useLoaderData();
   const { shop } = Route.useRouteContext();
   const t = adminT(shop.locale);
@@ -214,6 +217,8 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
           name: String(f.get("name")),
           description: String(f.get("description")),
           keywords: String(f.get("keywords")),
+          // Тема — служебная часть ключевых слов (core/catalog/topics), сервер их соединит.
+          topics: cleanTopics(String(f.get("topics") ?? "")),
           price: Number(f.get("price")) || 0,
           currency: String(f.get("currency") || shop.currency),
           countryPrices,
@@ -433,8 +438,17 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
                 </Field>
                 <DescriptionAssist t={t} kind={kind} currency={p?.currency ?? shop.currency} />
                 <Field label={t("product.keywords")} hint={t("product.keywordsHint")}>
-                  <input className="input" name="keywords" defaultValue={p?.keywords ?? ""} />
+                  <input
+                    className="input"
+                    name="keywords"
+                    defaultValue={splitKeywords(p?.keywords).words}
+                  />
                 </Field>
+                <TopicField
+                  t={t}
+                  initial={splitKeywords(p?.keywords).topics}
+                  existing={shopTopics}
+                />
                 <Field label={t("product.categories")}>
                   <CategoryPicker
                     categories={categories}

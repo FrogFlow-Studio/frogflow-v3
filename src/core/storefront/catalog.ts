@@ -458,6 +458,63 @@ export async function storeCatalog(
 }
 
 /**
+ * «Похожие» на странице товара (Т5): тема, затем ключевые слова, затем
+ * категория, без категории — весь каталог (core/storefront/related). Кандидаты —
+ * те же, что в каталоге витрины: активные, из видимых категорий, с материалами.
+ * Каталог читается постранично целиком, карточки собираются только для
+ * выбранных.
+ */
+export async function storeRelated(
+  ctx: TenantContext,
+  product: Pick<StoreProduct, "id" | "categoryIds" | "languages">,
+): Promise<StoreProduct[]> {
+  const { rankRelated } = await import("./related");
+  const [data, cats] = await Promise.all([
+    pageAll<Product>(
+      (from, to) => catalogQuery(ctx, "catalog").range(from, to) as never,
+      "Витрина: похожие",
+    ),
+    listAllCategories(ctx),
+  ]);
+  const known = new Set(cats.map((c) => c.id));
+  const visible = visibleCategoryIds(cats);
+  const shown = data.filter((p) => {
+    const ids = Array.isArray(p.category_ids) ? (p.category_ids as string[]) : [];
+    return (
+      productOnStorefront(ids, known, visible) &&
+      (p.fulfillment_kind === "physical" || productSellable(p))
+    );
+  });
+  const self = data.find((p) => p.id === product.id);
+  const asCandidate = (p: Product) => ({
+    id: p.id,
+    keywords: p.keywords,
+    categoryIds: Array.isArray(p.category_ids) ? (p.category_ids as string[]) : [],
+    languages: productLanguages(ctx, p),
+    createdAt: p.created_at,
+  });
+  const first = product.categoryIds[0];
+  const ids = rankRelated(
+    self
+      ? asCandidate(self)
+      : {
+          id: product.id,
+          keywords: null,
+          categoryIds: product.categoryIds,
+          languages: product.languages,
+          createdAt: "",
+        },
+    shown.map(asCandidate),
+    first ? categorySubtree(cats, first, visible) : null,
+  );
+  const byId = new Map(shown.map((p) => [p.id, p]));
+  return toStoreProducts(
+    ctx,
+    ids.map((id) => byId.get(id)!),
+  );
+}
+
+/**
  * Товары по списку id — избранное покупателя на сайте. Порядок как в списке;
  * снятое с продажи, скрытое и без материалов не отдаём (страница «Избранное»
  * тихо убирает их из браузера).

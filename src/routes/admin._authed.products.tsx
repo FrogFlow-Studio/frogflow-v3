@@ -27,17 +27,24 @@ import { nextPageOffset } from "@/core/catalog/picker";
 import type { BulkAction } from "@/core/catalog/bulk";
 import { runBulkInBatches, type BulkRun } from "@/core/catalog/bulk-batches";
 import { STALE_OFFER_MAX } from "@/core/stock/stale-const";
+import { TopicBulk } from "@/app/admin/topic-field";
 
 export const Route = createFileRoute("/admin/_authed/products")({
   validateSearch: z.object({
     q: z.string().optional(),
     category: z.string().optional(),
     inactive: z.boolean().optional(),
+    notopic: z.boolean().optional(),
   }),
   loaderDeps: ({ search }) => search,
   loader: ({ deps }) =>
     productsFn({
-      data: { q: deps.q, categoryId: deps.category ?? null, onlyInactive: deps.inactive },
+      data: {
+        q: deps.q,
+        categoryId: deps.category ?? null,
+        onlyInactive: deps.inactive,
+        noTopic: deps.notopic,
+      },
     }),
   component: ProductsPage,
 });
@@ -66,6 +73,7 @@ function ProductsPage() {
         q: s.q,
         categoryId: s.category ?? null,
         onlyInactive: s.inactive,
+        noTopic: s.notopic,
         offset: nextPageOffset(products.length),
       },
     });
@@ -101,7 +109,12 @@ function ProductsPage() {
   // «Выбрать все N по фильтру»: id всех товаров под текущим фильтром, не только дочитанных страниц.
   const pickAll = useAction(async () => {
     const r = await productIdsFn({
-      data: { q: s.q, categoryId: s.category ?? null, onlyInactive: s.inactive },
+      data: {
+        q: s.q,
+        categoryId: s.category ?? null,
+        onlyInactive: s.inactive,
+        noTopic: s.notopic,
+      },
     });
     setPicked(new Set(r.ids));
   });
@@ -114,7 +127,8 @@ function ProductsPage() {
     });
   // Порядок перетаскиванием — когда виден весь каталог без фильтров: иначе
   // перенумерованная часть перемешалась бы с невидимыми товарами.
-  const canReorder = canEdit(shop.role) && !s.q && !s.category && !s.inactive && !hasMore;
+  const canReorder =
+    canEdit(shop.role) && !s.q && !s.category && !s.inactive && !s.notopic && !hasMore;
   const [drag, setDrag] = useState<string | null>(null);
   const reorder = useAction(async (fromId: string, toId: string) => {
     const { moveItem } = await import("@/core/catalog/reorder");
@@ -195,6 +209,19 @@ function ProductsPage() {
           />{" "}
           {t("products.onlyHidden")}
         </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={Boolean(s.notopic)}
+            onChange={(e) =>
+              void navigate({
+                to: "/admin/products",
+                search: { ...s, notopic: e.target.checked || undefined },
+              })
+            }
+          />{" "}
+          {t("products.noTopic")}
+        </label>
         <button className="btn-secondary">{t("common.search")}</button>
       </form>
       {(bulkResult || bulk.error) && (
@@ -246,7 +273,7 @@ function ProductsPage() {
         </div>
       )}
       {products.length === 0 ? (
-        s.q || s.category || s.inactive ? (
+        s.q || s.category || s.inactive || s.notopic ? (
           <Empty>{t(school ? "products.emptyCourses" : "products.empty")}</Empty>
         ) : (
           <EmptyState
@@ -275,6 +302,7 @@ function ProductsPage() {
                 })
               }
               categories={categories}
+              topics={first.topics}
               stockOn={Boolean(shop.modules.stock)}
               busy={bulk.busy}
               onClear={() => setPicked(new Set())}
@@ -436,6 +464,7 @@ function BulkBar({
   onPickAll,
   onOffer,
   categories,
+  topics,
   stockOn,
   busy,
   onClear,
@@ -448,6 +477,7 @@ function BulkBar({
   onPickAll: () => void;
   onOffer: () => void;
   categories: Array<{ id: string; name: string }>;
+  topics: readonly string[];
   stockOn: boolean;
   busy: boolean;
   onClear: () => void;
@@ -583,6 +613,7 @@ function BulkBar({
           </button>
         </>
       )}
+      <TopicBulk t={t} existing={topics} busy={busy} onRun={onRun} />
     </div>
   );
 }

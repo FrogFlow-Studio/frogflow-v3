@@ -84,12 +84,11 @@ export const storeProductFn = createServerFn({ method: "GET" })
   .validator((d: unknown) => z.object({ slug, id: z.string().uuid() }).parse(d))
   .handler(async ({ data }) => {
     const ctx = await shopCtx(data.slug, "catalog");
-    const { storeProduct, storeCatalog } = await import("@/core/storefront/catalog");
+    const { storeProduct, storeRelated } = await import("@/core/storefront/catalog");
     const product = await storeProduct(ctx, data.id);
     if (!product) throw shownError((await shopT(ctx))("error.productNotFound"));
-    const related = (await storeCatalog(ctx, { categoryId: product.categoryIds[0] ?? null }))
-      .filter((p) => p.id !== product.id)
-      .slice(0, 4);
+    // «Похожие»: тема, затем ключевые слова, затем категория (core/storefront/related).
+    const related = await storeRelated(ctx, product);
     // Пример цифрового товара (core/catalog/preview): публичные картинки.
     const { loadPreview } = await import("@/core/catalog/preview");
     const { imageUrl } = await import("@/core/catalog/catalog");
