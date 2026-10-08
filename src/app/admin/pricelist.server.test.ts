@@ -43,6 +43,7 @@ const {
   setManualRate,
 } = await import("./pricelist.server");
 const { addTask } = await import("@/core/consultant/tasks");
+const { PRODUCT_MEDIA_KEY } = await import("@/core/consultant/pricelist/media");
 const { DEFAULT_PERSONA } = await import("@/core/consultant/pricelist/persona");
 
 /**
@@ -67,6 +68,31 @@ function ctxOf(on = true, extra: Record<string, unknown> = {}): TenantContext {
     appUrl: "https://app.test",
     timezone: "Asia/Almaty",
   } as unknown as TenantContext;
+}
+
+/** Чтение строки фотобазы отвечает ошибкой базы, пока не вызвали off(). */
+function breakMediaReads(ctx: TenantContext) {
+  let on = true;
+  const db = ctx.db as unknown as { from: (t: string) => Record<string, unknown> };
+  const from = db.from.bind(db);
+  db.from = (table: string) => {
+    const q = from(table) as Record<string, (...a: unknown[]) => unknown>;
+    if (table !== "app_settings") return q;
+    const eqOrig = q.eq!.bind(q);
+    const inOrig = q.in!.bind(q);
+    q.eq = (col: unknown, v: unknown) => {
+      if (on && v === PRODUCT_MEDIA_KEY)
+        return { maybeSingle: async () => ({ data: null, error: { message: "timeout" } }) };
+      return eqOrig(col, v);
+    };
+    q.in = (col: unknown, vs: unknown) => {
+      if (on && (vs as string[]).includes(PRODUCT_MEDIA_KEY))
+        return Promise.resolve({ data: null, error: { message: "timeout" } });
+      return inOrig(col, vs);
+    };
+    return q;
+  };
+  return { off: () => (on = false) };
 }
 
 const CSV = [
@@ -153,6 +179,31 @@ describe("прайс консультанта в админке", () => {
     await deleteProductMedia(ctx, m.id);
     expect((await pricelistOverview(ctx)).media).toHaveLength(1);
     expect(removed.at(-1)).toEqual([key]);
+  });
+
+  it("сбой чтения базы при загрузке и удалении фото не стирает фотобазу", async () => {
+    const ctx = ctxOf();
+    const key = `${ctx.tenant.id}/0123456789abcdef01234567.jpg`;
+    const m = await addProductMedia(ctx, { key, match: "Uchino Zero Twist" });
+    const broken = breakMediaReads(ctx);
+    await expect(
+      addProductMedia(ctx, { key: `${ctx.tenant.id}/0123456789abcdef0123456b.jpg`, match: "Aquanova" }),
+    ).rejects.toThrow();
+    await expect(deleteProductMedia(ctx, m.id)).rejects.toThrow();
+    await expect(pricelistOverview(ctx)).rejects.toThrow();
+    broken.off();
+    const o = await pricelistOverview(ctx);
+    expect(o.media.map((x) => x.id)).toEqual([m.id]);
+  });
+
+  it("две загрузки фото одновременно: в фотобазе оба", async () => {
+    const ctx = ctxOf();
+    await Promise.all(
+      ["0123456789abcdef01234567", "0123456789abcdef0123456b", "0123456789abcdef0123456c"].map(
+        (k) => addProductMedia(ctx, { key: `${ctx.tenant.id}/${k}.jpg`, match: "Uchino" }),
+      ),
+    );
+    expect((await pricelistOverview(ctx)).media).toHaveLength(3);
   });
 
   it("рабочие часы консультанта: по умолчанию BOVI, свои пишутся в настройки, кривые отклоняются", async () => {

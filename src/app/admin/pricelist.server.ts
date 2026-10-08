@@ -32,9 +32,9 @@ import { diffPricelists } from "@/core/consultant/pricelist/sheet";
 import { sheetCsvUrl } from "@/core/catalog/sheet";
 import type { FetchLike } from "@/core/catalog/sheet.server";
 import {
-  loadProductMedia,
+  loadProductMediaStrict,
   productMediaUrl,
-  saveProductMedia,
+  updateProductMedia,
 } from "@/core/consultant/pricelist/media.server";
 import { mediaMatchesProduct, type ProductMedia } from "@/core/consultant/pricelist/media";
 import { isRateFresh } from "@/core/consultant/pricelist/rate";
@@ -92,7 +92,7 @@ export async function pricelistOverview(ctx: TenantContext) {
     getStoredRate(ctx),
     loadAttemptLog(ctx),
     getStoreInfo(ctx),
-    loadProductMedia(ctx),
+    loadProductMediaStrict(ctx),
     loadKnowledge(ctx),
     loadConsultantUsage(ctx),
     loadSheetLink(ctx),
@@ -417,22 +417,19 @@ export async function addProductMedia(
     ...(data.name?.trim() ? { name: data.name.trim().slice(0, 120) } : {}),
     createdAt: now.toISOString(),
   };
-  const list = await loadProductMedia(ctx);
-  await saveProductMedia(ctx, [...list.filter((m) => m.id !== item.id), item]);
+  await updateProductMedia(ctx, (list) => [...list.filter((m) => m.id !== item.id), item]);
   return item;
 }
 
 /** Убрать файл из фотобазы; сам файл удаляется из бакета, если он этого магазина. */
 export async function deleteProductMedia(ctx: TenantContext, id: string) {
   requirePricelist(ctx);
-  const list = await loadProductMedia(ctx);
-  const gone = list.find((m) => m.id === id);
-  if (!gone) return { ok: true };
-  await saveProductMedia(
-    ctx,
-    list.filter((m) => m.id !== id),
-  );
-  if (gone.path.startsWith(`${ctx.tenant.id}/`)) {
+  let gone: ProductMedia | undefined;
+  await updateProductMedia(ctx, (list) => {
+    gone = list.find((m) => m.id === id);
+    return gone ? list.filter((m) => m.id !== id) : null;
+  });
+  if (gone?.path.startsWith(`${ctx.tenant.id}/`)) {
     const { serviceDb } = await import("@/core/db/client.server");
     await serviceDb()
       .storage.from("product-images")
