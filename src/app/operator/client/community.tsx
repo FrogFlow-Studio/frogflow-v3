@@ -1,6 +1,6 @@
 /** Карточка клиента у оператора: сообщество авторов — скрыть или заблокировать. */
 import { useEffect, useState } from "react";
-import { communityModFn, setCommunityModFn } from "@/app/operator/operator.functions";
+import { communityModFn, setCommunityModFn } from "@/app/operator/moderation.functions";
 import { Card, ErrorBox, useAction } from "@/app/ui";
 import type { C } from "./types";
 

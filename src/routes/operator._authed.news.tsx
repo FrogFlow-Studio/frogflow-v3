@@ -1,6 +1,6 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
-import { newsListFn, newsStateFn, saveNewsFn } from "@/app/operator/operator.functions";
+import { newsListFn, newsStateFn, saveNewsFn } from "@/app/operator/news.functions";
 import { Badge, Card, Empty, ErrorBox, PageTitle, useAction } from "@/app/ui";
 import { NEWS_LINK_PATHS, NEWS_PLAN_TIERS, type NewsPlanTier } from "@/core/news/news";
 import { MODULES, MODULE_KEYS } from "@/core/modules/registry";

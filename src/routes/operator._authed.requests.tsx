@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
-import { moduleRequestsFn, resolveModuleRequestFn } from "@/app/operator/operator.functions";
+import { moduleRequestsFn, resolveModuleRequestFn } from "@/app/operator/owner-messages.functions";
 import { Badge, Card, Empty, ErrorBox, PageTitle, useAction } from "@/app/ui";
 
 export const Route = createFileRoute("/operator/_authed/requests")({

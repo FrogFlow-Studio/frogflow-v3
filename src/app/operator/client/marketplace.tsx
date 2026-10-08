@@ -1,6 +1,6 @@
 /** Карточка клиента у оператора: площадка FrogFlow — скрыть магазин или вернуть. */
 import { useEffect, useState } from "react";
-import { marketplaceModFn, setMarketplaceHiddenFn } from "@/app/operator/operator.functions";
+import { marketplaceModFn, setMarketplaceHiddenFn } from "@/app/operator/moderation.functions";
 import { Card, ErrorBox, useAction } from "@/app/ui";
 import type { C } from "./types";
 

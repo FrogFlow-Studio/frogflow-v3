@@ -65,7 +65,7 @@ describe("reportServerFnFailure", () => {
       reportServerFnFailure(
         {
           next: () => Promise.reject(boom),
-          serverFnMeta: { name: "x", filename: "src/app/operator/operator.functions.ts" },
+          serverFnMeta: { name: "x", filename: "src/app/operator/clients.functions.ts" },
         },
         {
           botId: async () => "never",

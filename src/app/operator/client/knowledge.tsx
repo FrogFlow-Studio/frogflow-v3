@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 import {
   clientKnowledgeSourcesFn,
   importClientKnowledgeFn,
-} from "@/app/operator/operator.functions";
+} from "@/app/operator/clients.functions";
 import { Badge, Card, ErrorBox, useAction } from "@/app/ui";
 import { ConfirmName } from "./ConfirmName";
 import type { C } from "./types";

@@ -1,7 +1,7 @@
 import { SHOP_SLUG_PATTERN } from "@/core/tenant/slug";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { type FormEvent } from "react";
-import { createClientFn } from "@/app/operator/operator.functions";
+import { createClientFn } from "@/app/operator/clients.functions";
 import { VERTICAL_KEYS, VERTICALS } from "@/core/verticals/registry";
 import { Card, ErrorBox, Field, PageTitle, useAction } from "@/app/ui";
 

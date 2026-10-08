@@ -8,7 +8,7 @@ import {
   setAiQuotaFn,
   planInvoicePreviewFn,
   createPlanInvoiceFn,
-} from "@/app/operator/operator.functions";
+} from "@/app/operator/client-plans.functions";
 import {
   ADDONS,
   ADDON_MONTHLY_PRICE,

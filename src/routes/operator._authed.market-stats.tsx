@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { marketOverviewFn } from "@/app/operator/operator.functions";
+import { marketOverviewFn } from "@/app/operator/moderation.functions";
 import { Card, Empty, PageTitle } from "@/app/ui";
 
 export const Route = createFileRoute("/operator/_authed/market-stats")({

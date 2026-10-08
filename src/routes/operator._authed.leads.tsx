@@ -15,7 +15,7 @@ import {
   saveLeadNoteFn,
   scoreLeadFn,
   setLeadStageFn,
-} from "@/app/operator/operator.functions";
+} from "@/app/operator/leads.functions";
 import type { LeadEventRow, LeadRow } from "@/app/operator/leads.server";
 import type { OpenedShop } from "@/app/operator/open-shop.server";
 import { OUTREACH_LABEL, outreachLinks, type OutreachChannel } from "@/core/leads/draft";

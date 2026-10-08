@@ -8,7 +8,7 @@ import {
   closeClientTaskFn,
   deleteClientNoteFn,
   todayTasksFn,
-} from "@/app/operator/operator.functions";
+} from "@/app/operator/client-notes.functions";
 import { Badge, Card, ErrorBox, useAction } from "@/app/ui";
 import type { C } from "./types";
 

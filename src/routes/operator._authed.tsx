@@ -1,9 +1,6 @@
 import { createFileRoute, Outlet, redirect, useNavigate } from "@tanstack/react-router";
-import {
-  operatorCheck,
-  operatorLogout,
-  pendingRequestCountFn,
-} from "@/app/operator/operator.functions";
+import { operatorCheck, operatorLogout } from "@/app/operator/operator-auth.functions";
+import { pendingRequestCountFn } from "@/app/operator/owner-messages.functions";
 import { OperatorBottomBar, OperatorSideNav } from "@/app/operator/OperatorMenu";
 import { Shell, ThemeToggle } from "@/app/ui";
 

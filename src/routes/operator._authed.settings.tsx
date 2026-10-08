@@ -2,24 +2,28 @@ import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import {
   operatorCredentialsFn,
-  payoutRequisitesFn,
-  sendTestErrorFn,
   setOperatorCredentialsFn,
-  setPayoutRequisitesFn,
   twoFactorStatusFn,
   startTwoFactorFn,
   confirmTwoFactorFn,
   disableTwoFactorFn,
   regenerateBackupCodesFn,
+} from "@/app/operator/operator-auth.functions";
+import {
+  payoutRequisitesFn,
+  setPayoutRequisitesFn,
+  aiMarkupFn,
+  setAiMarkupFn,
+} from "@/app/operator/client-plans.functions";
+import {
+  sendTestErrorFn,
   alertChannelStatusFn,
   saveAlertChannelFn,
   clearAlertChannelFn,
   testAlertChannelFn,
   v2WebhookStatusFn,
   syncV2WebhookFn,
-  aiMarkupFn,
-  setAiMarkupFn,
-} from "@/app/operator/operator.functions";
+} from "@/app/operator/platform.functions";
 import { Badge, Card, ErrorBox, Field, PageTitle, useAction } from "@/app/ui";
 import { UnmatchedZernioCard } from "@/app/operator/client/channels";
 import { shownError } from "@/lib/shown-error";

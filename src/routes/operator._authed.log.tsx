@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
-import { allEventsFn, listClientsFn } from "@/app/operator/operator.functions";
+import { allEventsFn } from "@/app/operator/platform.functions";
+import { listClientsFn } from "@/app/operator/clients.functions";
 import { shopEventView } from "@/app/admin/audit-labels";
 import { Badge, Empty, PageTitle } from "@/app/ui";
 

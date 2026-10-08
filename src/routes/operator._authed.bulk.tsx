@@ -2,7 +2,8 @@ import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { BULK_MODULES, confirmMatches, type BulkAction } from "@/app/operator/bulk";
 import { planLabel } from "@/app/operator/client-health";
-import { listClientsFn, runBulkFn } from "@/app/operator/operator.functions";
+import { listClientsFn } from "@/app/operator/clients.functions";
+import { runBulkFn } from "@/app/operator/platform.functions";
 import { MODULES } from "@/core/modules/registry";
 import { Badge, Card, ErrorBox, PageTitle, useAction } from "@/app/ui";
 

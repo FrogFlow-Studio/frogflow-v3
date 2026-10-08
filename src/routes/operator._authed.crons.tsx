@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { cronStatusFn } from "@/app/operator/operator.functions";
+import { cronStatusFn } from "@/app/operator/platform.functions";
 import { BUDGET_STREAK_WARN } from "@/app/operator/cron-status.shared";
 import { Badge, PageTitle } from "@/app/ui";
 

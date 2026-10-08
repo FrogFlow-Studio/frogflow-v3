@@ -1,10 +1,7 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
-import {
-  broadcastToOwnersFn,
-  listClientsFn,
-  ownerBroadcastsFn,
-} from "@/app/operator/operator.functions";
+import { broadcastToOwnersFn, ownerBroadcastsFn } from "@/app/operator/owner-messages.functions";
+import { listClientsFn } from "@/app/operator/clients.functions";
 import { Badge, Card, Empty, ErrorBox, PageTitle, useAction } from "@/app/ui";
 
 export const Route = createFileRoute("/operator/_authed/broadcast")({

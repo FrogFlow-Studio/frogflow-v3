@@ -1,6 +1,7 @@
 /** Карточка клиента у оператора: ИИ-баланс — остаток, журнал, ручная поправка. */
 import { type FormEvent } from "react";
-import { adjustAiBalanceFn, type getClientFn } from "@/app/operator/operator.functions";
+import { adjustAiBalanceFn } from "@/app/operator/client-plans.functions";
+import { type getClientFn } from "@/app/operator/clients.functions";
 import { Badge, Card, ErrorBox, Field, useAction } from "@/app/ui";
 import type { C } from "./types";
 

@@ -81,7 +81,7 @@ describe("прослойка журнала действий админки", ()
         next: async () => 1,
         data: {},
         method: "POST",
-        serverFnMeta: { name: "setModuleFn", filename: "src/app/operator/operator.functions.ts" },
+        serverFnMeta: { name: "setModuleFn", filename: "src/app/operator/clients.functions.ts" },
       },
       d,
     );

@@ -16,8 +16,8 @@ const PUBLIC = new Set([
   "admin-auth.functions.ts:adminTgLoginConsume",
   "team-invite.functions.ts:staffInviteInfoFn",
   "team-invite.functions.ts:acceptStaffInviteFn",
-  "operator.functions.ts:operatorLogin",
-  "operator.functions.ts:operatorLogout",
+  "operator-auth.functions.ts:operatorLogin",
+  "operator-auth.functions.ts:operatorLogout",
 ]);
 
 const GUARD_NAMES = String.raw`requireAdmin\w*|adminShops|switchAdminShop|requireOperator`;

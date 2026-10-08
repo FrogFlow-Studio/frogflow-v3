@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
-import { preflightAllFn, setServedByBulkFn } from "@/app/operator/operator.functions";
+import { preflightAllFn, setServedByBulkFn } from "@/app/operator/platform.functions";
 import { Badge, Card, Empty, ErrorBox, PageTitle, useAction } from "@/app/ui";
 
 export const Route = createFileRoute("/operator/_authed/migration")({
