@@ -431,3 +431,42 @@ describe("консультант по прайсу: надёжность и де
     expect(r!.usage.usd).toBeCloseTo(0.004, 9);
   });
 });
+
+describe("тест-чат с историей (партия 3.6)", () => {
+  it("второй вопрос видит первый: история уходит модели, в базу диалога ничего не пишется", async () => {
+    const { nextTestChat, testChatState } = await import("../test-chat");
+    rounds.push([{ type: "text", text: "Uchino 50х100 - 9 000 ₸. Какой цвет?" }]);
+    const ctx = ctxOf();
+    const first = await runConsultant(ctx, null, "Полотенца есть?", {
+      platform: "admin_test",
+      dryRun: true,
+      testState: testChatState([], {}),
+    });
+    const step = nextTestChat([], "Полотенца есть?", first!.reply, {}, first!.testState);
+    expect(step.history.map((t) => t.role)).toEqual(["customer", "assistant"]);
+    rounds.push([{ type: "text", text: "Белый есть." }]);
+    const second = await runConsultant(ctx, null, "А белый?", {
+      platform: "admin_test",
+      dryRun: true,
+      testState: testChatState(step.history, step.extra),
+    });
+    expect(second!.reply).toBe("Белый есть.");
+    // Модель второго хода получила обе реплики первого.
+    const sent = JSON.stringify((create.mock.calls[1]![0] as { messages: unknown }).messages);
+    expect(sent).toContain("Полотенца есть?");
+    expect(sent).toContain("Какой цвет?");
+    // Состояние покупателя не записывалось ни разу.
+    expect(saved).toHaveLength(0);
+    expect(second!.testState).toBeDefined();
+    expect(second!.testState!.recent).toHaveLength(2);
+  });
+
+  it("служебные поля пробного диалога (пауза, очередь) отбрасываются", async () => {
+    const { cleanTestExtra, parseTestExtra } = await import("../test-chat");
+    expect(
+      cleanTestExtra({ paused_until: "2099-01-01", recent: [], rub: true, inbox: [1] }),
+    ).toEqual({ rub: true });
+    expect(parseTestExtra("не json")).toEqual({});
+    expect(parseTestExtra(JSON.stringify({ x: "y".repeat(20_000) }))).toEqual({});
+  });
+});

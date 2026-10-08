@@ -301,6 +301,11 @@ export const adminShopFn = createServerFn({ method: "GET" }).handler(async () =>
       : (ctx.tenant.settings.default_locale ?? "ru");
     // Чтения, что при сбое дают 0 в бейджах меню: блок «Ждёт вас» показывает их как сбой, а не «0».
     const waitingFailed: string[] = [];
+    const role = await (await import("@/app/auth/guards.server")).adminRole();
+    const pricelist = (await import("@/core/consultant/pricelist/mode")).pricelistMode(ctx.tenant);
+    const sells = await sellsOrAsBefore(ctx, "меню");
+    const { consultantWorkspace } = await import("./nav-model");
+    const { roleAllows } = await import("@/core/auth/roles");
     return {
       botId: ctx.tenant.id,
       name: shopName,
@@ -308,7 +313,7 @@ export const adminShopFn = createServerFn({ method: "GET" }).handler(async () =>
       locale,
       /** Валюта магазина по умолчанию — для новых товаров и реквизитов. */
       currency: (st.shop_currency ?? "KZT").toUpperCase(),
-      role: await (await import("@/app/auth/guards.server")).adminRole(),
+      role,
       username: s.data.admin.username,
       vertical: ctx.tenant.vertical,
       verticalTitle: VERTICALS[ctx.tenant.vertical].title,
@@ -324,9 +329,28 @@ export const adminShopFn = createServerFn({ method: "GET" }).handler(async () =>
               })
           : 0,
       /** Консультант по прайсу (BOVI) — пункт «Прайс консультанта» в меню. */
-      pricelist: (await import("@/core/consultant/pricelist/mode")).pricelistMode(ctx.tenant),
+      pricelist,
       /** Продаёт ли клиент (`sellsNow`): консультант без продаж — нижняя панель без заказов и товаров. */
-      sells: await sellsOrAsBefore(ctx, "меню"),
+      sells,
+      /**
+       * Открытые задачи консультанта — бейдж «Задачи» рабочего места (консультант
+       * без продаж, менеджер и выше). Сбой чтения — null: бейджа нет, а не «0».
+       */
+      consultantTasksOpen:
+        !accountant && roleAllows(role, "manager") && consultantWorkspace({ sells, pricelist })
+          ? await (
+              await import("@/core/consultant/tasks")
+            )
+              .loadTasks(ctx)
+              .then((ts) => ts.filter((t) => !t.done).length)
+              .catch((e) => {
+                console.error(
+                  `[admin:${ctx.tenant.id}] бейдж задач`,
+                  e instanceof Error ? e.message : e,
+                );
+                return null;
+              })
+          : null,
       status: ctx.tenant.status,
       /** Пробный период на виду: до какого дня, сколько осталось и что будет после (плашка в шапке). */
       trial,
@@ -3411,14 +3435,45 @@ export const saveConsultantFn = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-/** Проверка из админки: ответ на пробный вопрос без записи истории. */
+/**
+ * Проверка из админки: ответ на пробный вопрос без записи в базу. С историей
+ * (`history`, `extra`) — пробный диалог из нескольких реплик: что уже
+ * спросили и что консультант запомнил, живёт в браузере (core/consultant/test-chat).
+ */
 export const consultantTestFn = createServerFn({ method: "POST" })
-  .validator((d: unknown) => z.object({ text: z.string().trim().min(1).max(1000) }).parse(d))
+  .validator((d: unknown) =>
+    z
+      .object({
+        text: z.string().trim().min(1).max(1000),
+        history: z
+          .array(
+            z.object({
+              role: z.enum(["customer", "assistant"]),
+              text: z.string().max(2000),
+            }),
+          )
+          .max(40)
+          .optional(),
+        /** Память пробного диалога — JSON-строкой, как её вернул прошлый ответ. */
+        extra: z.string().max(20_000).optional(),
+      })
+      .parse(d),
+  )
   .handler(async ({ data }) => {
     const ctx = await adminLevel();
     const { runConsultant } = await import("@/core/consultant/engine.server");
-    const r = await runConsultant(ctx, null, data.text, { platform: "admin_test", dryRun: true });
+    const { nextTestChat, parseTestExtra, testChatState } =
+      await import("@/core/consultant/test-chat");
+    const history = data.history ?? [];
+    const extra = parseTestExtra(data.extra);
+    const r = await runConsultant(ctx, null, data.text, {
+      platform: "admin_test",
+      dryRun: true,
+      testState: testChatState(history, extra),
+    });
     if (!r)
       throw new UserError("err.admin.noAnthropicKey", "На платформе не задан ключ Anthropic.");
-    return r;
+    const { testState, ...rest } = r;
+    const next = nextTestChat(history, data.text, r.reply, extra, testState);
+    return { ...rest, history: next.history, extra: JSON.stringify(next.extra) };
   });

@@ -56,7 +56,7 @@ export const ru = {
   "pricelist.persona.reset": "Вернуть стандартный текст",
   "pricelist.tasks.title": "Задачи консультанта",
   "pricelist.tasks.hint":
-    "Каждая передача менеджеру: покупка, опт, жалоба, «позовите человека», вопрос без ответа. Отметьте сделанной, когда ответили покупателю.",
+    "Каждая передача менеджеру: покупка, опт, жалоба, «позовите человека», вопрос без ответа. Задача закрывается сама, когда вы ответили покупателю: в чате панели, прямо в Instagram или WhatsApp, или ответом на карточку в Telegram. Можно отметить и вручную.",
   "pricelist.tasks.empty": "Передач менеджеру пока не было.",
   "pricelist.tasks.open": "Не разобрано: {count}",
   "pricelist.tasks.done": "Сделано",
@@ -207,7 +207,7 @@ export const kk: SectionDict<typeof ru> = {
   "pricelist.persona.reset": "Стандартты мәтінді қайтару",
   "pricelist.tasks.title": "Кеңесші тапсырмалары",
   "pricelist.tasks.hint":
-    "Менеджерге берілген әрбір жағдай: сатып алу, көтерме, шағым, «адамды шақырыңыз», жауабы жоқ сұрақ. Сатып алушыға жауап берген соң орындалды деп белгілеңіз.",
+    "Менеджерге берілген әрбір жағдай: сатып алу, көтерме, шағым, «адамды шақырыңыз», жауабы жоқ сұрақ. Сатып алушыға жауап берсеңіз, тапсырма өзі жабылады: панель чатында, тікелей Instagram не WhatsApp-та немесе Telegram-дағы карточкаға жауаппен. Қолмен де белгілеуге болады.",
   "pricelist.tasks.empty": "Менеджерге берілген жағдай әзірге болған жоқ.",
   "pricelist.tasks.open": "Қаралмағаны: {count}",
   "pricelist.tasks.done": "Орындалды",
@@ -359,7 +359,7 @@ export const en: SectionDict<typeof ru> = {
   "pricelist.persona.reset": "Restore the standard text",
   "pricelist.tasks.title": "Consultant tasks",
   "pricelist.tasks.hint":
-    "Every handoff to a manager: purchase, wholesale, complaint, “call a human”, an unanswered question. Mark it done once you have replied to the customer.",
+    "Every handoff to a manager: purchase, wholesale, complaint, “call a human”, an unanswered question. The task closes itself once you reply to the customer: in the panel chat, directly in Instagram or WhatsApp, or by replying to the card in Telegram. You can also mark it done by hand.",
   "pricelist.tasks.empty": "No handoffs to a manager yet.",
   "pricelist.tasks.open": "Not handled: {count}",
   "pricelist.tasks.done": "Done",
@@ -514,7 +514,7 @@ export const uz: SectionDict<typeof ru> = {
   "pricelist.persona.reset": "Standart matnni qaytarish",
   "pricelist.tasks.title": "Maslahatchi vazifalari",
   "pricelist.tasks.hint":
-    "Menejerga berilgan har bir holat: xarid, ulgurji, shikoyat, «odamni chaqiring», javobsiz savol. Xaridorga javob berganingizdan keyin bajarildi deb belgilang.",
+    "Menejerga berilgan har bir holat: xarid, ulgurji, shikoyat, «odamni chaqiring», javobsiz savol. Xaridorga javob berganingizda vazifa o‘zi yopiladi: panel chatida, to‘g‘ridan-to‘g‘ri Instagram yoki WhatsAppda yoki Telegramdagi kartochkaga javob bilan. Qo‘lda ham belgilash mumkin.",
   "pricelist.tasks.empty": "Menejerga berilgan holatlar hali bo‘lmadi.",
   "pricelist.tasks.open": "Ko‘rilmagani: {count}",
   "pricelist.tasks.done": "Bajarildi",

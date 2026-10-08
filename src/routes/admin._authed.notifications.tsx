@@ -104,6 +104,13 @@ function NotificationsPage() {
         }
       />
       <ErrorBox error={markRead.error} />
+      {shop.sells === false && (
+        // Консультант без продаж: лента про заказы — говорим, где его события.
+        <p className="mb-4 text-sm text-muted">
+          {t("bell.consultantNote")}
+          {shop.pricelist ? ` ${t("bell.consultantNoteTasks")}` : ""}
+        </p>
+      )}
       {feed.items.length === 0 ? (
         <Empty>{t("bell.empty")}</Empty>
       ) : (

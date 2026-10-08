@@ -34,6 +34,8 @@ import { reasonPairs } from "@/core/chat/reason";
 import { SEARCH_MIN } from "@/core/chat/search";
 import { UNANSWERED_OPTIONS } from "@/core/chat/unanswered";
 import { isIndefinite } from "@/core/consultant/pause";
+import { consultantWorkspace } from "@/app/admin/nav-model";
+import { JournalPanel, useWaitingTasks, WaitingList } from "@/app/admin/workspace-dialogs";
 import {
   replyWindow,
   windowNotice,
@@ -195,6 +197,12 @@ function ChatPage() {
   const [filter, setFilter] = useState<InboxFilter>({ status: "open", who: "all", channel: "all" });
   const [searchText, setSearchText] = useState("");
   const canWrite = canEdit(shop.role);
+  // Рабочее место консультанта без продаж: «Диалоги» — кто ждёт менеджера и журнал консультанта.
+  const ws = consultantWorkspace(shop);
+  const contacts = roleAllows(shop.role, CONTACTS_MIN_ROLE);
+  const waiting = useWaitingTasks(ws && contacts);
+  const [waitingOnly, setWaitingOnly] = useState(false);
+  const [showJournal, setShowJournal] = useState(false);
   const me = initial.me;
   // Опрос и действия видят актуальные фильтр и границу «что изменилось», а не замкнутые значения.
   const live = useRef({ filter, since: "", sig: "", unread: 0 });
@@ -472,6 +480,7 @@ function ChatPage() {
   });
   useEffect(() => {
     setAttachment(null);
+    setShowJournal(false);
     draftId.current = crypto.randomUUID();
   }, [selectedId]);
   const attach = useAction(async (file: File) => {
@@ -495,6 +504,8 @@ function ChatPage() {
     draftId.current = crypto.randomUUID();
     setReply("");
     setAttachment(null);
+    // Ответ менеджера закрывает задачи покупателя (core/consultant/tasks): «Ждут менеджера» — заново.
+    if (ws) void waiting.reload();
     {
       const m = await chatMessagesFn({ data: { telegramId: selectedId } });
       setThread((p) => threadOf(p, selectedId, m));
@@ -503,7 +514,22 @@ function ChatPage() {
 
   return (
     <>
-      <PageTitle title={t("chat.title")} subtitle={t("chat.subtitle")} />
+      <PageTitle
+        title={ws ? t("ws.dialogs.title") : t("chat.title")}
+        subtitle={ws ? t("ws.dialogs.subtitle") : t("chat.subtitle")}
+        actions={
+          ws && contacts ? (
+            <button
+              type="button"
+              aria-pressed={waitingOnly}
+              className={waitingOnly ? "btn-primary text-sm" : "btn-secondary text-sm"}
+              onClick={() => setWaitingOnly((v) => !v)}
+            >
+              {t("ws.dialogs.waiting", { n: waiting.byDialog.size })}
+            </button>
+          ) : undefined
+        }
+      />
       <ErrorBox
         error={
           loadError ??
@@ -511,7 +537,8 @@ function ChatPage() {
           send.error ??
           attach.error ??
           setMeta.error ??
-          resumeBot.error
+          resumeBot.error ??
+          waiting.failed
         }
       />
       <UnansweredAlert
@@ -575,6 +602,14 @@ function ChatPage() {
                 </button>
               )}
             </>
+          ) : waitingOnly ? (
+            <WaitingList
+              items={[...waiting.byDialog.values()]}
+              t={t}
+              loc={loc}
+              selectedId={selectedId}
+              onPick={setSelectedId}
+            />
           ) : visible.length === 0 ? (
             <Empty>{counts.total === 0 ? t("chat.empty") : t("chat.emptyFiltered")}</Empty>
           ) : (
@@ -594,6 +629,9 @@ function ChatPage() {
                         {t("chat.ticket", { n })}
                       </Badge>
                     ))}
+                    {ws && waiting.byDialog.has(c.telegram_id) && (
+                      <Badge tone="warn">{t("ws.dialogs.waitingBadge")}</Badge>
+                    )}
                     {c.status === "closed" && <Badge>{t("chat.resolvedBadge")}</Badge>}
                     {c.active && <Badge tone="ok">{t("chat.youInChat")}</Badge>}
                     {c.unread_count > 0 && <Badge tone="accent">{c.unread_count}</Badge>}
@@ -612,7 +650,7 @@ function ChatPage() {
               </button>
             ))
           )}
-          {hits === null && hasMore && (
+          {hits === null && !waitingOnly && hasMore && (
             <button
               type="button"
               className="block w-full px-4 py-3 text-center text-xs text-muted hover:bg-surface-2/60"
@@ -635,6 +673,7 @@ function ChatPage() {
                 telegramId={selected.telegram_id}
                 canOpenCard={roleAllows(shop.role, CONTACTS_MIN_ROLE)}
                 canWrite={canWrite}
+                sells={!ws}
               />
               <div className="flex min-h-0 min-w-0 flex-1 flex-col">
                 <div className="flex items-center justify-between gap-2 border-b border-line px-4 py-2">
@@ -662,74 +701,96 @@ function ChatPage() {
                     )}
                     {window24 && <WindowBadge t={t} w={window24} />}
                   </span>
-                  {canWrite && (
+                  {(canWrite || (ws && contacts && selected.user_key)) && (
                     <span className="flex flex-wrap items-center justify-end gap-2">
-                      <select
-                        className="input h-8 w-auto py-0 text-xs"
-                        aria-label={t("chat.assignee")}
-                        value={selected.assignee ?? ""}
-                        disabled={setMeta.busy}
-                        onChange={(e) =>
-                          void setMeta.run({ assignee: e.target.value || null }).catch(() => {})
-                        }
-                      >
-                        <option value="">
-                          {t("chat.assignee")}: {t("chat.nobody")}
-                        </option>
-                        {initial.assignees.map((a) => (
-                          <option key={a.username} value={a.username}>
-                            {a.name ?? a.username}
-                            {a.owner ? ` (${t("chat.owner")})` : ""}
-                          </option>
-                        ))}
-                      </select>
-                      <button
-                        type="button"
-                        className="btn-secondary text-xs"
-                        disabled={setMeta.busy}
-                        onClick={() =>
-                          void setMeta
-                            .run({ status: selected.status === "open" ? "closed" : "open" })
-                            .catch(() => {})
-                        }
-                      >
-                        {selected.status === "open" ? t("chat.resolve") : t("chat.reopen")}
-                      </button>
-                      {selected.bot_paused_until && (
+                      {ws && contacts && selected.user_key && (
                         <button
                           type="button"
-                          className="btn-secondary text-xs"
-                          disabled={resumeBot.busy}
-                          onClick={() => void resumeBot.run().catch(() => {})}
+                          aria-pressed={showJournal}
+                          className={showJournal ? "btn-primary text-xs" : "btn-secondary text-xs"}
+                          onClick={() => setShowJournal((v) => !v)}
                         >
-                          {t("chat.resumeBot")}
+                          {t("ws.journal.title")}
                         </button>
                       )}
-                      {invoiceModeOf(invoiceModes, selected) !== "none" && (
-                        <button
-                          type="button"
-                          className="btn-secondary text-xs"
-                          onClick={() => setInvoicing((v) => !v)}
-                        >
-                          {t("chat.invoice")}
-                        </button>
+                      {canWrite && (
+                        <>
+                          <select
+                            className="input h-8 w-auto py-0 text-xs"
+                            aria-label={t("chat.assignee")}
+                            value={selected.assignee ?? ""}
+                            disabled={setMeta.busy}
+                            onChange={(e) =>
+                              void setMeta.run({ assignee: e.target.value || null }).catch(() => {})
+                            }
+                          >
+                            <option value="">
+                              {t("chat.assignee")}: {t("chat.nobody")}
+                            </option>
+                            {initial.assignees.map((a) => (
+                              <option key={a.username} value={a.username}>
+                                {a.name ?? a.username}
+                                {a.owner ? ` (${t("chat.owner")})` : ""}
+                              </option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            className="btn-secondary text-xs"
+                            disabled={setMeta.busy}
+                            onClick={() =>
+                              void setMeta
+                                .run({ status: selected.status === "open" ? "closed" : "open" })
+                                .catch(() => {})
+                            }
+                          >
+                            {selected.status === "open" ? t("chat.resolve") : t("chat.reopen")}
+                          </button>
+                          {selected.bot_paused_until && (
+                            <button
+                              type="button"
+                              className="btn-secondary text-xs"
+                              disabled={resumeBot.busy}
+                              onClick={() => void resumeBot.run().catch(() => {})}
+                            >
+                              {t("chat.resumeBot")}
+                            </button>
+                          )}
+                          {invoiceModeOf(invoiceModes, selected) !== "none" && (
+                            <button
+                              type="button"
+                              className="btn-secondary text-xs"
+                              onClick={() => setInvoicing((v) => !v)}
+                            >
+                              {t("chat.invoice")}
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            className={
+                              selected.active ? "btn-secondary text-xs" : "btn-primary text-xs"
+                            }
+                            disabled={toggle.busy}
+                            onClick={() => void toggle.run().catch(() => {})}
+                          >
+                            {selected.active ? t("chat.returnToBot") : t("chat.join")}
+                          </button>
+                        </>
                       )}
-                      <button
-                        type="button"
-                        className={
-                          selected.active ? "btn-secondary text-xs" : "btn-primary text-xs"
-                        }
-                        disabled={toggle.busy}
-                        onClick={() => void toggle.run().catch(() => {})}
-                      >
-                        {selected.active ? t("chat.returnToBot") : t("chat.join")}
-                      </button>
                     </span>
                   )}
                 </div>
+                {showJournal && selected.user_key && (
+                  <JournalPanel
+                    key={selected.user_key}
+                    userKey={selected.user_key}
+                    t={t}
+                    loc={loc}
+                  />
+                )}
                 <div
                   ref={threadRef}
-                  className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-4"
+                  className={`min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-4 ${showJournal ? "hidden" : "flex"}`}
                 >
                   {thread.telegramId === selected.telegram_id && thread.hasMore && (
                     <button
@@ -761,6 +822,7 @@ function ChatPage() {
                   ))}
                 </div>
                 {canWrite &&
+                  !ws &&
                   channelOf(selected) &&
                   invoiceModeOf(invoiceModes, selected) === "none" && (
                     <p className="border-b border-line px-4 py-2 text-xs text-muted">
@@ -905,12 +967,15 @@ function CustomerPanelView({
   telegramId,
   canOpenCard,
   canWrite,
+  sells = true,
 }: {
   t: AdminT;
   loc: string;
   telegramId: number;
   canOpenCard: boolean;
   canWrite: boolean;
+  /** Консультант без продаж: без баллов, суммы покупок и заказов. */
+  sells?: boolean;
 }) {
   const [data, setData] = useState<PanelData | undefined>(undefined);
   const [failed, setFailed] = useState(false);
@@ -984,41 +1049,45 @@ function CustomerPanelView({
         <p className="text-xs text-muted">{t("chat.panelNone")}</p>
       ) : (
         <div className="space-y-3">
-          <dl className="space-y-1">
-            <div className="flex justify-between gap-2">
-              <dt className="text-muted">{t("chat.panelPoints")}</dt>
-              <dd className="tabular-nums">{data.points}</dd>
+          {sells && (
+            <dl className="space-y-1">
+              <div className="flex justify-between gap-2">
+                <dt className="text-muted">{t("chat.panelPoints")}</dt>
+                <dd className="tabular-nums">{data.points}</dd>
+              </div>
+              <div className="flex justify-between gap-2">
+                <dt className="text-muted">{t("chat.panelSpent")}</dt>
+                <dd className="text-right tabular-nums">{spent || "—"}</dd>
+              </div>
+            </dl>
+          )}
+          {sells && (
+            <div>
+              <p className="mb-1 text-xs text-muted">{t("chat.panelOrders")}</p>
+              {data.orders.length === 0 ? (
+                <p className="text-xs text-muted">{t("chat.panelNoOrders")}</p>
+              ) : (
+                <ul className="space-y-1.5">
+                  {data.orders.map((o) => (
+                    <li key={o.id}>
+                      <Link
+                        to="/admin/orders/$id"
+                        params={{ id: String(o.id) }}
+                        className="flex flex-wrap items-center justify-between gap-x-2 hover:text-accent"
+                      >
+                        <span>#{o.no}</span>
+                        <span className="tabular-nums">{formatMoney(o.total, o.currency)}</span>
+                        <span className="w-full text-xs text-muted">
+                          <OrderStatus status={o.status} /> ·{" "}
+                          {new Date(o.createdAt).toLocaleDateString(loc)}
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
-            <div className="flex justify-between gap-2">
-              <dt className="text-muted">{t("chat.panelSpent")}</dt>
-              <dd className="text-right tabular-nums">{spent || "—"}</dd>
-            </div>
-          </dl>
-          <div>
-            <p className="mb-1 text-xs text-muted">{t("chat.panelOrders")}</p>
-            {data.orders.length === 0 ? (
-              <p className="text-xs text-muted">{t("chat.panelNoOrders")}</p>
-            ) : (
-              <ul className="space-y-1.5">
-                {data.orders.map((o) => (
-                  <li key={o.id}>
-                    <Link
-                      to="/admin/orders/$id"
-                      params={{ id: String(o.id) }}
-                      className="flex flex-wrap items-center justify-between gap-x-2 hover:text-accent"
-                    >
-                      <span>#{o.no}</span>
-                      <span className="tabular-nums">{formatMoney(o.total, o.currency)}</span>
-                      <span className="w-full text-xs text-muted">
-                        <OrderStatus status={o.status} /> ·{" "}
-                        {new Date(o.createdAt).toLocaleDateString(loc)}
-                      </span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+          )}
           {data.tickets.length > 0 && (
             <div>
               <p className="mb-1 text-xs text-muted">{t("chat.panelTickets")}</p>

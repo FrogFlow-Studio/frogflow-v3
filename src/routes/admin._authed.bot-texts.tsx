@@ -1,4 +1,4 @@
-import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { botTextsFn, saveBotTextFn, saveWorkHoursFn } from "@/app/admin/bot-texts.functions";
 import type { BotTextRow } from "@/app/admin/bot-texts.server";
@@ -114,7 +114,17 @@ function TextEditor({
   );
 }
 
-function HoursCard({ hours, t }: { hours: { open: number; close: number } | null; t: AdminT }) {
+function HoursCard({
+  hours,
+  t,
+  sells,
+  pricelist,
+}: {
+  hours: { open: number; close: number } | null;
+  t: AdminT;
+  sells: boolean;
+  pricelist: boolean;
+}) {
   const router = useRouter();
   const [open, setOpen] = useState<number | "">(hours?.open ?? "");
   const [close, setClose] = useState<number | "">(hours?.close ?? "");
@@ -130,7 +140,21 @@ function HoursCard({ hours, t }: { hours: { open: number; close: number } | null
   const options = Array.from({ length: 25 }, (_, h) => h);
   return (
     <Card title={t("botTexts.hours.title")}>
-      <p className="mb-3 text-sm text-muted">{t("botTexts.hours.hint")}</p>
+      {sells ? (
+        <p className="mb-3 text-sm text-muted">{t("botTexts.hours.hint")}</p>
+      ) : (
+        // Консультант без продаж: у него три разных «часа» — говорим, какие где.
+        <div className="mb-3 space-y-1 text-sm text-muted">
+          <p>{t("botTexts.hours.hintTelegramOnly")}</p>
+          {pricelist && (
+            <p>
+              <Link to="/admin/pricelist" className="text-accent hover:underline">
+                {t("botTexts.hours.hintPricelist", { page: t("pricelist.nav") })}
+              </Link>
+            </p>
+          )}
+        </div>
+      )}
       <div className="flex flex-wrap items-end gap-3">
         <Field label={t("botTexts.hours.open")}>
           <select
@@ -184,7 +208,11 @@ function BotTextsPage() {
   const t = adminT(shop.locale);
   const [channel, setChannel] = useState<BotTextChannel>("telegram");
   const [locale, setLocale] = useState<Locale>(data.locales[0]!);
-  const wired = data.channels.find((c) => c.channel === channel)?.wired ?? [];
+  // Консультант без продаж (BOVI): заказов нет — и «Спасибо за заказ» не показываем.
+  const sells = shop.sells !== false;
+  const wired = (data.channels.find((c) => c.channel === channel)?.wired ?? []).filter(
+    (k) => sells || k !== "order_thanks",
+  );
   return (
     <>
       <PageTitle title={t("botTexts.title")} subtitle={t("botTexts.subtitle")} />
@@ -212,7 +240,17 @@ function BotTextsPage() {
           ))}
         </div>
       )}
-      {wired.length === 0 && <p className="mb-4 text-sm text-muted">{t("botTexts.notWired")}</p>}
+      {wired.length === 0 &&
+        (sells ? (
+          <p className="mb-4 text-sm text-muted">{t("botTexts.notWired")}</p>
+        ) : (
+          <p className="mb-4 text-sm text-muted">
+            {t("botTexts.notWiredConsultant")}{" "}
+            <Link to="/admin/consultant" className="text-accent hover:underline">
+              {t("botTexts.openConsultant")}
+            </Link>
+          </p>
+        ))}
       <div className="space-y-4">
         {wired.length > 0 &&
           data.rows
@@ -230,7 +268,7 @@ function BotTextsPage() {
                 />
               </Card>
             ))}
-        <HoursCard hours={data.workHours} t={t} />
+        <HoursCard hours={data.workHours} t={t} sells={sells} pricelist={Boolean(shop.pricelist)} />
       </div>
     </>
   );

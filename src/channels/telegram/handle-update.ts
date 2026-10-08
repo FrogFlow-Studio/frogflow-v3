@@ -1041,11 +1041,70 @@ async function menuAction(b: Bot, action: ReturnType<typeof menuActionFor>) {
         await send(b, b.m.ticketPrompt);
         return;
       }
+      if (await contactManagerHandoff(b)) return;
       const link = await getSetting(b.ctx, "admin_contact_link");
       await send(b, link ? b.m.contactAuthor(escapeHtml(link)) : b.m.contactNotSet);
       return;
     }
   }
+}
+
+/**
+ * «💬 Связаться с менеджером» у консультанта по прайсу без модуля «Поддержка»
+ * (партия 3.3): как передача консультанта — задача в админке, пауза бота,
+ * карточка продавцу; покупателю — «передам вопрос менеджеру» (и ссылка для
+ * связи, если продавец её задал). Консультант уже на паузе — менеджер позван:
+ * второй задачи и карточки нет. Не консультант по прайсу — false, как раньше.
+ */
+async function contactManagerHandoff(b: Bot): Promise<boolean> {
+  const { pricelistMode } = await import("@/core/consultant/pricelist/mode");
+  if (!pricelistMode(b.ctx.tenant)) return false;
+  const { consultantEnabled, isPaused, pauseConsultant } =
+    await import("@/core/consultant/engine.server");
+  if (!(await consultantEnabled(b.ctx))) return false;
+  const { handoffReply, contactButtonText } = await import("@/core/consultant/messages");
+  const link = await getSetting(b.ctx, "admin_contact_link");
+  const reply = [
+    escapeHtml(handoffReply(b.locale)),
+    link ? b.m.contactAuthor(escapeHtml(link)) : "",
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+  if (isPaused(b.customer)) {
+    await send(b, reply);
+    return true;
+  }
+  const { sellerLocaleSafe } = await import("@/core/ai/seller-text");
+  const seller = contactButtonText(await sellerLocaleSafe(b.ctx));
+  b.customer = await pauseConsultant(b.ctx, b.customer);
+  if (b.ctx.tenant.modules.manager_chat) {
+    const { connect } = await import("@/core/chat/chat");
+    await connect(b.ctx, b.customer.telegramId).catch(() => {});
+  }
+  // Задача — до карточки: сбой отправки её не теряет.
+  const { taskFromHandoff, telegramDialogLink } = await import("@/core/consultant/tasks");
+  await taskFromHandoff(
+    b.ctx,
+    b.customer,
+    { reason: "human_requested", summary: seller.summary },
+    { channel: "telegram", link: telegramDialogLink(b.customer.username) },
+  );
+  const { pauseHours } = await import("@/core/consultant/pause");
+  const who =
+    [b.customer.firstName, b.customer.lastName].filter(Boolean).join(" ") ||
+    (b.customer.username ? `@${b.customer.username}` : `id ${b.customer.telegramId}`);
+  await notifyAdminsHtml(
+    b.ctx,
+    [
+      seller.title,
+      `Telegram · 👤 ${escapeHtml(who)}${b.customer.username ? ` · @${escapeHtml(b.customer.username)}` : ""}`,
+      "",
+      seller.hint(pauseHours(b.ctx.tenant)),
+    ].join("\n"),
+    { kind: "handoff" },
+  ).catch(() => 0);
+  await send(b, reply);
+  return true;
 }
 
 /** «Мои обращения»: свои номера и статусы; в открытое можно дописать. */
@@ -3465,7 +3524,7 @@ async function relayManagerReply(
   await recordRelayedReply(ctx, buyer, text);
   // Менеджер ответил сам — его задача в админке сделана (v1 manager-reply.ts).
   const { closeTaskAfterReply } = await import("@/core/consultant/tasks");
-  await closeTaskAfterReply(ctx, buyer.userKey);
+  await closeTaskAfterReply(ctx, buyer.userKey, new Date(), { via: "telegram" });
   if (ctx.tenant.modules.manager_chat) {
     const { recordMessage } = await import("@/core/chat/chat");
     await recordMessage(ctx, {

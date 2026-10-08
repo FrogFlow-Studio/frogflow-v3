@@ -624,6 +624,42 @@ export const SCENARIOS: Scenario[] = [
     }),
     ["telegram"],
   ),
+  ...everyLocale(
+    (l) => ({
+      id: "consultant-instruction-telegram",
+      title: "консультант в Telegram: «📖 Инструкция» зовёт писать сюда, а не в Direct",
+      origin: "BOVI 08.10, партия 4: инструкция в Telegram говорила «Напишите запрос в Direct»",
+      channel: "telegram",
+      vertical: "consultant",
+      modules: { shop: true },
+      consultant: CONSULTANT_SAYS,
+      steps: [
+        {
+          say: { text: COPY[l].instruction },
+          expect: { says: ["📖"], notSays: [/Direct/i, CONSULTANT_SAYS], count: 1 },
+        },
+      ],
+    }),
+    ["telegram"],
+  ),
+  ...everyLocale(
+    (l) => ({
+      id: "consultant-universal-instruction-telegram",
+      title: "универсальный консультант в Telegram: «📖 Инструкция» без «в Direct»",
+      origin: "BOVI 08.10, партия 4: та же строка у ниши «Универсальный консультант»",
+      channel: "telegram",
+      vertical: "consultant_universal",
+      modules: { shop: true },
+      consultant: CONSULTANT_SAYS,
+      steps: [
+        {
+          say: { text: COPY[l].instruction },
+          expect: { says: ["📖"], notSays: [/Direct/i, CONSULTANT_SAYS], count: 1 },
+        },
+      ],
+    }),
+    ["telegram"],
+  ),
   // Консультант с товарами продаёт как раньше: каталог в меню остаётся.
   {
     id: "consultant-sells-menu-tg-ru",
@@ -1018,6 +1054,86 @@ export const SCENARIOS: Scenario[] = [
       },
     ],
   },
+  // ───── Задача закрывается сама, когда менеджер ответил (BOVI, партия 3.1) ─────
+  ...(["instagram", "whatsapp"] as const).map((channel, i): Scenario => ({
+    id: `pricelist-task-closes-on-app-reply-${channel === "instagram" ? "ig-ru" : "wa-kk"}`,
+    title: "менеджер ответил прямо в приложении — задача консультанта закрыта, бот молчит",
+    origin:
+      "BOVI 08.10, разбор (партия 3.1): ответ из Instagram/WhatsApp ставил паузу, но задача оставалась открытой — список копился",
+    channel,
+    locale: i === 0 ? "ru" : "kk",
+    full: true,
+    vertical: "consultant",
+    modules: { shop: true },
+    pricelist: {
+      catalog: PL_CATALOG,
+      rounds: [
+        [
+          {
+            type: "tool_use",
+            id: "h1",
+            name: "handoff_to_manager",
+            input: { reason: "purchase", summary: "Берёт Uchino 50х100" },
+          },
+        ],
+      ],
+    },
+    steps: [
+      {
+        say: { text: "Беру полотенце Uchino, +77001112233" },
+        expect: { paused: true, tasks: [{ reason: "purchase", done: false }] },
+      },
+      {
+        // Эхо собственного ответа бота — не ответ менеджера: задача открыта.
+        say: { sellerWrites: pricelistHandoffReply(i === 0 ? "ru" : "kk") },
+        expect: { silent: true, tasks: [{ done: false }] },
+      },
+      {
+        say: { sellerWrites: "Здравствуйте! Оформлю заказ, пришлю реквизиты" },
+        expect: { silent: true, tasks: [{ done: true, doneVia: channel }] },
+      },
+    ],
+  })),
+  // ───── «💬 Связаться с менеджером» в Telegram без «Поддержки» — как передача (партия 3.3) ─────
+  ...(
+    [
+      ["ru", "💬 Связаться с менеджером"],
+      ["kk", "💬 Менеджермен байланысу"],
+      ["uz", "💬 Menejer bilan bog‘lanish"],
+    ] as const
+  ).map(([l, button]): Scenario => ({
+    id: `pricelist-contact-button-task-tg-${l}`,
+    title:
+      "кнопка «Связаться с менеджером» без модуля «Поддержка» — задача, пауза и карточка продавцу",
+    origin:
+      "BOVI 08.10, разбор (партия 3.3): кнопка отвечала ссылкой или «контакт не указан», задачи и уведомления не было, бот не замолкал",
+    channel: "telegram",
+    locale: l,
+    vertical: "consultant",
+    modules: { shop: true },
+    state: { locale: l },
+    pricelist: { catalog: PL_CATALOG, rounds: [] },
+    steps: [
+      {
+        say: { text: button },
+        expect: {
+          says: [handoffReply(l)],
+          paused: true,
+          sellerNotices: 1,
+          tasks: [{ reason: "human_requested", channel: "telegram", done: false }],
+        },
+      },
+      {
+        // Двойное нажатие — одна задача и одна карточка: менеджер уже позван.
+        say: { text: button },
+        expect: {
+          says: [handoffReply(l)],
+          sellerNotices: 0,
+          tasks: [{ reason: "human_requested" }],
+        },
+      },
+    ],
+  })),
   // ───── Консультант BOVI: несколько сообщений подряд (08.10) ─────
   ...everyLocale(
     () => ({

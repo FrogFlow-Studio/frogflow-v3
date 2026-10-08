@@ -3,10 +3,10 @@ import * as F from "./fixtures.ts";
 import { watch } from "./helpers.ts";
 
 /**
- * «Прайс консультанта»: статьи базы знаний из вставленного текста —
+ * «База знаний» консультанта без продаж: статьи из вставленного текста —
  * предпросмотр, отметка, добавление; прежние статьи остаются. Таблица
- * Google — форма на месте (скачивание проверяют модульные тесты: в e2e
- * сети нет).
+ * Google — форма на месте в «Прайсе» (скачивание проверяют модульные тесты:
+ * в e2e сети нет).
  */
 async function login(page: Page) {
   await page.goto("/admin/login");
@@ -21,13 +21,14 @@ test("база знаний: текст → предпросмотр → в ба
   await login(page);
   await page.goto("/admin/pricelist");
   await expect(page.getByText("Прайс из Google Таблицы", { exact: true })).toBeVisible();
+  await page.goto("/admin/knowledge");
 
   // Заголовки свои на каждый прогон: проекты desktop и phone идут по одной базе.
   const tag = `${info.project.name}-${Date.now()}`;
   const keep = `Доставка ${tag}`;
   const skip = `Черновик ${tag}`;
   const titleInput = (title: string) =>
-    page.getByLabel("Заголовок", { exact: true }).and(page.locator(`[value="${title}"]`));
+    page.getByTestId("kb-article").getByRole("button", { name: new RegExp(`^${title}`) });
 
   await page
     .getByLabel("Или вставьте текст", { exact: true })
@@ -41,7 +42,7 @@ test("база знаний: текст → предпросмотр → в ба
   await page.getByRole("button", { name: "Добавить в базу (1)", exact: true }).click();
   await expect(page.getByText(/^Добавлено 1, обновлено 0\. Всего статей: \d+\.$/)).toBeVisible();
 
-  // Список статей ниже обновился из базы: новая есть, неотмеченной нет.
+  // Список статей обновился из базы: новая есть, неотмеченной нет.
   await expect(titleInput(keep)).toHaveCount(1);
   await expect(titleInput(skip)).toHaveCount(0);
   expect(errors).toEqual([]);

@@ -232,7 +232,7 @@ describe("задачи консультанта", () => {
     await expect(loadTasks(ctx)).rejects.toThrow();
   });
 
-  it("менеджер ответил сам — его последняя задача по этому покупателю закрыта", async () => {
+  it("менеджер ответил — все задачи покупателя до ответа закрыты, с каналом ответа", async () => {
     const { ctx, db } = ctxOf();
     const old = await addTask(
       ctx,
@@ -244,15 +244,62 @@ describe("задачи консультанта", () => {
       { userKey: "ig:1", reason: "complaint", text: "б" },
       at("2026-10-02T00:00:00Z"),
     );
-    await addTask(ctx, { userKey: "ig:2", reason: "purchase", text: "в" });
-    expect(await closeTaskAfterReply(ctx, "ig:1", at("2026-10-03T00:00:00Z"))).toBe(true);
-    const done = stored(db).filter((t) => t.done);
-    expect(done.map((t) => t.id)).toEqual([fresh!.id]);
-    expect(await closeTaskAfterReply(ctx, "ig:3")).toBe(false);
-    // Вторая закрывает предыдущую, у чужого покупателя ничего не меняется.
-    expect(await closeTaskAfterReply(ctx, "ig:1")).toBe(true);
-    expect(stored(db).find((t) => t.id === old!.id)!.done).toBe(true);
+    // Передача после ответа менеджера — новая просьба: остаётся открытой.
+    const later = await addTask(
+      ctx,
+      { userKey: "ig:1", reason: "photo", text: "в" },
+      at("2026-10-04T00:00:00Z"),
+    );
+    await addTask(ctx, { userKey: "ig:2", reason: "purchase", text: "г" });
+    expect(
+      await closeTaskAfterReply(ctx, "ig:1", at("2026-10-05T00:00:00Z"), {
+        via: "instagram",
+        repliedAt: at("2026-10-03T00:00:00Z"),
+      }),
+    ).toBe(true);
+    const byId = (id: string) => stored(db).find((t) => t.id === id)!;
+    for (const t of [old!, fresh!]) {
+      expect(byId(t.id)).toMatchObject({ done: true, doneVia: "instagram" });
+      expect(byId(t.id).doneAt).toBe("2026-10-05T00:00:00.000Z");
+    }
+    expect(byId(later!.id).done).toBe(false);
     expect(stored(db).find((t) => t.userKey === "ig:2")!.done).toBe(false);
+    expect(await closeTaskAfterReply(ctx, "ig:3")).toBe(false);
+  });
+
+  it("гонка: два ответа менеджера и новая передача одновременно — закрывает один, новая цела", async () => {
+    const { ctx, db } = ctxOf();
+    const open = await addTask(
+      ctx,
+      { userKey: "ig:1", reason: "purchase", text: "а" },
+      at("2026-10-01T00:00:00Z"),
+    );
+    const results = await Promise.all([
+      closeTaskAfterReply(ctx, "ig:1", at("2026-10-02T00:00:00Z"), { via: "panel" }),
+      closeTaskAfterReply(ctx, "ig:1", at("2026-10-02T00:00:00Z"), { via: "instagram" }),
+      addTask(ctx, { userKey: "ig:2", reason: "wholesale", text: "б" }, at("2026-10-02T00:00:00Z")),
+    ]);
+    // Закрыл ровно один ответ: второй перечитал список и закрывать было нечего.
+    expect(results.slice(0, 2).filter(Boolean)).toHaveLength(1);
+    const list = stored(db);
+    expect(list).toHaveLength(2);
+    expect(list.find((t) => t.id === open!.id)).toMatchObject({ done: true });
+    expect(list.find((t) => t.userKey === "ig:2")).toMatchObject({ done: false });
+  });
+
+  it("«Сделано» руками — отметка manual; вернуть в работу — отметка снята", async () => {
+    const { ctx, db } = ctxOf();
+    const t = await addTask(ctx, { userKey: "ig:1", reason: "purchase", text: "а" });
+    await setTaskDone(ctx, t!.id, true);
+    expect(stored(db)[0]).toMatchObject({ done: true, doneVia: "manual" });
+    await setTaskDone(ctx, t!.id, false);
+    expect(stored(db)[0]!.doneVia).toBeUndefined();
+    expect(stored(db)[0]!.doneAt).toBeUndefined();
+  });
+
+  it("не консультант по прайсу — ответ менеджера задачи не трогает", async () => {
+    const { ctx } = ctxOf(false);
+    expect(await closeTaskAfterReply(ctx, "ig:1")).toBe(false);
   });
 
   it("ссылка на диалог в Telegram — только по нику", () => {

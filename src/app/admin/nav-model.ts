@@ -6,6 +6,7 @@
 import type { AdminKey } from "@/app/i18n/admin";
 import { roleAllows, type AdminRole } from "@/core/auth/roles";
 import type { ModuleKey } from "@/core/modules/registry";
+import { notificationsInNav } from "@/app/admin/notifications-visible";
 
 export type NavItem = {
   /** Путь маршрута. */
@@ -36,6 +37,11 @@ export type NavShop = {
    */
   sells?: boolean;
   chatUnread?: number | null;
+  /**
+   * Открытые задачи консультанта (передачи менеджеру) — бейдж «Задачи» в
+   * рабочем месте консультанта. null/нет — не известно, бейджа нет.
+   */
+  consultantTasksOpen?: number | null;
   ticketsOpen: number;
   /** Непрочитанные новости платформы — бейдж «Что нового». */
   newsUnread?: number;
@@ -59,6 +65,24 @@ export type AdminNav = {
 };
 
 const PHYSICAL = new Set(["confectionery", "flowers"]);
+
+/**
+ * Рабочее место консультанта: клиент не продаёт (`sells === false`) и
+ * отвечает по прайсу (BOVI). Тогда меню — шесть его страниц сверху: «Обзор»,
+ * «Задачи», «Диалоги», «Прайс», «База знаний», «Настройки бота».
+ */
+export function consultantWorkspace(shop: { sells?: boolean; pricelist?: unknown }): boolean {
+  return shop.sells === false && Boolean(shop.pricelist);
+}
+
+/** Страницы рабочего места консультанта под «Обзором», по порядку. */
+export const WORKSPACE_PAGES = [
+  "/admin/tasks",
+  "/admin/chat",
+  "/admin/pricelist",
+  "/admin/knowledge",
+  "/admin/consultant",
+] as const;
 
 function compact<T>(xs: (T | false | null | undefined)[]): T[] {
   return xs.filter((x): x is T => Boolean(x));
@@ -125,7 +149,7 @@ export function buildAdminNav(shop: NavShop): AdminNav {
     label: "nav.groupSales",
     items: compact<NavItem>([
       sells && orders,
-      { to: "/admin/notifications", label: "bell.nav" },
+      notificationsInNav(shop) && { to: "/admin/notifications", label: "bell.nav" },
       customers,
       m.manager_chat && chat,
       m.helpdesk &&
@@ -232,6 +256,41 @@ export function buildAdminNav(shop: NavShop): AdminNav {
       },
     ]),
   };
+
+  if (consultantWorkspace(shop)) {
+    // Рабочее место консультанта: его страницы — своей группой, закреплённой сверху;
+    // из «Продаж», «Каталога» и «Маркетинга» они уходят, чтобы не повторяться.
+    const tasks: NavItem | null = roleAllows(shop.role as AdminRole, "manager")
+      ? {
+          to: "/admin/tasks",
+          label: "ws.nav.tasks",
+          badge:
+            (shop.consultantTasksOpen ?? 0) > 0
+              ? { value: shop.consultantTasksOpen!, tone: "warn" }
+              : undefined,
+        }
+      : null;
+    const dialogs: NavItem | null = m.manager_chat ? { ...chat, label: "ws.nav.dialogs" } : null;
+    const price: NavItem = { to: "/admin/pricelist", label: "ws.nav.price" };
+    const knowledge: NavItem = { to: "/admin/knowledge", label: "ws.nav.knowledge" };
+    const botSettings: NavItem = { to: "/admin/consultant", label: "ws.nav.botSettings" };
+    const workspace: NavGroup = {
+      id: "consultant",
+      label: "ws.nav.group",
+      items: compact<NavItem>([tasks, dialogs, price, knowledge, botSettings]),
+    };
+    const mine = new Set<string>(WORKSPACE_PAGES);
+    const without = (g: NavGroup): NavGroup => ({
+      ...g,
+      items: g.items.filter((i) => i.hash || !mine.has(i.to)),
+    });
+    const groups = [
+      workspace,
+      ...[sales, catalog, learning, marketing, analytics, settings].map(without),
+    ].filter((g) => g.items.length > 0);
+    const primary = compact<NavItem>([overview, tasks, dialogs, price, knowledge]).slice(0, 4);
+    return { overview, groups, primary, pinned: workspace.items.map((i) => i.to) };
+  }
 
   const groups = (school ? [sales, learning, catalog] : [sales, catalog, learning])
     .concat([marketing, analytics, settings])

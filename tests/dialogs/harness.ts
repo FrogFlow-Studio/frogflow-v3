@@ -51,7 +51,12 @@ export type Input =
    */
   | { missed: string }
   /** Поздний вебхук о последнем `missed` — то же сообщение Zernio, своё событие. */
-  | { lateWebhook: true };
+  | { lateWebhook: true }
+  /**
+   * Instagram/WhatsApp (только `full`): продавец ответил покупателю руками в
+   * приложении — Zernio присылает исходящее сообщение (sentVia: null — человек).
+   */
+  | { sellerWrites: string };
 
 export interface Product {
   id: string;
@@ -386,6 +391,15 @@ function directRoom(o: RoomOptions): Room {
         current.state = db.tables.bot_users![0]!.state as Customer["state"];
         return;
       }
+      if ("sellerWrites" in i) {
+        if (!o.full) throw new Error("sellerWrites — только в полном разборе (full)");
+        const out = webhook({ text: i.sellerWrites });
+        out.event = "message.sent";
+        Object.assign(out.message, { direction: "outgoing", sentVia: null });
+        await handleZernioMessage(ctx, out as never, transport);
+        current.state = db.tables.bot_users![0]!.state as Customer["state"];
+        return;
+      }
       if (o.full && "burst" in i) {
         // Каждая реплика — свой вебхук; обрабатываются одновременно, как на Vercel.
         const hooks = i.burst.map((text) => webhook({ text }));
@@ -464,6 +478,8 @@ function telegramRoom(o: RoomOptions): Room {
         for (const text of r.buyer) calls.push(["sendMessage", { chat_id: TG, text }]);
         return;
       }
+      if ("sellerWrites" in i || "missed" in i || "lateWebhook" in i)
+        throw new Error("в Telegram такой реплики нет — только в Instagram/WhatsApp");
       const from = { id: TG, is_bot: false, first_name: "Анна" };
       if ("burst" in i) {
         // Несколько сообщений подряд — апдейты обрабатываются одновременно.

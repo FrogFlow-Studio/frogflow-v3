@@ -27,6 +27,8 @@ function CustomerCardPage() {
   const loc = intlLocale(shop.locale);
   const router = useRouter();
   const canWrite = canEdit(shop.role);
+  // Консультант без продаж (BOVI): заказов, покупок и баллов у его покупателей нет.
+  const sells = shop.sells !== false;
   const [tags, setTags] = useState(c.seller.tags.join(", "));
   const [note, setNote] = useState(c.seller.note);
   const [saved, setSaved] = useState(false);
@@ -113,18 +115,28 @@ function CustomerCardPage() {
           {row("customer.language", c.language)}
           {row("customer.country", c.country)}
           <BirthdayRow />
-          {row("customer.points", c.points)}
+          {sells && row("customer.points", c.points)}
           {row("customer.since", date(c.createdAt))}
+          {c.consultantRepliedAt &&
+            row(
+              "customer.consultantReplied",
+              new Date(c.consultantRepliedAt).toLocaleString(loc, {
+                dateStyle: "short",
+                timeStyle: "short",
+              }),
+            )}
           {row(
             "customer.source",
             c.firstSource === "storefront" ? t("customer.sourceStorefront") : c.firstSource,
           )}
         </Card>
-        <Card title={t("customer.stats")}>
-          {row("customer.orders", c.stats.count)}
-          {row("customer.spent", spent || "—")}
-          {row("customer.firstLast", `${date(c.stats.firstAt)} — ${date(c.stats.lastAt)}`)}
-        </Card>
+        {sells && (
+          <Card title={t("customer.stats")}>
+            {row("customer.orders", c.stats.count)}
+            {row("customer.spent", spent || "—")}
+            {row("customer.firstLast", `${date(c.stats.firstAt)} — ${date(c.stats.lastAt)}`)}
+          </Card>
+        )}
         {c.referrals && (
           <Card title={t("customer.referrals")}>
             {c.referrals.invitedBy && (
@@ -218,7 +230,7 @@ function CustomerCardPage() {
             </div>
           )}
         </Card>
-        {shop.modules.loyalty && canWrite && (
+        {sells && shop.modules.loyalty && canWrite && (
           <Card title={t("customer.adjust.title")}>
             <ErrorBox error={adjust.error} />
             <div className="mb-2 flex gap-2">
@@ -265,31 +277,33 @@ function CustomerCardPage() {
           </Card>
         )}
         <LinkedCard />
-        <Card title={t("customer.ordersTitle")}>
-          {c.orders.length === 0 ? (
-            <p className="text-sm text-muted">{t("customer.noOrders")}</p>
-          ) : (
-            <div className="flex flex-col">
-              {c.orders.map((o) => (
-                <Link
-                  key={o.id}
-                  to="/admin/orders/$id"
-                  params={{ id: String(o.id) }}
-                  className="flex items-center justify-between gap-2 border-b border-line py-1.5 text-sm last:border-b-0 hover:text-accent"
-                >
-                  <span>
-                    #{o.no} · {date(o.createdAt)}
-                    {c.linked.length > 0 && <span className="text-muted"> · {o.platform}</span>}
-                  </span>
-                  <span className="flex items-center gap-2">
-                    {formatMoney(o.total, o.currency)}
-                    <OrderStatus status={o.status} />
-                  </span>
-                </Link>
-              ))}
-            </div>
-          )}
-        </Card>
+        {sells && (
+          <Card title={t("customer.ordersTitle")}>
+            {c.orders.length === 0 ? (
+              <p className="text-sm text-muted">{t("customer.noOrders")}</p>
+            ) : (
+              <div className="flex flex-col">
+                {c.orders.map((o) => (
+                  <Link
+                    key={o.id}
+                    to="/admin/orders/$id"
+                    params={{ id: String(o.id) }}
+                    className="flex items-center justify-between gap-2 border-b border-line py-1.5 text-sm last:border-b-0 hover:text-accent"
+                  >
+                    <span>
+                      #{o.no} · {date(o.createdAt)}
+                      {c.linked.length > 0 && <span className="text-muted"> · {o.platform}</span>}
+                    </span>
+                    <span className="flex items-center gap-2">
+                      {formatMoney(o.total, o.currency)}
+                      <OrderStatus status={o.status} />
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </Card>
+        )}
         {c.tickets.length > 0 && (
           <Card title={t("customer.ticketsTitle")}>
             {c.tickets.map((x) => (

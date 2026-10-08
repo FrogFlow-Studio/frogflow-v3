@@ -32,13 +32,14 @@ test("консультант без продаж: «Обзор» без карт
   expect(errors).toEqual([]);
 });
 
-test("консультант без продаж: внизу на телефоне консультант и прайс", async ({ page }) => {
+test("консультант без продаж: внизу на телефоне задачи, прайс и база знаний", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 800 });
   const errors = await watch(page);
   await login(page);
   const bar = page.getByRole("navigation", { name: "Главные разделы", exact: true });
-  await expect(bar.getByRole("link", { name: "ИИ-консультант", exact: true })).toBeVisible();
-  await expect(bar.getByRole("link", { name: "Прайс консультанта", exact: true })).toBeVisible();
+  // Рабочее место консультанта (bovi-workspace.spec.ts): модуля чата нет — без «Диалогов».
+  for (const x of ["Задачи", "Прайс", "База знаний"])
+    await expect(bar.getByRole("link", { name: x, exact: true }), x).toBeVisible();
   await expect(bar.getByRole("link", { name: "Заказы", exact: true })).toHaveCount(0);
   await expect(bar.getByRole("link", { name: "Товары", exact: true })).toHaveCount(0);
   expect(errors).toEqual([]);
@@ -60,8 +61,8 @@ test("консультант без продаж: в меню нет заказ�
     for (const x of hasNot)
       await expect(menu.getByRole("link", { name: x, exact: true }), x).toHaveCount(0);
   };
-  // Консультант и прайс закреплены сверху, как «Заказы» у магазина: видны без раскрытия групп.
-  for (const x of ["ИИ-консультант", "Прайс консультанта"])
+  // Страницы рабочего места закреплены сверху, как «Заказы» у магазина: видны без раскрытия групп.
+  for (const x of ["Задачи", "Прайс", "База знаний", "Настройки бота"])
     await expect(menu.getByRole("link", { name: x, exact: true }), x).toBeVisible();
   await group("Продажи", ["Покупатели"], ["Заказы"]);
   // В «Каталоге» был только прайс — он сверху, пустой группы нет.
@@ -99,15 +100,14 @@ test("консультант без продаж: в меню нет заказ�
   expect(errors).toEqual([]);
 });
 
-test("консультант по прайсу: на странице консультанта нет полей, которые прайс не читает", async ({
+test("консультант по прайсу: в «Настройках бота» нет полей, которые прайс не читает", async ({
   page,
 }) => {
   const errors = await watch(page);
   await login(page);
+  // Прежний адрес страницы консультанта — теперь «Настройки бота» рабочего места.
   await page.goto("/admin/consultant");
-  await expect(
-    page.getByText(/Консультант отвечает по прайсу\. Как он себя называет/),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Настройки бота", exact: true })).toBeVisible();
   for (const label of ["Условия доставки", "Условия оплаты", "Цель диалога", "Тон общения"])
     await expect(page.getByText(label, { exact: true }), label).toHaveCount(0);
   // Включатель и пауза остаются: их консультант по прайсу слушает.

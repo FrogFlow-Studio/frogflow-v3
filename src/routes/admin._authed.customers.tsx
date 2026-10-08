@@ -24,6 +24,8 @@ function CustomersPage() {
   const router = useRouter();
   const [query, setQuery] = useState(q ?? "");
   const [segmentShown, setSegmentShown] = useState(false);
+  // Консультант без продаж (BOVI): баллов и сегментов по покупкам у него нет.
+  const sells = shop.sells !== false;
   const block = useAction(async (r: (typeof rows)[number], blocked: boolean) => {
     await setBlockedFn({
       data: { telegramId: r.telegram_id, blocked, username: r.username, firstName: r.first_name },
@@ -45,7 +47,7 @@ function CustomersPage() {
           )
         }
       />
-      {shop.role !== "accountant" && (
+      {sells && shop.role !== "accountant" && (
         <CustomerSegments
           t={t}
           locale={shop.locale}
@@ -93,7 +95,7 @@ function CustomersPage() {
                 <th>{t("customers.col.customer")}</th>
                 <th>{t("customers.col.channel")}</th>
                 <th>{t("customers.col.contacts")}</th>
-                <th className="text-right">{t("customers.col.points")}</th>
+                {sells && <th className="text-right">{t("customers.col.points")}</th>}
                 <th>{t("customers.col.since")}</th>
                 {shop.modules.blocked && <th></th>}
               </tr>
@@ -116,7 +118,7 @@ function CustomersPage() {
                   <td className="text-muted">
                     {[r.contact_phone, r.email].filter(Boolean).join(" · ") || "—"}
                   </td>
-                  <td className="text-right tabular-nums">{r.loyalty_points}</td>
+                  {sells && <td className="text-right tabular-nums">{r.loyalty_points}</td>}
                   <td className="text-muted">
                     {new Date(r.created_at).toLocaleDateString(intlLocale(shop.locale))}
                   </td>

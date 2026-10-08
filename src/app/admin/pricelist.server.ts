@@ -36,7 +36,7 @@ import {
   productMediaUrl,
   saveProductMedia,
 } from "@/core/consultant/pricelist/media.server";
-import type { ProductMedia } from "@/core/consultant/pricelist/media";
+import { mediaMatchesProduct, type ProductMedia } from "@/core/consultant/pricelist/media";
 import { isRateFresh } from "@/core/consultant/pricelist/rate";
 import {
   getStoredRate,
@@ -121,8 +121,19 @@ export async function pricelistOverview(ctx: TenantContext) {
         }
       : null,
     attempt,
-    media: media.map((m) => ({ ...m, url: productMediaUrl(ctx, m.path) })),
-    articles: articles.map((a) => ({ id: a.id, title: a.title, tags: a.tags, content: a.content })),
+    media: media.map((m) => ({
+      ...m,
+      url: productMediaUrl(ctx, m.path),
+      /** К скольким позициям прайса подходит (то же правило, что при ответе покупателю). */
+      matches: snap.products.filter((p) => mediaMatchesProduct(m, p)).length,
+    })),
+    articles: articles.map((a) => ({
+      id: a.id,
+      title: a.title,
+      tags: a.tags,
+      content: a.content,
+      updatedAt: a.updatedAt,
+    })),
     usage,
     followUp: (await getSetting(ctx, FOLLOW_UP_SETTING_KEY))?.trim() === "on",
     qualityDigest: (await getSetting(ctx, DIGEST_SETTING_KEY))?.trim() === "on",
@@ -325,11 +336,25 @@ export async function savePricelistPersona(
   return { custom: value !== null };
 }
 
-/** Задачи консультанта: каждая передача менеджеру (core/consultant/tasks). */
+/**
+ * Задачи консультанта: каждая передача менеджеру (core/consultant/tasks). У
+ * каждой — id диалога во «Входящих» (`telegramId` покупателя): переход в
+ * диалог внутри панели, а не наружу в ig.me/t.me. Покупателя нет — null.
+ */
 export async function consultantTasks(ctx: TenantContext) {
   requirePricelist(ctx);
   const tasks = await loadTasks(ctx);
-  return { tasks, open: tasks.filter((t) => !t.done).length };
+  const { inChunks } = await import("@/lib/in-chunks");
+  const rows = await inChunks(
+    tasks.map((t) => t.userKey),
+    (chunk) => ctx.db.from("bot_users").select("user_key, telegram_id").in("user_key", chunk),
+    "задачи консультанта: покупатели",
+  );
+  const ids = new Map(rows.map((r) => [r.user_key, r.telegram_id]));
+  return {
+    tasks: tasks.map((t) => ({ ...t, telegramId: ids.get(t.userKey) ?? null })),
+    open: tasks.filter((t) => !t.done).length,
+  };
 }
 
 export async function markConsultantTask(ctx: TenantContext, id: string, done: boolean) {

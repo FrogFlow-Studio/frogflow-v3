@@ -390,6 +390,9 @@ function ButtonsEditor({
   telegramUsername: string | null;
 }) {
   const { t } = useAdminI18n();
+  const { shop } = useRouteContext({ from: "/admin/_authed" });
+  // Консультант без продаж: кнопка «Купить» открыла бы карточку из пустого каталога.
+  const sells = shop.sells !== false;
   const [picking, setPicking] = useState(false);
   const update = (i: number, patch: Partial<Button>) =>
     onChange(buttons.map((b, j) => (j === i ? { ...b, ...patch } : b)));
@@ -445,13 +448,15 @@ function ButtonsEditor({
           >
             {t("instagram.buttons.add")}
           </button>
-          <button
-            type="button"
-            className="btn-secondary text-xs"
-            onClick={() => setPicking((v) => !v)}
-          >
-            {t("instagram.buttons.addProduct")}
-          </button>
+          {sells && (
+            <button
+              type="button"
+              className="btn-secondary text-xs"
+              onClick={() => setPicking((v) => !v)}
+            >
+              {t("instagram.buttons.addProduct")}
+            </button>
+          )}
           {telegramUsername && (
             <button
               type="button"
@@ -472,7 +477,15 @@ function ButtonsEditor({
           )}
         </div>
       )}
-      {picking && buttons.length < 3 && (
+      {!sells && (
+        <p className="text-xs text-muted">
+          {t("instagram.buttons.productConsultant", { section: t("consultant.stories.title") })}{" "}
+          <Link to="/admin/consultant" className="text-accent hover:underline">
+            {t("instagram.buttons.productConsultantLink")}
+          </Link>
+        </p>
+      )}
+      {sells && picking && buttons.length < 3 && (
         <div className="space-y-1">
           <p className="text-xs text-muted">{t("instagram.buttons.productHint")}</p>
           <ProductSearch

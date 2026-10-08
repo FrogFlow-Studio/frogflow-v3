@@ -8,6 +8,9 @@ export const ru = {
   "bell.today": "Сегодня",
   "bell.earlier": "Раньше",
   "bell.empty": "За 30 дней событий нет.",
+  "bell.consultantNote":
+    "Здесь — заказы, чеки, отзывы и возвраты; у консультанта без продаж их нет. Когда консультант передаёт диалог менеджеру, вам приходит уведомление в Telegram.",
+  "bell.consultantNoteTasks": "Передача менеджеру попадает и в задачи консультанта.",
   "bell.markRead": "Отметить всё прочитанным",
   "bell.new": "Новое",
   "bell.filterAll": "Все",
@@ -30,6 +33,9 @@ export const kk: SectionDict<typeof ru> = {
   "bell.today": "Бүгін",
   "bell.earlier": "Бұрын",
   "bell.empty": "30 күнде оқиғалар жоқ.",
+  "bell.consultantNote":
+    "Мұнда — тапсырыстар, чектер, пікірлер мен қайтарулар; сатусыз кеңесшіде олар жоқ. Кеңесші диалогты менеджерге бергенде, сізге Telegram-да хабарлама келеді.",
+  "bell.consultantNoteTasks": "Менеджерге берілген диалог кеңесшінің тапсырмаларына да түседі.",
   "bell.markRead": "Бәрін оқылды деп белгілеу",
   "bell.new": "Жаңа",
   "bell.filterAll": "Барлығы",
@@ -51,6 +57,9 @@ export const en: SectionDict<typeof ru> = {
   "bell.today": "Today",
   "bell.earlier": "Earlier",
   "bell.empty": "No events in the last 30 days.",
+  "bell.consultantNote":
+    "This page lists orders, receipts, reviews and refunds; a consultant without sales has none. When the consultant hands a dialogue to a manager, you get a Telegram notification.",
+  "bell.consultantNoteTasks": "The handoff also becomes a consultant task.",
   "bell.markRead": "Mark all as read",
   "bell.new": "New",
   "bell.filterAll": "All",
@@ -73,6 +82,9 @@ export const uz: SectionDict<typeof ru> = {
   "bell.today": "Bugun",
   "bell.earlier": "Avvalroq",
   "bell.empty": "30 kunda voqealar yo‘q.",
+  "bell.consultantNote":
+    "Bu yerda — buyurtmalar, cheklar, sharhlar va qaytarishlar; savdosiz maslahatchida ular yo‘q. Maslahatchi suhbatni menejerga topshirganda, sizga Telegram'da xabar keladi.",
+  "bell.consultantNoteTasks": "Menejerga topshirilgan suhbat maslahatchi vazifalariga ham tushadi.",
   "bell.markRead": "Hammasini o‘qilgan deb belgilash",
   "bell.new": "Yangi",
   "bell.filterAll": "Hammasi",

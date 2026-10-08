@@ -781,7 +781,8 @@ const IG_WINDOW_CLOSED =
 /**
  * Продавец ответил из «Чата» — консультант молчит в этом диалоге столько,
  * сколько выбрано в его настройках. Раньше ответ из панели паузу не ставил,
- * и на следующее сообщение покупателя бот отвечал поверх продавца.
+ * и на следующее сообщение покупателя бот отвечал поверх продавца. Задачи
+ * консультанта по этому покупателю закрываются: на них ответили.
  */
 export async function pauseBotAfterManagerReply(
   ctx: TenantContext,
@@ -792,6 +793,9 @@ export async function pauseBotAfterManagerReply(
   if (!customer) return;
   const { pauseConsultant } = await import("@/core/consultant/engine.server");
   await pauseConsultant(ctx, customer);
+  // Задачи консультанта по этому покупателю сделаны: менеджер ответил (core/consultant/tasks).
+  const { closeTaskAfterReply } = await import("@/core/consultant/tasks");
+  await closeTaskAfterReply(ctx, customer.userKey, new Date(), { via: "panel" });
 }
 
 async function notifyReferralGrant(

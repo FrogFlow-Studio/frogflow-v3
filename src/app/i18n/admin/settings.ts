@@ -159,6 +159,11 @@ export const ru = {
   "settings.dbot.sellerPause": "Пауза бота после вашего ответа руками",
   "settings.dbot.sellerPauseHint":
     "Вы ответили покупателю сами из приложения Instagram или WhatsApp — бот в этом диалоге молчит это время. Команды «меню», «корзина» и нажатия кнопок работают всегда. Чек на шаге оплаты бот принимает и в паузе.",
+  "settings.dbot.introConsultant":
+    "Покупателям в этом канале отвечает ИИ-консультант. Включатель, «На что отвечать», команды и магазин в переписке на него не действуют: его включатель и пауза после ответа менеджера (в часах) — на странице консультанта.",
+  "settings.dbot.sellerPauseHintConsultant":
+    "Вы ответили покупателю сами из приложения Instagram или WhatsApp — бот в этом диалоге молчит это время. У консультанта есть и своя пауза в часах; пока идёт любая из двух, он молчит.",
+  "settings.dbot.openConsultant": "Открыть страницу консультанта",
   "settings.dbot.sellerPause.15": "15 минут",
   "settings.dbot.sellerPause.30": "30 минут",
   "settings.dbot.sellerPause.60": "1 час",
@@ -652,6 +657,11 @@ export const kk: SectionDict<typeof ru> = {
   "settings.dbot.sellerPause": "Қолмен жауап бергеннен кейінгі бот үзілісі",
   "settings.dbot.sellerPauseHint":
     "Сіз сатып алушыға Instagram немесе WhatsApp қолданбасынан өзіңіз жауап бердіңіз — осы уақытта бот бұл диалогта үнсіз. «Мәзір», «себет» пәрмендері мен түймелер әрдайым жұмыс істейді. Төлем кезеңіндегі чекті бот үзілісте де қабылдайды.",
+  "settings.dbot.introConsultant":
+    "Бұл арнада сатып алушыларға ЖИ-кеңесші жауап береді. Қосқыш, «Неге жауап беру», командалар мен хат алмасудағы дүкен оған әсер етпейді: оның қосқышы мен менеджер жауабынан кейінгі үзілісі (сағатпен) — кеңесші бетінде.",
+  "settings.dbot.sellerPauseHintConsultant":
+    "Сіз сатып алушыға Instagram немесе WhatsApp қосымшасынан өзіңіз жауап бердіңіз — бот осы диалогта осы уақыт үндемейді. Кеңесшінің сағатпен өз үзілісі де бар; екеуінің кез келгені жүріп тұрғанда, ол үндемейді.",
+  "settings.dbot.openConsultant": "Кеңесші бетін ашу",
   "settings.dbot.sellerPause.15": "15 минут",
   "settings.dbot.sellerPause.30": "30 минут",
   "settings.dbot.sellerPause.60": "1 сағат",
@@ -1136,6 +1146,11 @@ export const en: SectionDict<typeof ru> = {
   "settings.dbot.sellerPause": "Bot pause after you reply by hand",
   "settings.dbot.sellerPauseHint":
     "You answered the buyer yourself in the Instagram or WhatsApp app — the bot stays quiet in that dialogue for this long. The “menu” and “cart” commands and button taps always work. The bot still accepts a receipt at the payment step during a pause.",
+  "settings.dbot.introConsultant":
+    "The AI consultant answers buyers in this channel. The switch, “What to answer”, commands and the in-chat shop do not affect it: its switch and its pause after a manager reply (in hours) are on the consultant page.",
+  "settings.dbot.sellerPauseHintConsultant":
+    "You replied to the buyer yourself from the Instagram or WhatsApp app — the bot stays silent in this dialogue for this long. The consultant also has its own pause in hours; while either is running, it stays silent.",
+  "settings.dbot.openConsultant": "Open the consultant page",
   "settings.dbot.sellerPause.15": "15 minutes",
   "settings.dbot.sellerPause.30": "30 minutes",
   "settings.dbot.sellerPause.60": "1 hour",
@@ -1624,6 +1639,11 @@ export const uz: SectionDict<typeof ru> = {
   "settings.dbot.sellerPause": "Qo‘lda javob bergandan keyin botning pauzasi",
   "settings.dbot.sellerPauseHint":
     "Siz xaridorga Instagram yoki WhatsApp ilovasidan o‘zingiz javob berdingiz — bu vaqt davomida bot ushbu suhbatda jim turadi. «Menyu», «savat» buyruqlari va tugmalar doim ishlaydi. To‘lov bosqichidagi chekni bot pauzada ham qabul qiladi.",
+  "settings.dbot.introConsultant":
+    "Bu kanalda xaridorlarga SI-maslahatchi javob beradi. Kalit, «Nimaga javob berish», buyruqlar va yozishmadagi do‘kon unga ta’sir qilmaydi: uning kaliti va menejer javobidan keyingi pauzasi (soatlarda) — maslahatchi sahifasida.",
+  "settings.dbot.sellerPauseHintConsultant":
+    "Siz xaridorga Instagram yoki WhatsApp ilovasidan o‘zingiz javob berdingiz — bot bu suhbatda shu vaqt jim turadi. Maslahatchining soatlarda o‘z pauzasi ham bor; ikkalasidan biri davom etayotganda u jim turadi.",
+  "settings.dbot.openConsultant": "Maslahatchi sahifasini ochish",
   "settings.dbot.sellerPause.15": "15 daqiqa",
   "settings.dbot.sellerPause.30": "30 daqiqa",
   "settings.dbot.sellerPause.60": "1 soat",

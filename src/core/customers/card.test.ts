@@ -2,7 +2,15 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { fakeDb, type FakeDb } from "../../../tests/fake-db";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { upsertCustomer } from "./customers";
-import { cleanTags, customerCard, knownTags, orderStats, setSellerNote, sourceLabel } from "./card";
+import {
+  cleanTags,
+  consultantRepliedAt,
+  customerCard,
+  knownTags,
+  orderStats,
+  setSellerNote,
+  sourceLabel,
+} from "./card";
 import { NOTE_PREFIX, readSellerNote, readSellerNoteVersioned } from "./seller-notes";
 
 let db: FakeDb;
@@ -244,5 +252,17 @@ describe("карточка покупателя: сводка", () => {
     );
     const card = await customerCard(ctx(), "tg_5");
     expect(card!.orders.map((o) => o.no)).toEqual([17, 13, 12, 11]);
+  });
+});
+
+describe("карточка покупателя: последний ответ консультанта", () => {
+  it("берётся из памяти консультанта; нет её или кривое значение — null", async () => {
+    expect((await customerCard(ctx(), "tg_5"))!.consultantRepliedAt).toBeNull();
+    db.tables.bot_users![0]!.state = {
+      consultant: { last_reply_at: "2026-10-08T10:00:00Z", recent: [] },
+    };
+    expect((await customerCard(ctx(), "tg_5"))!.consultantRepliedAt).toBe("2026-10-08T10:00:00Z");
+    expect(consultantRepliedAt({ consultant: { last_reply_at: "вчера" } })).toBeNull();
+    expect(consultantRepliedAt({ consultant: [] })).toBeNull();
   });
 });

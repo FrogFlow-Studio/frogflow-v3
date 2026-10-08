@@ -193,7 +193,7 @@ export const VERTICALS = {
         instructionComingSoon:
           "📖 Инструкция скоро появится.\nПока: напишите, что ищете — бот ответит по прайсу. «Купить» или «менеджер» — подключится живой менеджер.",
         instructionDefaultCaption:
-          "📖 Напишите запрос в Direct. Бот ответит по наличию и цене из прайса. Чтобы оформить заказ или поговорить с человеком — напишите «купить» или «менеджер».",
+          "📖 Напишите, что ищете, прямо в этот чат. Бот ответит по наличию и цене из прайса. Чтобы оформить заказ или поговорить с человеком — напишите «купить» или «менеджер».",
       },
       kk: {
         welcomeGreeting: "Сәлеметсіз бе. Қолда бар тауарды таңдауға көмектесемін.",
@@ -203,7 +203,7 @@ export const VERTICALS = {
         instructionComingSoon:
           "📖 Нұсқаулық жақында қосылады.\nӘзірге: не іздегеніңізді жазыңыз — бот прайс бойынша жауап береді. «Сатып алу» немесе «менеджер» — тірі менеджер қосылады.",
         instructionDefaultCaption:
-          "📖 Direct-ке сұрау жазыңыз. Бот прайстағы қор мен баға бойынша жауап береді. Тапсырыс рәсімдеу немесе адаммен сөйлесу үшін «сатып алу» немесе «менеджер» деп жазыңыз.",
+          "📖 Не іздегеніңізді осы чатқа жазыңыз. Бот прайстағы қор мен баға бойынша жауап береді. Тапсырыс рәсімдеу немесе адаммен сөйлесу үшін «сатып алу» немесе «менеджер» деп жазыңыз.",
       },
       en: {
         welcomeGreeting: "Hello. I can help you pick an item from stock.",
@@ -213,7 +213,7 @@ export const VERTICALS = {
         instructionComingSoon:
           "📖 The guide is coming soon.\nFor now: write what you need — the bot answers from the price list. “Buy” or “manager” connects a live manager.",
         instructionDefaultCaption:
-          "📖 Send a query in Direct. The bot answers with stock and price from the list. To place an order or talk to a person, write “buy” or “manager”.",
+          "📖 Write what you are looking for right in this chat. The bot answers with stock and price from the list. To place an order or talk to a person, write “buy” or “manager”.",
       },
       uz: {
         welcomeGreeting: "Salom. Mavjud tovardan tanlashga yordam beraman.",
@@ -223,7 +223,7 @@ export const VERTICALS = {
         instructionComingSoon:
           "📖 Yo‘riqnoma tez orada qo‘shiladi.\nHozircha: nima izlayotganingizni yozing — bot narxlar ro‘yxati bo‘yicha javob beradi. «Sotib olish» yoki «menejer» — jonli menejer ulanadi.",
         instructionDefaultCaption:
-          "📖 Direct’ga so‘rov yozing. Bot ro‘yxatdagi qoldiq va narx bo‘yicha javob beradi. Buyurtma yoki odam bilan gaplashish uchun «sotib olish» yoki «menejer» deb yozing.",
+          "📖 Nima izlayotganingizni shu chatga yozing. Bot ro‘yxatdagi qoldiq va narx bo‘yicha javob beradi. Buyurtma yoki odam bilan gaplashish uchun «sotib olish» yoki «menejer» deb yozing.",
       },
     },
   },
@@ -360,7 +360,7 @@ export const VERTICALS = {
         instructionComingSoon:
           "📖 Инструкция скоро появится.\nПока: напишите любой вопрос — консультант ответит по базе знаний компании.",
         instructionDefaultCaption:
-          "📖 Задайте интересующий вопрос в Direct. Консультант предоставит информацию по услугам и товарам.",
+          "📖 Задайте интересующий вопрос прямо в этом чате. Консультант предоставит информацию по услугам и товарам.",
       },
       kk: {
         welcomeGreeting: "Сәлеметсіз бе! Сізге қалай көмектесе аламын?",
@@ -370,7 +370,7 @@ export const VERTICALS = {
         instructionComingSoon:
           "📖 Нұсқаулық жақында қосылады.\nӘзірге: кез келген сұрағыңызды жазыңыз — кеңесші компанияның білім базасы бойынша жауап береді.",
         instructionDefaultCaption:
-          "📖 Direct-ке сұрағыңызды жазыңыз. Кеңесші қызметтер мен тауарлар туралы толық ақпарат береді.",
+          "📖 Сұрағыңызды осы чатқа жазыңыз. Кеңесші қызметтер мен тауарлар туралы толық ақпарат береді.",
       },
       en: {
         welcomeGreeting: "Hello! How can I assist you today?",
@@ -380,7 +380,7 @@ export const VERTICALS = {
         instructionComingSoon:
           "📖 Guide coming soon.\nFor now: send any question — the assistant will answer based on company knowledge.",
         instructionDefaultCaption:
-          "📖 Ask any question in Direct. The consultant will provide accurate details on products and services.",
+          "📖 Ask any question right in this chat. The consultant will provide accurate details on products and services.",
       },
       uz: {
         welcomeGreeting: "Salom! Sizga qanday yordam bera olaman?",
@@ -390,7 +390,7 @@ export const VERTICALS = {
         instructionComingSoon:
           "📖 Yo'riqnoma tez orada qo'shiladi.\nHozircha: istalgan savolingizni yozing — maslahatchi kompaniya ma'lumotlari asosida javob beradi.",
         instructionDefaultCaption:
-          "📖 Direct'ga savolingizni yozing. Maslahatchi tovarlar va xizmatlar haqida ma'lumot beradi.",
+          "📖 Savolingizni shu chatga yozing. Maslahatchi tovarlar va xizmatlar haqida ma'lumot beradi.",
       },
     },
   },

@@ -42,6 +42,13 @@ export const ru = {
   "botTexts.hours.none": "Не задано",
   "botTexts.hours.save": "Сохранить часы",
   "botTexts.hours.clear": "Убрать часы",
+  "botTexts.notWiredConsultant":
+    "Здесь только тексты Telegram-бота. В Instagram и WhatsApp покупателям отвечает ИИ-консультант своими словами: как он говорит, задаётся на странице консультанта.",
+  "botTexts.openConsultant": "Открыть настройки консультанта",
+  "botTexts.hours.hintTelegramOnly":
+    "Только для Telegram-бота, по часовому поясу магазина: вне этих часов он отправляет «Вне часов работы» (не чаще раза в 6 часов). В Instagram и WhatsApp эти часы не действуют.",
+  "botTexts.hours.hintPricelist":
+    "Рабочие часы консультанта (вне них он говорит, что менеджер ответит утром) и часы бутика, которые он называет покупателям, — отдельные настройки на странице «{page}».",
 } as const;
 
 export const kk: SectionDict<typeof ru> = {
@@ -85,6 +92,13 @@ export const kk: SectionDict<typeof ru> = {
   "botTexts.hours.none": "Белгіленбеген",
   "botTexts.hours.save": "Сағаттарды сақтау",
   "botTexts.hours.clear": "Сағаттарды алып тастау",
+  "botTexts.notWiredConsultant":
+    "Мұнда тек Telegram-боттың мәтіндері. Instagram мен WhatsApp-та сатып алушыларға ЖИ-кеңесші өз сөзімен жауап береді: оның қалай сөйлейтіні кеңесші бетінде бапталады.",
+  "botTexts.openConsultant": "Кеңесші баптауларын ашу",
+  "botTexts.hours.hintTelegramOnly":
+    "Тек Telegram-бот үшін, дүкеннің уақыт белдеуі бойынша: осы сағаттардан тыс ол «Жұмыс уақытынан тыс» мәтінін жібереді (6 сағатта бір реттен жиі емес). Instagram мен WhatsApp-та бұл сағаттар әсер етпейді.",
+  "botTexts.hours.hintPricelist":
+    "Кеңесшінің жұмыс уақыты (одан тыс ол менеджер таңертең жауап береді дейді) және ол сатып алушыларға айтатын бутиктің жұмыс уақыты — «{page}» бетіндегі бөлек баптаулар.",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -128,6 +142,13 @@ export const en: SectionDict<typeof ru> = {
   "botTexts.hours.none": "Not set",
   "botTexts.hours.save": "Save hours",
   "botTexts.hours.clear": "Remove hours",
+  "botTexts.notWiredConsultant":
+    "Only the Telegram bot texts are here. In Instagram and WhatsApp the AI consultant answers buyers in its own words: how it speaks is set on the consultant page.",
+  "botTexts.openConsultant": "Open consultant settings",
+  "botTexts.hours.hintTelegramOnly":
+    "Telegram bot only, in the shop time zone: outside these hours it sends “Outside working hours” (at most once every 6 hours). These hours do not apply in Instagram and WhatsApp.",
+  "botTexts.hours.hintPricelist":
+    "The consultant's working hours (outside them it says a manager will reply in the morning) and the boutique hours it tells buyers are separate settings on the “{page}” page.",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -171,4 +192,11 @@ export const uz: SectionDict<typeof ru> = {
   "botTexts.hours.none": "Belgilanmagan",
   "botTexts.hours.save": "Soatlarni saqlash",
   "botTexts.hours.clear": "Soatlarni olib tashlash",
+  "botTexts.notWiredConsultant":
+    "Bu yerda faqat Telegram-bot matnlari. Instagram va WhatsApp'da xaridorlarga SI-maslahatchi o‘z so‘zlari bilan javob beradi: u qanday gapirishi maslahatchi sahifasida sozlanadi.",
+  "botTexts.openConsultant": "Maslahatchi sozlamalarini ochish",
+  "botTexts.hours.hintTelegramOnly":
+    "Faqat Telegram-bot uchun, do‘kon vaqt mintaqasi bo‘yicha: bu soatlardan tashqari u «Ish vaqtidan tashqari» matnini yuboradi (6 soatda bir martadan ko‘p emas). Instagram va WhatsApp'da bu soatlar amal qilmaydi.",
+  "botTexts.hours.hintPricelist":
+    "Maslahatchining ish vaqti (undan tashqari u menejer ertalab javob beradi deydi) va u xaridorlarga aytadigan butik ish vaqti — «{page}» sahifasidagi alohida sozlamalar.",
 };

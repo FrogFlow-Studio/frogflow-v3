@@ -28,6 +28,11 @@ export type BotPreview = {
   languageChoice: { text: string; buttons: InlineButton[][] } | null;
   welcome: string;
   menu: MainMenu;
+  /**
+   * Продаёт ли клиент (core/tenant/sells). Консультант без продаж (BOVI): карточки
+   * товара нет — страница ведёт в тест-чат консультанта.
+   */
+  sells: boolean;
   product: (ProductCard & { id: string; name: string }) | null;
 };
 
@@ -52,7 +57,12 @@ export async function botPreview(
   const locales = t.modules.multi_language ? [...SUPPORTED_LOCALES] : [fallback];
   const locale = opts.locale && locales.includes(opts.locale) ? opts.locale : fallback;
   const shopName = (await getSetting(ctx, "shop_name")) ?? t.name;
-  const p = opts.productId ? await getProduct(ctx, opts.productId) : await firstProduct(ctx);
+  const sells = await sellsNowOrShop(ctx);
+  const p = !sells
+    ? null
+    : opts.productId
+      ? await getProduct(ctx, opts.productId)
+      : await firstProduct(ctx);
   return {
     locale,
     locales,
@@ -61,7 +71,8 @@ export async function botPreview(
       : null,
     welcome: welcomeHtml(t, shopName, locale),
     // Консультант без товаров (BOVI): меню без каталога и корзины, как в боте.
-    menu: mainMenu(t, locale, ctx.appUrl, await sellsNowOrShop(ctx)),
+    menu: mainMenu(t, locale, ctx.appUrl, sells),
+    sells,
     product: p ? { id: p.id, name: p.name, ...(await productCard(ctx, p, locale, null)) } : null,
   };
 }

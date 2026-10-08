@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { adminT, type AdminKey } from "@/app/i18n/admin";
 import { SUPPORTED_LOCALES } from "@/core/i18n/locale";
-import { buildAdminNav, type NavShop } from "./nav-model";
+import { buildAdminNav, consultantWorkspace, WORKSPACE_PAGES, type NavShop } from "./nav-model";
 
 const shop = (over: Partial<NavShop> = {}): NavShop => ({
   role: "owner",
@@ -54,9 +54,9 @@ describe("меню админки", () => {
     });
     expect(buildAdminNav(bovi).primary.map((i) => i.to)).toEqual([
       "/admin",
-      "/admin/consultant",
-      "/admin/pricelist",
+      "/admin/tasks",
       "/admin/chat",
+      "/admin/pricelist",
     ]);
     // Без прайса и чата — покупатели.
     const bare = buildAdminNav(shop({ vertical: "consultant", sells: false })).primary;
@@ -106,10 +106,11 @@ describe("меню админки", () => {
       "/admin/discounts",
       "/admin/reviews",
       "/admin/commission",
+      // Лента уведомлений знает только заказы и чеки — у консультанта она пуста.
+      "/admin/notifications",
     ])
       expect(bovi, gone).not.toContain(gone);
     for (const kept of [
-      "/admin/notifications",
       "/admin/customers",
       "/admin/chat",
       "/admin/pipeline",
@@ -117,21 +118,23 @@ describe("меню админки", () => {
       "/admin/broadcasts",
       "/admin/broadcasts#giveaways",
       "/admin/consultant",
+      "/admin/knowledge",
+      "/admin/tasks",
       "/admin/settings",
       "/admin/modules",
       "/admin/billing",
     ])
       expect(bovi, kept).toContain(kept);
-    // Пустая группа «Аналитика» не рисуется; в «Каталоге» один прайс; «Настройки» без «Оплаты».
+    // Пустые «Аналитика» и «Каталог» не рисуются; страницы консультанта — своей группой.
     const n = buildAdminNav(
       shop({ vertical: "consultant", modules: all, pricelist: {}, sells: false }),
     );
     expect(n.groups.map((g) => g.id)).not.toContain("analytics");
-    expect(n.groups.find((g) => g.id === "catalog")?.items.map((i) => i.to)).toEqual([
-      "/admin/pricelist",
-    ]);
-    // В боковом меню консультант и прайс закреплены сверху, а не спрятаны в группах.
-    expect(n.pinned).toEqual(["/admin/consultant", "/admin/pricelist", "/admin/chat"]);
+    expect(n.groups.map((g) => g.id)).not.toContain("catalog");
+    // В боковом меню шесть страниц рабочего места закреплены сверху, по порядку.
+    expect(n.pinned).toEqual([...WORKSPACE_PAGES]);
+    // Каждая страница в меню один раз.
+    expect(bovi.length).toBe(new Set(bovi).size);
     expect(buildAdminNav(shop({ vertical: "consultant" })).pinned).toBeUndefined();
     const settingsLabel = (s: NavShop) =>
       buildAdminNav(s)
@@ -144,6 +147,58 @@ describe("меню админки", () => {
       const selling = labels(shop({ vertical: "consultant", modules: all, sells }));
       for (const x of ["/admin/orders", "/admin/products", "/admin/analytics", "/admin/share"])
         expect(selling, x).toContain(x);
+    }
+  });
+
+  it("рабочее место консультанта: только у не продающего с прайсом", () => {
+    expect(consultantWorkspace({ sells: false, pricelist: {} })).toBe(true);
+    expect(consultantWorkspace({ sells: false })).toBe(false);
+    expect(consultantWorkspace({ sells: true, pricelist: {} })).toBe(false);
+    expect(consultantWorkspace({ pricelist: {} })).toBe(false);
+  });
+
+  it("рабочее место консультанта: бейдж задач, роли, без чата нет «Диалогов»", () => {
+    const ws = (over: Partial<NavShop>) =>
+      buildAdminNav(
+        shop({ vertical: "consultant", pricelist: {}, sells: false, modules: {}, ...over }),
+      );
+    const owner = ws({ consultantTasksOpen: 3, modules: { manager_chat: true }, chatUnread: 2 });
+    const items = owner.groups.flatMap((g) => g.items);
+    expect(owner.groups[0]?.id).toBe("consultant");
+    expect(items.find((i) => i.to === "/admin/tasks")?.badge).toEqual({ value: 3, tone: "warn" });
+    expect(items.find((i) => i.to === "/admin/chat")?.label).toBe("ws.nav.dialogs");
+    expect(items.find((i) => i.to === "/admin/chat")?.badge?.value).toBe(2);
+    expect(ws({ consultantTasksOpen: 0 }).groups[0]?.items[0]?.badge).toBeUndefined();
+    expect(ws({ consultantTasksOpen: null }).groups[0]?.items[0]?.badge).toBeUndefined();
+    // Без модуля чата — без «Диалогов»; просмотрщику задачи не видны.
+    expect(ws({}).pinned).toEqual([
+      "/admin/tasks",
+      "/admin/pricelist",
+      "/admin/knowledge",
+      "/admin/consultant",
+    ]);
+    expect(ws({ role: "viewer" }).pinned).not.toContain("/admin/tasks");
+    expect(ws({ role: "manager" }).pinned).toContain("/admin/tasks");
+  });
+
+  it("продающий магазин: меню как раньше, без страниц рабочего места", () => {
+    for (const over of [
+      { vertical: "confectionery", pricelist: {} },
+      { vertical: "consultant", pricelist: {}, sells: true },
+      { vertical: "consultant", pricelist: {} },
+    ] as Partial<NavShop>[]) {
+      const n = buildAdminNav(shop({ modules: { manager_chat: true }, ...over }));
+      const l = n.groups.flatMap((g) => g.items.map((i) => i.to));
+      expect(l).not.toContain("/admin/tasks");
+      expect(l).not.toContain("/admin/knowledge");
+      expect(n.groups.map((g) => g.id)).not.toContain("consultant");
+      expect(n.pinned).toBeUndefined();
+      expect(n.primary.map((i) => i.to)).toEqual([
+        "/admin",
+        "/admin/orders",
+        "/admin/products",
+        "/admin/chat",
+      ]);
     }
   });
 
@@ -226,6 +281,15 @@ describe("меню админки", () => {
       "nav.close",
       "nav.bottomBar",
     );
+    const ws = buildAdminNav(
+      shop({
+        vertical: "consultant",
+        pricelist: {},
+        sells: false,
+        modules: { manager_chat: true },
+      }),
+    );
+    keys.push(...ws.groups.flatMap((g) => [g.label, ...g.items.map((i) => i.label)]));
     for (const l of SUPPORTED_LOCALES)
       for (const k of keys) expect(adminT(l)(k as AdminKey), `${l}:${k}`).not.toBe(k);
     // не откат на русский там, где слово другое

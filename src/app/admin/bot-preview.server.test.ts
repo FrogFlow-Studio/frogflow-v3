@@ -141,6 +141,16 @@ describe("предпросмотр бота", () => {
     const texts = JSON.stringify(view.menu);
     expect(texts).not.toContain("📚");
     expect(texts).not.toContain("🛒");
+    // Карточки товара нет: не «Товаров нет», а тест-чат консультанта.
+    expect(view.sells).toBe(false);
+    expect(view.product).toBeNull();
+  });
+
+  it("продающий магазин: sells и карточка товара на месте", async () => {
+    const s = setup({});
+    const view = await botPreview(s.ctx, {});
+    expect(view.sells).toBe(true);
+    expect(view.product!.id).toBe(P1);
   });
 
   it("скрытый товар в предпросмотр не попадает", async () => {

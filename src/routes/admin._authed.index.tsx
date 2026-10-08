@@ -27,10 +27,22 @@ import { WaitingCard } from "@/app/admin/waiting-card";
 import { PaceCard } from "@/app/admin/pace-card";
 import { GrowthCard } from "@/app/admin/growth-card";
 import { AiBalanceCard } from "@/app/admin/ai-balance-card";
-import { buildAdminNav } from "@/app/admin/nav-model";
+import { buildAdminNav, consultantWorkspace } from "@/app/admin/nav-model";
+import { consultantOverviewFn } from "@/app/admin/workspace.functions";
+import { WorkspaceOverview } from "@/app/admin/workspace-ui";
+import { roleAllows } from "@/core/auth/roles";
 
 export const Route = createFileRoute("/admin/_authed/")({
-  loader: () => dashboardFn(),
+  loader: async ({ context }) => {
+    // Консультант без продаж (BOVI): сверху «Сегодня» рабочего места. Сбой — плашка, не пустой обзор.
+    const [d, workspace] = await Promise.all([
+      dashboardFn(),
+      consultantWorkspace(context.shop)
+        ? consultantOverviewFn().catch((e: unknown) => ({ failed: e }))
+        : null,
+    ]);
+    return { ...d, workspace };
+  },
   component: Dashboard,
 });
 
@@ -72,6 +84,21 @@ function Dashboard() {
       />
       <div className="grid lg:grid-cols-[2fr_1fr] lg:gap-x-4 lg:[&:has(>aside:empty)]:grid-cols-1 [&>*]:min-w-0">
         <div className="lg:col-start-1">
+          {d.workspace && "failed" in d.workspace && (
+            <div className="mb-6">
+              <ErrorBox error={d.workspace.failed} />
+            </div>
+          )}
+          {d.workspace && !("failed" in d.workspace) && (
+            <WorkspaceOverview
+              data={d.workspace}
+              t={t}
+              loc={loc}
+              chatOn={Boolean(shop.modules.manager_chat)}
+              canEditTasks={roleAllows(shop.role, "manager")}
+              modulesLink={roleAllows(shop.role, "admin")}
+            />
+          )}
           <WaitingCard
             tiles={waitingTiles(buildAdminNav(shop), shop, d.counts.awaiting_confirmation ?? 0)}
             t={t}

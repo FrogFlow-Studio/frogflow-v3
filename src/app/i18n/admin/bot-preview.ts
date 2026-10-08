@@ -16,6 +16,9 @@ export const ru = {
   "botPreview.menu": "Кнопки внизу экрана",
   "botPreview.photoAlt": "Фото товара",
   "botPreview.priceNote": "Цена показана для страны по умолчанию, с действующей акцией.",
+  "botPreview.consultant":
+    "Здесь — то, что видит покупатель Telegram-бота: приветствие и кнопки меню. Как консультант отвечает на вопросы, проверьте в тест-чате на странице консультанта.",
+  "botPreview.openTestChat": "Открыть тест-чат консультанта",
 } as const;
 
 export const kk: SectionDict<typeof ru> = {
@@ -33,6 +36,9 @@ export const kk: SectionDict<typeof ru> = {
   "botPreview.menu": "Экранның төменгі түймелері",
   "botPreview.photoAlt": "Тауар фотосы",
   "botPreview.priceNote": "Баға әдепкі ел үшін, қолданыстағы акциямен көрсетілген.",
+  "botPreview.consultant":
+    "Мұнда — Telegram-бот сатып алушысы көретіні: сәлемдесу және мәзір батырмалары. Кеңесшінің сұрақтарға қалай жауап беретінін кеңесші бетіндегі тест-чатта тексеріңіз.",
+  "botPreview.openTestChat": "Кеңесшінің тест-чатын ашу",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -50,6 +56,9 @@ export const en: SectionDict<typeof ru> = {
   "botPreview.menu": "Buttons at the bottom of the screen",
   "botPreview.photoAlt": "Product photo",
   "botPreview.priceNote": "The price is shown for the default country, with any active offer.",
+  "botPreview.consultant":
+    "This is what a Telegram bot buyer sees: the greeting and the menu buttons. Check how the consultant answers questions in the test chat on the consultant page.",
+  "botPreview.openTestChat": "Open the consultant test chat",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -67,4 +76,7 @@ export const uz: SectionDict<typeof ru> = {
   "botPreview.menu": "Ekran pastidagi tugmalar",
   "botPreview.photoAlt": "Mahsulot rasmi",
   "botPreview.priceNote": "Narx standart mamlakat uchun, amaldagi aksiya bilan ko‘rsatilgan.",
+  "botPreview.consultant":
+    "Bu yerda — Telegram-bot xaridori ko‘radigan narsa: salomlashish va menyu tugmalari. Maslahatchi savollarga qanday javob berishini maslahatchi sahifasidagi test-chatda tekshiring.",
+  "botPreview.openTestChat": "Maslahatchi test-chatini ochish",
 };

@@ -77,7 +77,7 @@ export const KEYS = {
 
 const DEFAULT_MODEL = "claude-haiku-4-5";
 const TIMEOUT_MS = 20_000;
-const HISTORY_TURNS = 16;
+export const HISTORY_TURNS = 16;
 /** Раундов с инструментами каталога на одно сообщение (v1: 4). */
 export const MAX_ROUNDS = 4;
 /**
@@ -178,6 +178,8 @@ export type ConsultantResult = {
   tools?: string[];
   /** Фото и видео товара к ответу (консультант по прайсу, send_product_photo). */
   attachments?: { url: string; kind: "image" | "video" }[];
+  /** Тест-чат с историей: состояние пробного диалога после хода (без `recent`). */
+  testState?: ConsultantState;
   /**
    * Отвечать не нужно (core/consultant/burst): folded — сообщение вошло в
    * соседний ход и ответ на него уходит там; busy — не дождались чужого хода,
@@ -471,6 +473,12 @@ export async function runConsultant(
     messageId?: string | null;
     /** Когда покупатель написал (часы канала, ISO): старое сообщение не отвечается. */
     sentAt?: string | null;
+    /**
+     * Тест-чат админки с историей (только `dryRun` без покупателя): состояние
+     * пробного диалога живёт в браузере продавца и приходит с каждым вопросом.
+     * В базу ничего не пишется.
+     */
+    testState?: ConsultantState;
   } = { platform: "telegram" },
 ): Promise<ConsultantResult | null> {
   // Предпросмотр: до брони ИИ-баланса и до клиента — как «ИИ недоступен».
@@ -523,7 +531,7 @@ export async function runConsultant(
   }
 
   const { profile, docs } = await loadConsultant(ctx);
-  const state = customer ? stateOf(customer) : {};
+  const state = customer ? stateOf(customer) : opts.dryRun ? (opts.testState ?? {}) : {};
 
   if (customer && !opts.dryRun && isResetIntent(incoming)) {
     await resumeConsultant(ctx, customer);
@@ -912,6 +920,10 @@ async function answerConsultant(
     return {
       reply,
       handoff,
+      // Тест-чат: что консультант запомнил за ход (рубли, товары) — следующему вопросу.
+      ...(!customer && opts.dryRun && opts.testState
+        ? { testState: withPatch(state, out.patch) as ConsultantState }
+        : {}),
       usage: {
         inputTokens: u.input_tokens,
         outputTokens: u.output_tokens,

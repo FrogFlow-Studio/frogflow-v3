@@ -59,6 +59,7 @@ import { Route as AdminAuthedHelpRouteImport } from './routes/admin._authed.help
 import { Route as AdminAuthedHomeworkRouteImport } from './routes/admin._authed.homework'
 import { Route as AdminAuthedIgImportRouteImport } from './routes/admin._authed.ig-import'
 import { Route as AdminAuthedInstagramRouteImport } from './routes/admin._authed.instagram'
+import { Route as AdminAuthedKnowledgeRouteImport } from './routes/admin._authed.knowledge'
 import { Route as AdminAuthedLogRouteImport } from './routes/admin._authed.log'
 import { Route as AdminAuthedModulesRouteImport } from './routes/admin._authed.modules'
 import { Route as AdminAuthedNewsRouteImport } from './routes/admin._authed.news'
@@ -75,6 +76,7 @@ import { Route as AdminAuthedSettingsRouteImport } from './routes/admin._authed.
 import { Route as AdminAuthedShareRouteImport } from './routes/admin._authed.share'
 import { Route as AdminAuthedStudentsRouteImport } from './routes/admin._authed.students'
 import { Route as AdminAuthedSupportRouteImport } from './routes/admin._authed.support'
+import { Route as AdminAuthedTasksRouteImport } from './routes/admin._authed.tasks'
 import { Route as AdminAuthedTicketsRouteImport } from './routes/admin._authed.tickets'
 import { Route as AdminAuthedUndeliveredRouteImport } from './routes/admin._authed.undelivered'
 import { Route as AdminAuthedVipRouteImport } from './routes/admin._authed.vip'
@@ -404,6 +406,11 @@ const AdminAuthedInstagramRoute = AdminAuthedInstagramRouteImport.update({
   path: '/instagram',
   getParentRoute: () => AdminAuthedRoute,
 } as any)
+const AdminAuthedKnowledgeRoute = AdminAuthedKnowledgeRouteImport.update({
+  id: '/knowledge',
+  path: '/knowledge',
+  getParentRoute: () => AdminAuthedRoute,
+} as any)
 const AdminAuthedLogRoute = AdminAuthedLogRouteImport.update({
   id: '/log',
   path: '/log',
@@ -483,6 +490,11 @@ const AdminAuthedStudentsRoute = AdminAuthedStudentsRouteImport.update({
 const AdminAuthedSupportRoute = AdminAuthedSupportRouteImport.update({
   id: '/support',
   path: '/support',
+  getParentRoute: () => AdminAuthedRoute,
+} as any)
+const AdminAuthedTasksRoute = AdminAuthedTasksRouteImport.update({
+  id: '/tasks',
+  path: '/tasks',
   getParentRoute: () => AdminAuthedRoute,
 } as any)
 const AdminAuthedTicketsRoute = AdminAuthedTicketsRouteImport.update({
@@ -949,6 +961,7 @@ export interface FileRoutesByFullPath {
   '/admin/homework': typeof AdminAuthedHomeworkRoute
   '/admin/ig-import': typeof AdminAuthedIgImportRoute
   '/admin/instagram': typeof AdminAuthedInstagramRoute
+  '/admin/knowledge': typeof AdminAuthedKnowledgeRoute
   '/admin/log': typeof AdminAuthedLogRoute
   '/admin/modules': typeof AdminAuthedModulesRoute
   '/admin/news': typeof AdminAuthedNewsRoute
@@ -965,6 +978,7 @@ export interface FileRoutesByFullPath {
   '/admin/share': typeof AdminAuthedShareRoute
   '/admin/students': typeof AdminAuthedStudentsRoute
   '/admin/support': typeof AdminAuthedSupportRoute
+  '/admin/tasks': typeof AdminAuthedTasksRoute
   '/admin/tickets': typeof AdminAuthedTicketsRoute
   '/admin/undelivered': typeof AdminAuthedUndeliveredRoute
   '/admin/vip': typeof AdminAuthedVipRoute
@@ -1093,6 +1107,7 @@ export interface FileRoutesByTo {
   '/admin/homework': typeof AdminAuthedHomeworkRoute
   '/admin/ig-import': typeof AdminAuthedIgImportRoute
   '/admin/instagram': typeof AdminAuthedInstagramRoute
+  '/admin/knowledge': typeof AdminAuthedKnowledgeRoute
   '/admin/log': typeof AdminAuthedLogRoute
   '/admin/modules': typeof AdminAuthedModulesRoute
   '/admin/news': typeof AdminAuthedNewsRoute
@@ -1109,6 +1124,7 @@ export interface FileRoutesByTo {
   '/admin/share': typeof AdminAuthedShareRoute
   '/admin/students': typeof AdminAuthedStudentsRoute
   '/admin/support': typeof AdminAuthedSupportRoute
+  '/admin/tasks': typeof AdminAuthedTasksRoute
   '/admin/tickets': typeof AdminAuthedTicketsRoute
   '/admin/undelivered': typeof AdminAuthedUndeliveredRoute
   '/admin/vip': typeof AdminAuthedVipRoute
@@ -1240,6 +1256,7 @@ export interface FileRoutesById {
   '/admin/_authed/homework': typeof AdminAuthedHomeworkRoute
   '/admin/_authed/ig-import': typeof AdminAuthedIgImportRoute
   '/admin/_authed/instagram': typeof AdminAuthedInstagramRoute
+  '/admin/_authed/knowledge': typeof AdminAuthedKnowledgeRoute
   '/admin/_authed/log': typeof AdminAuthedLogRoute
   '/admin/_authed/modules': typeof AdminAuthedModulesRoute
   '/admin/_authed/news': typeof AdminAuthedNewsRoute
@@ -1256,6 +1273,7 @@ export interface FileRoutesById {
   '/admin/_authed/share': typeof AdminAuthedShareRoute
   '/admin/_authed/students': typeof AdminAuthedStudentsRoute
   '/admin/_authed/support': typeof AdminAuthedSupportRoute
+  '/admin/_authed/tasks': typeof AdminAuthedTasksRoute
   '/admin/_authed/tickets': typeof AdminAuthedTicketsRoute
   '/admin/_authed/undelivered': typeof AdminAuthedUndeliveredRoute
   '/admin/_authed/vip': typeof AdminAuthedVipRoute
@@ -1388,6 +1406,7 @@ export interface FileRouteTypes {
     | '/admin/homework'
     | '/admin/ig-import'
     | '/admin/instagram'
+    | '/admin/knowledge'
     | '/admin/log'
     | '/admin/modules'
     | '/admin/news'
@@ -1404,6 +1423,7 @@ export interface FileRouteTypes {
     | '/admin/share'
     | '/admin/students'
     | '/admin/support'
+    | '/admin/tasks'
     | '/admin/tickets'
     | '/admin/undelivered'
     | '/admin/vip'
@@ -1532,6 +1552,7 @@ export interface FileRouteTypes {
     | '/admin/homework'
     | '/admin/ig-import'
     | '/admin/instagram'
+    | '/admin/knowledge'
     | '/admin/log'
     | '/admin/modules'
     | '/admin/news'
@@ -1548,6 +1569,7 @@ export interface FileRouteTypes {
     | '/admin/share'
     | '/admin/students'
     | '/admin/support'
+    | '/admin/tasks'
     | '/admin/tickets'
     | '/admin/undelivered'
     | '/admin/vip'
@@ -1678,6 +1700,7 @@ export interface FileRouteTypes {
     | '/admin/_authed/homework'
     | '/admin/_authed/ig-import'
     | '/admin/_authed/instagram'
+    | '/admin/_authed/knowledge'
     | '/admin/_authed/log'
     | '/admin/_authed/modules'
     | '/admin/_authed/news'
@@ -1694,6 +1717,7 @@ export interface FileRouteTypes {
     | '/admin/_authed/share'
     | '/admin/_authed/students'
     | '/admin/_authed/support'
+    | '/admin/_authed/tasks'
     | '/admin/_authed/tickets'
     | '/admin/_authed/undelivered'
     | '/admin/_authed/vip'
@@ -2174,6 +2198,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAuthedInstagramRouteImport
       parentRoute: typeof AdminAuthedRoute
     }
+    '/admin/_authed/knowledge': {
+      id: '/admin/_authed/knowledge'
+      path: '/knowledge'
+      fullPath: '/admin/knowledge'
+      preLoaderRoute: typeof AdminAuthedKnowledgeRouteImport
+      parentRoute: typeof AdminAuthedRoute
+    }
     '/admin/_authed/log': {
       id: '/admin/_authed/log'
       path: '/log'
@@ -2284,6 +2315,13 @@ declare module '@tanstack/react-router' {
       path: '/support'
       fullPath: '/admin/support'
       preLoaderRoute: typeof AdminAuthedSupportRouteImport
+      parentRoute: typeof AdminAuthedRoute
+    }
+    '/admin/_authed/tasks': {
+      id: '/admin/_authed/tasks'
+      path: '/tasks'
+      fullPath: '/admin/tasks'
+      preLoaderRoute: typeof AdminAuthedTasksRouteImport
       parentRoute: typeof AdminAuthedRoute
     }
     '/admin/_authed/tickets': {
@@ -2882,6 +2920,7 @@ interface AdminAuthedRouteChildren {
   AdminAuthedHomeworkRoute: typeof AdminAuthedHomeworkRoute
   AdminAuthedIgImportRoute: typeof AdminAuthedIgImportRoute
   AdminAuthedInstagramRoute: typeof AdminAuthedInstagramRoute
+  AdminAuthedKnowledgeRoute: typeof AdminAuthedKnowledgeRoute
   AdminAuthedLogRoute: typeof AdminAuthedLogRoute
   AdminAuthedModulesRoute: typeof AdminAuthedModulesRoute
   AdminAuthedNewsRoute: typeof AdminAuthedNewsRoute
@@ -2898,6 +2937,7 @@ interface AdminAuthedRouteChildren {
   AdminAuthedShareRoute: typeof AdminAuthedShareRoute
   AdminAuthedStudentsRoute: typeof AdminAuthedStudentsRoute
   AdminAuthedSupportRoute: typeof AdminAuthedSupportRoute
+  AdminAuthedTasksRoute: typeof AdminAuthedTasksRoute
   AdminAuthedTicketsRoute: typeof AdminAuthedTicketsRoute
   AdminAuthedUndeliveredRoute: typeof AdminAuthedUndeliveredRoute
   AdminAuthedVipRoute: typeof AdminAuthedVipRoute
@@ -2934,6 +2974,7 @@ const AdminAuthedRouteChildren: AdminAuthedRouteChildren = {
   AdminAuthedHomeworkRoute: AdminAuthedHomeworkRoute,
   AdminAuthedIgImportRoute: AdminAuthedIgImportRoute,
   AdminAuthedInstagramRoute: AdminAuthedInstagramRoute,
+  AdminAuthedKnowledgeRoute: AdminAuthedKnowledgeRoute,
   AdminAuthedLogRoute: AdminAuthedLogRoute,
   AdminAuthedModulesRoute: AdminAuthedModulesRoute,
   AdminAuthedNewsRoute: AdminAuthedNewsRoute,
@@ -2950,6 +2991,7 @@ const AdminAuthedRouteChildren: AdminAuthedRouteChildren = {
   AdminAuthedShareRoute: AdminAuthedShareRoute,
   AdminAuthedStudentsRoute: AdminAuthedStudentsRoute,
   AdminAuthedSupportRoute: AdminAuthedSupportRoute,
+  AdminAuthedTasksRoute: AdminAuthedTasksRoute,
   AdminAuthedTicketsRoute: AdminAuthedTicketsRoute,
   AdminAuthedUndeliveredRoute: AdminAuthedUndeliveredRoute,
   AdminAuthedVipRoute: AdminAuthedVipRoute,

@@ -90,6 +90,8 @@ export type CustomerCard = {
   birthday: string | null;
   points: number;
   createdAt: string;
+  /** Когда ИИ-консультант последний раз ответил (state.consultant.last_reply_at); нет — null. */
+  consultantRepliedAt: string | null;
   optOut: boolean;
   blocked: boolean;
   /** Откуда пришёл: первая ссылка /start (реферал, товар, корзина с витрины). */
@@ -118,6 +120,14 @@ export type CustomerCard = {
 
 const RECENT_ORDERS = 20;
 const RECENT_MESSAGES = 10;
+
+/** Последний ответ консультанта из его памяти в state; кривое значение — null. */
+export function consultantRepliedAt(state: Record<string, unknown>): string | null {
+  const c = state.consultant;
+  if (!c || typeof c !== "object" || Array.isArray(c)) return null;
+  const at = (c as { last_reply_at?: unknown }).last_reply_at;
+  return typeof at === "string" && Number.isFinite(Date.parse(at)) ? at : null;
+}
 
 export async function customerCard(
   ctx: TenantContext,
@@ -215,6 +225,7 @@ export async function customerCard(
     birthday: typeof state.birthday === "string" ? state.birthday : null,
     points: Number(u.loyalty_points) || 0,
     createdAt: u.created_at,
+    consultantRepliedAt: consultantRepliedAt(state),
     optOut: u.opt_out === true,
     blocked,
     firstSource: sourceLabel(state.first_source),

@@ -1,4 +1,4 @@
-import { useRouter } from "@tanstack/react-router";
+import { Link, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import {
   connectTelegramAdminFn,
@@ -380,6 +380,13 @@ export function DirectBotCard({ platform }: { platform: "instagram" | "whatsapp"
     setSaved(true);
   });
   const owner = roleAllows(shop.role, "admin");
+  // Консультант без продаж (BOVI): отвечает консультант, тумблер канала он не
+  // читает, магазина в переписке нет (handle-message). Действуют только пауза
+  // после ответа руками (при модуле магазина канала) и настройки WhatsApp.
+  const sells = shop.sells !== false;
+  const pauseApplies =
+    sells || Boolean(platform === "whatsapp" ? shop.modules.wa_shop : shop.modules.dm_shop);
+  const editable = sells || pauseApplies || platform === "whatsapp";
   const feature = (k: keyof DirectBotSettings["features"], label: string) => (
     <label className="flex items-center gap-2 text-sm">
       <input
@@ -395,7 +402,8 @@ export function DirectBotCard({ platform }: { platform: "instagram" | "whatsapp"
     <Card
       title={t("settings.dbot.title", { channel: CHANNEL_LABEL[platform] ?? platform })}
       actions={
-        s && (
+        s &&
+        sells && (
           <Switch
             checked={s.enabled}
             onChange={(on) => owner && setS({ ...s, enabled: on })}
@@ -415,70 +423,94 @@ export function DirectBotCard({ platform }: { platform: "instagram" | "whatsapp"
             void save.run().catch(() => {});
           }}
         >
-          <p className="text-sm text-muted">{t("settings.dbot.intro")}</p>
-          <Field label={t("settings.dbot.scope")}>
-            <div className="space-y-1 text-sm">
-              {(["purchases", "all"] as const).map((v) => (
-                <label key={v} className="flex items-start gap-2">
-                  <input
-                    type="radio"
-                    name={`scope-${platform}`}
-                    checked={s.scope === v}
-                    disabled={!owner}
-                    onChange={() => setS({ ...s, scope: v })}
-                  />
-                  <span>
-                    {t(`settings.dbot.scope.${v}`)}
-                    <span className="block text-xs text-muted">
-                      {t(`settings.dbot.scope.${v}Hint`)}
+          {sells ? (
+            <p className="text-sm text-muted">{t("settings.dbot.intro")}</p>
+          ) : (
+            <p className="text-sm text-muted">
+              {t("settings.dbot.introConsultant")}{" "}
+              <Link to="/admin/consultant" className="text-accent hover:underline">
+                {t("settings.dbot.openConsultant")}
+              </Link>
+            </p>
+          )}
+          {sells && (
+            <Field label={t("settings.dbot.scope")}>
+              <div className="space-y-1 text-sm">
+                {(["purchases", "all"] as const).map((v) => (
+                  <label key={v} className="flex items-start gap-2">
+                    <input
+                      type="radio"
+                      name={`scope-${platform}`}
+                      checked={s.scope === v}
+                      disabled={!owner}
+                      onChange={() => setS({ ...s, scope: v })}
+                    />
+                    <span>
+                      {t(`settings.dbot.scope.${v}`)}
+                      <span className="block text-xs text-muted">
+                        {t(`settings.dbot.scope.${v}Hint`)}
+                      </span>
                     </span>
-                  </span>
-                </label>
-              ))}
-            </div>
-          </Field>
-          <Field label={t("settings.dbot.triggers")} hint={t("settings.dbot.triggersHint")}>
-            <input
-              className="input"
-              value={s.triggersText}
-              disabled={!owner}
-              placeholder={t("settings.dbot.triggersPlaceholder")}
-              onChange={(e) => setS({ ...s, triggersText: e.target.value })}
-            />
-          </Field>
-          <Field label={t("settings.dbot.sellerPause")} hint={t("settings.dbot.sellerPauseHint")}>
-            <select
-              className="input"
-              value={s.sellerPause}
-              disabled={!owner}
-              onChange={(e) =>
-                setS({ ...s, sellerPause: e.target.value as DirectBotSettings["sellerPause"] })
-              }
+                  </label>
+                ))}
+              </div>
+            </Field>
+          )}
+          {sells && (
+            <Field label={t("settings.dbot.triggers")} hint={t("settings.dbot.triggersHint")}>
+              <input
+                className="input"
+                value={s.triggersText}
+                disabled={!owner}
+                placeholder={t("settings.dbot.triggersPlaceholder")}
+                onChange={(e) => setS({ ...s, triggersText: e.target.value })}
+              />
+            </Field>
+          )}
+          {pauseApplies && (
+            <Field
+              label={t("settings.dbot.sellerPause")}
+              hint={t(
+                sells ? "settings.dbot.sellerPauseHint" : "settings.dbot.sellerPauseHintConsultant",
+              )}
             >
-              {(["15", "30", "60", "day"] as const).map((v) => (
-                <option key={v} value={v}>
-                  {t(`settings.dbot.sellerPause.${v}`)}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field label={t("settings.dbot.script")} hint={t("settings.dbot.scriptHint")}>
-            <textarea
-              className="input min-h-20"
-              value={s.script}
-              disabled={!owner}
-              placeholder={t("settings.dbot.scriptPlaceholder")}
-              onChange={(e) => setS({ ...s, script: e.target.value })}
-            />
-          </Field>
-          <Field label={t("settings.dbot.features")}>
-            <div className="grid grid-cols-2 gap-1">
-              {feature("catalog", t("settings.dbot.feature.catalog"))}
-              {feature("search", t("settings.dbot.feature.search"))}
-              {feature("cart", t("settings.dbot.feature.cart"))}
-              {feature("checkout", t("settings.dbot.feature.checkout"))}
-            </div>
-          </Field>
+              <select
+                className="input"
+                value={s.sellerPause}
+                disabled={!owner}
+                onChange={(e) =>
+                  setS({ ...s, sellerPause: e.target.value as DirectBotSettings["sellerPause"] })
+                }
+              >
+                {(["15", "30", "60", "day"] as const).map((v) => (
+                  <option key={v} value={v}>
+                    {t(`settings.dbot.sellerPause.${v}`)}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          )}
+          {sells && (
+            <Field label={t("settings.dbot.script")} hint={t("settings.dbot.scriptHint")}>
+              <textarea
+                className="input min-h-20"
+                value={s.script}
+                disabled={!owner}
+                placeholder={t("settings.dbot.scriptPlaceholder")}
+                onChange={(e) => setS({ ...s, script: e.target.value })}
+              />
+            </Field>
+          )}
+          {sells && (
+            <Field label={t("settings.dbot.features")}>
+              <div className="grid grid-cols-2 gap-1">
+                {feature("catalog", t("settings.dbot.feature.catalog"))}
+                {feature("search", t("settings.dbot.feature.search"))}
+                {feature("cart", t("settings.dbot.feature.cart"))}
+                {feature("checkout", t("settings.dbot.feature.checkout"))}
+              </div>
+            </Field>
+          )}
           {platform === "whatsapp" && (
             <>
               <label className="flex items-center gap-2 text-sm">
@@ -502,10 +534,12 @@ export function DirectBotCard({ platform }: { platform: "instagram" | "whatsapp"
                   onChange={(e) => setS({ ...s, notifyTemplate: e.target.value })}
                 />
               </Field>
-              <p className="text-xs text-muted">{t("settings.dbot.nativeCatalogHint")}</p>
+              {sells && (
+                <p className="text-xs text-muted">{t("settings.dbot.nativeCatalogHint")}</p>
+              )}
             </>
           )}
-          {owner && (
+          {owner && editable && (
             <div className="flex items-center gap-3">
               <button className="btn-primary" disabled={save.busy}>
                 {t("common.save")}

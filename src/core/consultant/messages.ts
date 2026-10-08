@@ -127,6 +127,47 @@ export const followUpLine = (locale: Locale, model: string): string => FOLLOW_UP
 
 /* ── продавцу (на его языке, HTML Telegram) ─────────────────────────── */
 
+const CONTACT_BUTTON: Record<
+  Locale,
+  { title: string; summary: string; hint: (hours: number) => string }
+> = {
+  ru: {
+    title: "🙋 <b>Покупатель просит менеджера</b> (кнопка «Связаться с менеджером»)",
+    summary: "Покупатель нажал «Связаться с менеджером» в Telegram",
+    hint: (h) =>
+      h === 0
+        ? "Ответьте в «Чате» панели — консультант в этом диалоге молчит, пока вы не вернёте диалог боту."
+        : `Ответьте в «Чате» панели — консультант в этом диалоге молчит ${h} ч.`,
+  },
+  kk: {
+    title: "🙋 <b>Сатып алушы менеджерді сұрайды</b> («Менеджермен байланысу» батырмасы)",
+    summary: "Сатып алушы Telegram-да «Менеджермен байланысу» батырмасын басты",
+    hint: (h) =>
+      h === 0
+        ? "Панельдің «Чатында» жауап беріңіз — диалогты ботқа қайтарғанша кеңесші үндемейді."
+        : `Панельдің «Чатында» жауап беріңіз — бұл диалогта кеңесші ${h} сағ үндемейді.`,
+  },
+  en: {
+    title: "🙋 <b>Customer asks for a manager</b> (“Contact a manager” button)",
+    summary: "The customer pressed “Contact a manager” in Telegram",
+    hint: (h) =>
+      h === 0
+        ? "Reply in the panel “Chat” — the consultant stays silent in this dialogue until you hand it back to the bot."
+        : `Reply in the panel “Chat” — the consultant stays silent in this dialogue for ${h} h.`,
+  },
+  uz: {
+    title: "🙋 <b>Xaridor menejerni so‘rayapti</b> («Menejer bilan bog‘lanish» tugmasi)",
+    summary: "Xaridor Telegram’da «Menejer bilan bog‘lanish» tugmasini bosdi",
+    hint: (h) =>
+      h === 0
+        ? "Panel «Chat»ida javob bering — suhbatni botga qaytarmaguningizcha maslahatchi jim turadi."
+        : `Panel «Chat»ida javob bering — bu suhbatda maslahatchi ${h} soat jim turadi.`,
+  },
+};
+
+/** Кнопка «Связаться с менеджером» в Telegram у консультанта по прайсу — карточка продавцу. */
+export const contactButtonText = (locale: Locale) => CONTACT_BUTTON[locale];
+
 const REPLY_NOT_SENT: Record<Locale, string> = {
   ru: "⚠️ <b>Ответ консультанта не ушёл покупателю</b>",
   kk: "⚠️ <b>Кеңесшінің жауабы сатып алушыға жетпеді</b>",

@@ -29,6 +29,14 @@ export const TASKS_LIMIT = 200;
 
 export type TaskChannel = "telegram" | "instagram" | "whatsapp";
 
+/**
+ * Чем закрыта задача: `manual` — продавец нажал «Сделано», остальное —
+ * менеджер ответил покупателю (ответ свайпом в Telegram, «Чат» панели,
+ * прямо в приложении Instagram/WhatsApp) и задача закрылась сама.
+ */
+export type TaskCloseVia = "manual" | "telegram" | "panel" | "instagram" | "whatsapp";
+const CLOSE_VIA: readonly TaskCloseVia[] = ["manual", "telegram", "panel", "instagram", "whatsapp"];
+
 export type ConsultantTask = {
   id: string;
   /** Когда передали менеджеру (ISO). */
@@ -51,6 +59,8 @@ export type ConsultantTask = {
   link?: string;
   /** v2: когда отметили сделанной. */
   doneAt?: string;
+  /** v2: чем закрыта (кнопкой или ответом менеджера покупателю). */
+  doneVia?: TaskCloseVia;
 };
 
 const MAX = { text: 600, contact: 300, name: 120, product: 200, products: 5, link: 300 };
@@ -89,6 +99,9 @@ function taskFrom(raw: unknown): ConsultantTask | null {
     ...(products.length ? { products } : {}),
     ...(link && /^https:\/\//i.test(link) ? { link } : {}),
     ...(typeof r.doneAt === "string" ? { doneAt: r.doneAt } : {}),
+    ...(r.done === true && CLOSE_VIA.includes(r.doneVia as TaskCloseVia)
+      ? { doneVia: r.doneVia as TaskCloseVia }
+      : {}),
   };
 }
 
@@ -219,8 +232,10 @@ export async function setTaskDone(
     return JSON.stringify(
       list.map((t) => {
         if (t.id !== id) return t;
-        const { doneAt: _, ...rest } = t;
-        return done ? { ...rest, done, doneAt: now.toISOString() } : { ...rest, done };
+        const { doneAt: _, doneVia: __, ...rest } = t;
+        return done
+          ? { ...rest, done, doneAt: now.toISOString(), doneVia: "manual" as const }
+          : { ...rest, done };
       }),
     );
   });
@@ -249,30 +264,51 @@ export async function clearTasks(
 }
 
 /**
- * Менеджер ответил покупателю (ответ свайпом на карточку передачи, v1
- * manager-reply.ts): его последняя незакрытая задача — сделана. Задач нет —
- * ничего не пишем. Сбой записи ответ покупателю не отменяет.
+ * Менеджер ответил покупателю — свайпом на карточку передачи в Telegram (v1
+ * manager-reply.ts), из «Чата» панели или прямо в приложении Instagram/
+ * WhatsApp: все его незакрытые задачи, заведённые не позже ответа, сделаны
+ * (`repliedAt` — время ответа; задача, пришедшая после него, остаётся).
+ * Запись условна по `updated_at` строки (updateSettingStamped): из двух
+ * ответов одновременно задачу закрывает один, задача, дописанная в эту
+ * секунду, не теряется. Задач нет — ничего не пишем. Сбой записи ответ
+ * покупателю не отменяет: false, ошибка — в журнал.
  */
 export async function closeTaskAfterReply(
   ctx: TenantContext,
   userKey: string,
   now = new Date(),
+  opts: { via?: Exclude<TaskCloseVia, "manual">; repliedAt?: Date } = {},
 ): Promise<boolean> {
   if (!pricelistMode(ctx.tenant)) return false;
+  const cutoff = (opts.repliedAt ?? now).toISOString();
   let closed = false;
   await updateSettingStamped(ctx, TASKS_KEY, (raw) => {
     const list = parseTasks(raw);
-    const open = sortTasks(list.filter((t) => t.userKey === userKey && !t.done))[0];
-    if (!open) return null;
-    closed = true;
-    return JSON.stringify(
-      list.map((t) => (t.id === open.id ? { ...t, done: true, doneAt: now.toISOString() } : t)),
+    const ids = new Set(
+      list.filter((t) => t.userKey === userKey && !t.done && t.at <= cutoff).map((t) => t.id),
     );
-  }).catch((e: unknown) => {
-    console.warn(`[consultant] задача не закрыта ${ctx.tenant.id}: ${String(e)}`);
-    closed = false;
-    return "failed" as const;
-  });
+    closed = ids.size > 0;
+    if (!closed) return null;
+    return JSON.stringify(
+      list.map((t) =>
+        ids.has(t.id)
+          ? {
+              ...t,
+              done: true,
+              doneAt: now.toISOString(),
+              ...(opts.via ? { doneVia: opts.via } : {}),
+            }
+          : t,
+      ),
+    );
+  })
+    .then((r) => {
+      if (r === "failed") closed = false;
+    })
+    .catch((e: unknown) => {
+      console.warn(`[consultant] задача не закрыта ${ctx.tenant.id}: ${String(e)}`);
+      closed = false;
+    });
   return closed;
 }
 

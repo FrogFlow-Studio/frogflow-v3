@@ -71,6 +71,9 @@ type SegmentDraft = {
   who: "all" | "behind" | "homework" | "completed";
   cohortId: string;
 };
+/** Сегменты по покупкам и корзине: консультанту без продаж их не из чего собрать. */
+const SALES_SEGMENTS: readonly SegmentKind[] = ["product", "category", "inactive", "cart"];
+
 const EMPTY_SEGMENT: SegmentDraft = {
   kind: "product",
   productId: "",
@@ -105,17 +108,26 @@ function segmentOf(d: SegmentDraft): Record<string, unknown> | undefined {
   }
 }
 
-const AUDIENCES: Array<{ value: UiAudience; label: AdminKey; hint: AdminKey; tgOnly?: boolean }> = [
+/** `sellsOnly` — аудитория по покупкам: консультанту без продаж (BOVI) не показывается. */
+const AUDIENCES: Array<{
+  value: UiAudience;
+  label: AdminKey;
+  hint: AdminKey;
+  tgOnly?: boolean;
+  sellsOnly?: boolean;
+}> = [
   { value: "all", label: "broadcasts.audience.all", hint: "broadcasts.audience.allHint" },
   {
     value: "buyers",
     label: "broadcasts.audience.buyers",
     hint: "broadcasts.audience.buyersHint",
+    sellsOnly: true,
   },
   {
     value: "non_buyers",
     label: "broadcasts.audience.nonBuyers",
     hint: "broadcasts.audience.nonBuyersHint",
+    sellsOnly: true,
   },
   {
     value: "country",
@@ -201,6 +213,8 @@ function BroadcastsPage() {
   }, [anyActive, router]);
 
   const both = data.telegramModule && data.whatsapp;
+  // Консультант без продаж (BOVI): корзины, покупок и «вернуть покупателя» у него нет.
+  const sells = shop.sells !== false;
   return (
     <>
       <PageTitle
@@ -240,20 +254,19 @@ function BroadcastsPage() {
           </Card>
         )}
         <div className="space-y-4">
-          {(shop.modules.cart_reminder || shop.modules.winback || shop.modules.funnel) && (
-            <MarketingCapCard cap={data.marketingCap} />
-          )}
-          {shop.modules.cart_reminder && (
+          {((sells && (shop.modules.cart_reminder || shop.modules.winback)) ||
+            shop.modules.funnel) && <MarketingCapCard cap={data.marketingCap} />}
+          {sells && shop.modules.cart_reminder && (
             <CartReminderCard hours={data.cartReminderHours} stats={data.autoStats?.cart} />
           )}
-          {shop.modules.winback && <WinbackCard stats={data.autoStats?.winback} />}
-          {shop.modules.waitlist && (
+          {sells && shop.modules.winback && <WinbackCard stats={data.autoStats?.winback} />}
+          {sells && shop.modules.waitlist && (
             <Card title={t("autostats.waitlistTitle")}>
               <AutoStatsBlock t={t} stats={data.autoStats?.waitlist} />
             </Card>
           )}
-          {shop.modules.winback && <SimilarCard t={t} stats={data.autoStats?.similar} />}
-          {(shop.modules.quiz || shop.modules.upsell) && (
+          {sells && shop.modules.winback && <SimilarCard t={t} stats={data.autoStats?.similar} />}
+          {sells && (shop.modules.quiz || shop.modules.upsell) && (
             <Card title={t("engage.title")}>
               <EngageBlock
                 t={t}
@@ -345,7 +358,11 @@ function SegmentPicker({
         value={value.kind}
         onChange={(e) => set({ kind: e.target.value as SegmentKind })}
       >
-        {SEGMENT_KINDS.filter((k) => k !== "course" || shop.modules.courses).map((k) => (
+        {SEGMENT_KINDS.filter(
+          (k) =>
+            (k !== "course" || shop.modules.courses) &&
+            (shop.sells !== false || !SALES_SEGMENTS.includes(k)),
+        ).map((k) => (
           <option key={k} value={k}>
             {t(`broadcasts.segment.${k}` as AdminKey)}
           </option>
@@ -481,11 +498,15 @@ function AudiencePicker({
   setSegment?: (s: SegmentDraft) => void;
 }) {
   const t = useT();
+  const { shop } = useRouteContext({ from: "/admin/_authed" });
+  const sells = shop.sells !== false;
   return (
     <div>
       <span className="label">{t("broadcasts.audience.label")}</span>
       <div className="grid gap-2 sm:grid-cols-2">
-        {AUDIENCES.filter((a) => channel === "telegram" || !a.tgOnly).map((a) => (
+        {AUDIENCES.filter(
+          (a) => (channel === "telegram" || !a.tgOnly) && (sells || !a.sellsOnly),
+        ).map((a) => (
           <label
             key={a.value}
             className={`flex cursor-pointer items-start gap-2 rounded-md border px-3 py-2 text-sm ${audience === a.value ? "border-accent bg-accent/10" : "border-line"}`}
@@ -545,13 +566,19 @@ function Composer({ data, botId, disabled }: { data: Data; botId: string; disabl
   const [showCatalog, setShowCatalog] = useState(false);
   const [giveawayId, setGiveawayId] = useState("");
   const search = Route.useSearch();
-  const preset = parseSegmentParam(search);
+  // Консультант без продаж: сегментов по покупкам и дожима «не заказали» нет.
+  const sells = shop.sells !== false;
+  const preset = sells ? parseSegmentParam(search) : null;
   const navigate = Route.useNavigate();
-  const followup = search.followup ?? null;
+  const followup = sells ? (search.followup ?? null) : null;
   const [audience, setAudience] = useState<UiAudience>(preset || followup ? "segment" : "all");
   const [country, setCountry] = useState(Object.keys(data.countries)[0] ?? "");
   const [segment, setSegment] = useState<SegmentDraft>(
-    preset ? { ...EMPTY_SEGMENT, kind: "inactive", days: String(preset.days) } : EMPTY_SEGMENT,
+    preset
+      ? { ...EMPTY_SEGMENT, kind: "inactive", days: String(preset.days) }
+      : sells
+        ? EMPTY_SEGMENT
+        : { ...EMPTY_SEGMENT, kind: "language" },
   );
   const [later, setLater] = useState(false);
   const [sendAt, setSendAt] = useState("");
@@ -706,47 +733,51 @@ function Composer({ data, botId, disabled }: { data: Data; botId: string; disabl
           <ErrorBox error={uploadError} />
         </div>
 
-        <div>
+        <div hidden={!sells && !shop.modules.giveaways}>
           <span className="label">{t("broadcasts.compose.buttons")}</span>
-          <div className="flex items-center gap-3 py-1">
-            <Switch
-              checked={showCatalog}
-              onChange={setShowCatalog}
-              label={t("broadcasts.compose.catalogSwitch")}
-            />
-            <span className="text-sm">{t("broadcasts.compose.catalogButton")}</span>
-          </div>
+          {sells && (
+            <div className="flex items-center gap-3 py-1">
+              <Switch
+                checked={showCatalog}
+                onChange={setShowCatalog}
+                label={t("broadcasts.compose.catalogSwitch")}
+              />
+              <span className="text-sm">{t("broadcasts.compose.catalogButton")}</span>
+            </div>
+          )}
           {shop.modules.giveaways && (
             <div className="mt-2">
               <GiveawayButtonPick t={t} value={giveawayId} onChange={setGiveawayId} />
             </div>
           )}
-          <details className="mt-2">
-            <summary className="cursor-pointer text-sm text-muted">
-              {t("broadcasts.compose.productButtons", {
-                n: products.length,
-                max: MAX_PRODUCT_BUTTONS,
-              })}
-            </summary>
-            <div className="mt-2 space-y-2 rounded-md border border-line p-2">
-              {products.map((p) => (
-                <div key={p.id} className="flex items-center gap-2 text-sm">
-                  <span className="min-w-0 flex-1 truncate">{p.name}</span>
-                  <button
-                    type="button"
-                    className="btn-ghost text-xs"
-                    aria-label="✕"
-                    onClick={() => removeProduct(p.id)}
-                  >
-                    ✕
-                  </button>
-                </div>
-              ))}
-              {products.length < MAX_PRODUCT_BUTTONS && (
-                <ProductSearch t={t} onPick={addProduct} exclude={products.map((p) => p.id)} />
-              )}
-            </div>
-          </details>
+          {sells && (
+            <details className="mt-2">
+              <summary className="cursor-pointer text-sm text-muted">
+                {t("broadcasts.compose.productButtons", {
+                  n: products.length,
+                  max: MAX_PRODUCT_BUTTONS,
+                })}
+              </summary>
+              <div className="mt-2 space-y-2 rounded-md border border-line p-2">
+                {products.map((p) => (
+                  <div key={p.id} className="flex items-center gap-2 text-sm">
+                    <span className="min-w-0 flex-1 truncate">{p.name}</span>
+                    <button
+                      type="button"
+                      className="btn-ghost text-xs"
+                      aria-label="✕"
+                      onClick={() => removeProduct(p.id)}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+                {products.length < MAX_PRODUCT_BUTTONS && (
+                  <ProductSearch t={t} onPick={addProduct} exclude={products.map((p) => p.id)} />
+                )}
+              </div>
+            </details>
+          )}
         </div>
 
         {followup ? (
@@ -1243,6 +1274,8 @@ function History({
 }) {
   const { shop } = useRouteContext({ from: "/admin/_authed" });
   const t = adminT(shop.locale);
+  // Консультант без продаж: заказов и выручки от рассылки нет — их и не показываем.
+  const sells = shop.sells !== false;
   const router = useRouter();
   // «Показать ещё»: страницы после первой, без повторов с обновлённой первой.
   const [more, setMore] = useState<Broadcast[]>([]);
@@ -1338,7 +1371,8 @@ function History({
                         : b.message_text || t("broadcasts.history.photoOnly")}
                     </p>
                   </div>
-                  {b.channel === "telegram" &&
+                  {sells &&
+                    b.channel === "telegram" &&
                     b.status === "completed" &&
                     b.sent_count > 0 &&
                     !filter.ab &&
@@ -1395,7 +1429,7 @@ function History({
                   )}
                 </div>
                 {(() => {
-                  const g = filter.ab?.group;
+                  const g = sells ? filter.ab?.group : undefined;
                   const pair = g ? pairs.get(g) : undefined;
                   if (!g || !pair || comparisonShownFor.has(g)) return null;
                   const state = abCompareState(pair.A, pair.B);
@@ -1442,7 +1476,7 @@ function History({
                     </div>
                   );
                 })()}
-                {b.sent_count > 0 && (
+                {sells && b.sent_count > 0 && (
                   <p className="mt-1 text-xs text-muted tabular-nums">
                     <span className="font-medium text-fg">{t("broadcasts.revenue.label")}</span>{" "}
                     {t("broadcasts.revenue.orders", { n: b.revenue.orders, paid: b.revenue.paid })}

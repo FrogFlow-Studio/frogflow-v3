@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, type ReactNode } from "react";
 import { z } from "zod";
 import { botPreviewFn, botPreviewProductsFn } from "@/app/admin/bot-preview.functions";
@@ -84,26 +84,37 @@ function BotPreviewPage() {
                 </select>
               </Field>
             )}
-            <Field label={t("botPreview.product")} hint={p ? p.name : undefined}>
-              <form
-                className="flex gap-2"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  if (q.trim()) void find.run().catch(() => {});
-                }}
-              >
-                <input
-                  className="input"
-                  value={q}
-                  maxLength={100}
-                  placeholder={t("botPreview.search")}
-                  onChange={(e) => setQ(e.target.value)}
-                />
-                <button className="btn-secondary" disabled={find.busy || !q.trim()}>
-                  🔍
-                </button>
-              </form>
-            </Field>
+            {!data.sells && (
+              // Консультант без продаж: карточки товара нет — вопросы проверяют в тест-чате.
+              <div className="space-y-2 text-sm">
+                <p className="text-muted">{t("botPreview.consultant")}</p>
+                <Link to="/admin/consultant" className="btn-secondary text-xs">
+                  {t("botPreview.openTestChat")}
+                </Link>
+              </div>
+            )}
+            {data.sells && (
+              <Field label={t("botPreview.product")} hint={p ? p.name : undefined}>
+                <form
+                  className="flex gap-2"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (q.trim()) void find.run().catch(() => {});
+                  }}
+                >
+                  <input
+                    className="input"
+                    value={q}
+                    maxLength={100}
+                    placeholder={t("botPreview.search")}
+                    onChange={(e) => setQ(e.target.value)}
+                  />
+                  <button className="btn-secondary" disabled={find.busy || !q.trim()}>
+                    🔍
+                  </button>
+                </form>
+              </Field>
+            )}
             {found && found.length === 0 && (
               <p className="text-xs text-muted">{t("botPreview.searchEmpty")}</p>
             )}
@@ -137,8 +148,8 @@ function BotPreviewPage() {
           <Bubble>
             <TgText html={data.welcome} />
           </Bubble>
-          <Step>{t("botPreview.openProduct")}</Step>
-          {p ? (
+          {data.sells && <Step>{t("botPreview.openProduct")}</Step>}
+          {!data.sells ? null : p ? (
             <Bubble buttons={p.keyboard.inline_keyboard}>
               {p.photo && (
                 <img

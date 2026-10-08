@@ -51,6 +51,8 @@ function consultantMemory(customer: Customer): ConsultantMemory {
  * руками) и в диалоге говорит магазин — начинается пауза бота (seller-pause).
  */
 async function handleOutgoing(ctx: TenantContext, m: ParsedZernioMessage): Promise<HandleResult> {
+  // Консультант по прайсу: менеджер ответил в приложении — задачи покупателя сделаны.
+  await closeTasksOnSellerReply(ctx, m);
   const shopOn =
     m.platform === "whatsapp" ? ctx.tenant.modules.wa_shop : ctx.tenant.modules.dm_shop;
   const channelOn =
@@ -65,6 +67,38 @@ async function handleOutgoing(ctx: TenantContext, m: ParsedZernioMessage): Promi
   const direct = customer.state.direct as { last_reply?: string } | undefined;
   const paused = await handleSellerOutgoing(ctx, customer, m, bot.sellerPause, direct?.last_reply);
   return ignored(paused ? "продавец ответил руками — бот на паузе" : "исходящее сообщение");
+}
+
+/**
+ * Исходящее, написанное человеком (продавец в приложении Instagram/WhatsApp
+ * или в инбоксе Zernio), закрывает открытые задачи консультанта по этому
+ * покупателю (core/consultant/tasks, условная запись). Эхо наших же ответов
+ * (бот, пересланный из Telegram ответ менеджера) — не ответ человека.
+ */
+async function closeTasksOnSellerReply(ctx: TenantContext, m: ParsedZernioMessage) {
+  if (!ctx.tenant.modules[m.platform] || m.senderId === "unknown") return;
+  if (m.sentVia !== null && m.sentVia !== "human") return;
+  const { pricelistMode } = await import("@/core/consultant/pricelist/mode");
+  if (!pricelistMode(ctx.tenant)) return;
+  const { getCustomer, userKey } = await import("@/core/customers/customers");
+  const customer = await getCustomer(ctx, userKey(m.platform, m.senderId));
+  if (!customer) return;
+  const memory = consultantMemory(customer);
+  const direct = customer.state.direct as { last_reply?: string } | undefined;
+  const ours = [
+    ...(memory.recent ?? []).filter((t) => t.role === "assistant").map((t) => t.text),
+    ...(memory.relayed ?? []),
+    ...(typeof direct?.last_reply === "string" ? [direct.last_reply] : []),
+  ];
+  const { isPersonMessage } = await import("./manager-guard");
+  if (!isPersonMessage({ direction: "outgoing", message: m.text, sentVia: m.sentVia }, ours))
+    return;
+  const sent = m.sentAt ? Date.parse(m.sentAt) : NaN;
+  const { closeTaskAfterReply } = await import("@/core/consultant/tasks");
+  await closeTaskAfterReply(ctx, customer.userKey, new Date(), {
+    via: m.platform,
+    ...(Number.isFinite(sent) ? { repliedAt: new Date(sent) } : {}),
+  });
 }
 
 /** Сколько «+» ждёт вебхук комментария (тесты ставят 0). */
@@ -381,6 +415,12 @@ export async function handleZernioMessage(
   });
   if (manager) {
     await consultant.pauseConsultant(ctx, customer);
+    // Менеджер ответил в приложении: его задачи по этому покупателю сделаны.
+    const { closeTaskAfterReply } = await import("@/core/consultant/tasks");
+    await closeTaskAfterReply(ctx, customer.userKey, new Date(), {
+      via: m.platform,
+      repliedAt: new Date(manager.at),
+    });
     await recordSilentRun(ctx, customer, m, text, "manager");
     return processed("менеджер отвечает из приложения — консультант на паузе");
   }
