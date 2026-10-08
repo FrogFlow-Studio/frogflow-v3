@@ -1,0 +1,19 @@
+-- Откат 23-2: данные не затрагиваются.
+DROP INDEX IF EXISTS idx_buyer_favorites_bot_id;
+DROP INDEX IF EXISTS idx_cart_items_product_id;
+DROP INDEX IF EXISTS idx_cart_items_product_variant_id;
+DROP INDEX IF EXISTS idx_categories_parent_id;
+DROP INDEX IF EXISTS idx_comment_dm_fallback_sends_bot_id;
+DROP INDEX IF EXISTS idx_community_reports_post_id;
+DROP INDEX IF EXISTS idx_community_reports_thread_id;
+DROP INDEX IF EXISTS idx_consultant_handoffs_run_id;
+DROP INDEX IF EXISTS idx_delivery_zones_bot_id;
+DROP INDEX IF EXISTS idx_gift_certificates_redeemed_order_id;
+DROP INDEX IF EXISTS idx_order_items_product_id;
+DROP INDEX IF EXISTS idx_order_items_product_variant_id;
+DROP INDEX IF EXISTS idx_orders_delivery_zone_id;
+DROP INDEX IF EXISTS idx_platform_news_reads_news_id;
+DROP INDEX IF EXISTS idx_product_reviews_product_id;
+DROP INDEX IF EXISTS idx_product_variants_bot_id;
+DROP INDEX IF EXISTS idx_vip_member_profiles_assigned_tariff_id;
+DROP INDEX IF EXISTS idx_vip_subscriptions_tariff_id;
