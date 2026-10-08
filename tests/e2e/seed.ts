@@ -51,6 +51,7 @@ import { seedShop19P5Wizard } from "./seed/shop19-p5-wizard.ts";
 import { seedShop19AEmpty } from "./seed/shop19-a-empty.ts";
 import { seedShop19AA11y } from "./seed/shop19-a-a11y.ts";
 import { seedShop21TProduct } from "./seed/shop21-t-product.ts";
+import { seedShop23List } from "./seed/shop23-list.ts";
 import { seedShop22RShare } from "./seed/shop22-r-share.ts";
 import { seedShop22RTrial } from "./seed/shop22-r-trial.ts";
 import { seedShop22RKinds } from "./seed/shop22-r-kinds.ts";
@@ -120,6 +121,7 @@ export function seedDb(): StubDb {
   seedShop19AEmpty(db, now);
   seedShop19AA11y(db, now);
   seedShop21TProduct(db, now);
+  seedShop23List(db, now);
   seedShop22RShare(db, now);
   seedShop22RTrial(db, now);
   seedShop22RKinds(db, now);

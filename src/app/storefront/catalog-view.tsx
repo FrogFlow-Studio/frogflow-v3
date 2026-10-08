@@ -17,6 +17,8 @@ import { PartnerPromos } from "@/app/storefront/partner-promo";
 import { useStorefrontLocale } from "@/app/storefront/locale";
 import { OfferNote, OfferPrice } from "@/app/storefront/offer";
 import { SmartSearchResults } from "@/app/storefront/smart-search";
+import { useCatalogReturn } from "@/app/storefront/list-nav";
+import type { ListQuery } from "@/core/storefront/list-context";
 import { formatRatingSummary } from "@/core/reviews/pure";
 import { formatMoney } from "@/core/money/money";
 import { localeFlags } from "@/core/i18n/locale";
@@ -245,24 +247,35 @@ export function CatalogView({
   const hasMore = extra ? extra.hasMore : first.hasMore;
   const [loadingMore, setLoadingMore] = useState(false);
   const [moreFailed, setMoreFailed] = useState(false);
+  const query: ListQuery = {
+    slug,
+    q: s.q,
+    category: s.category,
+    sort: s.sort,
+    lang: s.lang,
+    stock: s.stock === 1 ? true : undefined,
+    sale: s.sale === 1 ? true : undefined,
+    bundles: s.sets === 1 ? true : undefined,
+    min: s.min,
+    max: s.max,
+  };
+  // «Назад» из товара: догруженное и место в списке восстанавливаются (list-nav).
+  const back = useCatalogReturn({
+    pageKey,
+    query,
+    firstOffset: (firstPage - 1) * STORE_PAGE,
+    firstIds: first.items.map((p) => p.id),
+    ids: catalog.map((p) => p.id),
+    extra: extra?.items ?? [],
+    hasMore,
+    restore: (items, more) => setMore({ key: pageKey, items, hasMore: more }),
+  });
   const loadMore = async () => {
     setLoadingMore(true);
     setMoreFailed(false);
     try {
       const next = await storeCatalogPageFn({
-        data: {
-          slug,
-          q: s.q,
-          category: s.category,
-          sort: s.sort,
-          lang: s.lang,
-          stock: s.stock === 1 ? true : undefined,
-          sale: s.sale === 1 ? true : undefined,
-          bundles: s.sets === 1 ? true : undefined,
-          min: s.min,
-          max: s.max,
-          offset: (firstPage - 1) * STORE_PAGE + catalog.length,
-        },
+        data: { ...query, offset: (firstPage - 1) * STORE_PAGE + catalog.length },
       });
       const seen = new Set(catalog.map((p) => p.id));
       setMore({
@@ -629,7 +642,12 @@ export function CatalogView({
           {products.map((p, i) => (
             <article
               key={p.id}
-              className="card group relative flex flex-col overflow-hidden transition-shadow hover:shadow-md"
+              data-product-card={p.id}
+              className={`card group relative flex flex-col overflow-hidden transition-shadow hover:shadow-md${back.flash === p.id ? " ring-2 ring-accent" : ""}`}
+              // Открыли товар из сетки — запоминаем список, чтобы листать и вернуться на место.
+              onClickCapture={(e) => {
+                if ((e.target as HTMLElement).closest("a")) back.remember(p.id);
+              }}
             >
               <Link
                 to="/s/$slug/p/$id"
