@@ -953,7 +953,7 @@
   "tests/order-platform.test.ts": {
     "keeps Instagram and WhatsApp orders in their own channels": "src/app/admin/notify-customer.test.ts › заказы из Instagram и WhatsApp уходят в свой диалог через Zernio, а не в Telegram",
     "treats legacy and unknown orders as Telegram": "src/app/admin/notify-customer.test.ts › пустая или незнакомая платформа — это Telegram, а не Instagram/WhatsApp",
-    "ждёт почту только у цифрового Instagram-заказа без адреса": "src/channels/zernio/shop-flow.test.ts › Instagram, цифровой заказ, почты нет — спрашиваем обязательно",
+    "ждёт почту только у цифрового Instagram-заказа без адреса": "drop: с #565 в Instagram почта по желанию, файлы приходят кнопкой «Скачать» в Direct (src/channels/zernio/shop-flow.test.ts › Instagram — почта по желанию: файлы приходят кнопкой «Скачать» в Direct)",
     "не блокирует Telegram, WhatsApp, физический заказ и уже указанную почту": "src/channels/zernio/shop-flow.test.ts › шага нет: почта известна, физический товар, Telegram, почта платформы не настроена"
   },
   "tests/orders-pure.test.ts": {
