@@ -90,7 +90,7 @@ export const ru = {
   "ws.tasks.clearAll": "Удалить все",
   "ws.tasks.clearAllConfirm": "Удалить все задачи, в том числе открытые? Это не отменить.",
   "ws.tasks.limit":
-    "Список хранит 200 последних задач: при переполнении первыми уходят старые сделанные.",
+    "Список хранит 200 последних задач: при переполнении уходят старые сделанные, открытые не удаляются.",
 
   "ws.dialogs.title": "Диалоги",
   "ws.dialogs.subtitle":
@@ -255,7 +255,7 @@ export const kk: SectionDict<typeof ru> = {
   "ws.tasks.clearAllConfirm":
     "Барлық тапсырмаларды, ашықтарын да жою керек пе? Мұны қайтару мүмкін емес.",
   "ws.tasks.limit":
-    "Тізім соңғы 200 тапсырманы сақтайды: толып кетсе, алдымен ескі орындалғандары кетеді.",
+    "Тізім соңғы 200 тапсырманы сақтайды: толып кетсе, ескі орындалғандары кетеді, ашықтары өшірілмейді.",
 
   "ws.dialogs.title": "Диалогтар",
   "ws.dialogs.subtitle":
@@ -419,7 +419,7 @@ export const en: SectionDict<typeof ru> = {
   "ws.tasks.clearAll": "Delete all",
   "ws.tasks.clearAllConfirm": "Delete all tasks, including open ones? This can't be undone.",
   "ws.tasks.limit":
-    "The list keeps the last 200 tasks: when it overflows, old done tasks go first.",
+    "The list keeps the last 200 tasks: when it overflows, old done tasks are removed; open tasks are never removed.",
 
   "ws.dialogs.title": "Dialogues",
   "ws.dialogs.subtitle":
@@ -585,7 +585,7 @@ export const uz: SectionDict<typeof ru> = {
   "ws.tasks.clearAllConfirm":
     "Barcha vazifalar, ochiqlari ham, o‘chirilsinmi? Buni bekor qilib bo‘lmaydi.",
   "ws.tasks.limit":
-    "Ro‘yxat oxirgi 200 ta vazifani saqlaydi: to‘lib qolsa, avval eski bajarilganlar ketadi.",
+    "Ro‘yxat oxirgi 200 ta vazifani saqlaydi: to‘lib qolsa, eski bajarilganlar ketadi, ochiqlari o‘chirilmaydi.",
 
   "ws.dialogs.title": "Suhbatlar",
   "ws.dialogs.subtitle":
