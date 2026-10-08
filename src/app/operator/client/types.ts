@@ -1,4 +1,4 @@
-import type { getClientFn } from "@/app/operator/operator.functions";
+import type { getClientFn } from "@/app/operator/clients.functions";
 
 /** Данные карточки клиента у оператора (getClientFn), общие для её разделов. */
 export type C = Awaited<ReturnType<typeof getClientFn>>["client"];

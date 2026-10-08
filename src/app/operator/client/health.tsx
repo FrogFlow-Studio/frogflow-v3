@@ -7,9 +7,8 @@ import {
   notifyOwnerFn,
   ownerMessageDraftFn,
   ownerMessagesFn,
-  healthHistoryFn,
-  recordHealthNowFn,
-} from "@/app/operator/operator.functions";
+} from "@/app/operator/owner-messages.functions";
+import { healthHistoryFn, recordHealthNowFn } from "@/app/operator/platform.functions";
 import { Badge, Card, ErrorBox, useAction } from "@/app/ui";
 import type { C } from "./types";
 

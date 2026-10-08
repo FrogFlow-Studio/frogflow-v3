@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { revenueFn } from "@/app/operator/operator.functions";
+import { revenueFn } from "@/app/operator/client-plans.functions";
 import { Badge, Card, Empty, PageTitle, Stat } from "@/app/ui";
 import { TIER_TITLES, PLAN_TIERS } from "@/core/plans/registry";
 import { ChartCard, DataTable, LineChart } from "@/app/ui/charts";

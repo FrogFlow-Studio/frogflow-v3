@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
-import { operatorLogin } from "@/app/operator/operator.functions";
+import { operatorLogin } from "@/app/operator/operator-auth.functions";
 import { ErrorBox, Field, useAction } from "@/app/ui";
 
 export const Route = createFileRoute("/operator/login")({ component: LoginPage });

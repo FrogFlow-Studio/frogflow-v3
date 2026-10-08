@@ -5,7 +5,7 @@ import {
   partnersFn,
   savePartnerFn,
   setClientPartnerFn,
-} from "@/app/operator/operator.functions";
+} from "@/app/operator/partners.functions";
 import { Card, Empty, ErrorBox, Field, PageTitle, useAction } from "@/app/ui";
 
 export const Route = createFileRoute("/operator/_authed/partners")({

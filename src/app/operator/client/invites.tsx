@@ -1,6 +1,6 @@
 /** Карточка клиента у оператора: кто кого пригласил и кнопка «Зачесть месяц». */
 import { useEffect, useState } from "react";
-import { creditInviteFn, inviteViewFn } from "@/app/operator/operator.functions";
+import { creditInviteFn, inviteViewFn } from "@/app/operator/client-billing.functions";
 import { Card, ErrorBox, useAction } from "@/app/ui";
 import type { C } from "./types";
 

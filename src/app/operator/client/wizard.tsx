@@ -1,6 +1,6 @@
 /** Карточка клиента у оператора: где клиент застрял в мастере подключения Instagram/WhatsApp. */
 import { useEffect, useState } from "react";
-import { wizardViewFn } from "@/app/operator/operator.functions";
+import { wizardViewFn } from "@/app/operator/client-billing.functions";
 import { Badge, Card, ErrorBox, useAction } from "@/app/ui";
 import type { C } from "./types";
 

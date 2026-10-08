@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { platformHealthFn } from "@/app/operator/operator.functions";
+import { platformHealthFn } from "@/app/operator/platform.functions";
 import type { HealthRow, Light } from "@/app/operator/platform-health";
 import { Badge, PageTitle } from "@/app/ui";
 

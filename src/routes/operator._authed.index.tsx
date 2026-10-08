@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { listClientsFn } from "@/app/operator/operator.functions";
+import { listClientsFn } from "@/app/operator/clients.functions";
 import type { Pulse } from "@/app/operator/pulse";
 import {
   channelStates,

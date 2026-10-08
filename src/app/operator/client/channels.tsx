@@ -8,7 +8,7 @@ import {
   setZernioAccountsFn,
   syncZernioFn,
   updateClientMetaFn,
-} from "@/app/operator/operator.functions";
+} from "@/app/operator/clients.functions";
 import { VERTICAL_KEYS, VERTICALS } from "@/core/verticals/registry";
 import { Badge, Card, ErrorBox, Field, useAction } from "@/app/ui";
 import { ConfirmName } from "./ConfirmName";

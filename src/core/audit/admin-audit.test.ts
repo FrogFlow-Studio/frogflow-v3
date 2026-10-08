@@ -45,7 +45,7 @@ describe("журнал действий админки: что пишем", () =
       expect(auditedAdminAction(fn(name), "POST"), name).toBeNull();
     expect(auditedAdminAction(fn("saveProductFn"), "GET")).toBeNull();
     expect(
-      auditedAdminAction(fn("setModuleFn", "src/app/operator/operator.functions.ts"), "POST"),
+      auditedAdminAction(fn("setModuleFn", "src/app/operator/clients.functions.ts"), "POST"),
     ).toBeNull();
     expect(auditedAdminAction(undefined, "POST")).toBeNull();
   });

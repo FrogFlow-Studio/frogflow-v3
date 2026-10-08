@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { communityReportsFn, resolveCommunityReportFn } from "@/app/operator/operator.functions";
+import { communityReportsFn, resolveCommunityReportFn } from "@/app/operator/moderation.functions";
 import { Card, Empty, ErrorBox, PageTitle, useAction } from "@/app/ui";
 
 export const Route = createFileRoute("/operator/_authed/community")({

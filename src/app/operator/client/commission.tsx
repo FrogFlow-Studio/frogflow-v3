@@ -4,7 +4,7 @@ import {
   commissionSwitchFn,
   setCommissionStartFn,
   setCommissionSwitchFn,
-} from "@/app/operator/operator.functions";
+} from "@/app/operator/client-plans.functions";
 import { Badge, Card, ErrorBox, useAction } from "@/app/ui";
 import type { C } from "./types";
 

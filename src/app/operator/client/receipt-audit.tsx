@@ -1,6 +1,6 @@
 /** Карточка клиента у оператора: аудит чеков (только чтение). */
 import { useState } from "react";
-import { receiptAuditInventoryFn, receiptAuditScanFn } from "@/app/operator/operator.functions";
+import { receiptAuditInventoryFn, receiptAuditScanFn } from "@/app/operator/platform.functions";
 import {
   ACTUAL_HANDLING_LABEL,
   auditOrderCaption,

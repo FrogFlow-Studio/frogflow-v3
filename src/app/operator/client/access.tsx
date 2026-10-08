@@ -6,7 +6,7 @@ import {
   setAddressingFn,
   setAdminCredentialsFn,
   setModuleFn,
-} from "@/app/operator/operator.functions";
+} from "@/app/operator/clients.functions";
 import { MODULE_KEYS, moduleDef, type ModuleKey } from "@/core/modules/registry";
 import { Badge, Card, ErrorBox, Field, Switch, useAction } from "@/app/ui";
 import type { C } from "./types";

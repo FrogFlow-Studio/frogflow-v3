@@ -1,13 +1,13 @@
 /** Карточка клиента у оператора: дневные пределы ИИ-консультанта и умного поиска. */
 import { type FormEvent } from "react";
+import { type getClientFn } from "@/app/operator/clients.functions";
 import {
-  type getClientFn,
   setConsultantLimitsFn,
   setConsultantPricelistFn,
   setConsultantPricelistOptionsFn,
   setConsultantSearchFn,
   setSmartSearchLimitFn,
-} from "@/app/operator/operator.functions";
+} from "@/app/operator/client-consultant.functions";
 import { Badge, Card, ErrorBox, Field, useAction } from "@/app/ui";
 import type { C } from "./types";
 

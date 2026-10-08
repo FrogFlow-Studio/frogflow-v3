@@ -7,7 +7,7 @@ import {
   invoiceActionFn,
   invoiceProofUrlFn,
   setOverduePolicyFn,
-} from "@/app/operator/operator.functions";
+} from "@/app/operator/client-billing.functions";
 import { Badge, Card, ErrorBox, useAction } from "@/app/ui";
 import type { C } from "./types";
 

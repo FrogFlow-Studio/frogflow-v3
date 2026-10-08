@@ -1,5 +1,5 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
-import { renewalsOverviewFn } from "@/app/operator/operator.functions";
+import { renewalsOverviewFn } from "@/app/operator/client-billing.functions";
 import { Badge, Card, Empty, PageTitle, Stat } from "@/app/ui";
 
 const WINDOWS = [7, 14, 30] as const;

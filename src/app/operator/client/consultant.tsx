@@ -1,6 +1,9 @@
 /** Карточка клиента у оператора: консультант по прайсу — здоровье, модель, цена ответа. */
 import { useEffect, useState, type FormEvent } from "react";
-import { clientConsultantViewFn, setConsultantModelFn } from "@/app/operator/operator.functions";
+import {
+  clientConsultantViewFn,
+  setConsultantModelFn,
+} from "@/app/operator/client-consultant.functions";
 import { Badge, Card, ErrorBox, Field, useAction } from "@/app/ui";
 import type { C } from "./types";
 

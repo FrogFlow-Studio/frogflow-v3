@@ -1,7 +1,7 @@
 /** Карточка клиента у оператора: связанные магазины одного продавца. */
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { shopGroupFn, linkShopsFn, unlinkShopFn } from "@/app/operator/operator.functions";
+import { shopGroupFn, linkShopsFn, unlinkShopFn } from "@/app/operator/clients.functions";
 import { Card, ErrorBox, useAction } from "@/app/ui";
 import type { C } from "./types";
 

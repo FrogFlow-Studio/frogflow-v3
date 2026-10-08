@@ -8,7 +8,7 @@ import {
   supportNoteFn,
   supportReplyFn,
   supportStatusFn,
-} from "@/app/operator/operator.functions";
+} from "@/app/operator/support.functions";
 import { Badge, Card, Empty, ErrorBox, PageTitle, useAction } from "@/app/ui";
 import { minutesLabel } from "@/core/support/response";
 import { QUICK_REPLIES, quickReplyText } from "@/core/support/quick-replies";

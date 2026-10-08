@@ -4,7 +4,7 @@ import {
   connectTelegramFn,
   reinstallWebhookFn,
   setServedByFn,
-} from "@/app/operator/operator.functions";
+} from "@/app/operator/clients.functions";
 import { Badge, Card, ErrorBox, Switch, useAction } from "@/app/ui";
 import { ConfirmName } from "./ConfirmName";
 import type { C, W, M } from "./types";

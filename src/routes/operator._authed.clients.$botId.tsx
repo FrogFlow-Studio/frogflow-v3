@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { shopEventView } from "@/app/admin/audit-labels";
-import { archiveClientFn, getClientFn, setStatusFn } from "@/app/operator/operator.functions";
+import { archiveClientFn, getClientFn, setStatusFn } from "@/app/operator/clients.functions";
 import { Card, ErrorBox, PageTitle, Stat, useAction } from "@/app/ui";
 import { DiagnoseCard } from "@/app/operator/client/diagnose";
 import { MigrationCard, TelegramCard } from "@/app/operator/client/telegram";
