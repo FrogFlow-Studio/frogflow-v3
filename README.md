@@ -21,7 +21,7 @@ v3 — продолжение v2: код и история перенесены 
 ## Запуск
 
 ```bash
-npm install --legacy-peer-deps
+npm ci
 cp .env.example .env            # заполнить
 npm run dev                     # http://localhost:3000
 npm run check                   # lint + typecheck + test — перед каждым пушем
