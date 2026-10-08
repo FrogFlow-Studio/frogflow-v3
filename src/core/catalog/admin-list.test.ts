@@ -157,7 +157,7 @@ describe("фильтр «Язык материалов»", () => {
 
   it("сбой чтения — ошибка, а не пустой список «нет на KZ»", async () => {
     const { ctx, db } = catalog();
-    const broken = { ...ctx, db: withBrokenReads(db, ["products"]) } as TenantContext;
+    const broken = { ...ctx, db: withBrokenReads(db, ["products"]) } as unknown as TenantContext;
     await expect(
       listProductsForAdmin(broken, { lang: { lang: "kk", has: false } }),
     ).rejects.toThrow();
