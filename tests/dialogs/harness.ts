@@ -391,7 +391,10 @@ function directRoom(o: RoomOptions): Room {
           });
         };
         if ("appReply" in i) {
-          const at = new Date().toISOString();
+          // Ответ менеджера — через секунду после предыдущих шагов: задача консультанта,
+          // заведённая в ту же миллисекунду (быстрый раннер, TEST_NOW шагом 20 мс), иначе
+          // считается более поздней, чем ответ, и опрос её честно не закрывает.
+          const at = new Date(Date.now() + 1000).toISOString();
           inbox.push({ direction: "outgoing", message: i.appReply, sentVia: null, createdAt: at });
           await poll(at);
         } else if ("missed" in i) {
