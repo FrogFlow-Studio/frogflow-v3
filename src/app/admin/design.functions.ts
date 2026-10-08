@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { STORE_BLOCKS, STORE_THEMES } from "@/core/storefront/design";
+import { PHOTO_SHAPES, STORE_BLOCKS, STORE_THEMES } from "@/core/storefront/design";
 
 /** Оформление витрины (core/storefront/design): читают все сотрудники, меняет владелец. */
 export const storeDesignFn = createServerFn({ method: "GET" }).handler(async () => {
@@ -15,6 +15,7 @@ export const saveStoreDesignFn = createServerFn({ method: "POST" })
         theme: z.enum(STORE_THEMES),
         cover: z.boolean(),
         blocks: z.array(z.enum(STORE_BLOCKS)).max(STORE_BLOCKS.length),
+        photo: z.enum(PHOTO_SHAPES),
       })
       .parse(d),
   )

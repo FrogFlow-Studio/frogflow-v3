@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { usePhotoFrame } from "@/app/storefront/photo-frame";
 import { useEffect, useState } from "react";
 import { storeFavoritesFn } from "@/app/storefront/catalog.functions";
 import { createHandoffFn, miniAppCheckoutFn } from "@/app/storefront/storefront.functions";
@@ -22,6 +23,7 @@ export const Route = createFileRoute("/s/$slug/favorites")({
 function FavoritesPage() {
   const { slug } = Route.useParams();
   const { t } = useStorefrontLocale();
+  const frame = usePhotoFrame();
   const fav = useFavorites();
   const [items, setItems] = useState<StoreProduct[] | null>(null);
   const [failed, setFailed] = useState<unknown>(null);
@@ -104,9 +106,11 @@ function FavoritesPage() {
           <article key={p.id} className="card relative flex flex-col overflow-hidden">
             <Link to="/s/$slug/p/$id" params={{ slug, id: p.id }} className="block">
               {p.images[0] ? (
-                <img src={p.images[0]} alt={p.name} className="aspect-square w-full object-cover" />
+                <img src={p.images[0]} alt={p.name} className={frame.img} />
               ) : (
-                <div className="flex aspect-square items-center justify-center bg-surface-2 text-4xl">
+                <div
+                  className={`flex ${frame.box} items-center justify-center bg-surface-2 text-4xl`}
+                >
                   {p.kind === "digital" ? "📄" : "📦"}
                 </div>
               )}

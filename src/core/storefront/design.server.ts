@@ -10,7 +10,7 @@ export async function saveDesign(ctx: TenantContext, input: unknown): Promise<St
   const d = parseDesign(input);
   await patchTenantSettings(ctx.tenant.id, {
     // blocks — массив: patchTenantSettings заменяет его целиком, а не сливает.
-    storefront_design: { theme: d.theme, cover: d.cover, blocks: d.blocks },
+    storefront_design: { theme: d.theme, cover: d.cover, blocks: d.blocks, photo: d.photo },
   });
   return d;
 }

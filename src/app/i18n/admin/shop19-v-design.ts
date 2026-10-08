@@ -22,6 +22,18 @@ export const ru = {
   "settings.design.up": "Поднять блок «{name}»",
   "settings.design.down": "Опустить блок «{name}»",
   "settings.design.ownerOnly": "Оформление меняет владелец магазина.",
+  "settings.design.photo": "Форма фото в каталоге",
+  "settings.design.photoHint":
+    "Как фото товара выглядит в карточках каталога, «Похожих», «Недавно смотрели», избранном и на странице товара. Обложка магазина и превью ссылок не меняются.",
+  "settings.design.photo.square": "Квадрат",
+  "settings.design.photo.squareHint":
+    "Как раньше: фото заполняет квадрат, края вертикальных фото обрезаются.",
+  "settings.design.photo.portrait": "Вертикальная 4:5",
+  "settings.design.photo.portraitHint":
+    "Карточка выше, фото 4:5 видно целиком. Квадратные фото вписываются с фоном, не растягиваются. На экране помещается чуть меньше товаров.",
+  "settings.design.photo.contain": "Целиком",
+  "settings.design.photo.containHint":
+    "Фото любой формы видно целиком внутри квадрата, свободное место — фон. Для каталогов со смешанными фото.",
 } as const;
 
 export const kk: SectionDict<typeof ru> = {
@@ -45,6 +57,18 @@ export const kk: SectionDict<typeof ru> = {
   "settings.design.up": "«{name}» блогын жоғары жылжыту",
   "settings.design.down": "«{name}» блогын төмен жылжыту",
   "settings.design.ownerOnly": "Безендіруді дүкен иесі өзгертеді.",
+  "settings.design.photo": "Каталогтағы фото пішіні",
+  "settings.design.photoHint":
+    "Тауар фотосы каталог карточкаларында, «Ұқсастарда», «Жақында қаралғандарда», таңдаулыларда және тауар бетінде қалай көрінеді. Дүкен мұқабасы мен сілтеме алдын ала көрінісі өзгермейді.",
+  "settings.design.photo.square": "Шаршы",
+  "settings.design.photo.squareHint":
+    "Бұрынғыдай: фото шаршыны толтырады, тік фотолардың шеттері кесіледі.",
+  "settings.design.photo.portrait": "Тік 4:5",
+  "settings.design.photo.portraitHint":
+    "Карточка биігірек, 4:5 фото толық көрінеді. Шаршы фотолар фонмен сыйғызылады, созылмайды. Экранға тауар сәл азырақ сыяды.",
+  "settings.design.photo.contain": "Толық",
+  "settings.design.photo.containHint":
+    "Кез келген пішіндегі фото шаршы ішінде толық көрінеді, бос орын — фон. Аралас фотолары бар каталогтарға.",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -68,6 +92,18 @@ export const en: SectionDict<typeof ru> = {
   "settings.design.up": "Move “{name}” up",
   "settings.design.down": "Move “{name}” down",
   "settings.design.ownerOnly": "Only the shop owner can change the look.",
+  "settings.design.photo": "Photo shape in the catalogue",
+  "settings.design.photoHint":
+    "How product photos look on catalogue cards, “Similar”, “Recently viewed”, favourites and the product page. The shop cover and link previews do not change.",
+  "settings.design.photo.square": "Square",
+  "settings.design.photo.squareHint":
+    "As before: the photo fills a square, edges of tall photos are cropped.",
+  "settings.design.photo.portrait": "Portrait 4:5",
+  "settings.design.photo.portraitHint":
+    "Taller cards, 4:5 photos are shown in full. Square photos fit with a background, never stretched. Slightly fewer products fit on screen.",
+  "settings.design.photo.contain": "Whole photo",
+  "settings.design.photo.containHint":
+    "Photos of any shape are shown in full inside a square, the free space is background. For catalogues with mixed photos.",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -91,4 +127,16 @@ export const uz: SectionDict<typeof ru> = {
   "settings.design.up": "«{name}» blokini yuqoriga",
   "settings.design.down": "«{name}» blokini pastga",
   "settings.design.ownerOnly": "Dizaynni do‘kon egasi o‘zgartiradi.",
+  "settings.design.photo": "Katalogdagi surat shakli",
+  "settings.design.photoHint":
+    "Mahsulot surati katalog kartochkalarida, «O‘xshash», «Yaqinda ko‘rilgan», sevimlilar va mahsulot sahifasida qanday ko‘rinadi. Do‘kon muqovasi va havola ko‘rinishi o‘zgarmaydi.",
+  "settings.design.photo.square": "Kvadrat",
+  "settings.design.photo.squareHint":
+    "Avvalgidek: surat kvadratni to‘ldiradi, tik suratlarning chetlari kesiladi.",
+  "settings.design.photo.portrait": "Tik 4:5",
+  "settings.design.photo.portraitHint":
+    "Kartochka balandroq, 4:5 surat to‘liq ko‘rinadi. Kvadrat suratlar fon bilan joylashadi, cho‘zilmaydi. Ekranga biroz kamroq mahsulot sig‘adi.",
+  "settings.design.photo.contain": "To‘liq",
+  "settings.design.photo.containHint":
+    "Har qanday shakldagi surat kvadrat ichida to‘liq ko‘rinadi, bo‘sh joy — fon. Aralash suratli kataloglar uchun.",
 };

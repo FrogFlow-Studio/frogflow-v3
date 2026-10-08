@@ -42,7 +42,7 @@ const SAVED = {
     delivery: "По городу",
     payment: "Kaspi",
   },
-  storefront_design: { theme: "warm", cover: true, blocks: ["hits", "new"] },
+  storefront_design: { theme: "warm", cover: true, blocks: ["hits", "new"], photo: "portrait" },
   // сообщество авторов (core/community)
   community: {
     enabled: true,

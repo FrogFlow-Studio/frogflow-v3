@@ -221,8 +221,8 @@ export type TenantSettings = {
     delivery?: string;
     payment?: string;
   };
-  /** Оформление витрины (core/storefront/design): тема, обложка, порядок блоков главной. */
-  storefront_design?: { theme?: string; cover?: boolean; blocks?: string[] };
+  /** Оформление витрины (core/storefront/design): тема, обложка, порядок блоков главной, форма фото. */
+  storefront_design?: { theme?: string; cover?: boolean; blocks?: string[]; photo?: string };
   /**
    * Площадка FrogFlow (core/marketplace): магазин участвует только по согласию.
    * `listed` — выключатель продавца, `hidden` — решение оператора (сильнее согласия),

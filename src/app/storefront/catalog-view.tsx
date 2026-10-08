@@ -1,4 +1,5 @@
 import { Link, useLoaderData, useNavigate } from "@tanstack/react-router";
+import { usePhotoFrame } from "@/app/storefront/photo-frame";
 import { imageSrcSet } from "@/core/catalog/image-url";
 import { cardBadge } from "@/core/catalog/lead-time";
 import { useState, type MouseEvent, type ReactNode } from "react";
@@ -203,6 +204,9 @@ export function CatalogView({
 }) {
   const shop = useLoaderData({ from: "/s/$slug" });
   const { t } = useStorefrontLocale();
+  const frame = usePhotoFrame();
+  // Товар из результатов поиска знает запрос: на нём ссылка «← Результаты» (Т2).
+  const fromSearch = s.q ? (s.category ? { q: s.q, cat: s.category } : { q: s.q }) : {};
   const navigate = useNavigate();
   const go = (search: CatalogSearch) => {
     const { category, ...others } = search;
@@ -627,7 +631,12 @@ export function CatalogView({
               key={p.id}
               className="card group relative flex flex-col overflow-hidden transition-shadow hover:shadow-md"
             >
-              <Link to="/s/$slug/p/$id" params={{ slug, id: p.id }} className="relative block">
+              <Link
+                to="/s/$slug/p/$id"
+                params={{ slug, id: p.id }}
+                search={fromSearch}
+                className="relative block"
+              >
                 {p.images[0] ? (
                   <img
                     src={p.images[0]}
@@ -635,14 +644,16 @@ export function CatalogView({
                     sizes="(min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw"
                     alt={p.name}
                     width={640}
-                    height={640}
-                    className="aspect-square w-full object-cover transition-transform group-hover:scale-[1.02]"
+                    height={frame.shape === "portrait" ? 800 : 640}
+                    className={`${frame.img} transition-transform group-hover:scale-[1.02]`}
                     // Первый ряд грузится сразу (это первая отрисовка), остальное — по мере прокрутки.
                     loading={i < 4 ? "eager" : "lazy"}
                     decoding="async"
                   />
                 ) : (
-                  <div className="flex aspect-square items-center justify-center bg-surface-2 text-4xl">
+                  <div
+                    className={`flex ${frame.box} items-center justify-center bg-surface-2 text-4xl`}
+                  >
                     {p.kind === "digital" ? "📄" : "📦"}
                   </div>
                 )}
@@ -673,6 +684,7 @@ export function CatalogView({
                 <Link
                   to="/s/$slug/p/$id"
                   params={{ slug, id: p.id }}
+                  search={fromSearch}
                   className="line-clamp-2 text-sm font-medium hover:underline"
                 >
                   {p.name}

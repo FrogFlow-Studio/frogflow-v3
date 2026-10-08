@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { usePhotoFrame } from "@/app/storefront/photo-frame";
 import { useEffect, useState } from "react";
 import { storeFavoritesFn } from "@/app/storefront/catalog.functions";
 import { useStorefrontLocale } from "@/app/storefront/locale";
@@ -39,6 +40,7 @@ export function useRememberViewed(slug: string, productId: string) {
 /** Строка «Недавно смотрели»; пустой список или сбой чтения — ничего не рисуем. `exclude` — открытый сейчас товар. */
 export function RecentlyViewed({ slug, exclude }: { slug: string; exclude?: string }) {
   const { t } = useStorefrontLocale();
+  const frame = usePhotoFrame();
   const [items, setItems] = useState<StoreProduct[]>([]);
   useEffect(() => {
     const ids = readRecent(slug).filter((id) => id !== exclude);
@@ -67,14 +69,9 @@ export function RecentlyViewed({ slug, exclude }: { slug: string; exclude?: stri
             className="card w-32 shrink-0 overflow-hidden sm:w-40"
           >
             {p.images[0] ? (
-              <img
-                src={p.images[0]}
-                alt=""
-                className="aspect-square w-full object-cover"
-                loading="lazy"
-              />
+              <img src={p.images[0]} alt="" className={frame.img} loading="lazy" />
             ) : (
-              <div className="aspect-square bg-surface-2" />
+              <div className={`${frame.box} bg-surface-2`} />
             )}
             <div className="p-2 text-xs">
               <div className="line-clamp-2">{p.name}</div>

@@ -15,6 +15,9 @@ import { pageBadge } from "@/core/catalog/lead-time";
 import { ProductReviews } from "@/app/storefront/reviews";
 import { RecentlyViewed, useRememberViewed } from "@/app/storefront/recent";
 import { productMeta } from "@/core/storefront/share";
+import { usePhotoFrame } from "@/app/storefront/photo-frame";
+import { PhotoViewer } from "@/app/storefront/photo-viewer";
+import { parseSearchReturn, shortQuery } from "@/core/storefront/back-nav";
 import { storeProductSeoFn } from "@/app/storefront/share.functions";
 import {
   canonicalLink,
@@ -27,6 +30,9 @@ import {
 
 export const Route = createFileRoute("/s/$slug/p/$id")({
   headers: publicHeaders,
+  // Товар открыт из поиска: запрос (и категория) — для ссылки «← Результаты» (Т2).
+  validateSearch: (raw: Record<string, unknown>): { q?: string; cat?: string } =>
+    parseSearchReturn(raw) ?? {},
   loader: async ({ params }) => {
     const [page, seo] = await Promise.all([
       storeProductFn({ data: { slug: params.slug, id: params.id } }),
@@ -112,6 +118,10 @@ function ProductPage() {
   const { locale, t } = useStorefrontLocale();
   const cart = useCart();
   const [img, setImg] = useState(0);
+  const frame = usePhotoFrame();
+  // Просмотр фото на весь экран (Т6): фото товара или страницы примера.
+  const [viewer, setViewer] = useState<{ set: "photos" | "preview"; i: number } | null>(null);
+  const fromSearch = parseSearchReturn(Route.useSearch());
   const [variant, setVariant] = useState<string | null>(p.variants[0]?.id ?? null);
   const [msg, setMsg] = useState<string | null>(null);
   // «Написать магазину»: ссылка продавца (WhatsApp/Instagram/Telegram), иначе бот в Telegram.
@@ -150,6 +160,31 @@ function ProductPage() {
   };
   return (
     <>
+      {fromSearch && (
+        <p className="mb-2 text-sm">
+          {fromSearch.cat ? (
+            <Link
+              to="/s/$slug/c/$category"
+              params={{ slug, category: fromSearch.cat }}
+              search={{ q: fromSearch.q }}
+              className="text-accent hover:underline"
+              data-testid="back-to-results"
+            >
+              {t("product.backToResults", { q: shortQuery(fromSearch.q) })}
+            </Link>
+          ) : (
+            <Link
+              to="/s/$slug"
+              params={{ slug }}
+              search={{ q: fromSearch.q }}
+              className="text-accent hover:underline"
+              data-testid="back-to-results"
+            >
+              {t("product.backToResults", { q: shortQuery(fromSearch.q) })}
+            </Link>
+          )}
+        </p>
+      )}
       <Breadcrumbs slug={slug} shop={shop} categoryIds={p.categoryIds} leaf={p.name} t={t} />
       <div className="mt-3 grid gap-6 md:grid-cols-2">
         <div>
@@ -159,24 +194,33 @@ function ProductPage() {
               className="flex snap-x snap-mandatory overflow-x-auto rounded-lg md:hidden"
               data-testid="photo-swipe"
             >
-              {p.images.map((src) => (
-                <img
+              {p.images.map((src, i) => (
+                <button
                   key={src}
-                  src={src}
-                  alt={p.name}
-                  className="aspect-square w-full shrink-0 snap-center object-cover"
-                />
+                  type="button"
+                  className="w-full shrink-0 snap-center"
+                  onClick={() => setViewer({ set: "photos", i })}
+                  aria-label={t("viewer.open")}
+                >
+                  <img src={src} alt={p.name} className={frame.img} />
+                </button>
               ))}
             </div>
           )}
           {p.images[img] ? (
-            <img
-              src={p.images[img]}
-              alt={p.name}
-              className={`aspect-square w-full rounded-lg object-cover${p.images.length > 1 ? " max-md:hidden" : ""}`}
-            />
+            <button
+              type="button"
+              className={`block w-full cursor-zoom-in${p.images.length > 1 ? " max-md:hidden" : ""}`}
+              onClick={() => setViewer({ set: "photos", i: img })}
+              aria-label={t("viewer.open")}
+              data-testid="product-photo"
+            >
+              <img src={p.images[img]} alt={p.name} className={`${frame.img} rounded-lg`} />
+            </button>
           ) : (
-            <div className="flex aspect-square items-center justify-center rounded-lg bg-surface-2 text-5xl">
+            <div
+              className={`flex ${frame.box} items-center justify-center rounded-lg bg-surface-2 text-5xl`}
+            >
               📦
             </div>
           )}
@@ -188,7 +232,7 @@ function ProductPage() {
                   onClick={() => setImg(i)}
                   className={`shrink-0 rounded border-2 ${i === img ? "border-accent" : "border-transparent"}`}
                 >
-                  <img src={src} alt="" className="h-16 w-16 rounded object-cover" />
+                  <img src={src} alt="" className={`${frame.thumb} rounded`} />
                 </button>
               ))}
             </div>
@@ -463,15 +507,21 @@ function ProductPage() {
         <section className="mt-10">
           <h2 className="mb-3 text-sm font-semibold text-muted">{t("product.preview")}</h2>
           <div className="flex gap-3 overflow-x-auto pb-2">
-            {preview.map((src) => (
-              <a key={src} href={src} target="_blank" rel="noreferrer" className="shrink-0">
+            {preview.map((src, i) => (
+              <button
+                key={src}
+                type="button"
+                className="shrink-0 cursor-zoom-in"
+                onClick={() => setViewer({ set: "preview", i })}
+                aria-label={t("viewer.openPreview", { n: i + 1 })}
+              >
                 <img
                   src={src}
                   alt=""
                   loading="lazy"
                   className="h-56 rounded-md border border-line object-cover"
                 />
-              </a>
+              </button>
             ))}
           </div>
         </section>
@@ -500,14 +550,9 @@ function ProductPage() {
                 className="card overflow-hidden"
               >
                 {r.images[0] ? (
-                  <img
-                    src={r.images[0]}
-                    alt=""
-                    className="aspect-square w-full object-cover"
-                    loading="lazy"
-                  />
+                  <img src={r.images[0]} alt="" className={frame.img} loading="lazy" />
                 ) : (
-                  <div className="aspect-square bg-surface-2" />
+                  <div className={`${frame.box} bg-surface-2`} />
                 )}
                 <div className="p-2 text-xs">
                   <div className="line-clamp-2">{r.name}</div>
@@ -519,6 +564,12 @@ function ProductPage() {
         </section>
       )}
       <RecentlyViewed slug={slug} exclude={p.id} />
+      <PhotoViewer
+        images={viewer?.set === "preview" ? preview : p.images}
+        index={viewer?.i ?? null}
+        alt={viewer?.set === "preview" ? `${p.name} — ${t("product.preview")}` : p.name}
+        onClose={() => setViewer(null)}
+      />
     </>
   );
 }

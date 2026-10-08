@@ -68,6 +68,7 @@ import { seedBoviPlan } from "./seed/bovi-plan.ts";
 import { seedBoviWorkspace } from "./seed/bovi-workspace.ts";
 import { seedBoviLeftovers } from "./seed/bovi-leftovers.ts";
 import { seedKbImport } from "./seed/kb-import.ts";
+import { seedMiniappPhoto } from "./seed/miniapp-photo.ts";
 
 export function seedDb(): StubDb {
   const db = stubDb();
@@ -136,5 +137,6 @@ export function seedDb(): StubDb {
   seedBoviWorkspace(db, now);
   seedBoviLeftovers(db, now);
   seedKbImport(db, now);
+  seedMiniappPhoto(db, now);
   return db;
 }
