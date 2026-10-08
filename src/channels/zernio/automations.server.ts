@@ -1129,6 +1129,14 @@ export async function deliverPendingTwoStepDm(
 const JUST_DELIVERED_MS = 2 * 60_000;
 
 /**
+ * Строки второго шага бывают только этих двух типов. Фильтр по типу идёт по
+ * индексу: один `like` по event_id индексом не пользуется и перебирает все
+ * журналы магазина за неделю (у живого магазина ~11 тыс. строк, 1,7 с), под
+ * нагрузкой — statement timeout (Sentry FROGFLOW-V2-K, 07.10).
+ */
+const TWO_STEP_TYPES = ["two_step_dm_pending", "two_step_dm_sent"];
+
+/**
  * Ответ покупателя пришёл вдогонку к уже забранному второму сообщению. Два
  * быстрых «+» — два вебхука: если второй прочитал очередь после захвата
  * первым, deliverPendingTwoStepDm вернёт false, и «+» ушёл бы магазину —
@@ -1150,6 +1158,7 @@ export async function twoStepJustDelivered(
       ctx.db
         .from("zernio_logs")
         .select("status, error_message, payload")
+        .in("event_type", TWO_STEP_TYPES)
         .like("event_id", "two-step-dm:%")
         .in("status", ["processing", "processed"])
         .gte("created_at", new Date(Date.now() - PENDING_TWO_STEP_DAYS * 86_400_000).toISOString())
@@ -1244,6 +1253,7 @@ export async function deliverTwoStepFromDm(
       ctx.db
         .from("zernio_logs")
         .select("id, payload")
+        .in("event_type", TWO_STEP_TYPES)
         .like("event_id", "two-step-dm:%")
         .gte("created_at", new Date(firstAt - 60_000).toISOString())
         .order("created_at", { ascending: false })
