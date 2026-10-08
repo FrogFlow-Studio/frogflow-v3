@@ -97,7 +97,7 @@ function ProductsPage() {
     if (saved && saved !== "catalog" && (SORTS as readonly string[]).includes(saved))
       void navigate({
         to: "/admin/products",
-        search: { ...s, sort: saved as Sort },
+        search: (p) => ({ ...(p as typeof s), sort: saved as Sort }),
         replace: true,
       });
     // Только при входе на страницу.
@@ -111,7 +111,7 @@ function ProductsPage() {
     }
     void navigate({
       to: "/admin/products",
-      search: { ...s, sort: v === "catalog" ? undefined : v },
+      search: (p) => ({ ...(p as typeof s), sort: v === "catalog" ? undefined : v }),
     });
   };
   const [importOpen, setImportOpen] = useState(false);
@@ -212,7 +212,10 @@ function ProductsPage() {
         className="mb-4 flex flex-wrap gap-2"
         onSubmit={(e) => {
           e.preventDefault();
-          void navigate({ to: "/admin/products", search: { ...s, q: q || undefined } });
+          void navigate({
+            to: "/admin/products",
+            search: (p) => ({ ...(p as typeof s), q: q || undefined }),
+          });
         }}
       >
         <input
@@ -227,7 +230,7 @@ function ProductsPage() {
           onChange={(e) =>
             void navigate({
               to: "/admin/products",
-              search: { ...s, category: e.target.value || undefined },
+              search: (p) => ({ ...(p as typeof s), category: e.target.value || undefined }),
             })
           }
         >
@@ -245,7 +248,7 @@ function ProductsPage() {
             onChange={(e) =>
               void navigate({
                 to: "/admin/products",
-                search: { ...s, inactive: e.target.checked || undefined },
+                search: (p) => ({ ...(p as typeof s), inactive: e.target.checked || undefined }),
               })
             }
           />{" "}
@@ -271,7 +274,7 @@ function ProductsPage() {
           onChange={(e) =>
             void navigate({
               to: "/admin/products",
-              search: { ...s, lang: e.target.value || undefined },
+              search: (p) => ({ ...(p as typeof s), lang: e.target.value || undefined }),
             })
           }
         >
