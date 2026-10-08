@@ -800,6 +800,32 @@ export const SCENARIOS: Scenario[] = [
     }),
     ["instagram", "whatsapp"],
   ),
+  ...everyLocale(
+    (l) => ({
+      id: "consultant-stuck-turn-handoff",
+      title:
+        "прошлый ход завис дольше ожидания — покупателю «передаю менеджеру», продавцу задача, а не тишина",
+      origin:
+        "BOVI 08.10, сверка v3 после #576 (риск R3): не дождавшееся хода сообщение оставалось без ответа и без задачи",
+      channel: "instagram",
+      full: true,
+      vertical: "consultant",
+      modules: { shop: true },
+      pricelist: { catalog: PL_CATALOG, rounds: [said("Да, полотенца Uchino есть.")] },
+      steps: [
+        {
+          say: { stuck: "Есть полотенца?" },
+          expect: {
+            says: [handoffReply(l)],
+            notSays: [/Uchino/],
+            count: 1,
+            tasks: [{ done: false }],
+          },
+        },
+      ],
+    }),
+    ["instagram", "whatsapp"],
+  ),
   // ───── Консультант BOVI: надёжность ответа (07.10) ─────
   ...everyLocale(
     () => ({

@@ -4,7 +4,13 @@ import { env } from "@/config/env";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Customer } from "@/core/customers/customers";
 import { updateStateSection } from "@/core/customers/customers";
-import { commitTurn, isStaleIncoming, joinTurn, type InboxItem } from "./burst";
+import {
+  commitTurn,
+  isStaleIncoming,
+  joinTurn,
+  releaseUnanswered,
+  type InboxItem,
+} from "./burst";
 import { handoffSummary, sellerLocaleSafe } from "@/core/ai/seller-text";
 import { offerForProductRow } from "@/core/offers/offers";
 import { activePreorder, preordersFor } from "@/core/preorder/preorder";
@@ -182,8 +188,8 @@ export type ConsultantResult = {
   testState?: ConsultantState;
   /**
    * Отвечать не нужно (core/consultant/burst): folded — сообщение вошло в
-   * соседний ход и ответ на него уходит там; busy — не дождались чужого хода,
-   * сообщение ждёт следующего; paused — пока ждали, соседний ход передал
+   * соседний ход и ответ на него уходит там; busy — прежнее значение (не
+   * дождались чужого хода), теперь такой ход передаёт диалог менеджеру; paused — пока ждали, соседний ход передал
    * диалог менеджеру; stale — сообщение доставлено с опозданием. Реплика
    * покупателя в истории диалога в любом случае.
    */
@@ -586,6 +592,29 @@ export async function runConsultant(
   // Один ход на диалог: сообщение встаёт в очередь, ход идёт под арендой (core/consultant/burst).
   const own = photos || Boolean(opts.story?.storyId || opts.story?.mediaUrl);
   const joined = await joinTurn(ctx, customer, { id: opts.messageId, text: incoming, own });
+  if (!joined.lead && joined.why === "busy") {
+    // Чужой ход завис дольше ожидания: молча ждать следующего сообщения
+    // покупателя нельзя — его может не быть. Реплика — в историю, диалог —
+    // менеджеру с задачей (пауза, как у любой передачи).
+    const mine = await releaseUnanswered(
+      ctx,
+      customer,
+      { id: joined.ownId, text: incoming },
+      HISTORY_TURNS,
+      (cur) => withPatch(cur, { paused_until: pausedUntilIso(pauseHours(ctx.tenant)) }),
+    );
+    // Пока писали, чужой ход всё же взял сообщение — ответ уйдёт там.
+    if (!mine) return { reply: "", handoff: null, usage: NO_USAGE, skipped: "folded" };
+    return {
+      reply: handoffReply(bLocale),
+      handoff: {
+        kind: "handoff",
+        reason: "unknown_question",
+        summary: handoffSummary(await sellerLocaleSafe(ctx), "busy", incoming),
+      },
+      usage: NO_USAGE,
+    };
+  }
   if (!joined.lead) return { reply: "", handoff: null, usage: NO_USAGE, skipped: joined.why };
   const fresh = joined.customer;
   const turn: OpenTurn = { id: joined.turnId, items: joined.items, closed: false };

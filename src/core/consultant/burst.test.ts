@@ -2,7 +2,14 @@ import { afterEach, describe, expect, it } from "vitest";
 import { fakeDb } from "../../../tests/fake-db";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { updateStateSection, type Customer } from "@/core/customers/customers";
-import { BURST, commitTurn, isStaleIncoming, joinTurn, type JoinedTurn } from "./burst";
+import {
+  BURST,
+  commitTurn,
+  isStaleIncoming,
+  joinTurn,
+  releaseUnanswered,
+  type JoinedTurn,
+} from "./burst";
 
 /**
  * Один ход консультанта на диалог (BOVI 08.10): гонки на настоящей условной
@@ -134,7 +141,7 @@ describe("один ход консультанта на диалог", () => {
     expect(current().inbox).toHaveLength(1);
   });
 
-  it("не дождались чужого хода — ответа нет, сообщение остаётся в очереди до следующего хода", async () => {
+  it("не дождались чужого хода — busy с id сообщения; releaseUnanswered переносит его в историю", async () => {
     const { ctx, customer, current } = setup({
       turn: { id: "busy", until: new Date(Date.now() + 60_000).toISOString() },
     });
@@ -142,8 +149,19 @@ describe("один ход консультанта на диалог", () => {
     expect(await joinTurn(ctx, customer, { id: "m1", text: "Есть полотенца?" })).toEqual({
       lead: false,
       why: "busy",
+      ownId: "m1",
     });
     expect((current().inbox as Array<{ id: string }>).map((i) => i.id)).toEqual(["m1"]);
+    expect(await releaseUnanswered(ctx, customer, { id: "m1", text: "Есть полотенца?" }, 16)).toBe(
+      true,
+    );
+    expect(current().inbox).toBeUndefined();
+    expect(current().recent).toEqual([{ role: "customer", text: "Есть полотенца?" }]);
+    // Второй раз (или чужой ход уже забрал сообщение) — ничего не пишет.
+    expect(await releaseUnanswered(ctx, customer, { id: "m1", text: "Есть полотенца?" }, 16)).toBe(
+      false,
+    );
+    expect(current().recent).toHaveLength(1);
   });
 
   it("закрытие хода дописывает к свежей истории: запись соседа за время хода не затирается", async () => {

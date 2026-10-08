@@ -43,6 +43,11 @@ export type Input =
   | { burst: string[] }
   /** Сообщение, написанное `minutes` минут назад: канал доставил его с опозданием. */
   | { late: string; minutes: number }
+  /**
+   * Instagram/WhatsApp (только `full`): прошлый ход консультанта завис и держит
+   * аренду диалога дольше, чем ждёт новое сообщение (core/consultant/burst).
+   */
+  | { stuck: string }
   /** Продавец из Telegram отвечает номером на «Отправлен + трек» по заказу №… (Б12). */
   | { sellerTrack: string; orderId: number }
   /**
@@ -321,6 +326,7 @@ function directRoom(o: RoomOptions): Room {
     if ("late" in i)
       return { text: i.late, sentAt: new Date(Date.now() - i.minutes * 60_000).toISOString() };
     if ("burst" in i) return {};
+    if ("stuck" in i) return { text: i.stuck };
     if ("button" in i) return { text: i.button, postbackPayload: i.button };
     if ("sellerTrack" in i) return {};
     const kind = "voice" in i ? "audio" : "sticker" in i ? "sticker" : "image";
@@ -416,6 +422,28 @@ function directRoom(o: RoomOptions): Room {
         // Каждая реплика — свой вебхук; обрабатываются одновременно, как на Vercel.
         const hooks = i.burst.map((text) => webhook({ text }));
         await Promise.all(hooks.map((h) => handleZernioMessage(ctx, h as never, transport)));
+        current.state = db.tables.bot_users![0]!.state as Customer["state"];
+        return;
+      }
+      if (o.full && "stuck" in i) {
+        const row = db.tables.bot_users![0]!;
+        const st = (row.state ?? {}) as Record<string, unknown>;
+        const c = (st.consultant ?? {}) as Record<string, unknown>;
+        row.state = {
+          ...st,
+          consultant: {
+            ...c,
+            turn: { id: "hung", until: new Date(Date.now() + 10 * 60_000).toISOString() },
+          },
+        };
+        const { BURST } = await import("@/core/consultant/burst");
+        const wait = BURST.waitMs;
+        BURST.waitMs = 30;
+        try {
+          await handleZernioMessage(ctx, webhook(toMessage(i)) as never, transport);
+        } finally {
+          BURST.waitMs = wait;
+        }
         current.state = db.tables.bot_users![0]!.state as Customer["state"];
         return;
       }
