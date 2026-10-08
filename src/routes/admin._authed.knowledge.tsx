@@ -1,6 +1,10 @@
 import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type ReactElement } from "react";
-import { pricelistFn, savePricelistArticlesFn } from "@/app/admin/pricelist.functions";
+import {
+  deletePricelistArticleFn,
+  pricelistFn,
+  savePricelistArticleFn,
+} from "@/app/admin/pricelist.functions";
 import { KnowledgeImport } from "@/app/admin/pricelist-cards";
 import { Badge, Empty, ErrorBox, Field, PageTitle, useAction } from "@/app/ui";
 import { adminT, intlLocale, type AdminT } from "@/app/i18n/admin";
@@ -8,10 +12,11 @@ import { canEdit } from "@/core/auth/roles";
 
 /**
  * «База знаний» консультанта по прайсу: статьи, которые консультант
- * подкладывает к вопросу покупателя (по тегам и словам). Те же статьи и та же
- * запись, что в карточке «База знаний» на странице прайса
- * (`savePricelistArticlesFn`), только по одной: открыта одна статья, сохраняется
- * она одна поверх списка, загруженного со страницей.
+ * подкладывает к вопросу покупателя (по тегам и словам). Те же статьи, что в
+ * карточке «База знаний» на странице прайса, но по одной: сохраняется и
+ * удаляется только открытая статья (`savePricelistArticleFn`,
+ * `deletePricelistArticleFn`), остальные сервер берёт из базы в момент записи —
+ * вторая вкладка или импорт PDF между открытием и сохранением не теряются.
  */
 export const Route = createFileRoute("/admin/_authed/knowledge")({
   beforeLoad: ({ context }) => {
@@ -78,26 +83,17 @@ function KnowledgePage(): ReactElement {
     setDraft(a ? toDraft(a) : { id: NEW, title: "", tags: "", content: "" });
   };
 
-  const write = async (
-    list: Array<{ id?: string; title: string; tags: string[]; content: string }>,
-  ) => {
-    await savePricelistArticlesFn({ data: { articles: list } });
-    await router.invalidate();
-  };
   const save = useAction(async () => {
     if (!draft) return;
-    const mine = { title: draft.title, tags: tagsOf(draft.tags), content: draft.content };
-    const rest = data.articles.map((a) => ({
-      id: a.id,
-      title: a.title,
-      tags: a.tags,
-      content: a.content,
-    }));
-    await write(
-      draft.id === NEW
-        ? [...rest, mine]
-        : rest.map((a) => (a.id === draft.id ? { id: a.id, ...mine } : a)),
-    );
+    await savePricelistArticleFn({
+      data: {
+        ...(draft.id === NEW ? {} : { id: draft.id }),
+        title: draft.title,
+        tags: tagsOf(draft.tags),
+        content: draft.content,
+      },
+    });
+    await router.invalidate();
     setSaved(true);
     if (draft.id === NEW) {
       setOpenId(null);
@@ -106,11 +102,8 @@ function KnowledgePage(): ReactElement {
   });
   const remove = useAction(async () => {
     if (!draft || draft.id === NEW) return;
-    await write(
-      data.articles
-        .filter((a) => a.id !== draft.id)
-        .map((a) => ({ id: a.id, title: a.title, tags: a.tags, content: a.content })),
-    );
+    await deletePricelistArticleFn({ data: { id: draft.id } });
+    await router.invalidate();
     setOpenId(null);
     setDraft(null);
   });

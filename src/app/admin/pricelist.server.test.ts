@@ -38,6 +38,8 @@ const {
   previewKnowledgeImport,
   previewPricelistSheetFor,
   pricelistOverview,
+  deletePricelistArticle,
+  savePricelistArticle,
   savePricelistArticles,
   savePricelistSettings,
   setManualRate,
@@ -315,6 +317,56 @@ describe("прайс консультанта в админке", () => {
     expect(r.count).toBe(1);
     const o = await pricelistOverview(ctx);
     expect(o.articles.map((a) => a.title)).toEqual(["Uchino"]);
+  });
+
+  it("правка одной статьи не затирает статьи, добавленные после открытия страницы", async () => {
+    const ctx = ctxOf();
+    await savePricelistArticles(
+      ctx,
+      [
+        { title: "Uchino", content: "Японская марка." },
+        { title: "Уход", content: "40°C." },
+      ],
+      new Date("2026-10-01T00:00:00Z"),
+    );
+    const page = (await pricelistOverview(ctx)).articles;
+    // Пока страница открыта, в другой вкладке загрузили статью из PDF.
+    await addKnowledgeArticles(ctx, [{ title: "Доставка", tags: [], content: "2 дня." }]);
+    const uchino = page.find((a) => a.title === "Uchino")!;
+    await savePricelistArticle(
+      ctx,
+      { id: uchino.id, title: "Uchino", content: "Японская марка, махра." },
+      new Date("2026-10-08T00:00:00Z"),
+    );
+    const after = (await pricelistOverview(ctx)).articles;
+    expect(after.map((a) => a.title).sort()).toEqual(["Uchino", "Доставка", "Уход"]);
+    expect(after.find((a) => a.title === "Uchino")).toMatchObject({
+      content: "Японская марка, махра.",
+      updatedAt: "2026-10-08T00:00:00.000Z",
+    });
+    expect(after.find((a) => a.title === "Уход")!.updatedAt).toBe("2026-10-01T00:00:00.000Z");
+
+    const added = await savePricelistArticle(ctx, { title: "Гарантия", content: "Год." });
+    expect((await pricelistOverview(ctx)).articles).toHaveLength(4);
+    await deletePricelistArticle(ctx, added.id);
+    expect((await pricelistOverview(ctx)).articles.map((a) => a.title).sort()).toEqual([
+      "Uchino",
+      "Доставка",
+      "Уход",
+    ]);
+    await expect(savePricelistArticle(ctx, { title: " ", content: "x" })).rejects.toMatchObject({
+      key: "err.pricelist.kbEmpty",
+    });
+  });
+
+  it("сохранение двух статей из двух вкладок одновременно: обе в базе", async () => {
+    const ctx = ctxOf();
+    await savePricelistArticles(ctx, [{ title: "Uchino", content: "Японская марка." }]);
+    await Promise.all([
+      savePricelistArticle(ctx, { title: "Доставка", content: "2 дня." }),
+      savePricelistArticle(ctx, { title: "Уход", content: "40°C." }),
+    ]);
+    expect((await pricelistOverview(ctx)).articles).toHaveLength(3);
   });
 
   it("загрузка статей: предпросмотр ничего не пишет, добавление сохраняет прежние", async () => {

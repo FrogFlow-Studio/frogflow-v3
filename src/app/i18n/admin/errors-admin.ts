@@ -26,6 +26,7 @@ export const ru = {
   "err.pricelist.noMatch": "Укажите модель, как в прайсе: например «Uchino Zero Twist».",
   "err.pricelist.kbTooMany":
     "В базе знаний было бы {count} статей, а помещается {max}. Удалите лишние или объедините статьи.",
+  "err.pricelist.kbEmpty": "У статьи должны быть название и текст.",
   "err.pricelist.kbEmptyFile": "В файле нет текста.",
   "err.pricelist.kbPdfScan":
     "В этом PDF нет текстового слоя — похоже, это скан. Пришлите PDF, из которого текст можно выделить мышью, или вставьте текст.",
@@ -266,6 +267,7 @@ export const kk: SectionDict<typeof ru> = {
   "err.pricelist.noMatch": "Прайстағыдай модельді көрсетіңіз: мысалы «Uchino Zero Twist».",
   "err.pricelist.kbTooMany":
     "Білім базасында {count} мақала болар еді, ал {max} ғана сыяды. Артығын өшіріңіз немесе мақалаларды біріктіріңіз.",
+  "err.pricelist.kbEmpty": "Мақаланың атауы мен мәтіні болуы керек.",
   "err.pricelist.kbEmptyFile": "Файлда мәтін жоқ.",
   "err.pricelist.kbPdfScan":
     "Бұл PDF-те мәтін қабаты жоқ — сканға ұқсайды. Мәтінін тінтуірмен белгілеуге болатын PDF жіберіңіз немесе мәтінді қойыңыз.",
@@ -503,6 +505,7 @@ export const en: SectionDict<typeof ru> = {
   "err.pricelist.noMatch": "Enter the model as in the price list, e.g. “Uchino Zero Twist”.",
   "err.pricelist.kbTooMany":
     "The knowledge base would have {count} articles, but it holds {max}. Delete some or merge articles.",
+  "err.pricelist.kbEmpty": "The article needs a title and text.",
   "err.pricelist.kbEmptyFile": "The file has no text.",
   "err.pricelist.kbPdfScan":
     "This PDF has no text layer — it looks like a scan. Send a PDF whose text can be selected with the mouse, or paste the text.",
@@ -742,6 +745,7 @@ export const uz: SectionDict<typeof ru> = {
   "err.pricelist.noMatch": "Modelni narxnomadagidek kiriting: masalan «Uchino Zero Twist».",
   "err.pricelist.kbTooMany":
     "Bilimlar bazasida {count} ta maqola bo‘lardi, sig‘imi esa {max} ta. Ortiqchasini o‘chiring yoki maqolalarni birlashtiring.",
+  "err.pricelist.kbEmpty": "Maqolada sarlavha va matn bo‘lishi kerak.",
   "err.pricelist.kbEmptyFile": "Faylda matn yo‘q.",
   "err.pricelist.kbPdfScan":
     "Bu PDF da matn qatlami yo‘q — skanga o‘xshaydi. Matnini sichqoncha bilan belgilash mumkin bo‘lgan PDF yuboring yoki matnni joylashtiring.",

@@ -9,14 +9,15 @@ import {
 import { parseCatalogCsv } from "@/core/consultant/pricelist/import";
 import {
   appendKnowledge,
+  changeKnowledge,
   loadKnowledge,
-  saveKnowledge,
 } from "@/core/consultant/pricelist/knowledge.server";
 import type { ConsultantKnowledgeArticle } from "@/core/consultant/pricelist/knowledge";
 import {
   articlesFromText,
   KNOWLEDGE_ARTICLE_MAX_CHARS,
   KNOWLEDGE_FILE_MAX_MB,
+  KNOWLEDGE_MAX_ARTICLES,
   previewMerge,
   type ImportedArticle,
 } from "@/core/consultant/pricelist/knowledge-import";
@@ -439,24 +440,92 @@ export async function deleteProductMedia(ctx: TenantContext, id: string) {
   return { ok: true };
 }
 
+type ArticleInput = { id?: string; title: string; tags?: string[]; content: string };
+
+function cleanArticle(a: ArticleInput, id: string, now: Date): ConsultantKnowledgeArticle {
+  return {
+    id,
+    title: a.title.trim().slice(0, 200),
+    tags: (a.tags ?? [])
+      .map((t) => t.trim())
+      .filter(Boolean)
+      .slice(0, 20),
+    content: a.content.trim().slice(0, 30_000),
+    updatedAt: now.toISOString(),
+  };
+}
+
+/** Дата «обновлено» меняется только у статьи, которую правда изменили. */
+function keepDate(
+  next: ConsultantKnowledgeArticle,
+  prev: ConsultantKnowledgeArticle | undefined,
+): ConsultantKnowledgeArticle {
+  const same =
+    prev &&
+    prev.title === next.title &&
+    prev.content === next.content &&
+    prev.tags.join("\u0000") === next.tags.join("\u0000");
+  return same ? { ...next, updatedAt: prev.updatedAt } : next;
+}
+
+/** Весь список статей (карточка «База знаний» на странице прайса). */
 export async function savePricelistArticles(
   ctx: TenantContext,
-  articles: Array<{ id?: string; title: string; tags?: string[]; content: string }>,
+  articles: ArticleInput[],
   now = new Date(),
 ) {
   requirePricelist(ctx);
-  const clean: ConsultantKnowledgeArticle[] = articles
-    .filter((a) => a.title.trim() && a.content.trim())
-    .map((a, i) => ({
-      id: a.id?.trim() || `kb-${now.getTime().toString(36)}-${i}`,
-      title: a.title.trim().slice(0, 200),
-      tags: (a.tags ?? [])
-        .map((t) => t.trim())
-        .filter(Boolean)
-        .slice(0, 20),
-      content: a.content.trim().slice(0, 30_000),
-      updatedAt: now.toISOString(),
-    }));
-  await saveKnowledge(ctx, clean);
-  return { count: clean.length };
+  let count = 0;
+  await changeKnowledge(ctx, (current) => {
+    const byId = new Map(current.map((a) => [a.id, a]));
+    const clean = articles
+      .filter((a) => a.title.trim() && a.content.trim())
+      .map((a, i) => {
+        const next = cleanArticle(a, a.id?.trim() || `kb-${now.getTime().toString(36)}-${i}`, now);
+        return keepDate(next, byId.get(next.id));
+      });
+    count = clean.length;
+    return clean;
+  });
+  return { count };
+}
+
+/**
+ * Одна статья со страницы «База знаний»: остальные берутся из базы в момент
+ * записи, а не со страницы. Статьи с таким id нет (удалили в другой вкладке)
+ * — сохраняется как новая, текст продавца не пропадает.
+ */
+export async function savePricelistArticle(
+  ctx: TenantContext,
+  article: ArticleInput,
+  now = new Date(),
+): Promise<{ id: string }> {
+  requirePricelist(ctx);
+  if (!article.title.trim() || !article.content.trim())
+    throw new UserError("err.pricelist.kbEmpty", "У статьи должны быть название и текст.");
+  const id =
+    article.id?.trim() ||
+    `kb-${now.getTime().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  await changeKnowledge(ctx, (current) => {
+    const prev = current.find((a) => a.id === id);
+    const next = keepDate(cleanArticle(article, id, now), prev);
+    if (prev) return current.map((a) => (a.id === id ? next : a));
+    if (current.length >= KNOWLEDGE_MAX_ARTICLES)
+      throw new UserError(
+        "err.pricelist.kbTooMany",
+        "В базе знаний было бы {count} статей, а помещается {max}. Удалите лишние или объедините статьи.",
+        { count: current.length + 1, max: KNOWLEDGE_MAX_ARTICLES },
+      );
+    return [...current, next];
+  });
+  return { id };
+}
+
+/** Удалить одну статью; остальные — как в базе в момент записи. */
+export async function deletePricelistArticle(ctx: TenantContext, id: string) {
+  requirePricelist(ctx);
+  await changeKnowledge(ctx, (current) =>
+    current.some((a) => a.id === id) ? current.filter((a) => a.id !== id) : null,
+  );
+  return { ok: true };
 }

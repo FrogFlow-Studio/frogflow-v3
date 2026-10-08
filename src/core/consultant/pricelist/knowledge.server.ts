@@ -38,6 +38,24 @@ export async function saveKnowledge(
 }
 
 /**
+ * Изменить базу одним условным обновлением по метке updated_at: правка одной
+ * статьи в «Базе знаний» меняет только её, а не весь список со страницы,
+ * открытой раньше (вторая вкладка, второй менеджер, импорт PDF между ними).
+ * `change` получает текущие статьи; null — не писать.
+ */
+export async function changeKnowledge(
+  ctx: TenantContext,
+  change: (articles: ConsultantKnowledgeArticle[]) => ConsultantKnowledgeArticle[] | null,
+): Promise<"written" | "skipped"> {
+  const outcome = await updateSettingStamped(ctx, KNOWLEDGE_KEY, (raw) => {
+    const next = change(articlesOf(raw));
+    return next ? JSON.stringify(next) : null;
+  });
+  if (outcome === "failed") throw serverFailure("База знаний: изменение не записалось");
+  return outcome;
+}
+
+/**
  * Дописать загруженные статьи к базе (mergeKnowledge): прежние остаются все.
  * Запись условная по метке updated_at строки (updateSettingStamped): база —
  * длинный текст, условие на всё значение дало бы 431. Две загрузки сразу или
