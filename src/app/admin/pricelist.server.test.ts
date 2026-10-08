@@ -34,7 +34,9 @@ const {
   savePricelistPersona,
   deleteProductMedia,
   importPricelist,
+  importPricelistDrive,
   importPricelistSheetFor,
+  pricelistCsvFromXlsx,
   previewKnowledgeImport,
   previewPricelistSheetFor,
   pricelistOverview,
@@ -94,6 +96,91 @@ describe("прайс консультанта в админке", () => {
     const o = await pricelistOverview(ctx);
     expect(o.count).toBe(2);
     expect(o.meta?.count).toBe(2);
+  });
+
+  it("скачок цен в файле — без подтверждения не загружается, с подтверждением загружается", async () => {
+    const ctx = ctxOf();
+    const rows = (k: number) =>
+      [
+        "Название;Раздел;Цена",
+        ...Array.from({ length: 30 }, (_, i) => `Товар ${i};Полотенца;${(1000 + i) * k}`),
+      ].join("\n");
+    await importPricelist(ctx, rows(1), "a.csv");
+    const r = await importPricelist(ctx, rows(100), "b.csv");
+    expect(r).toMatchObject({ needsConfirm: true, diff: { priceChanged: 30 } });
+    expect((await pricelistOverview(ctx)).meta?.source).toBe("a.csv");
+    const ok = await importPricelist(ctx, rows(100), "b.csv", { confirm: true });
+    expect(ok.needsConfirm).toBe(false);
+    expect((await pricelistOverview(ctx)).meta?.source).toBe("b.csv");
+  });
+
+  it("Excel: перевод строки в ячейке не рвёт позицию", async () => {
+    const { zip } = await import("../../../tests/xlsx-zip");
+    const cell = (r: number, c: string, v: string) =>
+      `<c r="${c}${r}" t="inlineStr"><is><t>${v}</t></is></c>`;
+    const book = zip({
+      "xl/worksheets/sheet1.xml": `<worksheet><sheetData>
+<row r="1">${cell(1, "A", "Название")}${cell(1, "B", "Раздел")}${cell(1, "C", "Цена")}</row>
+<row r="2">${cell(2, "A", "Uchino Полотенце\nZero Twist 70x140")}${cell(2, "B", "Полотенца")}<c r="C2"><v>21000</v></c></row>
+</sheetData></worksheet>`,
+    });
+    const ctx = ctxOf();
+    const r = await importPricelist(ctx, pricelistCsvFromXlsx(book), "остатки.xlsx");
+    expect(r.needsConfirm).toBe(false);
+    expect(r.errorCount).toBe(0);
+    expect((await pricelistOverview(ctx)).count).toBe(1);
+  });
+
+  it("ссылка Google Drive: файл скачивается и загружается; папка и закрытый файл — понятные ошибки", async () => {
+    const ctx = ctxOf();
+    const link = "https://drive.google.com/file/d/1AbCdEfGhIjKlMnOp/view?usp=sharing";
+    const seen: string[] = [];
+    const fetchCsv = (async (url: string) => {
+      seen.push(url);
+      if (url.startsWith("https://drive.google.com/uc?"))
+        return new Response(null, {
+          status: 303,
+          headers: {
+            location: "https://drive.usercontent.google.com/download?id=1AbCdEfGhIjKlMnOp",
+          },
+        });
+      return new Response(CSV, { status: 200, headers: { "content-type": "text/csv" } });
+    }) as never;
+    const r = await importPricelistDrive(ctx, link, {}, fetchCsv);
+    expect(r.needsConfirm).toBe(false);
+    expect((await pricelistOverview(ctx)).meta?.source).toBe("Google Drive");
+    expect(seen).toEqual([
+      "https://drive.google.com/uc?export=download&id=1AbCdEfGhIjKlMnOp",
+      "https://drive.usercontent.google.com/download?id=1AbCdEfGhIjKlMnOp",
+    ]);
+
+    await expect(
+      importPricelistDrive(
+        ctx,
+        "https://drive.google.com/drive/folders/1AbCdEfGhIjKlMnOp",
+        {},
+        fetchCsv,
+      ),
+    ).rejects.toMatchObject({ key: "err.pricelist.driveFolder" });
+    await expect(
+      importPricelistDrive(ctx, "https://evil.test/file/d/x", {}, fetchCsv),
+    ).rejects.toMatchObject({ key: "err.pricelist.driveLink" });
+    const html = (async () =>
+      new Response("<!DOCTYPE html><html>Вход</html>", {
+        status: 200,
+        headers: { "content-type": "text/html" },
+      })) as never;
+    await expect(importPricelistDrive(ctx, link, {}, html)).rejects.toMatchObject({
+      key: "err.pricelist.driveClosed",
+    });
+    const login = (async () =>
+      new Response(null, {
+        status: 302,
+        headers: { location: "https://accounts.google.com/x" },
+      })) as never;
+    await expect(importPricelistDrive(ctx, link, {}, login)).rejects.toMatchObject({
+      key: "err.pricelist.driveClosed",
+    });
   });
 
   it("файл без позиций прайс не стирает", async () => {

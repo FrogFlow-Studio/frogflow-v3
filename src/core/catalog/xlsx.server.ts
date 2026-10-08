@@ -81,7 +81,13 @@ function colIndex(ref: string): number {
 
 const csvCell = (v: string) => (/[",;\n\r\t]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
 
-export function xlsxToCsv(buf: Buffer): string {
+/**
+ * `singleLine` — перевод строки внутри ячейки становится пробелом: разбор
+ * прайса консультанта (pricelist/import) режет текст на строки до кавычек, и
+ * ячейка «Полотенце\n70x140» из Excel разорвала бы позицию надвое.
+ * Строк больше MAX_ROWS — ошибка, а не молча обрезанный файл.
+ */
+export function xlsxToCsv(buf: Buffer, opts: { singleLine?: boolean } = {}): string {
   const files = entries(buf);
   const sheetName = [...files.keys()]
     .filter((n) => /^xl\/worksheets\/[^/]+\.xml$/.test(n))
@@ -94,7 +100,12 @@ export function xlsxToCsv(buf: Buffer): string {
   const sheet = read(buf, files.get(sheetName)!);
   const rows: string[][] = [];
   for (const rm of sheet.matchAll(/<row\b[^>]*>([\s\S]*?)<\/row>/g)) {
-    if (rows.length >= MAX_ROWS) break;
+    if (rows.length >= MAX_ROWS)
+      throw new UserError(
+        "err.xlsx.tooManyRows",
+        "В файле больше {max} строк. Разделите его или удалите пустые строки.",
+        { max: MAX_ROWS },
+      );
     const row: string[] = [];
     for (const cm of rm[1]!.matchAll(/<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g)) {
       const attrs = cm[1]!;
@@ -110,7 +121,7 @@ export function xlsxToCsv(buf: Buffer): string {
       else if (type === "b") value = v === "1" ? "да" : "нет";
       else if (v !== undefined) value = unxml(v);
       while (row.length < idx) row.push("");
-      row[idx] = value;
+      row[idx] = opts.singleLine ? value.replace(/\s*[\r\n]+\s*/g, " ") : value;
     }
     rows.push(row);
   }

@@ -8,8 +8,17 @@ export const ru = {
     "Откуда консультант берёт позиции, цены, курс рубля и фото. Загрузите свежую выгрузку 1С — консультант начнёт отвечать по ней в течение минуты.",
   "pricelist.file.title": "Прайс из 1С",
   "pricelist.file.hint":
-    "CSV-выгрузка из 1С: название, раздел, размер, цвет, цена, остаток. Позиции с пометкой «не для продажи» покупателям не показываются.",
-  "pricelist.file.choose": "Загрузить CSV",
+    "Выгрузка из 1С в CSV или Excel (.xlsx): название, раздел, размер, цвет, цена, остаток. Позиции с пометкой «не для продажи» покупателям не показываются.",
+  "pricelist.file.choose": "Загрузить CSV или Excel",
+  "pricelist.file.driveLabel": "Или ссылка Google Drive на файл",
+  "pricelist.file.driveHint":
+    "Файл, открытый всем, у кого есть ссылка. Загружается один раз; чтобы прайс обновлялся сам, подключите Google Таблицу.",
+  "pricelist.file.driveLoad": "Загрузить по ссылке",
+  "pricelist.file.jumped":
+    "Цены изменились подозрительно сильно — возможно, сдвинулся столбец. Проверьте примеры ниже.",
+  "pricelist.file.confirm": "Всё верно, загрузить",
+  "pricelist.sheet.reason.pricesJumped":
+    "цены изменились подозрительно сильно (возможно, сдвинулся столбец) — проверьте таблицу и загрузите её вручную",
   "pricelist.file.meta": "{count} позиций · загружен {date} · {source}",
   "pricelist.file.hidden": "Скрыто от покупателей (снято с продажи): {count}",
   "pricelist.file.none": "Прайс ещё не загружен.",
@@ -93,6 +102,8 @@ export const ru = {
   "pricelist.media.match": "Модель, как в прайсе",
   "pricelist.media.color": "Цвет (если фото одного цвета)",
   "pricelist.media.file": "Фото или видео до 25 МБ",
+  "pricelist.media.addAnyway": "Добавить без совпадений",
+  "pricelist.media.deleteConfirm": "Удалить фото",
   "pricelist.media.add": "Добавить",
   "pricelist.media.empty": "Фото пока нет — на просьбу о фото консультант зовёт менеджера.",
   "pricelist.media.video": "видео",
@@ -159,8 +170,17 @@ export const kk: SectionDict<typeof ru> = {
     "Кеңесші позицияларды, бағаларды, рубль бағамын және фотоларды қайдан алады. 1С-тен жаңа түсірілімді жүктеңіз — кеңесші бір минут ішінде соған сүйеніп жауап береді.",
   "pricelist.file.title": "1С прайсы",
   "pricelist.file.hint":
-    "1С-тен CSV түсірілімі: атауы, бөлімі, өлшемі, түсі, бағасы, қалдығы. «Сатылмайды» белгісі бар позициялар сатып алушыларға көрсетілмейді.",
-  "pricelist.file.choose": "CSV жүктеу",
+    "1С-тен CSV немесе Excel (.xlsx) түсірілімі: атауы, бөлімі, өлшемі, түсі, бағасы, қалдығы. «Сатылмайды» белгісі бар позициялар сатып алушыларға көрсетілмейді.",
+  "pricelist.file.choose": "CSV не Excel жүктеу",
+  "pricelist.file.driveLabel": "Немесе Google Drive-тағы файлға сілтеме",
+  "pricelist.file.driveHint":
+    "Сілтемесі бар барлық адамға ашық файл. Бір рет жүктеледі; прайс өзі жаңаруы үшін Google Кестені қосыңыз.",
+  "pricelist.file.driveLoad": "Сілтеме бойынша жүктеу",
+  "pricelist.file.jumped":
+    "Бағалар күдікті түрде қатты өзгерді — бағана жылжыған болуы мүмкін. Төмендегі мысалдарды тексеріңіз.",
+  "pricelist.file.confirm": "Бәрі дұрыс, жүктеу",
+  "pricelist.sheet.reason.pricesJumped":
+    "бағалар күдікті түрде қатты өзгерді (бағана жылжыған болуы мүмкін) — кестені тексеріп, қолмен жүктеңіз",
   "pricelist.file.meta": "{count} позиция · {date} жүктелді · {source}",
   "pricelist.file.hidden": "Сатып алушылардан жасырылған (сатылымнан алынған): {count}",
   "pricelist.file.none": "Прайс әлі жүктелмеген.",
@@ -244,6 +264,8 @@ export const kk: SectionDict<typeof ru> = {
   "pricelist.media.match": "Модель, прайстағыдай",
   "pricelist.media.color": "Түсі (фото бір түсті болса)",
   "pricelist.media.file": "25 МБ-қа дейінгі фото не бейне",
+  "pricelist.media.addAnyway": "Сәйкестіксіз қосу",
+  "pricelist.media.deleteConfirm": "Фотоны өшіру",
   "pricelist.media.add": "Қосу",
   "pricelist.media.empty": "Фото әлі жоқ — фото сұраса, кеңесші менеджерді шақырады.",
   "pricelist.media.video": "бейне",
@@ -311,8 +333,17 @@ export const en: SectionDict<typeof ru> = {
     "Where the consultant gets items, prices, the ruble rate and photos. Upload a fresh 1C export — the consultant starts answering from it within a minute.",
   "pricelist.file.title": "Price list from 1C",
   "pricelist.file.hint":
-    "CSV export from 1C: name, section, size, color, price, stock. Items marked “not for sale” are not shown to customers.",
-  "pricelist.file.choose": "Upload CSV",
+    "1C export in CSV or Excel (.xlsx): name, section, size, color, price, stock. Items marked “not for sale” are not shown to customers.",
+  "pricelist.file.choose": "Upload CSV or Excel",
+  "pricelist.file.driveLabel": "Or a Google Drive link to the file",
+  "pricelist.file.driveHint":
+    "A file open to anyone with the link. It is loaded once; to keep the price list updating on its own, connect a Google Sheet.",
+  "pricelist.file.driveLoad": "Load from link",
+  "pricelist.file.jumped":
+    "Prices changed suspiciously much — a column may have shifted. Check the examples below.",
+  "pricelist.file.confirm": "Looks right, upload",
+  "pricelist.sheet.reason.pricesJumped":
+    "prices changed suspiciously much (a column may have shifted) — check the sheet and load it manually",
   "pricelist.file.meta": "{count} items · uploaded {date} · {source}",
   "pricelist.file.hidden": "Hidden from customers (discontinued): {count}",
   "pricelist.file.none": "No price list uploaded yet.",
@@ -396,6 +427,8 @@ export const en: SectionDict<typeof ru> = {
   "pricelist.media.match": "Model, as in the price list",
   "pricelist.media.color": "Color (if the photo shows one color)",
   "pricelist.media.file": "Photo or video up to 25 MB",
+  "pricelist.media.addAnyway": "Add without matches",
+  "pricelist.media.deleteConfirm": "Delete photo",
   "pricelist.media.add": "Add",
   "pricelist.media.empty":
     "No photos yet — when asked for a photo, the consultant calls a manager.",
@@ -466,8 +499,17 @@ export const uz: SectionDict<typeof ru> = {
     "Maslahatchi pozitsiyalar, narxlar, rubl kursi va rasmlarni qayerdan oladi. 1C dan yangi eksportni yuklang — maslahatchi bir daqiqa ichida unga tayanib javob beradi.",
   "pricelist.file.title": "1C narxnomasi",
   "pricelist.file.hint":
-    "1C dan CSV eksport: nomi, bo‘lim, o‘lcham, rang, narx, qoldiq. «Sotilmaydi» belgili pozitsiyalar xaridorlarga ko‘rsatilmaydi.",
-  "pricelist.file.choose": "CSV yuklash",
+    "1C dan CSV yoki Excel (.xlsx) eksport: nomi, bo‘lim, o‘lcham, rang, narx, qoldiq. «Sotilmaydi» belgili pozitsiyalar xaridorlarga ko‘rsatilmaydi.",
+  "pricelist.file.choose": "CSV yoki Excel yuklash",
+  "pricelist.file.driveLabel": "Yoki Google Drive’dagi faylga havola",
+  "pricelist.file.driveHint":
+    "Havolasi bor hammaga ochiq fayl. Bir marta yuklanadi; narxnoma o‘zi yangilanishi uchun Google Jadvalni ulang.",
+  "pricelist.file.driveLoad": "Havola orqali yuklash",
+  "pricelist.file.jumped":
+    "Narxlar shubhali darajada keskin o‘zgardi — ustun siljigan bo‘lishi mumkin. Quyidagi misollarni tekshiring.",
+  "pricelist.file.confirm": "Hammasi to‘g‘ri, yuklash",
+  "pricelist.sheet.reason.pricesJumped":
+    "narxlar shubhali darajada keskin o‘zgardi (ustun siljigan bo‘lishi mumkin) — jadvalni tekshirib, qo‘lda yuklang",
   "pricelist.file.meta": "{count} pozitsiya · {date} yuklangan · {source}",
   "pricelist.file.hidden": "Xaridorlardan yashirilgan (sotuvdan olingan): {count}",
   "pricelist.file.none": "Narxnoma hali yuklanmagan.",
@@ -551,6 +593,8 @@ export const uz: SectionDict<typeof ru> = {
   "pricelist.media.match": "Model, narxnomadagidek",
   "pricelist.media.color": "Rang (rasm bir rangda bo‘lsa)",
   "pricelist.media.file": "25 MB gacha rasm yoki video",
+  "pricelist.media.addAnyway": "Mosliksiz qo‘shish",
+  "pricelist.media.deleteConfirm": "Rasmni o‘chirish",
   "pricelist.media.add": "Qo‘shish",
   "pricelist.media.empty": "Rasmlar hali yo‘q — rasm so‘ralsa, maslahatchi menejerni chaqiradi.",
   "pricelist.media.video": "video",

@@ -20,13 +20,34 @@ export const pricelistFn = createServerFn({ method: "GET" }).handler(async () =>
   return (await server()).pricelistOverview(ctx);
 });
 
+/** Выгрузка 1С: CSV текстом или Excel (.xlsx) в base64; `confirm` — продавец видел скачок цен. */
 export const importPricelistFn = createServerFn({ method: "POST" })
   .validator((d: unknown) =>
-    z.object({ csv: z.string().min(1).max(4_000_000), fileName: z.string().max(200) }).parse(d),
+    z
+      .object({
+        csv: z.string().min(1).max(4_000_000).optional(),
+        xlsx: z.string().min(1).max(8_000_000).optional(),
+        fileName: z.string().max(200),
+        confirm: z.boolean().optional(),
+      })
+      .refine((v) => Boolean(v.csv) !== Boolean(v.xlsx))
+      .parse(d),
   )
   .handler(async ({ data }) => {
     const ctx = await adminWrite();
-    return (await server()).importPricelist(ctx, data.csv, data.fileName);
+    const m = await server();
+    const csv = data.xlsx ? m.pricelistCsvFromXlsx(Buffer.from(data.xlsx, "base64")) : data.csv!;
+    return m.importPricelist(ctx, csv, data.fileName, { confirm: data.confirm });
+  });
+
+/** Разовая загрузка прайса по ссылке Google Drive на файл. */
+export const importPricelistDriveFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z.object({ url: z.string().trim().min(8).max(500), confirm: z.boolean().optional() }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await adminWrite();
+    return (await server()).importPricelistDrive(ctx, data.url, { confirm: data.confirm });
   });
 
 export const savePricelistSettingsFn = createServerFn({ method: "POST" })

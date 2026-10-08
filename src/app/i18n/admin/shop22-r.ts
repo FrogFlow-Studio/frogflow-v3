@@ -9,6 +9,7 @@ export const ru = {
     "Товаров с фото по ссылкам: {n}. Фото скачиваются при применении, это дольше обычного.",
   "products.import.warningsTitle": "Взято не всё:",
   "products.import.photosDone": "Фото добавлено у товаров: {n}",
+  "err.xlsx.tooManyRows": "В файле больше {max} строк. Разделите его или удалите пустые строки.",
   "err.xlsx.bad": "Не похоже на файл Excel (.xlsx)",
   "err.xlsx.big": "Лист Excel слишком большой — сохраните его как CSV",
 };
@@ -21,6 +22,7 @@ export const kk: SectionDict<typeof ru> = {
     "Сілтеме бойынша фотосы бар тауарлар: {n}. Фото қолданғанда жүктеледі, бұл әдеттегіден ұзағырақ.",
   "products.import.warningsTitle": "Бәрі алынбады:",
   "products.import.photosDone": "Фото қосылған тауарлар: {n}",
+  "err.xlsx.tooManyRows": "Файлда {max} жолдан көп. Оны бөліңіз немесе бос жолдарды өшіріңіз.",
   "err.xlsx.bad": "Excel (.xlsx) файлына ұқсамайды",
   "err.xlsx.big": "Excel парағы тым үлкен — оны CSV ретінде сақтаңыз",
 };
@@ -33,6 +35,7 @@ export const en: SectionDict<typeof ru> = {
     "Products with photo links: {n}. Photos are downloaded when you apply, which takes longer than usual.",
   "products.import.warningsTitle": "Not everything was taken:",
   "products.import.photosDone": "Products with photos added: {n}",
+  "err.xlsx.tooManyRows": "The file has more than {max} rows. Split it or delete empty rows.",
   "err.xlsx.bad": "This doesn't look like an Excel (.xlsx) file",
   "err.xlsx.big": "The Excel sheet is too large — save it as CSV",
 };
@@ -45,6 +48,8 @@ export const uz: SectionDict<typeof ru> = {
     "Havola bo‘yicha fotosi bor mahsulotlar: {n}. Foto qo‘llashda yuklanadi, bu odatdagidan uzoqroq.",
   "products.import.warningsTitle": "Hammasi olinmadi:",
   "products.import.photosDone": "Foto qo‘shilgan mahsulotlar: {n}",
+  "err.xlsx.tooManyRows":
+    "Faylda {max} tadan ortiq qator bor. Uni bo‘ling yoki bo‘sh qatorlarni o‘chiring.",
   "err.xlsx.bad": "Excel (.xlsx) fayliga o‘xshamaydi",
   "err.xlsx.big": "Excel varag‘i juda katta — uni CSV sifatida saqlang",
 };

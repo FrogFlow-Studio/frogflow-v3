@@ -14,8 +14,15 @@ export const ru = {
   "err.homework.notWaiting": "Эта работа уже проверена.",
   "err.curators.duplicate": "У двух кураторов один и тот же Telegram: уберите повтор.",
   "err.pricelist.off": "Консультант по прайсу у магазина не включён — его включает оператор.",
+  "err.pricelist.driveLink":
+    "Нужна ссылка Google Drive на файл (drive.google.com/file/d/…), открытый всем, у кого есть ссылка.",
+  "err.pricelist.driveFolder":
+    "Это ссылка на папку. Откройте файл с прайсом в Drive и скопируйте ссылку на него.",
+  "err.pricelist.driveClosed":
+    "Файл не скачался: откройте доступ «Все, у кого есть ссылка» и попробуйте ещё раз.",
+  "err.pricelist.driveTooBig": "Файл больше {mb} МБ.",
   "err.pricelist.empty":
-    "В файле не нашлось ни одной позиции. Нужна выгрузка 1С в CSV: название, раздел, размер, цена.",
+    "В файле не нашлось ни одной позиции. Нужна выгрузка 1С в CSV или Excel: название, раздел, размер, цена.",
   "err.pricelist.badUrl": "Адрес сайта должен начинаться с https://",
   "err.pricelist.badHours":
     "Часы работы: открытие с 0 до 23, закрытие с 1 до 24, и они не совпадают.",
@@ -254,8 +261,15 @@ export const kk: SectionDict<typeof ru> = {
   "err.homework.notWaiting": "Бұл жұмыс тексеріліп қойған.",
   "err.curators.duplicate": "Екі куратордың Telegram-ы бірдей: қайталанғанын алып тастаңыз.",
   "err.pricelist.off": "Прайс бойынша кеңесші дүкенде қосылмаған — оны оператор қосады.",
+  "err.pricelist.driveLink":
+    "Google Drive-тағы файлға сілтеме керек (drive.google.com/file/d/…), сілтемесі бар барлық адамға ашық.",
+  "err.pricelist.driveFolder":
+    "Бұл қалтаға сілтеме. Drive-та прайс файлын ашып, соған сілтемені көшіріңіз.",
+  "err.pricelist.driveClosed":
+    "Файл жүктелмеді: «Сілтемесі бар барлық адам» қолжетімділігін ашып, қайталап көріңіз.",
+  "err.pricelist.driveTooBig": "Файл {mb} МБ-тан үлкен.",
   "err.pricelist.empty":
-    "Файлда бірде-бір позиция табылмады. 1С-тен CSV түсірілімі керек: атауы, бөлімі, өлшемі, бағасы.",
+    "Файлда бірде-бір позиция табылмады. 1С-тен CSV немесе Excel түсірілімі керек: атауы, бөлімі, өлшемі, бағасы.",
   "err.pricelist.badUrl": "Сайт мекенжайы https:// деп басталуы керек",
   "err.pricelist.badHours":
     "Жұмыс уақыты: ашылуы 0-ден 23-ке дейін, жабылуы 1-ден 24-ке дейін және олар сәйкес келмеуі керек.",
@@ -491,8 +505,15 @@ export const en: SectionDict<typeof ru> = {
   "err.curators.duplicate": "Two curators have the same Telegram: remove the duplicate.",
   "err.pricelist.off":
     "The price-list consultant is not enabled for this shop — the operator turns it on.",
+  "err.pricelist.driveLink":
+    "A Google Drive link to a file is needed (drive.google.com/file/d/…), open to anyone with the link.",
+  "err.pricelist.driveFolder":
+    "This is a folder link. Open the price list file in Drive and copy the link to it.",
+  "err.pricelist.driveClosed":
+    "The file did not download: set access to “Anyone with the link” and try again.",
+  "err.pricelist.driveTooBig": "The file is larger than {mb} MB.",
   "err.pricelist.empty":
-    "No items found in the file. Upload a 1C export in CSV: name, section, size, price.",
+    "No items found in the file. Upload a 1C export in CSV or Excel: name, section, size, price.",
   "err.pricelist.badUrl": "The website address must start with https://",
   "err.pricelist.badHours":
     "Working hours: opening from 0 to 23, closing from 1 to 24, and they must differ.",
@@ -730,8 +751,15 @@ export const uz: SectionDict<typeof ru> = {
   "err.homework.notWaiting": "Bu ish allaqachon tekshirilgan.",
   "err.curators.duplicate": "Ikki kuratorda bir xil Telegram: takrorini olib tashlang.",
   "err.pricelist.off": "Narxnoma bo‘yicha maslahatchi do‘konda yoqilmagan — uni operator yoqadi.",
+  "err.pricelist.driveLink":
+    "Google Drive’dagi faylga havola kerak (drive.google.com/file/d/…), havolasi bor hammaga ochiq.",
+  "err.pricelist.driveFolder":
+    "Bu papkaga havola. Drive’da narxnoma faylini oching va unga havolani nusxalang.",
+  "err.pricelist.driveClosed":
+    "Fayl yuklanmadi: «Havolasi bor hamma» ruxsatini oching va qayta urinib ko‘ring.",
+  "err.pricelist.driveTooBig": "Fayl {mb} MB dan katta.",
   "err.pricelist.empty":
-    "Faylda birorta ham pozitsiya topilmadi. 1C dan CSV eksport kerak: nomi, bo‘lim, o‘lcham, narx.",
+    "Faylda birorta ham pozitsiya topilmadi. 1C dan CSV yoki Excel eksport kerak: nomi, bo‘lim, o‘lcham, narx.",
   "err.pricelist.badUrl": "Sayt manzili https:// bilan boshlanishi kerak",
   "err.pricelist.badHours":
     "Ish vaqti: ochilish 0 dan 23 gacha, yopilish 1 dan 24 gacha va ular bir xil bo‘lmasin.",

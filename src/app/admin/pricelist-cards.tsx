@@ -10,6 +10,7 @@ import {
   consultantTasksFn,
   deleteProductMediaFn,
   disconnectPricelistSheetFn,
+  importPricelistDriveFn,
   importPricelistFn,
   importPricelistSheetFn,
   previewKnowledgeImportFn,
@@ -26,6 +27,8 @@ import { Badge, Card, ErrorBox, Field, useAction } from "@/app/ui";
 import { intlLocale, type AdminKey, type AdminT } from "@/app/i18n/admin";
 import type { Locale } from "@/core/i18n/locale";
 import { KNOWLEDGE_FILE_MAX_MB } from "@/core/consultant/pricelist/knowledge-import";
+import { mediaMatchesProduct } from "@/core/consultant/pricelist/media";
+import type { ConsultantProduct } from "@/core/consultant/pricelist/catalog";
 
 /** Выгрузка 1С бывает в UTF-8 и в Windows-1251: сначала строгий UTF-8, иначе 1251. */
 export async function readCsv(file: File): Promise<string> {
@@ -40,6 +43,19 @@ export async function readCsv(file: File): Promise<string> {
 export type Data = Awaited<ReturnType<typeof pricelistFn>>;
 export type CardProps = { t: AdminT; data: Data; canEdit: boolean; onDone: () => Promise<void> };
 
+/** Файл в base64 без префикса data: (Excel уходит на сервер байтами, без разбора в браузере). */
+async function rawBase64(file: File): Promise<string> {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  let bin = "";
+  for (let i = 0; i < bytes.length; i += 0x8000)
+    bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(bin);
+}
+
+type ImportResult = Awaited<ReturnType<typeof importPricelistFn>>;
+/** Что подтвердить: тот же файл или та же ссылка Drive, но уже с confirm. */
+type Pending = { kind: "file"; file: File } | { kind: "drive"; url: string };
+
 export function FileCard({
   t,
   data,
@@ -47,12 +63,25 @@ export function FileCard({
   canEdit,
   onDone,
 }: CardProps & { date: (s: string) => string }) {
-  const [result, setResult] = useState<Awaited<ReturnType<typeof importPricelistFn>> | null>(null);
-  const upload = useAction(async (file: File) => {
+  const [result, setResult] = useState<ImportResult | null>(null);
+  const [pending, setPending] = useState<Pending | null>(null);
+  const [driveUrl, setDriveUrl] = useState("");
+  const send = async (what: Pending, confirm: boolean) => {
+    if (what.kind === "drive") return importPricelistDriveFn({ data: { url: what.url, confirm } });
+    const xlsx = /\.xlsx$/i.test(what.file.name);
+    return importPricelistFn({
+      data: xlsx
+        ? { xlsx: await rawBase64(what.file), fileName: what.file.name, confirm }
+        : { csv: await readCsv(what.file), fileName: what.file.name, confirm },
+    });
+  };
+  const upload = useAction(async (what: Pending, confirm?: boolean) => {
     setResult(null);
-    const csv = await readCsv(file);
-    setResult(await importPricelistFn({ data: { csv, fileName: file.name } }));
-    await onDone();
+    setPending(null);
+    const r = await send(what, confirm ?? false);
+    setResult(r);
+    if (r.needsConfirm) setPending(what);
+    else await onDone();
   });
   return (
     <Card title={t("pricelist.file.title")}>
@@ -77,22 +106,76 @@ export function FileCard({
         </p>
       )}
       {canEdit && (
-        <label className="btn-secondary mt-3 inline-block cursor-pointer">
-          {t("pricelist.file.choose")}
-          <input
-            type="file"
-            accept=".csv,text/csv"
-            className="hidden"
-            disabled={upload.busy}
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              e.target.value = "";
-              if (f) void upload.run(f).catch(() => {});
-            }}
-          />
-        </label>
+        <>
+          <label className="btn-secondary mt-3 inline-block cursor-pointer">
+            {t("pricelist.file.choose")}
+            <input
+              type="file"
+              accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+              className="hidden"
+              disabled={upload.busy}
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                e.target.value = "";
+                if (f) void upload.run({ kind: "file", file: f }).catch(() => {});
+              }}
+            />
+          </label>
+          <div className="mt-3">
+            <Field label={t("pricelist.file.driveLabel")} hint={t("pricelist.file.driveHint")}>
+              <div className="flex flex-wrap gap-2">
+                <input
+                  className="input min-w-0 flex-1"
+                  value={driveUrl}
+                  placeholder="https://drive.google.com/file/d/…"
+                  onChange={(e) => setDriveUrl(e.target.value)}
+                />
+                <button
+                  className="btn-secondary"
+                  disabled={upload.busy || driveUrl.trim().length < 8}
+                  onClick={() =>
+                    void upload.run({ kind: "drive", url: driveUrl.trim() }).catch(() => {})
+                  }
+                >
+                  {t("pricelist.file.driveLoad")}
+                </button>
+              </div>
+            </Field>
+          </div>
+        </>
       )}
-      {result && (
+      {result?.needsConfirm && pending && (
+        <div className="mt-3 space-y-1 rounded-md border border-warn/40 bg-warn/15 p-3 text-sm">
+          <p className="font-medium">{t("pricelist.file.jumped")}</p>
+          <p>
+            {t("pricelist.file.diff", {
+              added: result.diff.added,
+              removed: result.diff.removed,
+              priceChanged: result.diff.priceChanged,
+            })}
+          </p>
+          <PriceSamples t={t} samples={result.diff.samples.priceChanged} />
+          <div className="flex flex-wrap gap-3 pt-1">
+            <button
+              className="btn-primary text-sm"
+              disabled={upload.busy}
+              onClick={() => void upload.run(pending, true).catch(() => {})}
+            >
+              {t("pricelist.file.confirm")}
+            </button>
+            <button
+              className="btn-ghost text-sm"
+              onClick={() => {
+                setPending(null);
+                setResult(null);
+              }}
+            >
+              {t("common.cancel")}
+            </button>
+          </div>
+        </div>
+      )}
+      {result && !result.needsConfirm && (
         <div className="mt-3 text-sm">
           <p>{t("pricelist.file.loaded", { count: result.meta.count })}</p>
           <p className="text-muted">
@@ -122,6 +205,27 @@ export function FileCard({
   );
 }
 
+/** Примеры смены цены: «Название: 21 000 → 210 000». */
+function PriceSamples({
+  t,
+  samples,
+}: {
+  t: AdminT;
+  samples: Array<{ name: string; from: number; to: number }>;
+}) {
+  if (!samples.length) return null;
+  const money = (n: number) => new Intl.NumberFormat("ru-RU").format(n);
+  return (
+    <ul className="list-disc pl-5 text-muted">
+      {samples.map((c, i) => (
+        <li key={i}>
+          {t("pricelist.sheet.samplePrice", { name: c.name, from: money(c.from), to: money(c.to) })}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export type SheetPreview = Awaited<ReturnType<typeof previewPricelistSheetFn>>;
 
 /** Прайс из Google Таблицы: проверка с разницей, загрузка, статус автообновления. */
@@ -138,7 +242,7 @@ export function SheetCard({
   const [preview, setPreview] = useState<{ url: string; result: SheetPreview } | null>(null);
   const [done, setDone] = useState<number | null>(null);
   const reason = (r: string) =>
-    r === "noRows" || r === "shrunk" || r === "changed"
+    r === "noRows" || r === "shrunk" || r === "changed" || r === "pricesJumped"
       ? t(`pricelist.sheet.reason.${r}`)
       : t(`sheet.reason.${r}` as Parameters<AdminT>[0]);
   const check = useAction(async () => {
@@ -241,6 +345,7 @@ export function SheetCard({
                   unchanged: p.diff.unchanged,
                 })}
               </p>
+              {p.jumped && <p className="font-medium text-warn">{t("pricelist.file.jumped")}</p>}
               {p.diff.samples.added.length > 0 && (
                 <p className="text-muted">
                   {t("pricelist.sheet.sampleAdded", { names: p.diff.samples.added.join("; ") })}
@@ -519,8 +624,23 @@ export function MediaCard({
   const [match, setMatch] = useState("");
   const [color, setColor] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const [anyway, setAnyway] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  // То же правило, что при ответе покупателю (mediaMatchesProduct): опечатка видна до сохранения.
+  const fits = match.trim()
+    ? data.mediaCandidates.filter((p) =>
+        mediaMatchesProduct({ id: "", match, color, path: "", kind: "image", createdAt: "" }, {
+          ...p,
+        } as ConsultantProduct),
+      ).length
+    : null;
+  const models = [...new Set(data.mediaCandidates.map((p) => p.name))];
   const add = useAction(async () => {
     if (!file || !match.trim()) return;
+    if (fits === 0 && !anyway) {
+      setAnyway(true);
+      return;
+    }
     const { uploadFile } = await import("@/app/admin/upload-client");
     const key = await uploadFile("consultantMedia", file, t, (status) =>
       t("pricelist.uploadFailed", { status }),
@@ -531,10 +651,12 @@ export function MediaCard({
     setMatch("");
     setColor("");
     setFile(null);
+    setAnyway(false);
     await onDone();
   });
   const remove = useAction(async (id: string) => {
     await deleteProductMediaFn({ data: { id } });
+    setConfirmDelete(null);
     await onDone();
   });
   return (
@@ -560,15 +682,28 @@ export function MediaCard({
                   {m.matches > 0 ? t("ws.media.matches", { n: m.matches }) : t("ws.media.noMatch")}
                 </div>
               )}
-              {canEdit && (
-                <button
-                  className="btn-ghost mt-1 text-xs text-danger"
-                  disabled={remove.busy}
-                  onClick={() => void remove.run(m.id).catch(() => {})}
-                >
-                  {t("pricelist.delete")}
-                </button>
-              )}
+              {canEdit &&
+                (confirmDelete === m.id ? (
+                  <div className="mt-1 flex flex-wrap gap-2">
+                    <button
+                      className="btn-danger text-xs"
+                      disabled={remove.busy}
+                      onClick={() => void remove.run(m.id).catch(() => {})}
+                    >
+                      {t("pricelist.media.deleteConfirm")}
+                    </button>
+                    <button className="btn-ghost text-xs" onClick={() => setConfirmDelete(null)}>
+                      {t("common.cancel")}
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    className="btn-ghost mt-1 text-xs text-danger"
+                    onClick={() => setConfirmDelete(m.id)}
+                  >
+                    {t("pricelist.delete")}
+                  </button>
+                ))}
             </li>
           ))}
         </ul>
@@ -580,11 +715,32 @@ export function MediaCard({
               className="input"
               value={match}
               placeholder="Uchino Zero Twist"
-              onChange={(e) => setMatch(e.target.value)}
+              list="pricelist-media-models"
+              onChange={(e) => {
+                setMatch(e.target.value);
+                setAnyway(false);
+              }}
             />
+            <datalist id="pricelist-media-models">
+              {models.map((n) => (
+                <option key={n} value={n} />
+              ))}
+            </datalist>
+            {fits !== null && (
+              <p className={`mt-1 text-xs ${fits > 0 ? "text-ok" : "text-danger"}`}>
+                {fits > 0 ? t("ws.media.matches", { n: fits }) : t("ws.media.noMatch")}
+              </p>
+            )}
           </Field>
           <Field label={t("pricelist.media.color")}>
-            <input className="input" value={color} onChange={(e) => setColor(e.target.value)} />
+            <input
+              className="input"
+              value={color}
+              onChange={(e) => {
+                setColor(e.target.value);
+                setAnyway(false);
+              }}
+            />
           </Field>
           <Field label={t("pricelist.media.file")}>
             <input
@@ -599,7 +755,7 @@ export function MediaCard({
               disabled={add.busy || !file || !match.trim()}
               onClick={() => void add.run().catch(() => {})}
             >
-              {t("pricelist.media.add")}
+              {anyway ? t("pricelist.media.addAnyway") : t("pricelist.media.add")}
             </button>
           </div>
         </div>
