@@ -13,6 +13,17 @@ export type ZernioInboxMessage = {
   sentAt?: string;
   /** Чем отправлено: через Zernio или из приложения Instagram. */
   sentVia?: string | null;
+  /**
+   * Поля сообщения в той же форме, что в событии вебхука (message.received):
+   * опрос ящика (inbox-poll.server) отдаёт их обработчику как есть — фото,
+   * голосовое и ответ на сторис разбирает тот же parseZernioMessage.
+   */
+  platformMessageId?: string;
+  attachments?: NonNullable<
+    NonNullable<import("./message").ZernioWebhookMessagePayload["message"]>["attachments"]
+  >;
+  sender?: NonNullable<import("./message").ZernioWebhookMessagePayload["message"]>["sender"];
+  metadata?: import("./message").ZernioInteractiveMetadata;
 };
 
 export function normalizeInboxMessage(m: ZernioInboxMessage): ZernioInboxMessage {

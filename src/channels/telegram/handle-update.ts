@@ -612,7 +612,8 @@ async function handleMessage(
   if (customer.state.mode === "search" && text && b.sells) return showSearch(b, text);
   // «Как в прошлый раз» словом: последний оплаченный заказ в корзину (Б11).
   if (text && b.sells && isReorderWord(text) && (await reorderLast(b))) return;
-  if (text && (await consultantReply(b, text, { messageId: msg.message_id }))) return;
+  if (text && (await consultantReply(b, text, { messageId: msg.message_id, date: msg.date })))
+    return;
   // Консультант без товаров не ответил: не поиск по пустому каталогу, а вопрос менеджеру.
   if (text && !b.sells) return questionToManager(b, text);
   const word = menuWordFor(text);
@@ -702,6 +703,7 @@ async function pricelistPhoto(b: Bot, msg: TelegramMessage): Promise<boolean> {
   return consultantReply(b, msg.caption?.trim() ?? "", {
     images: image ? [image] : [],
     messageId: msg.message_id,
+    date: msg.date,
   });
 }
 
@@ -717,6 +719,8 @@ async function consultantReply(
     images?: import("@/core/consultant/pricelist/images").V2Image[];
     /** message_id входящего — ключ строки журнала ответов (повтор доставки её не плодит). */
     messageId?: number;
+    /** Когда покупатель написал (секунды Unix): старое сообщение консультант не отвечает. */
+    date?: number;
   } = {},
 ): Promise<boolean> {
   const { consultantEnabled, isPaused, runConsultant } =
@@ -742,8 +746,15 @@ async function consultantReply(
   const r = await runConsultant(b.ctx, b.customer, text, {
     platform: "telegram",
     ...(images ? { images } : {}),
+    messageId: run.messageId || null,
+    sentAt: opts.date && opts.date > 0 ? new Date(opts.date * 1000).toISOString() : null,
   });
   if (!r) return false;
+  // Ответа нет: сообщение вошло в соседний ход или устарело (core/consultant/burst).
+  if (r.skipped) {
+    await recordConsultantRun(b.ctx, { ...run, replyKind: r.skipped, status: "cancelled" });
+    return true;
+  }
   const sent = await b.api.call("sendMessage", { chat_id: b.chatId, text: r.reply });
   await recordConsultantRun(b.ctx, {
     ...run,

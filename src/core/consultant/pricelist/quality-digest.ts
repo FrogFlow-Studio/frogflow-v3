@@ -51,6 +51,8 @@ function countFlags(list: string[][]): string {
     .join(", ");
 }
 
+const NOT_MANAGER_SILENCE = new Set(["folded", "busy", "stale"]);
+
 /** Текст сводки или null, если за сутки бот не ответил ни разу. */
 export function buildQualityDigest(
   runs: DigestRun[],
@@ -70,7 +72,11 @@ export function buildQualityDigest(
 
   const dialogs = new Set(runs.map((r) => r.conversation_id)).size;
   const handoffs = replied.filter((r) => /^(handoff|purchase)/.test(r.reply_kind ?? ""));
-  const paused = runs.filter((r) => r.status === "cancelled").length;
+  // Бот молчал при менеджере. Сообщение, вошедшее в соседний ход или устаревшее
+  // (core/consultant/burst), — не молчание при менеджере.
+  const paused = runs.filter(
+    (r) => r.status === "cancelled" && !NOT_MANAGER_SILENCE.has(r.reply_kind ?? ""),
+  ).length;
   const noModel = replied.filter((r) => !r.model).length;
   const cost = runs.reduce((sum, r) => sum + (Number(r.token_usage?.usd) || 0), 0);
   const clean = scored.filter((s) => s.flags.length === 0).length;

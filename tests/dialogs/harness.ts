@@ -21,6 +21,9 @@ import { handleTelegramUpdate } from "@/channels/telegram/handle-update";
 import { claimTelegramUpdate } from "@/channels/telegram/dedupe";
 import { handleZernioMessage } from "@/channels/zernio/handle-message";
 import { orderTrackRefLine } from "@/channels/telegram/order-notify-keys";
+import { pollTenantInbox } from "@/channels/zernio/inbox-poll.server";
+import { dispatchZernioEvent } from "@/channels/zernio/dispatch.server";
+import type { ZernioInboxMessage } from "@/channels/zernio/inbox-types";
 
 export type Channel = "telegram" | "instagram" | "whatsapp";
 
@@ -33,8 +36,22 @@ export type Input =
   | { photo: true }
   /** Та же реплика ещё раз: двойная доставка вебхука или двойной клик. */
   | { repeat: true }
+  /**
+   * Несколько сообщений подряд, пока бот думает: вебхуки приходят и
+   * обрабатываются одновременно («Здравствуйте» / «Есть полотенца?» / «А белые?»).
+   */
+  | { burst: string[] }
+  /** Сообщение, написанное `minutes` минут назад: канал доставил его с опозданием. */
+  | { late: string; minutes: number }
   /** Продавец из Telegram отвечает номером на «Отправлен + трек» по заказу №… (Б12). */
-  | { sellerTrack: string; orderId: number };
+  | { sellerTrack: string; orderId: number }
+  /**
+   * Instagram/WhatsApp (только `full`): покупатель написал, вебхук Zernio не
+   * пришёл. Через две минуты крон опроса ящика (inbox-poll) находит сообщение.
+   */
+  | { missed: string }
+  /** Поздний вебхук о последнем `missed` — то же сообщение Zernio, своё событие. */
+  | { lateWebhook: true };
 
 export interface Product {
   id: string;
@@ -231,6 +248,8 @@ function directRoom(o: RoomOptions): Room {
   let sellerLines: string[] = [];
   let mark = 0;
   let tail: unknown[] = [];
+  /** Ящик Zernio: сообщения, о которых вебхук не сообщил (`missed`). */
+  const inbox: ZernioInboxMessage[] = [];
   let last: Input | null = null;
   const transport = {
     send: vi.fn(
@@ -246,7 +265,7 @@ function directRoom(o: RoomOptions): Room {
         return { ok: true };
       },
     ),
-    tail: vi.fn(async () => tail),
+    tail: vi.fn(async () => [...tail, ...inbox]),
     download: vi.fn(async () => null),
     mailReady: () => false,
   } as unknown as ZernioTransport;
@@ -288,6 +307,9 @@ function directRoom(o: RoomOptions): Room {
     }) as ParsedZernioMessage;
   const toMessage = (i: Input): Partial<ParsedZernioMessage> => {
     if ("text" in i) return { text: i.text };
+    if ("late" in i)
+      return { text: i.late, sentAt: new Date(Date.now() - i.minutes * 60_000).toISOString() };
+    if ("burst" in i) return {};
     if ("button" in i) return { text: i.button, postbackPayload: i.button };
     if ("sellerTrack" in i) return {};
     const kind = "voice" in i ? "audio" : "sticker" in i ? "sticker" : "image";
@@ -305,6 +327,7 @@ function directRoom(o: RoomOptions): Room {
       text: m.text ?? "",
       attachments: (m.attachments ?? []).map((a) => ({ type: a.type, url: a.url })),
       sender: { id: "1", name: "Анна" },
+      ...(m.sentAt ? { sentAt: m.sentAt } : {}),
       ...(m.postbackPayload ? { metadata: { postbackPayload: m.postbackPayload } } : {}),
     },
   });
@@ -323,6 +346,51 @@ function directRoom(o: RoomOptions): Room {
         } finally {
           outbound.sink = prev;
         }
+        return;
+      }
+      if ("missed" in i || "lateWebhook" in i) {
+        if (!o.full) throw new Error("missed/lateWebhook — только в полном разборе (full)");
+        if ("missed" in i) {
+          inbox.push({
+            id: `m-missed-${inbox.length + 1}`,
+            direction: "incoming",
+            message: i.missed,
+            createdAt: new Date(Date.now() - 2 * 60_000).toISOString(),
+            sender: { id: "1", name: "Анна" },
+          });
+          // Опрос видит только клиента v2 с подключённым аккаунтом.
+          const t = ctx.tenant;
+          t.settings = {
+            ...t.settings,
+            served_by: "v2",
+            zernio: { account_ids: ["acc-1"], accounts: [{ id: "acc-1", platform }] },
+          };
+          const msg = inbox.at(-1)!;
+          await pollTenantInbox(ctx, {
+            listConversations: async () => [
+              { id: "conv-1", participantId: "1", updatedTime: msg.createdAt },
+            ],
+            transport,
+            dispatch: dispatchZernioEvent,
+            consultantEnabled: async (c) =>
+              (await import("@/core/consultant/engine.server")).consultantEnabled(c),
+            page: 50,
+          });
+        } else {
+          const msg = inbox.at(-1);
+          if (!msg) throw new Error("lateWebhook без missed");
+          const late = webhook({ text: msg.message ?? "" });
+          late.message.id = msg.id!;
+          await dispatchZernioEvent(ctx, late.id, late as never, transport);
+        }
+        current.state = db.tables.bot_users![0]!.state as Customer["state"];
+        return;
+      }
+      if (o.full && "burst" in i) {
+        // Каждая реплика — свой вебхук; обрабатываются одновременно, как на Vercel.
+        const hooks = i.burst.map((text) => webhook({ text }));
+        await Promise.all(hooks.map((h) => handleZernioMessage(ctx, h as never, transport)));
+        current.state = db.tables.bot_users![0]!.state as Customer["state"];
         return;
       }
       if (o.full) {
@@ -396,9 +464,28 @@ function telegramRoom(o: RoomOptions): Room {
         for (const text of r.buyer) calls.push(["sendMessage", { chat_id: TG, text }]);
         return;
       }
+      const from = { id: TG, is_bot: false, first_name: "Анна" };
+      if ("burst" in i) {
+        // Несколько сообщений подряд — апдейты обрабатываются одновременно.
+        const updates = i.burst.map((text) => {
+          updateId++;
+          const chat = { id: TG, type: "private" };
+          const date = Math.floor(Date.now() / 1000);
+          return {
+            update_id: updateId,
+            message: { message_id: updateId, date, chat, from, text },
+          };
+        });
+        await Promise.all(
+          updates.map(async (u) => {
+            if (await claimTelegramUpdate(ctx, u.update_id))
+              await handleTelegramUpdate(ctx, api, u as never);
+          }),
+        );
+        return;
+      }
       const again = "repeat" in i && lastUpdate !== null;
       if (!again) updateId++;
-      const from = { id: TG, is_bot: false, first_name: "Анна" };
       const base = { message_id: updateId, date: 0, chat: { id: TG, type: "private" }, from };
       let update: Record<string, unknown>;
       if ("repeat" in i) update = lastUpdate ?? { update_id: updateId };
@@ -411,11 +498,13 @@ function telegramRoom(o: RoomOptions): Room {
         const body =
           "text" in i
             ? { text: i.text }
-            : "voice" in i
-              ? { voice: { file_id: "v1", duration: 3 } }
-              : "sticker" in i
-                ? { sticker: { file_id: "s1" } }
-                : { photo: [{ file_id: "p1", width: 10, height: 10 }] };
+            : "late" in i
+              ? { text: i.late, date: Math.floor((Date.now() - i.minutes * 60_000) / 1000) }
+              : "voice" in i
+                ? { voice: { file_id: "v1", duration: 3 } }
+                : "sticker" in i
+                  ? { sticker: { file_id: "s1" } }
+                  : { photo: [{ file_id: "p1", width: 10, height: 10 }] };
         update = { update_id: updateId, message: { ...base, ...body } };
       }
       lastUpdate = update;

@@ -163,3 +163,14 @@ export function isAttachmentRejected(err: unknown): boolean {
   if (!f) return false;
   return (f.status === 400 && f.code === "PLATFORM_LIMITATION") || f.platformCode === 131052;
 }
+
+/**
+ * Лимит на весь ключ Zernio (429) из пойманной ошибки чтения: через сколько
+ * секунд пробовать снова, или null — это не лимит ключа. Лимит одного
+ * получателя (131056) остальным не мешает и сюда не относится.
+ */
+export function keyRateLimitSec(e: unknown): number | null {
+  if (!(e instanceof ZernioApiError)) return null;
+  if (e.failure.status !== 429 || classifyZernioFailure(e.failure) !== "rate_limited") return null;
+  return e.failure.retryAfterSec ?? 60;
+}

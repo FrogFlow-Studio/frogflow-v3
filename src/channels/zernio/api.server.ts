@@ -230,6 +230,41 @@ export async function listConversationMessages(
     .sort((a, b) => Date.parse(a.createdAt ?? "") - Date.parse(b.createdAt ?? ""));
 }
 
+/**
+ * Диалог в ящике Zernio (GET /inbox/conversations). Поля — как читал v1
+ * (src/lib/zernio.server.ts, ZernioConversation); participantId не сверен с
+ * живым ответом, поэтому покупателя опрос берёт сначала из своей базы по
+ * id диалога (v1: «poll берёт покупателя из треда»).
+ */
+export type ZernioConversation = {
+  id: string;
+  accountId?: string;
+  participantId?: string;
+  participantName?: string;
+  participantUsername?: string;
+  lastMessage?: string;
+  updatedTime?: string;
+  unreadCount?: number | null;
+};
+
+/** Сколько диалогов просим за раз; полная страница — признак, что свежих могло быть больше. */
+export const INBOX_PAGE = 50;
+
+/** Свежие диалоги аккаунта, новые сверху (опрос ящика, inbox-poll.server). */
+export async function listInboxConversations(
+  accountId: string,
+  platform: ZernioPlatform,
+): Promise<ZernioConversation[]> {
+  const r = await request<{ data?: ZernioConversation[]; conversations?: ZernioConversation[] }>(
+    "/inbox/conversations",
+    {
+      query: { platform, accountId, sortOrder: "desc", limit: String(INBOX_PAGE) },
+      timeoutMs: 10_000,
+    },
+  );
+  return (r.data ?? r.conversations ?? []).filter((c) => c && typeof c.id === "string");
+}
+
 /* ── профили, аккаунты, вебхук ───────────────────────────────────────── */
 
 export type ZernioProfile = { _id: string; name: string; description?: string };

@@ -452,7 +452,11 @@ describe("консультант с поиском по каталогу", () =>
 
   it("сбой записи состояния после ответа: ответ уходит, расход и бронь — один раз", async () => {
     const { updateStateSection } = await import("@/core/customers/customers");
-    vi.mocked(updateStateSection).mockRejectedValueOnce(new Error("гонка обновления"));
+    // Первая запись — очередь диалога (core/consultant/burst), вторая — история после ответа.
+    const write = vi.mocked(updateStateSection).getMockImplementation()!;
+    vi.mocked(updateStateSection)
+      .mockImplementationOnce(write)
+      .mockRejectedValueOnce(new Error("гонка обновления"));
     queue = [search({ query: "полотенце" }), say("Есть полотенце Aquanova.")];
     const ctx = ctxOf({ consultant_search: true });
     const r = await runConsultant(ctx, customer(), "полотенце", { platform: "instagram" });

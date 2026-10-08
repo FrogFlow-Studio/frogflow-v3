@@ -119,6 +119,11 @@ export interface Expect {
    * реплики — все, по порядку записи; каждая сверяется подмножеством полей.
    */
   tasks?: Array<Record<string, unknown>>;
+  /**
+   * Реплики покупателя в истории консультанта (state.consultant.recent) после
+   * реплики — каждая ровно один раз: ни потерянных, ни задвоенных.
+   */
+  history?: string[];
 }
 
 export interface Scenario {
@@ -717,6 +722,26 @@ export const SCENARIOS: Scenario[] = [
     products: [{ id: P1, name: "018. Прописи", keywords: "кпп" }],
     steps: [{ say: { text: "Кпп" }, expect: { silent: true } }],
   },
+  // ───── Добор пропущенных входящих: вебхук Zernio не пришёл (08.10) ─────
+  ...everyLocale(
+    () => ({
+      id: "inbox-poll-missed-webhook",
+      title:
+        "вебхук не пришёл — опрос ящика отвечает один раз; поздний вебхук о том же сообщении молчит",
+      origin:
+        "BOVI 08.10, разбор v3 (партия 2, п. 6): без вебхука покупатель без ответа; v1 inbox-poll 23.09 — два ответа на один вопрос",
+      channel: "instagram",
+      full: true,
+      vertical: "consultant",
+      modules: { shop: true },
+      consultant: CONSULTANT_SAYS,
+      steps: [
+        { say: { missed: "Есть кирпич М150?" }, expect: { says: [CONSULTANT_SAYS], count: 1 } },
+        { say: { lateWebhook: true }, expect: { silent: true } },
+      ],
+    }),
+    ["instagram", "whatsapp"],
+  ),
   // ───── Консультант BOVI: надёжность ответа (07.10) ─────
   ...everyLocale(
     () => ({
@@ -993,4 +1018,114 @@ export const SCENARIOS: Scenario[] = [
       },
     ],
   },
+  // ───── Консультант BOVI: несколько сообщений подряд (08.10) ─────
+  ...everyLocale(
+    () => ({
+      id: "pricelist-burst",
+      title: "три сообщения подряд — не три ответа вперемешку: ход за ходом, история без потерь",
+      origin:
+        "BOVI 08.10, разбор: каждый вебхук запускал консультанта параллельно — два-три ответа, история одного хода затиралась",
+      channel: "instagram",
+      full: true,
+      vertical: "consultant",
+      modules: { shop: true },
+      pricelist: {
+        catalog: PL_CATALOG,
+        rounds: [
+          said("Здравствуйте! Подскажу по прайсу."),
+          said("Да, полотенце Uchino есть, белое."),
+        ],
+      },
+      steps: [
+        {
+          // Первое сообщение берёт ход; второе и третье, пришедшие, пока модель
+          // думала, получают один общий ответ следующим ходом.
+          say: { burst: ["Здравствуйте", "Есть полотенца?", "А белые?"] },
+          expect: { count: 2, history: ["Здравствуйте", "Есть полотенца?", "А белые?"] },
+        },
+      ],
+    }),
+    ["instagram", "whatsapp"],
+  ),
+  {
+    id: "pricelist-burst-tg-ru",
+    title: "два сообщения подряд в Telegram — ответы по очереди, оба вопроса в истории",
+    origin:
+      "BOVI 08.10, разбор: параллельные ходы консультанта, тот же путь runConsultant в Telegram",
+    channel: "telegram",
+    locale: "ru",
+    vertical: "consultant",
+    modules: { shop: true },
+    pricelist: {
+      catalog: PL_CATALOG,
+      rounds: [said("Здравствуйте! Подскажу по прайсу."), said("Да, полотенце Uchino есть.")],
+    },
+    steps: [
+      {
+        say: { burst: ["Здравствуйте", "Есть полотенца?"] },
+        expect: { count: 2, history: ["Здравствуйте", "Есть полотенца?"] },
+      },
+    ],
+  },
+  {
+    id: "pricelist-burst-handoff-ig-ru",
+    title: "первый ход передал диалог менеджеру — второе сообщение подряд бот не отвечает",
+    origin:
+      "BOVI 08.10, разбор: параллельный ход отвечал покупателю поверх только что позванного менеджера",
+    channel: "instagram",
+    locale: "ru",
+    full: true,
+    vertical: "consultant",
+    modules: { shop: true },
+    pricelist: {
+      catalog: PL_CATALOG,
+      rounds: [
+        [
+          {
+            type: "tool_use",
+            id: "h1",
+            name: "handoff_to_manager",
+            input: { reason: "complaint", summary: "Полотенце с затяжкой" },
+          },
+        ],
+      ],
+    },
+    steps: [
+      {
+        say: { burst: ["Хочу вернуть полотенце", "Оно с затяжкой"] },
+        expect: {
+          // Один ответ — передача; второе сообщение ждёт и видит паузу.
+          count: 1,
+          says: [pricelistHandoffReply("ru")],
+          paused: true,
+          sellerNotices: 1,
+          history: ["Хочу вернуть полотенце", "Оно с затяжкой"],
+        },
+      },
+    ],
+  },
+  ...everyLocale(
+    () => ({
+      id: "pricelist-late-delivery",
+      title: "сообщение, доставленное через два часа, — без ответа, но в истории",
+      origin:
+        "BOVI 08.10, разбор: Zernio повторяет недоставленный вебхук часами, бот отвечал на старое как на новое",
+      channel: "instagram",
+      full: true,
+      vertical: "consultant",
+      modules: { shop: true },
+      pricelist: { catalog: PL_CATALOG, rounds: [said("Да, полотенце Uchino есть.")] },
+      steps: [
+        {
+          say: { late: "Есть полотенца?", minutes: 120 },
+          expect: { silent: true, sellerNotices: 0, history: ["Есть полотенца?"] },
+        },
+        {
+          say: { text: "А белые есть?" },
+          expect: { count: 1, history: ["Есть полотенца?", "А белые есть?"] },
+        },
+      ],
+    }),
+    ["instagram", "whatsapp"],
+  ),
 ];

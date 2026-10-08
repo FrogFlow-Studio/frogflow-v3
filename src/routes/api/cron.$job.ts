@@ -6,6 +6,9 @@ import { isCronAuthorized } from "@/lib/cron-auth";
 import { reportError } from "@/lib/errors";
 import { cronBudget, eachWithin, inTurn, mapWithin, resumeOf } from "@/lib/cron-budget";
 
+/** Опрос ящика Zernio идёт раз в минуту — укладываемся в 45 с, с запасом до следующего. */
+const INBOX_POLL_BUDGET_MS = 45_000;
+
 /**
  * Кроны одного деплоя обходят всех арендаторов. Каждая задача — функция
  * от Tenant; сбой у одного клиента не останавливает остальных.
@@ -267,6 +270,23 @@ export const Route = createFileRoute("/api/cron/$job")({
                   results[t.id] = await tenantFailure(t.id, e);
                 }
               });
+              resume = resumeOf(ordered, skipped);
+              break;
+            }
+            case "inbox-poll": {
+              // ИИ-консультант в Direct/WhatsApp: входящие, которые не донёс вебхук Zernio,
+              // добираются из ящика тем же обработчиком (channels/zernio/inbox-poll.server).
+              // Свой срок короче минуты: следующий запуск не наезжает на этот.
+              const { runInboxPollFor } = await import("@/channels/zernio/inbox-poll.server");
+              const { tenantContext } = await import("@/core/tenant/resolve.server");
+              const polled = await runInboxPollFor(ordered, tenantContext, {
+                deadline: startedAt + INBOX_POLL_BUDGET_MS,
+              });
+              results.inboxPoll = polled;
+              // Не успели по сроку — следующий запуск начнёт с них.
+              for (const [id, r] of Object.entries(polled))
+                if (r && typeof r === "object" && "skipped" in r && r.skipped === "budget")
+                  skipped.add(id);
               resume = resumeOf(ordered, skipped);
               break;
             }

@@ -15,6 +15,10 @@
       "schedule": "* * * * *"
     },
     {
+      "path": "/api/cron/inbox-poll",
+      "schedule": "* * * * *"
+    },
+    {
       "path": "/api/cron/cart-reminder",
       "schedule": "*/30 * * * *"
     },

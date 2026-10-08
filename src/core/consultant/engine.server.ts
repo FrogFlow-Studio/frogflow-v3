@@ -4,6 +4,7 @@ import { env } from "@/config/env";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Customer } from "@/core/customers/customers";
 import { updateStateSection } from "@/core/customers/customers";
+import { commitTurn, isStaleIncoming, joinTurn, type InboxItem } from "./burst";
 import { handoffSummary, sellerLocaleSafe } from "@/core/ai/seller-text";
 import { offerForProductRow } from "@/core/offers/offers";
 import { activePreorder, preordersFor } from "@/core/preorder/preorder";
@@ -177,6 +178,14 @@ export type ConsultantResult = {
   tools?: string[];
   /** Фото и видео товара к ответу (консультант по прайсу, send_product_photo). */
   attachments?: { url: string; kind: "image" | "video" }[];
+  /**
+   * Отвечать не нужно (core/consultant/burst): folded — сообщение вошло в
+   * соседний ход и ответ на него уходит там; busy — не дождались чужого хода,
+   * сообщение ждёт следующего; paused — пока ждали, соседний ход передал
+   * диалог менеджеру; stale — сообщение доставлено с опозданием. Реплика
+   * покупателя в истории диалога в любом случае.
+   */
+  skipped?: "folded" | "busy" | "paused" | "stale";
 };
 
 export function consultantConfigured(): boolean {
@@ -356,12 +365,26 @@ export function isPaused(customer: Customer, now = Date.now()): boolean {
  * Профиль покупателя сливается: новое поверх того, что узнали параллельно.
  */
 async function saveState(ctx: TenantContext, customer: Customer, patch: Partial<ConsultantState>) {
-  return updateStateSection(ctx, customer, "consultant", (current) => {
-    const next: Record<string, unknown> = { ...current, ...patch };
-    if (patch.profile) next.profile = { ...parseMemory(current.profile), ...patch.profile };
-    return next;
-  });
+  return updateStateSection(ctx, customer, "consultant", (current) => withPatch(current, patch));
 }
+
+function withPatch(
+  current: Record<string, unknown>,
+  patch: Partial<ConsultantState>,
+): Record<string, unknown> {
+  const next: Record<string, unknown> = { ...current, ...patch };
+  if (patch.profile) next.profile = { ...parseMemory(current.profile), ...patch.profile };
+  return next;
+}
+
+const NO_USAGE = { inputTokens: 0, outputTokens: 0, usd: 0 };
+
+/** Ход консультанта: аренда и сообщения очереди, которые он закрывает (core/consultant/burst). */
+type OpenTurn = {
+  id: string | null;
+  items: Array<Pick<InboxItem, "id" | "text">>;
+  closed: boolean;
+};
 
 /**
  * Продавец ответил сам или клиент ушёл к менеджеру — консультант молчит
@@ -444,6 +467,10 @@ export async function runConsultant(
     images?: import("./pricelist/images").V2Image[];
     /** В этом канале включён магазин в переписке: покупку оформляет бот, не менеджер. */
     shopInChat?: boolean;
+    /** Id входящего (Meta, Telegram) — повтор доставки не встаёт в очередь диалога второй раз. */
+    messageId?: string | null;
+    /** Когда покупатель написал (часы канала, ISO): старое сообщение не отвечается. */
+    sentAt?: string | null;
   } = { platform: "telegram" },
 ): Promise<ConsultantResult | null> {
   // Предпросмотр: до брони ИИ-баланса и до клиента — как «ИИ недоступен».
@@ -481,6 +508,18 @@ export async function runConsultant(
     const { findStoryTag, listStoryTags, storyContextLine } = await import("./story-tags");
     const tag = findStoryTag(await listStoryTags(ctx), opts.story.storyId, opts.story.mediaUrl);
     incoming = `${storyContextLine(tag, opts.story.storyId)}\n\n${incoming}`;
+  }
+
+  const live = Boolean(customer) && !opts.dryRun;
+  // Доставлено с опозданием (Zernio повторяет вебхук часами): не отвечаем как
+  // на свежее, но реплику — в историю, чтобы следующий вопрос её видел.
+  if (customer && live && isStaleIncoming(opts.sentAt)) {
+    await commitTurn(ctx, customer, {
+      turnId: null,
+      items: [{ id: opts.messageId || "stale", text: incoming }],
+      historyTurns: HISTORY_TURNS,
+    });
+    return { reply: "", handoff: null, usage: NO_USAGE, skipped: "stale" };
   }
 
   const { profile, docs } = await loadConsultant(ctx);
@@ -529,6 +568,58 @@ export async function runConsultant(
     }
   }
 
+  const answer = (
+    c: Customer | null,
+    a: { incoming: string; state: ConsultantState },
+    turn: OpenTurn | null,
+  ) => answerConsultant(ctx, c, opts, { ...a, bLocale, apiKey, pricelist, profile, docs, turn });
+  if (!customer || !live) return answer(customer, { incoming, state }, null);
+
+  // Один ход на диалог: сообщение встаёт в очередь, ход идёт под арендой (core/consultant/burst).
+  const own = photos || Boolean(opts.story?.storyId || opts.story?.mediaUrl);
+  const joined = await joinTurn(ctx, customer, { id: opts.messageId, text: incoming, own });
+  if (!joined.lead) return { reply: "", handoff: null, usage: NO_USAGE, skipped: joined.why };
+  const fresh = joined.customer;
+  const turn: OpenTurn = { id: joined.turnId, items: joined.items, closed: false };
+  try {
+    // Пока ждали, соседний ход передал диалог менеджеру — молчим, реплики в историю.
+    if (isPaused(fresh)) return { reply: "", handoff: null, usage: NO_USAGE, skipped: "paused" };
+    // Своё сообщение — целиком (с пометкой публикации), соседей — из очереди.
+    const together = joined.items
+      .map((i) => (i.id === joined.ownId ? incoming : i.text))
+      .filter((t) => t.trim())
+      .join("\n\n");
+    return await answer(fresh, { incoming: together || incoming, state: stateOf(fresh) }, turn);
+  } finally {
+    // Ход закрылся без ответа модели (предел, сбой): реплики — в историю, аренда — соседям.
+    if (!turn.closed)
+      await commitTurn(ctx, fresh, {
+        turnId: turn.id,
+        items: turn.items,
+        historyTurns: HISTORY_TURNS,
+      }).catch((e: unknown) =>
+        console.error(`[consultant:${ctx.tenant.id}] ход диалога не закрыт`, e),
+      );
+  }
+}
+
+/** Ответ консультанта после очереди диалога: бюджет, модель, расход и история. */
+async function answerConsultant(
+  ctx: TenantContext,
+  customer: Customer | null,
+  opts: Parameters<typeof runConsultant>[3] & { platform: string },
+  a: {
+    incoming: string;
+    state: ConsultantState;
+    bLocale: ReturnType<typeof buyerLocale>;
+    apiKey: string;
+    pricelist: boolean;
+    profile: Awaited<ReturnType<typeof loadConsultant>>["profile"];
+    docs: Awaited<ReturnType<typeof loadConsultant>>["docs"];
+    turn: OpenTurn | null;
+  },
+): Promise<ConsultantResult | null> {
+  const { incoming, state, bLocale, apiKey, pricelist, profile, docs, turn } = a;
   // Предел на клиента — до вызова модели (core/consultant/budget).
   const kind = opts.dryRun ? "test" : "customer";
   const date = today();
@@ -788,20 +879,24 @@ export async function runConsultant(
     else if (out.clearError) await trySetSetting(ctx, KEYS.lastError, "");
 
     if (customer && !opts.dryRun) {
-      const recent: ConsultantTurn[] = [
-        ...(state.recent ?? []),
-        { role: "customer" as const, text: incoming.slice(0, 500) },
-        { role: "assistant" as const, text: (out.historyReply || reply).slice(0, 700) },
-      ].slice(-HISTORY_TURNS);
       // Ответ уже готов и оплачен: сбой записи истории его не отменяет.
+      // История дописывается к свежей (не к снимку начала хода): соседний
+      // ход или напоминание, записанные за это время, не затираются.
       try {
-        await saveState(ctx, customer, {
-          recent,
+        const patch: Partial<ConsultantState> = {
           last_reply_at: new Date().toISOString(),
           ...(handoff?.customerContact ? { contact: handoff.customerContact } : {}),
           ...out.patch,
           ...(handoff ? { paused_until: pausedUntilIso(pauseHours(ctx.tenant)) } : {}),
+        };
+        await commitTurn(ctx, customer, {
+          turnId: turn?.id ?? null,
+          items: turn?.items ?? [{ id: "turn", text: incoming }],
+          reply: out.historyReply || reply,
+          historyTurns: HISTORY_TURNS,
+          patch: (cur) => withPatch(cur, patch),
         });
+        if (turn) turn.closed = true;
       } catch (e) {
         console.error(`[consultant:${ctx.tenant.id}] состояние диалога не записано`, e);
         await trySetSetting(

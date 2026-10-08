@@ -173,3 +173,30 @@ describe("журнал ответов: ход без ответа", () => {
     expect(runs()).toHaveLength(1);
   });
 });
+
+describe("сообщение без своего ответа (core/consultant/burst)", () => {
+  it("вошло в соседний ход — покупателю ничего не уходит, строка cancelled «folded»", async () => {
+    engine.result = { reply: "", handoff: null, usage, skipped: "folded" };
+    const { send, t } = transport(true);
+    const r = await handleZernioMessage(ctx, payload("А белые?"), t);
+    expect(r.status).toBe("processed");
+    expect(send).not.toHaveBeenCalled();
+    expect(notifyAdminsHtml).not.toHaveBeenCalled();
+    expect(runs()[0]).toMatchObject({ status: "cancelled", reply_kind: "folded", sent_at: null });
+  });
+
+  it("время сообщения и его id уходят консультанту — для проверки опоздания и очереди", async () => {
+    engine.result = { reply: "", handoff: null, usage, skipped: "stale" };
+    const sentAt = new Date(Date.now() - 3 * 3600_000).toISOString();
+    const p = payload("Есть полотенца?") as unknown as { message: Record<string, unknown> };
+    p.message.sentAt = sentAt;
+    const { send, t } = transport(true);
+    await handleZernioMessage(ctx, p as never, t);
+    expect((runConsultant.mock.calls[0] as unknown[])[3]).toMatchObject({
+      sentAt,
+      messageId: "mid-1",
+    });
+    expect(send).not.toHaveBeenCalled();
+    expect(runs()[0]).toMatchObject({ status: "cancelled", reply_kind: "stale" });
+  });
+});

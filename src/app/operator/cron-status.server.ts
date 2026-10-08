@@ -15,6 +15,12 @@ export const CRON_JOBS = [
     title: "Вебхуки Telegram и Zernio",
   },
   { job: "broadcast", schedule: "* * * * *", everyMin: 1, title: "Рассылки и outbox" },
+  {
+    job: "inbox-poll",
+    schedule: "* * * * *",
+    everyMin: 1,
+    title: "Добор входящих Instagram/WhatsApp для консультанта",
+  },
   { job: "cart-reminder", schedule: "*/30 * * * *", everyMin: 30, title: "Брошенные корзины" },
   {
     job: "fulfillment-reminder",

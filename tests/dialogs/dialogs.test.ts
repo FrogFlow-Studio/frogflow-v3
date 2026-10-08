@@ -7,6 +7,7 @@ import { notices, outbound, room, ROOM_BOT, type Channel, type Product } from ".
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { invalidatePricelist } from "@/core/consultant/pricelist/catalog.server";
 import { SCENARIOS, type Says } from "./scenarios";
+import { BURST } from "@/core/consultant/burst";
 
 /** Золотые диалоги (Б14): прогон сценариев из scenarios.ts на настоящем коде каналов. */
 
@@ -52,11 +53,15 @@ vi.mock("@anthropic-ai/sdk", () => {
   class APIError extends Error {
     status?: number;
   }
-  const create = async () => ({
-    stop_reason: "end_turn",
-    content: modelRounds.list.shift() ?? [{ type: "text", text: "" }],
-    usage: { input_tokens: 100, output_tokens: 20 },
-  });
+  const create = async () => {
+    // Модель думает (в жизни — секунды): соседние вебхуки успевают встать в очередь диалога.
+    await new Promise((r) => setTimeout(r, 15));
+    return {
+      stop_reason: "end_turn",
+      content: modelRounds.list.shift() ?? [{ type: "text", text: "" }],
+      usage: { input_tokens: 100, output_tokens: 20 },
+    };
+  };
   return {
     default: Object.assign(
       class {
@@ -83,6 +88,9 @@ vi.mock("@/core/catalog/low-stock", async (orig) => ({
   ...(await orig<typeof import("@/core/catalog/low-stock")>()),
   sellerLocale: async () => "ru",
 }));
+
+// Сообщения подряд ждут соседний ход: в тестах перечитывают состояние каждые 5 мс.
+BURST.pollMs = 5;
 
 beforeEach(() => {
   setEnvForTests({});
@@ -143,7 +151,7 @@ describe("золотые диалоги", () => {
         const where = `шаг ${step} ${JSON.stringify(say)}`;
         const all = r.replies().join("\n");
         if (e.silent) expect(r.replies(), where).toEqual([]);
-        if (e.count !== undefined) expect(r.replies().length, where).toBe(e.count);
+        if (e.count !== undefined) expect(r.replies(), where).toHaveLength(e.count);
         for (const x of e.says ?? [])
           expect(has(all, x), `${where}: нет «${String(x)}» в «${all}»`).toBe(true);
         for (const x of e.notSays ?? [])
@@ -171,6 +179,17 @@ describe("золотые диалоги", () => {
             ?.paused_until;
           const paused = Boolean(until) && Date.parse(until!) > Date.now();
           expect(paused, `${where}: консультант на паузе`).toBe(e.paused);
+        }
+        if (e.history) {
+          const recent =
+            (r.state().consultant as { recent?: Array<{ role: string; text: string }> } | undefined)
+              ?.recent ?? [];
+          const asked = recent.filter((t) => t.role === "customer").map((t) => t.text);
+          for (const h of e.history)
+            expect(
+              asked.flatMap((t) => t.split("\n\n")).filter((t) => t === h),
+              `${where}: «${h}» в истории ровно один раз (${JSON.stringify(asked)})`,
+            ).toHaveLength(1);
         }
         if (e.tasks) {
           const raw = r.db.tables.app_settings!.find((x) => x.key === "consultant_tasks_json")

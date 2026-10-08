@@ -50,6 +50,14 @@ describe("сводка качества за сутки", () => {
           reply_text: "Опт ведёт менеджер.",
         }),
         run({ conversation_id: "c4", status: "cancelled", reply_text: null }),
+        // Вошло в соседний ход (core/consultant/burst) — не «бот молчал при менеджере».
+        run({
+          conversation_id: "c4",
+          status: "cancelled",
+          reply_kind: "folded",
+          reply_text: null,
+          token_usage: {},
+        }),
       ],
       catalog,
       { day: "2026-09-24" },

@@ -27,6 +27,8 @@ export async function dispatchZernioEvent(
   ctx: TenantContext,
   eventId: string,
   payload: ZernioWebhookMessagePayload,
+  /** Транспорт сообщений (опрос ящика и тесты подменяют); по умолчанию — живой Zernio. */
+  transport?: import("./api.server").ZernioTransport,
 ): Promise<DispatchOutcome> {
   try {
     if (payload.event === "comment.received") {
@@ -100,7 +102,9 @@ export async function dispatchZernioEvent(
       return { status: "processed", note: r.note };
     }
     const { handleZernioMessage } = await import("./handle-message");
-    const r = await runWithZernioEvent(eventId, () => handleZernioMessage(ctx, payload));
+    const r = await runWithZernioEvent(eventId, () =>
+      transport ? handleZernioMessage(ctx, payload, transport) : handleZernioMessage(ctx, payload),
+    );
     return { status: r.status, note: r.note ?? null };
   } catch (e) {
     const note = e instanceof Error ? e.message : String(e);

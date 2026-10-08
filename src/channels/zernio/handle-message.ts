@@ -15,6 +15,8 @@ import { PLATFORM_LABEL } from "./platform";
 import { makeReason } from "@/core/chat/reason";
 import { sellsNowOrShop } from "@/core/tenant/sells.server";
 import { isLocale } from "@/core/i18n/locale";
+import { currentZernioEventId } from "./event-context.server";
+import { isPollEvent, zernioMessageKey } from "./inbox-poll";
 
 /**
  * Входящее из Instagram Direct или WhatsApp. Адаптер разбирает событие,
@@ -78,6 +80,19 @@ export async function handleZernioMessage(
   if (!m.conversationId || !m.accountId) return ignored("нет conversationId или accountId");
   if (!ctx.tenant.modules[m.platform])
     return ignored(`модуль «${PLATFORM_LABEL[m.platform]}» у клиента выключен`);
+
+  // Одно входящее — одна обработка, кто бы его ни принёс: вебхук или опрос
+  // ящика (inbox-poll.server). Метка — условная запись до любой отправки.
+  const eventId = currentZernioEventId();
+  const viaPoll = isPollEvent(eventId);
+  const key = zernioMessageKey({ id: payload.message?.id, platformMessageId: m.platformMessageId });
+  if (key) {
+    const { claimZernioMessage } = await import("./message-claim.server");
+    const claim = await claimZernioMessage(ctx, key, eventId ?? "direct", m.conversationId);
+    if (claim === "lost") return ignored("сообщение уже обработано (вебхук или опрос ящика)");
+    // Вебхук при сбое базы отвечает (молчание дороже), опрос — нет: он лишь запасной путь.
+    if (claim === "unknown" && viaPoll) return ignored("опрос: метка сообщения не записалась");
+  }
 
   let customer = await upsertCustomer(ctx, m.platform, m.senderId, {
     username: m.senderUsername || null,
@@ -385,21 +400,27 @@ export async function handleZernioMessage(
     story: pre.story,
     ...(imageUrls.length ? { imageUrls } : {}),
     shopInChat: shopOn,
+    messageId: m.platformMessageId ?? currentZernioEventId() ?? null,
+    sentAt: m.sentAt ?? payload.timestamp ?? null,
   });
   if (!r) return { status: "failed", note: "консультант не ответил (см. consultant_last_error)" };
+  // Ответа нет: сообщение ушло в соседний ход, ждёт следующего или устарело (core/consultant/burst).
+  if (r.skipped) {
+    await recordSilentRun(ctx, customer, m, text, r.skipped);
+    return processed(SKIPPED_NOTE[r.skipped]);
+  }
 
   const sent = await transport.send(m.conversationId, m.accountId, r.reply, {
     platform: m.platform,
   });
   // Журнал ответов: цена ответа, кеш, инструменты — и что ответ не ушёл.
   const { recordConsultantRun } = await import("@/core/consultant/runs");
-  const { currentZernioEventId } = await import("./event-context.server");
   await recordConsultantRun(ctx, {
     messageId: m.platformMessageId ?? currentZernioEventId() ?? "",
     conversationId: m.conversationId,
     accountId: m.accountId,
     userKey: customer.userKey,
-    source: "webhook",
+    source: isPollEvent(currentZernioEventId()) ? "poll" : "webhook",
     incomingText: text,
     replyText: r.reply,
     replyKind: r.handoff ? `handoff:${r.handoff.reason}` : "reply",
@@ -453,22 +474,32 @@ export async function handleZernioMessage(
 
 type ParsedMessage = ReturnType<typeof parseZernioMessage>;
 
-/** Ход консультанта без ответа (пауза, менеджер в чате) — строка cancelled в журнале ответов. */
+const SKIPPED_NOTE: Record<NonNullable<ConsultantSkip>, string> = {
+  folded: "сообщение вошло в соседний ход консультанта — ответ там",
+  busy: "консультант занят соседним ходом — сообщение ждёт следующего",
+  paused: "пока ждали, соседний ход передал диалог менеджеру",
+  stale: "сообщение доставлено с опозданием — без ответа",
+};
+type ConsultantSkip = import("@/core/consultant/engine.server").ConsultantResult["skipped"];
+
+/**
+ * Ход консультанта без ответа (пауза, менеджер в чате, сообщение вошло в
+ * соседний ход или устарело) — строка cancelled в журнале ответов.
+ */
 async function recordSilentRun(
   ctx: TenantContext,
   customer: Customer,
   m: ParsedMessage,
   text: string,
-  why: "paused" | "manager",
+  why: "paused" | "manager" | NonNullable<ConsultantSkip>,
 ) {
   const { recordConsultantRun } = await import("@/core/consultant/runs");
-  const { currentZernioEventId } = await import("./event-context.server");
   await recordConsultantRun(ctx, {
     messageId: m.platformMessageId ?? currentZernioEventId() ?? "",
     conversationId: m.conversationId!,
     accountId: m.accountId,
     userKey: customer.userKey,
-    source: "webhook",
+    source: isPollEvent(currentZernioEventId()) ? "poll" : "webhook",
     incomingText: text,
     replyKind: why,
     status: "cancelled",

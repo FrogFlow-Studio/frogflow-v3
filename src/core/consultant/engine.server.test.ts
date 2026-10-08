@@ -336,7 +336,8 @@ describe("консультант: ИИ-баланс клиента", () => {
     const r = await runConsultant(ctx, customer(), "Сколько стоит?", { platform: "instagram" });
     expect(create).not.toHaveBeenCalled();
     expect(r?.handoff?.summary).toMatch(/Сбой учёта ИИ-баланса/);
-    expect(saved).toHaveLength(0);
+    // Без паузы: записаны только очередь диалога и закрытие хода (core/consultant/burst).
+    expect(saved.some((st) => st.consultant?.paused_until)).toBe(false);
     expect(JSON.parse((await getSetting(ctx, KEYS.daily))!).usd).toBe(0);
   });
 

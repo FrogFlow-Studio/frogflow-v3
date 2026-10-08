@@ -18,7 +18,7 @@ describe("состояние кронов", () => {
   });
   it("все задачи из vercel.json есть в списке", () => {
     expect(CRON_JOBS.map((j) => j.job)).toContain("retention");
-    expect(CRON_JOBS).toHaveLength(12);
+    expect(CRON_JOBS).toHaveLength(13);
   });
 });
 

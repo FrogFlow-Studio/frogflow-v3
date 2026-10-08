@@ -9,6 +9,8 @@ export type TelegramUser = {
 
 export type TelegramMessage = {
   message_id?: number;
+  /** Когда отправлено, секунды Unix. */
+  date?: number;
   chat: { id: number; type?: string };
   from?: TelegramUser;
   text?: string;

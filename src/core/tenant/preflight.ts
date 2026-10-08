@@ -413,7 +413,7 @@ export function evaluatePreflight(i: PreflightInput): Preflight {
       key: "v1",
       level: "info",
       title: "Остановите крон v1 после переезда",
-      detail: `Деплой ${i.appUrl} каждую минуту (крон broadcast) ставит вебхук обратно. Сразу после переключения поставьте его проект Vercel на паузу.`,
+      detail: `Деплой ${i.appUrl} каждую минуту (крон broadcast) ставит вебхук обратно, а у консультанта ещё и сам добирает входящие из ящика Zernio (крон zernio-retry): v2 делает это теперь своим кроном inbox-poll, и ответ ушёл бы дважды. Сразу после переключения поставьте его проект Vercel на паузу.`,
     });
   return { ready: !checks.some((c) => c.level === "block"), checks };
 }

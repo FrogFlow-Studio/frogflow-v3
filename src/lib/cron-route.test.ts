@@ -117,6 +117,9 @@ vi.mock("@/channels/zernio/guard.server", () => ({
 vi.mock("@/channels/zernio/dispatch.server", () => ({
   retryStuckEventsFor: hitList("zernioRetry"),
 }));
+vi.mock("@/channels/zernio/inbox-poll.server", () => ({
+  runInboxPollFor: hitList("inboxPoll"),
+}));
 vi.mock("@/channels/zernio/consultant-jobs.server", () => ({
   runPricelistJobs: hitList("pricelist"),
 }));
@@ -173,6 +176,7 @@ const JOBS: Record<string, string[]> = {
   giveaways: ["giveaways"],
   "course-lives": ["courseLives"],
   "comment-dm-fallback": ["commentDm"],
+  "inbox-poll": ["inboxPoll"],
   health: ["zernioSync", "channelGuard", "zernioRetry", "pricelist", "digest", "weekly", "morning"],
   subscriptions: ["catalogSheet", "sheetNotify", "renewals"],
 };
