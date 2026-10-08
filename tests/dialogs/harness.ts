@@ -43,6 +43,11 @@ export type Input =
   | { burst: string[] }
   /** Сообщение, написанное `minutes` минут назад: канал доставил его с опозданием. */
   | { late: string; minutes: number }
+  /**
+   * Instagram/WhatsApp (только `full`): прошлый ход консультанта завис и держит
+   * аренду диалога дольше, чем ждёт новое сообщение (core/consultant/burst).
+   */
+  | { stuck: string }
   /** Продавец из Telegram отвечает номером на «Отправлен + трек» по заказу №… (Б12). */
   | { sellerTrack: string; orderId: number }
   /**
@@ -50,8 +55,19 @@ export type Input =
    * пришёл. Через две минуты крон опроса ящика (inbox-poll) находит сообщение.
    */
   | { missed: string }
+  /**
+   * Как `missed`, но список сообщений Zernio отдаёт id в виде Mongo `_id`, а
+   * вебхук — своим `id`: совпадает только id сообщения у Meta
+   * (platformMessageId). Так в живых данных или нет — не подтверждено.
+   */
+  | { missed: string; mongoIds: true }
   /** Поздний вебхук о последнем `missed` — то же сообщение Zernio, своё событие. */
   | { lateWebhook: true }
+  /**
+   * Instagram/WhatsApp (только `full`): продавец ответил прямо в приложении,
+   * события об исходящем Zernio не прислал; через минуту крон опроса ящика.
+   */
+  | { appReply: string }
   /**
    * Instagram/WhatsApp (только `full`): продавец ответил покупателю руками в
    * приложении — Zernio присылает исходящее сообщение (sentVia: null — человек).
@@ -315,6 +331,7 @@ function directRoom(o: RoomOptions): Room {
     if ("late" in i)
       return { text: i.late, sentAt: new Date(Date.now() - i.minutes * 60_000).toISOString() };
     if ("burst" in i) return {};
+    if ("stuck" in i) return { text: i.stuck };
     if ("button" in i) return { text: i.button, postbackPayload: i.button };
     if ("sellerTrack" in i) return {};
     const kind = "voice" in i ? "audio" : "sticker" in i ? "sticker" : "image";
@@ -353,16 +370,10 @@ function directRoom(o: RoomOptions): Room {
         }
         return;
       }
-      if ("missed" in i || "lateWebhook" in i) {
-        if (!o.full) throw new Error("missed/lateWebhook — только в полном разборе (full)");
-        if ("missed" in i) {
-          inbox.push({
-            id: `m-missed-${inbox.length + 1}`,
-            direction: "incoming",
-            message: i.missed,
-            createdAt: new Date(Date.now() - 2 * 60_000).toISOString(),
-            sender: { id: "1", name: "Анна" },
-          });
+      if ("missed" in i || "lateWebhook" in i || "appReply" in i) {
+        if (!o.full)
+          throw new Error("missed/lateWebhook/appReply — только в полном разборе (full)");
+        const poll = async (updatedTime: string | undefined) => {
           // Опрос видит только клиента v2 с подключённым аккаунтом.
           const t = ctx.tenant;
           t.settings = {
@@ -370,22 +381,39 @@ function directRoom(o: RoomOptions): Room {
             served_by: "v2",
             zernio: { account_ids: ["acc-1"], accounts: [{ id: "acc-1", platform }] },
           };
-          const msg = inbox.at(-1)!;
           await pollTenantInbox(ctx, {
-            listConversations: async () => [
-              { id: "conv-1", participantId: "1", updatedTime: msg.createdAt },
-            ],
+            listConversations: async () => [{ id: "conv-1", participantId: "1", updatedTime }],
             transport,
             dispatch: dispatchZernioEvent,
             consultantEnabled: async (c) =>
               (await import("@/core/consultant/engine.server")).consultantEnabled(c),
             page: 50,
           });
+        };
+        if ("appReply" in i) {
+          const at = new Date().toISOString();
+          inbox.push({ direction: "outgoing", message: i.appReply, sentVia: null, createdAt: at });
+          await poll(at);
+        } else if ("missed" in i) {
+          const n = inbox.length + 1;
+          inbox.push({
+            ...("mongoIds" in i
+              ? { _id: `zid-missed-${n}`, platformMessageId: `mid-missed-${n}` }
+              : { id: `m-missed-${n}` }),
+            direction: "incoming",
+            message: i.missed,
+            createdAt: new Date(Date.now() - 2 * 60_000).toISOString(),
+            sender: { id: "1", name: "Анна" },
+          });
+          await poll(inbox.at(-1)!.createdAt);
         } else {
           const msg = inbox.at(-1);
           if (!msg) throw new Error("lateWebhook без missed");
           const late = webhook({ text: msg.message ?? "" });
-          late.message.id = msg.id!;
+          if (msg._id) {
+            late.message.id = `wh-${msg._id}`;
+            Object.assign(late.message, { platformMessageId: msg.platformMessageId });
+          } else late.message.id = msg.id!;
           await dispatchZernioEvent(ctx, late.id, late as never, transport);
         }
         current.state = db.tables.bot_users![0]!.state as Customer["state"];
@@ -404,6 +432,28 @@ function directRoom(o: RoomOptions): Room {
         // Каждая реплика — свой вебхук; обрабатываются одновременно, как на Vercel.
         const hooks = i.burst.map((text) => webhook({ text }));
         await Promise.all(hooks.map((h) => handleZernioMessage(ctx, h as never, transport)));
+        current.state = db.tables.bot_users![0]!.state as Customer["state"];
+        return;
+      }
+      if (o.full && "stuck" in i) {
+        const row = db.tables.bot_users![0]!;
+        const st = (row.state ?? {}) as Record<string, unknown>;
+        const c = (st.consultant ?? {}) as Record<string, unknown>;
+        row.state = {
+          ...st,
+          consultant: {
+            ...c,
+            turn: { id: "hung", until: new Date(Date.now() + 10 * 60_000).toISOString() },
+          },
+        };
+        const { BURST } = await import("@/core/consultant/burst");
+        const wait = BURST.waitMs;
+        BURST.waitMs = 30;
+        try {
+          await handleZernioMessage(ctx, webhook(toMessage(i)) as never, transport);
+        } finally {
+          BURST.waitMs = wait;
+        }
         current.state = db.tables.bot_users![0]!.state as Customer["state"];
         return;
       }
@@ -478,7 +528,7 @@ function telegramRoom(o: RoomOptions): Room {
         for (const text of r.buyer) calls.push(["sendMessage", { chat_id: TG, text }]);
         return;
       }
-      if ("sellerWrites" in i || "missed" in i || "lateWebhook" in i)
+      if ("sellerWrites" in i || "missed" in i || "lateWebhook" in i || "appReply" in i)
         throw new Error("в Telegram такой реплики нет — только в Instagram/WhatsApp");
       const from = { id: TG, is_bot: false, first_name: "Анна" };
       if ("burst" in i) {

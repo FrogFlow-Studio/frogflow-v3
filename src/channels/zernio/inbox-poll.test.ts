@@ -339,3 +339,21 @@ describe("кого и сколько опрашиваем", () => {
     expect(sent).toEqual([]);
   });
 });
+
+describe("ключи метки «уже обработано»", () => {
+  it("id Meta первым, затем id Zernio; пустые и повторы отброшены", async () => {
+    const { zernioMessageKeys } = await import("./inbox-poll");
+    expect(zernioMessageKeys({ id: "z1", platformMessageId: "mid.1" })).toEqual(["mid.1", "z1"]);
+    expect(zernioMessageKeys({ _id: "z2" })).toEqual(["z2"]);
+    expect(zernioMessageKeys({ id: " ", platformMessageId: null })).toEqual([]);
+    expect(zernioMessageKeys({ id: "a", _id: "a" })).toEqual(["a"]);
+  });
+
+  it("сообщение списка с Mongo _id получает id", async () => {
+    const { normalizeInboxMessage } = await import("./inbox-types");
+    expect(normalizeInboxMessage({ _id: "z3", text: "hi" })).toMatchObject({
+      id: "z3",
+      message: "hi",
+    });
+  });
+});

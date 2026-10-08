@@ -110,6 +110,29 @@ export const savePricelistArticlesFn = createServerFn({ method: "POST" })
     return (await server()).savePricelistArticles(ctx, data.articles);
   });
 
+export const savePricelistArticleFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        id: z.string().max(100).optional(),
+        title: z.string().max(300),
+        tags: z.array(z.string().max(60)).max(30).optional(),
+        content: z.string().max(40_000),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await adminWrite();
+    return (await server()).savePricelistArticle(ctx, data);
+  });
+
+export const deletePricelistArticleFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ id: z.string().min(1).max(100) }).parse(d))
+  .handler(async ({ data }) => {
+    const ctx = await adminWrite();
+    return (await server()).deletePricelistArticle(ctx, data.id);
+  });
+
 const importedArticle = z.object({
   title: z.string().max(300),
   tags: z.array(z.string().max(60)).max(30),

@@ -85,8 +85,14 @@ export type JoinedTurn =
       /** Сообщения этого хода по порядку: своё и соседей. */
       items: InboxItem[];
     }
-  /** folded — сообщение забрал чужой ход; busy — не дождались, оно в очереди до следующего хода. */
-  | { lead: false; why: "folded" | "busy" };
+  /** folded — сообщение забрал чужой ход. */
+  | { lead: false; why: "folded" }
+  /**
+   * busy — чужой ход держит аренду дольше ожидания (завис или очень долгий).
+   * Сообщение ещё в очереди; вызывающий закрывает его сам (releaseUnanswered),
+   * иначе оно ждало бы следующего сообщения покупателя, а оно может не прийти.
+   */
+  | { lead: false; why: "busy"; ownId: string };
 
 /** Сообщение написано давно: канал доставил его с опозданием. */
 export function isStaleIncoming(sentAt: string | null | undefined, now = Date.now()): boolean {
@@ -204,8 +210,8 @@ export async function joinTurn(
     });
     if (claimed) return lead(claimed);
   }
-  // Не дождались (очередь сообщений с фото): сообщение осталось в очереди, его возьмёт следующий ход.
-  return { lead: false, why: "busy" };
+  // Не дождались: сообщение пока в очереди, закрывает его вызывающий (releaseUnanswered).
+  return { lead: false, why: "busy", ownId: item.id };
 }
 
 /**
@@ -245,4 +251,37 @@ export async function commitTurn(
     if (turn.turnId && leaseOf(cur)?.id === turn.turnId) delete next.turn;
     return next;
   });
+}
+
+/**
+ * Сообщение, не дождавшееся хода: из очереди — в историю диалога (реплика
+ * покупателя видна следующему ходу и менеджеру), без ответа модели. Если
+ * чужой ход успел его забрать, commitTurn ничего не дублирует: id уже нет в
+ * очереди, а реплика уйдёт в историю с тем ходом — тогда false.
+ */
+export async function releaseUnanswered(
+  ctx: TenantContext,
+  customer: Customer,
+  item: Pick<InboxItem, "id" | "text">,
+  historyTurns: number,
+  patch?: (cur: Record<string, unknown>) => Record<string, unknown>,
+): Promise<boolean> {
+  let mine = false;
+  await updateStateSection(ctx, customer, "consultant", (cur) => {
+    mine = inboxOf(cur).some((i) => i.id === item.id);
+    if (!mine) return cur;
+    const base = patch ? patch(cur) : { ...cur };
+    const recent = Array.isArray(cur.recent) ? (cur.recent as unknown[]) : [];
+    const next: Record<string, unknown> = {
+      ...base,
+      recent: [...recent, { role: "customer", text: item.text.slice(0, INBOX_TEXT) }].slice(
+        -historyTurns,
+      ),
+    };
+    const inbox = inboxOf(cur).filter((i) => i.id !== item.id);
+    if (inbox.length) next.inbox = inbox;
+    else delete next.inbox;
+    return next;
+  });
+  return mine;
 }

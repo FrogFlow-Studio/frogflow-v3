@@ -91,6 +91,8 @@ export const ru = {
   "audit.action.addProductMediaFn": "добавил фото товара для консультанта",
   "audit.action.deleteProductMediaFn": "удалил фото товара консультанта",
   "audit.action.savePricelistArticlesFn": "изменил статьи базы знаний консультанта",
+  "audit.action.savePricelistArticleFn": "сохранил статью базы знаний консультанта",
+  "audit.action.deletePricelistArticleFn": "удалил статью базы знаний консультанта",
   "audit.action.addKnowledgeArticlesFn":
     "добавил статьи в базу знаний консультанта из файла или текста",
   "audit.action.importPricelistSheetFn": "загрузил прайс консультанта из Google Таблицы",
@@ -297,6 +299,8 @@ export const kk: SectionDict<typeof ru> = {
   "audit.action.addProductMediaFn": "кеңесшіге тауар фотосын қосты",
   "audit.action.deleteProductMediaFn": "кеңесшінің тауар фотосын өшірді",
   "audit.action.savePricelistArticlesFn": "кеңесшінің білім базасы мақалаларын өзгертті",
+  "audit.action.savePricelistArticleFn": "кеңесшінің білім базасы мақаласын сақтады",
+  "audit.action.deletePricelistArticleFn": "кеңесшінің білім базасы мақаласын өшірді",
   "audit.action.addKnowledgeArticlesFn":
     "кеңесшінің білім базасына файлдан немесе мәтіннен мақалалар қосты",
   "audit.action.importPricelistSheetFn": "кеңесші прайсын Google Кестеден жүктеді",
@@ -503,6 +507,8 @@ export const en: SectionDict<typeof ru> = {
   "audit.action.addProductMediaFn": "added a product photo for the consultant",
   "audit.action.deleteProductMediaFn": "deleted a consultant product photo",
   "audit.action.savePricelistArticlesFn": "changed consultant knowledge base articles",
+  "audit.action.savePricelistArticleFn": "saved a consultant knowledge base article",
+  "audit.action.deletePricelistArticleFn": "deleted a consultant knowledge base article",
   "audit.action.addKnowledgeArticlesFn":
     "added consultant knowledge base articles from a file or text",
   "audit.action.importPricelistSheetFn": "loaded the consultant price list from Google Sheets",
@@ -709,6 +715,8 @@ export const uz: SectionDict<typeof ru> = {
   "audit.action.addProductMediaFn": "maslahatchi uchun mahsulot rasmini qo‘shdi",
   "audit.action.deleteProductMediaFn": "maslahatchi mahsulot rasmini o‘chirdi",
   "audit.action.savePricelistArticlesFn": "maslahatchi bilimlar bazasi maqolalarini o‘zgartirdi",
+  "audit.action.savePricelistArticleFn": "maslahatchi bilimlar bazasi maqolasini saqladi",
+  "audit.action.deletePricelistArticleFn": "maslahatchi bilimlar bazasi maqolasini o‘chirdi",
   "audit.action.addKnowledgeArticlesFn":
     "maslahatchi bilimlar bazasiga fayl yoki matndan maqolalar qo‘shdi",
   "audit.action.importPricelistSheetFn": "maslahatchi narxnomasini Google Jadvaldan yukladi",

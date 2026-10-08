@@ -16,7 +16,7 @@ import { makeReason } from "@/core/chat/reason";
 import { sellsNowOrShop } from "@/core/tenant/sells.server";
 import { isLocale } from "@/core/i18n/locale";
 import { currentZernioEventId } from "./event-context.server";
-import { isPollEvent, zernioMessageKey } from "./inbox-poll";
+import { isPollEvent, zernioMessageKeys } from "./inbox-poll";
 
 /**
  * Входящее из Instagram Direct или WhatsApp. Адаптер разбирает событие,
@@ -119,10 +119,13 @@ export async function handleZernioMessage(
   // ящика (inbox-poll.server). Метка — условная запись до любой отправки.
   const eventId = currentZernioEventId();
   const viaPoll = isPollEvent(eventId);
-  const key = zernioMessageKey({ id: payload.message?.id, platformMessageId: m.platformMessageId });
-  if (key) {
-    const { claimZernioMessage } = await import("./message-claim.server");
-    const claim = await claimZernioMessage(ctx, key, eventId ?? "direct", m.conversationId);
+  const keys = zernioMessageKeys({
+    id: payload.message?.id,
+    platformMessageId: m.platformMessageId,
+  });
+  if (keys.length) {
+    const { claimZernioMessageKeys } = await import("./message-claim.server");
+    const claim = await claimZernioMessageKeys(ctx, keys, eventId ?? "direct", m.conversationId);
     if (claim === "lost") return ignored("сообщение уже обработано (вебхук или опрос ящика)");
     // Вебхук при сбое базы отвечает (молчание дороже), опрос — нет: он лишь запасной путь.
     if (claim === "unknown" && viaPoll) return ignored("опрос: метка сообщения не записалась");

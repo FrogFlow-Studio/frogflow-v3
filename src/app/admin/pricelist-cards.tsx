@@ -998,8 +998,10 @@ export function TasksCard({
     await markConsultantTaskFn({ data: { id, done } });
     await load.run();
   });
+  const [confirmAll, setConfirmAll] = useState(false);
   const clear = useAction(async (which: "done" | "all") => {
     await clearConsultantTasksFn({ data: { which } });
+    setConfirmAll(false);
     await load.run();
   });
   if (!canEdit) return null;
@@ -1072,13 +1074,25 @@ export function TasksCard({
             >
               {t("pricelist.tasks.clearDone")}
             </button>
-            <button
-              className="btn-ghost text-danger"
-              disabled={clear.busy}
-              onClick={() => void clear.run("all").catch(() => {})}
-            >
-              {t("pricelist.tasks.clearAll")}
-            </button>
+            {confirmAll ? (
+              <span className="flex flex-wrap items-center gap-3 text-sm">
+                <span>{t("ws.tasks.clearAllConfirm")}</span>
+                <button
+                  className="btn-danger text-sm"
+                  disabled={clear.busy}
+                  onClick={() => void clear.run("all").catch(() => {})}
+                >
+                  {t("pricelist.tasks.clearAll")}
+                </button>
+                <button className="btn-ghost text-sm" onClick={() => setConfirmAll(false)}>
+                  {t("common.cancel")}
+                </button>
+              </span>
+            ) : (
+              <button className="btn-ghost text-danger" onClick={() => setConfirmAll(true)}>
+                {t("pricelist.tasks.clearAll")}
+              </button>
+            )}
           </div>
         </>
       )}

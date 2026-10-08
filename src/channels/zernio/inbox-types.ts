@@ -6,6 +6,8 @@
  */
 export type ZernioInboxMessage = {
   id?: string;
+  /** Тот же id в стиле Mongo — так Zernio отдаёт аккаунты и профили (api.server). */
+  _id?: string;
   message?: string;
   text?: string;
   direction?: "incoming" | "outgoing" | string;
@@ -29,5 +31,11 @@ export type ZernioInboxMessage = {
 export function normalizeInboxMessage(m: ZernioInboxMessage): ZernioInboxMessage {
   const message = m.message ?? m.text;
   const createdAt = m.createdAt ?? m.sentAt;
-  return { ...m, ...(message != null ? { message } : {}), ...(createdAt ? { createdAt } : {}) };
+  const id = m.id ?? m._id;
+  return {
+    ...m,
+    ...(id ? { id } : {}),
+    ...(message != null ? { message } : {}),
+    ...(createdAt ? { createdAt } : {}),
+  };
 }

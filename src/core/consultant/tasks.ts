@@ -21,11 +21,14 @@ import { sha256Hex } from "@/lib/hash";
 export const TASKS_KEY = "consultant_tasks_json";
 
 /**
- * Сколько задач держит список. Лишние уходят сначала из сделанных (старые
- * первыми), и только если открытых больше предела — самые старые открытые.
+ * Сколько задач держит список. Лишние уходят только из сделанных (старые
+ * первыми): открытая задача — покупатель, который ждёт менеджера, и молча
+ * терять её нельзя. Открытых может быть больше предела — до OPEN_TASKS_HARD_LIMIT.
  * У v1 было 80 без разбора сделанных.
  */
 export const TASKS_LIMIT = 200;
+/** Потолок открытых, чтобы строка не росла без конца (у BOVI — десятки в неделю). */
+export const OPEN_TASKS_HARD_LIMIT = 1000;
 
 export type TaskChannel = "telegram" | "instagram" | "whatsapp";
 
@@ -122,16 +125,27 @@ export function sortTasks(tasks: ConsultantTask[]): ConsultantTask[] {
   return [...tasks].sort((a, b) => b.at.localeCompare(a.at) || a.id.localeCompare(b.id));
 }
 
-/** Предел списка: сначала уходят старые сделанные, потом — старые открытые. */
-export function capTasks(tasks: ConsultantTask[], limit = TASKS_LIMIT): ConsultantTask[] {
-  if (tasks.length <= limit) return tasks;
-  const oldestFirst = [...tasks].sort((a, b) => a.at.localeCompare(b.at));
-  const extra = tasks.length - limit;
-  const drop = new Set(
-    [...oldestFirst.filter((t) => t.done), ...oldestFirst.filter((t) => !t.done)]
-      .slice(0, extra)
-      .map((t) => t.id),
+/**
+ * Предел списка: уходят старые сделанные; открытые остаются, пока их не
+ * больше OPEN_TASKS_HARD_LIMIT.
+ */
+export function capTasks(
+  tasks: ConsultantTask[],
+  limit = TASKS_LIMIT,
+  openLimit = OPEN_TASKS_HARD_LIMIT,
+): ConsultantTask[] {
+  const oldestFirst = [...tasks].sort(
+    (a, b) => a.at.localeCompare(b.at) || a.id.localeCompare(b.id),
   );
+  const done = oldestFirst.filter((t) => t.done);
+  const open = oldestFirst.filter((t) => !t.done);
+  const dropDone = Math.min(done.length, Math.max(0, tasks.length - limit));
+  const dropOpen = Math.max(0, open.length - openLimit);
+  if (!dropDone && !dropOpen) return tasks;
+  const drop = new Set([
+    ...done.slice(0, dropDone).map((t) => t.id),
+    ...open.slice(0, dropOpen).map((t) => t.id),
+  ]);
   return tasks.filter((t) => !drop.has(t.id));
 }
 

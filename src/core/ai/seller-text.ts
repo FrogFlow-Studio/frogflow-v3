@@ -48,7 +48,8 @@ export type Note =
   | "slow"
   | "price"
   | "injection"
-  | "wholesale";
+  | "wholesale"
+  | "busy";
 const NOTES: Record<Note, Record<Locale, string>> = {
   accounting: {
     ru: "Сбой учёта расхода консультанта.",
@@ -109,6 +110,12 @@ const NOTES: Record<Note, Record<Locale, string>> = {
     kk: "Көтерме сұрау: кеңесшіде көтерме шарттары жоқ, диалог сізге берілді.",
     en: "Wholesale request: the consultant has no wholesale terms, the conversation is passed to you.",
     uz: "Ulgurji so‘rov: maslahatchida ulgurji shartlar yo‘q, suhbat sizga uzatildi.",
+  },
+  busy: {
+    ru: "ИИ-консультант не успел ответить: прошлый ответ в этом диалоге завис.",
+    kk: "ЖИ-кеңесші жауап беріп үлгермеді: осы диалогтағы алдыңғы жауап тоқтап қалды.",
+    en: "The AI consultant could not answer in time: the previous reply in this conversation got stuck.",
+    uz: "SI maslahatchi javob berishga ulgurmadi: bu suhbatdagi oldingi javob osilib qoldi.",
   },
   failure: {
     ru: "Сбой консультанта.",

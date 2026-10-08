@@ -215,7 +215,10 @@ describe("задачи консультанта", () => {
     });
     const list = [mk(1, false), mk(2, true), mk(3, true), mk(4, false), mk(5, false)];
     expect(capTasks(list, 3).map((t) => t.id)).toEqual(["t1", "t4", "t5"]);
-    expect(capTasks(list, 2).map((t) => t.id)).toEqual(["t4", "t5"]);
+    // Открытые не вытесняются, даже если их больше предела.
+    expect(capTasks(list, 2).map((t) => t.id)).toEqual(["t1", "t4", "t5"]);
+    // Только сверх жёсткого потолка открытых уходят самые старые из них.
+    expect(capTasks(list, 2, 2).map((t) => t.id)).toEqual(["t4", "t5"]);
   });
 
   it("список свежими сверху; сбой чтения — ошибка, а не «задач нет»", async () => {

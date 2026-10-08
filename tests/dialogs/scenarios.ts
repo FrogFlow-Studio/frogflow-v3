@@ -778,6 +778,54 @@ export const SCENARIOS: Scenario[] = [
     }),
     ["instagram", "whatsapp"],
   ),
+  ...everyLocale(
+    () => ({
+      id: "inbox-poll-mongo-ids",
+      title:
+        "список Zernio даёт _id, вебхук — свой id: поздний вебхук того же сообщения всё равно молчит",
+      origin:
+        "BOVI 08.10, сверка v3 после #576 (риск R2): совпадение id сообщения в списке и в вебхуке не подтверждено — общий только id Meta",
+      channel: "instagram",
+      full: true,
+      vertical: "consultant",
+      modules: { shop: true },
+      consultant: CONSULTANT_SAYS,
+      steps: [
+        {
+          say: { missed: "Есть кирпич М150?", mongoIds: true },
+          expect: { says: [CONSULTANT_SAYS], count: 1 },
+        },
+        { say: { lateWebhook: true }, expect: { silent: true } },
+      ],
+    }),
+    ["instagram", "whatsapp"],
+  ),
+  ...everyLocale(
+    (l) => ({
+      id: "consultant-stuck-turn-handoff",
+      title:
+        "прошлый ход завис дольше ожидания — покупателю «передаю менеджеру», продавцу задача, а не тишина",
+      origin:
+        "BOVI 08.10, сверка v3 после #576 (риск R3): не дождавшееся хода сообщение оставалось без ответа и без задачи",
+      channel: "instagram",
+      full: true,
+      vertical: "consultant",
+      modules: { shop: true },
+      pricelist: { catalog: PL_CATALOG, rounds: [said("Да, полотенца Uchino есть.")] },
+      steps: [
+        {
+          say: { stuck: "Есть полотенца?" },
+          expect: {
+            says: [handoffReply(l)],
+            notSays: [/Uchino/],
+            count: 1,
+            tasks: [{ done: false }],
+          },
+        },
+      ],
+    }),
+    ["instagram", "whatsapp"],
+  ),
   // ───── Консультант BOVI: надёжность ответа (07.10) ─────
   ...everyLocale(
     () => ({
@@ -1090,6 +1138,46 @@ export const SCENARIOS: Scenario[] = [
       },
       {
         say: { sellerWrites: "Здравствуйте! Оформлю заказ, пришлю реквизиты" },
+        expect: { silent: true, tasks: [{ done: true, doneVia: channel }] },
+      },
+    ],
+  })),
+  ...(["instagram", "whatsapp"] as const).map((channel, i): Scenario => ({
+    id: `pricelist-task-closes-on-poll-${channel === "instagram" ? "ig-ru" : "wa-uz"}`,
+    title:
+      "менеджер ответил в приложении, события Zernio нет и покупатель молчит — задачу закрывает опрос ящика",
+    origin:
+      "BOVI 08.10, сверка v3 после #579 (R5): подсказка обещала закрытие после ответа в Instagram, а оно ждало следующего сообщения покупателя",
+    channel,
+    locale: i === 0 ? "ru" : "uz",
+    full: true,
+    vertical: "consultant",
+    modules: { shop: true },
+    pricelist: {
+      catalog: PL_CATALOG,
+      rounds: [
+        [
+          {
+            type: "tool_use",
+            id: "h1",
+            name: "handoff_to_manager",
+            input: { reason: "purchase", summary: "Берёт Uchino 50х100" },
+          },
+        ],
+      ],
+    },
+    steps: [
+      {
+        say: { text: "Беру полотенце Uchino, +77001112233" },
+        expect: { paused: true, tasks: [{ reason: "purchase", done: false }] },
+      },
+      {
+        // Эхо собственного ответа бота в ленте — не ответ менеджера.
+        say: { appReply: pricelistHandoffReply(i === 0 ? "ru" : "uz") },
+        expect: { silent: true, tasks: [{ done: false }] },
+      },
+      {
+        say: { appReply: "Здравствуйте! Оформлю заказ, пришлю реквизиты" },
         expect: { silent: true, tasks: [{ done: true, doneVia: channel }] },
       },
     ],
