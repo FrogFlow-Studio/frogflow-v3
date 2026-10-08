@@ -7,7 +7,7 @@ import {
   saveCatalogLayoutFn,
   saveCategoryFn,
   reorderFn,
-} from "@/app/admin/admin.functions";
+} from "@/app/admin/catalog.functions";
 import { adminT } from "@/app/i18n/admin";
 import {
   CATALOG_LAYOUTS,

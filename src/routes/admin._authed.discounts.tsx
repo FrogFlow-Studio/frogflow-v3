@@ -19,9 +19,8 @@ import {
   promoCodesFn,
   saveGiftSaleFn,
   savePromoCodeFn,
-  saveSettingsFn,
-  settingsFn,
-} from "@/app/admin/admin.functions";
+} from "@/app/admin/promos.functions";
+import { saveSettingsFn, settingsFn } from "@/app/admin/settings.functions";
 import { AskCommunityAdvice } from "@/app/admin/community-ask";
 import { adminT, intlLocale } from "@/app/i18n/admin";
 import { Badge, Card, Empty, ErrorBox, Field, PageTitle, useAction } from "@/app/ui";

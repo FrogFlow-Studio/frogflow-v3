@@ -1,6 +1,6 @@
 import { useRouter } from "@tanstack/react-router";
 import { useEffect, useRef } from "react";
-import { ordersStampFn } from "@/app/admin/admin.functions";
+import { ordersStampFn } from "@/app/admin/orders.functions";
 import { shouldRefresh, stampKey } from "@/core/orders/live";
 
 /**

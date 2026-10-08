@@ -92,13 +92,13 @@ describe("серверные функции команды и оплаты", () 
 
   it("команда и приглашения — только владельцу с модулем «Роли»", () => {
     for (const n of ["teamFn", "saveTeamMemberFn", "deleteTeamMemberFn"])
-      expect(body("admin.functions.ts", n)).toMatch(/adminOwner\(\)|"admin_roles", "owner"/);
+      expect(body("team.functions.ts", n)).toMatch(/adminOwner\(\)|"admin_roles", "owner"/);
     for (const n of ["staffInvitesFn", "createStaffInviteFn", "revokeStaffInviteFn"])
       expect(body("team-invite.functions.ts", n)).toContain('"admin_roles", "owner"');
   });
 
   it("история оплат тарифа закрыта администратору, менеджеру и «просмотру»", () => {
-    const b = body("admin.functions.ts", "billingHistoryFn");
+    const b = body("plan.functions.ts", "billingHistoryFn");
     expect(b).toContain('role === "admin" || role === "manager" || role === "viewer"');
   });
 });

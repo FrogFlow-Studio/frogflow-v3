@@ -5,7 +5,7 @@ import {
   savePaymentMethodFn,
   saveSettingsFn,
   settingsFn,
-} from "@/app/admin/admin.functions";
+} from "@/app/admin/settings.functions";
 import { Badge, Card, ErrorBox, Field, Switch, useAction } from "@/app/ui";
 import { adminT } from "@/app/i18n/admin";
 import { uploadFile } from "@/app/admin/upload-client";

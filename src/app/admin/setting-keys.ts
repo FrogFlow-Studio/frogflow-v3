@@ -118,7 +118,7 @@ const OWNER_ONLY_READ = [
 
 /**
  * Платежи магазина: ключи и режимы платёжных систем. Пишет только владелец; администратор
- * получает отказ на сервере (admin.functions saveSettingsFn), раздел ему не показывается.
+ * получает отказ на сервере (settings.functions saveSettingsFn), раздел ему не показывается.
  */
 export const PAYMENT_SETTING_KEYS: ReadonlySet<string> = new Set([
   "robokassa_enabled",

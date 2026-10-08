@@ -11,15 +11,15 @@ import { describe, expect, it } from "vitest";
  * а открыть её можно только осознанно, дописав сюда.
  */
 const OPEN_TO_ACCOUNTANT = new Set([
-  "admin.functions.ts:adminShopFn",
-  "admin.functions.ts:adminShopsFn",
-  "admin.functions.ts:dashboardFn",
-  "admin.functions.ts:ordersFn",
-  "admin.functions.ts:ordersStampFn",
-  "admin.functions.ts:adminSearchFn",
-  "admin.functions.ts:orderFn",
-  "admin.functions.ts:analyticsFn",
-  "admin.functions.ts:billingHistoryFn",
+  "shop.functions.ts:adminShopFn",
+  "shop.functions.ts:adminShopsFn",
+  "shop.functions.ts:dashboardFn",
+  "orders.functions.ts:ordersFn",
+  "orders.functions.ts:ordersStampFn",
+  "customers.functions.ts:adminSearchFn",
+  "orders.functions.ts:orderFn",
+  "sales-analytics.functions.ts:analyticsFn",
+  "plan.functions.ts:billingHistoryFn",
   "notifications.functions.ts:notificationsFn",
   "notifications.functions.ts:markNotificationsReadFn",
   "reports.functions.ts:reportKindsFn",
@@ -33,10 +33,10 @@ const OPEN_TO_ACCOUNTANT = new Set([
 ]);
 /** Без сессии продавца по смыслу: вход и выход. */
 const PUBLIC = new Set([
-  "admin.functions.ts:adminLogin",
-  "admin.functions.ts:adminLogout",
-  "admin.functions.ts:adminTgLoginRequest",
-  "admin.functions.ts:adminTgLoginConsume",
+  "admin-auth.functions.ts:adminLogin",
+  "admin-auth.functions.ts:adminLogout",
+  "admin-auth.functions.ts:adminTgLoginRequest",
+  "admin-auth.functions.ts:adminTgLoginConsume",
   // приглашение в команду: ссылка с секретом, сессии ещё нет
   "team-invite.functions.ts:staffInviteInfoFn",
   "team-invite.functions.ts:acceptStaffInviteFn",

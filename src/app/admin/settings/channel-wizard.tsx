@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { wizardCheckFn, wizardStartFn, wizardStateFn } from "@/app/admin/admin.functions";
+import { wizardCheckFn, wizardStartFn, wizardStateFn } from "@/app/admin/connections.functions";
 import { Badge, Card, ErrorBox, useAction } from "@/app/ui";
 import { adminT, type AdminKey } from "@/app/i18n/admin";
 import { settingsRoute } from "./route";

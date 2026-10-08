@@ -28,7 +28,7 @@ describe("isPlatformFailure: что считать сбоем платформы
 });
 
 describe("reportServerFnFailure", () => {
-  const meta = { name: "saveProductFn", filename: "src/app/admin/admin.functions.ts" };
+  const meta = { name: "saveProductFn", filename: "src/app/admin/products.functions.ts" };
 
   it("сбой уходит в учёт с панелью, функцией и клиентом и пробрасывается как был", async () => {
     const seen: unknown[] = [];

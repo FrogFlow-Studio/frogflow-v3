@@ -6,7 +6,7 @@ import {
   shopActor,
 } from "./admin-audit";
 
-const fn = (name: string, filename = "src/app/admin/admin.functions.ts") => ({ name, filename });
+const fn = (name: string, filename = "src/app/admin/products.functions.ts") => ({ name, filename });
 
 describe("журнал действий админки: что пишем", () => {
   it("изменения в админке — да, заказы, чат, чтение и вход — нет", () => {

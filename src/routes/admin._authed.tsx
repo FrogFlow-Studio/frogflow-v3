@@ -1,12 +1,12 @@
 import { createFileRoute, Outlet, redirect, useNavigate, useRouter } from "@tanstack/react-router";
 import { useEffect } from "react";
+import { adminLogout } from "@/app/admin/admin-auth.functions";
 import {
-  adminLogout,
   adminShopFn,
   adminShopsFn,
   setAdminLocaleFn,
   switchShopFn,
-} from "@/app/admin/admin.functions";
+} from "@/app/admin/shop.functions";
 import { ADMIN_LOCALE_LABELS, adminT } from "@/app/i18n/admin";
 import { Badge, Shell, ThemeToggle } from "@/app/ui";
 import { AdminBottomBar, AdminNavLinks } from "@/app/admin/admin-nav";

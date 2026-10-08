@@ -10,10 +10,10 @@ import { describe, expect, it } from "vitest";
  * Открыты без входа по смыслу только вход, выход и приглашения — они в списке.
  */
 const PUBLIC = new Set([
-  "admin.functions.ts:adminLogin",
-  "admin.functions.ts:adminLogout",
-  "admin.functions.ts:adminTgLoginRequest",
-  "admin.functions.ts:adminTgLoginConsume",
+  "admin-auth.functions.ts:adminLogin",
+  "admin-auth.functions.ts:adminLogout",
+  "admin-auth.functions.ts:adminTgLoginRequest",
+  "admin-auth.functions.ts:adminTgLoginConsume",
   "team-invite.functions.ts:staffInviteInfoFn",
   "team-invite.functions.ts:acceptStaffInviteFn",
   "operator.functions.ts:operatorLogin",

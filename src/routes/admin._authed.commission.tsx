@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { commissionPageFn } from "@/app/admin/admin.functions";
+import { commissionPageFn } from "@/app/admin/plan.functions";
 import { adminT, intlLocale, type AdminT } from "@/app/i18n/admin";
 import { Badge, Card, PageTitle } from "@/app/ui";
 import { formatMoney } from "@/core/money/money";

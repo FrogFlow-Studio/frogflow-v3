@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
-import { outboxActionFn, undeliveredFn } from "@/app/admin/admin.functions";
+import { outboxActionFn, undeliveredFn } from "@/app/admin/orders.functions";
 import { adminT, intlLocale, type AdminKey } from "@/app/i18n/admin";
 import { Badge, Empty, ErrorBox, PageTitle, useAction } from "@/app/ui";
 

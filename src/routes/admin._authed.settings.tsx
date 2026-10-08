@@ -1,13 +1,8 @@
 import { createFileRoute, useRouter, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import {
-  zernioStateFn,
-  deliveryZonesFn,
-  saveSettingsFn,
-  settingsFn,
-  setShopTimezoneFn,
-  telegramStateFn,
-} from "@/app/admin/admin.functions";
+import { zernioStateFn, telegramStateFn } from "@/app/admin/connections.functions";
+import { deliveryZonesFn } from "@/app/admin/delivery-zones.functions";
+import { saveSettingsFn, settingsFn, setShopTimezoneFn } from "@/app/admin/settings.functions";
 import { Card, Empty, ErrorBox, Field, PageTitle, useAction } from "@/app/ui";
 import {
   entryMatches,

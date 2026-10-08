@@ -1,6 +1,10 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { consultantFn, consultantTestFn, saveConsultantFn } from "@/app/admin/admin.functions";
+import {
+  consultantFn,
+  consultantTestFn,
+  saveConsultantFn,
+} from "@/app/admin/consultant-settings.functions";
 import {
   deleteStoryTagFn,
   storyProductsFn,

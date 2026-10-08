@@ -10,7 +10,7 @@ import {
 } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { z } from "zod";
-import { ordersFn } from "@/app/admin/admin.functions";
+import { ordersFn } from "@/app/admin/orders.functions";
 import { assembleOrdersFn, orderBatchCountFn } from "@/app/admin/batch.functions";
 import { useLiveOrders } from "@/app/admin/live-orders";
 import { adminT, intlLocale, type AdminKey } from "@/app/i18n/admin";

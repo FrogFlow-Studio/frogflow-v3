@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useRouteContext } from "@tanstack/react-router";
 import { useRef, useState } from "react";
 import { z } from "zod";
-import { analyticsFn } from "@/app/admin/admin.functions";
+import { analyticsFn } from "@/app/admin/sales-analytics.functions";
 import { explainSalesFn } from "@/app/admin/analytics.functions";
 import { adminT, intlLocale, type AdminT } from "@/app/i18n/admin";
 import { Badge, Card, ErrorBox, Field, PageTitle, useAction } from "@/app/ui";

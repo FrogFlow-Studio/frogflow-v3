@@ -9,7 +9,7 @@ import {
   updateTicketFn,
 } from "@/app/admin/helpdesk.functions";
 import type { TeamMember } from "@/app/admin/helpdesk.server";
-import { quickReplyFillFn } from "@/app/admin/admin.functions";
+import { quickReplyFillFn } from "@/app/admin/chat.functions";
 import { adminT, intlLocale, type AdminT } from "@/app/i18n/admin";
 import { Badge, Empty, ErrorBox, PageTitle, useAction } from "@/app/ui";
 import { OVERDUE_OPTIONS } from "@/core/helpdesk/overdue";

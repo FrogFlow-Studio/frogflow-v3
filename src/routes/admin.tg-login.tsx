@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { z } from "zod";
-import { adminTgLoginConsume } from "@/app/admin/admin.functions";
+import { adminTgLoginConsume } from "@/app/admin/admin-auth.functions";
 import { adminT } from "@/app/i18n/admin";
 import { useAction } from "@/app/ui";
 

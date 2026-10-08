@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { billingHistoryFn } from "@/app/admin/admin.functions";
+import { billingHistoryFn } from "@/app/admin/plan.functions";
 import { adminT, intlLocale, type AdminT } from "@/app/i18n/admin";
 import { Badge, Card, ErrorBox, PageTitle, useAction } from "@/app/ui";
 import { formatMoney } from "@/core/money/money";
