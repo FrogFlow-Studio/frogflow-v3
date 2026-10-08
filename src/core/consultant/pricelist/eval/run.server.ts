@@ -1,3 +1,4 @@
+import { callUsd } from "@/core/consultant/engine.server";
 import { PREVIEW_AI_OFF, previewReadonly } from "@/lib/preview";
 import Anthropic from "@anthropic-ai/sdk";
 import { isResetIntent } from "../../prompt";
@@ -37,11 +38,6 @@ export type EvalScenarioResult = {
 };
 
 /** Ставки за миллион токенов: ввод, вывод, запись в часовой кеш, чтение. */
-const PRICE: Record<string, { in: number; out: number; cw: number; cr: number }> = {
-  haiku: { in: 1, out: 5, cw: 2, cr: 0.1 },
-  sonnet: { in: 2, out: 10, cw: 4, cr: 0.2 },
-};
-
 /** Вызов модели для прогона со счётчиком расхода. */
 export function evalModelCall(
   apiKey: string,
@@ -49,17 +45,11 @@ export function evalModelCall(
 ): { call: ModelCall; spent: () => number } {
   if (previewReadonly()) throw new Error(PREVIEW_AI_OFF);
   const client = new Anthropic({ apiKey, maxRetries: 2, timeout: 60_000 });
-  const p = PRICE[/sonnet/.test(model) ? "sonnet" : "haiku"]!;
   let usd = 0;
   const call: ModelCall = async (req) => {
     const res = await client.messages.create({ model, ...req, ...modelParams(model) } as never);
-    const u = (res as Anthropic.Message).usage;
-    usd +=
-      (u.input_tokens * p.in +
-        (u.cache_creation_input_tokens ?? 0) * p.cw +
-        (u.cache_read_input_tokens ?? 0) * p.cr +
-        u.output_tokens * p.out) /
-      1_000_000;
+    // Те же ставки, что у ответа покупателю (engine.server callUsd).
+    usd += callUsd(model, (res as Anthropic.Message).usage);
     return res as Anthropic.Message;
   };
   return { call, spent: () => usd };
