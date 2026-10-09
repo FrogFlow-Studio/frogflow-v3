@@ -44,6 +44,8 @@ import { effectiveRateSource, isRateFresh } from "@/core/consultant/pricelist/ra
 import {
   getStoredRate,
   loadAttemptLog,
+  FINKAZ_KASPI_URL,
+  VTB_ONLINE_API_URL,
   rateSourceLabel,
   refreshRate,
   saveRate,
@@ -114,6 +116,14 @@ export async function pricelistOverview(ctx: TenantContext) {
     personaCustom: Boolean(p.persona),
     personaLimits: PERSONA_LIMITS,
     rateSource: effectiveRateSource(p),
+    // Откуда бот берёт курс сейчас — не путать с источником сохранённого курса
+    // (BOVI 09.10: «Kaspi» у старого курса читался как текущий источник).
+    rateFrom:
+      effectiveRateSource(p) === "manual"
+        ? null
+        : rateSourceLabel(
+            effectiveRateSource(p) === "vtb" ? VTB_ONLINE_API_URL : p.rate_url || FINKAZ_KASPI_URL,
+          ),
     rate: stored
       ? {
           rate: stored.rate,

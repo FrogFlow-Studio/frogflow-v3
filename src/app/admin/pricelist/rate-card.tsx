@@ -56,6 +56,11 @@ export function RateCard({
       ) : (
         <p className="text-sm text-warn">{t("pricelist.rate.none")}</p>
       )}
+      <p className="mt-2 text-sm text-muted">
+        {data.rateFrom
+          ? t("pricelist.rate.sourceNow", { source: data.rateFrom })
+          : t("pricelist.rate.sourceManual")}
+      </p>
       {failed && <p className="mt-2 text-sm text-warn">{t("pricelist.rate.failed")}</p>}
       {data.attempt && !data.attempt.ok && data.attempt.attempts.length > 0 && (
         <details className="mt-2 text-xs text-muted">
