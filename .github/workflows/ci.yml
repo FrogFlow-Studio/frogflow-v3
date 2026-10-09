@@ -172,14 +172,43 @@ jobs:
     steps:
       - run: test "${{ needs.e2e-shard.result }}" = success
 
-  # Выкладка на прод (Vercel, frogflowplatform) после зелёных check и e2e на
-  # master. Через Vercel CLI с токеном владельца: выкладки из git (и через
-  # Deploy Hook) Vercel блокирует по автору коммита, а выкладка CLI идёт от
-  # владельца токена. Токен — секрет VERCEL_TOKEN; без него задача падает,
-  # а не молча пропускается.
+  # Выкладка на прод (Vercel, frogflowplatform) на master. Собирает сам Vercel,
+  # на своих машинах, как при выкладке из git; CI только отправляет код через
+  # Vercel CLI с токеном владельца (секрет VERCEL_TOKEN): выкладки из git Vercel
+  # блокирует по автору коммита. Без токена задача падает, а не пропускается.
+  # prod-build идёт одновременно с проверками: Vercel собирает
+  # прод-выкладку, но домен на неё не переключает (--skip-domain). deploy ждёт
+  # зелёных check и e2e и переключает www.frogflow.tech на готовую сборку.
+  prod-build:
+    if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    outputs:
+      url: ${{ steps.vercel.outputs.url }}
+    env:
+      VERCEL_ORG_ID: team_9hWAbMsXYoGYAiU580NQuJ2O
+      VERCEL_PROJECT_ID: prj_rMO61dNfPz1bBBM5DOGmVGILQU4z
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+    steps:
+      - name: Токен Vercel задан
+        run: |
+          if [ -z "$VERCEL_TOKEN" ]; then
+            echo "::error::нет секрета VERCEL_TOKEN"; exit 1
+          fi
+      - uses: actions/checkout@v4
+      # Без .git: иначе CLI передаёт автора коммита, Vercel ставит такую
+      # сборку в «Blocked», а CLI ждёт её без конца (09.10.2026, 7:11).
+      - run: rm -rf .git
+      - name: Сборка на Vercel
+        id: vercel
+        timeout-minutes: 8
+        run: |
+          url=$(npx --yes vercel@59.23.2 deploy --prod --skip-domain --yes --token="$VERCEL_TOKEN")
+          echo "собрано: $url"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+
   deploy:
     if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request'
-    needs: [check, e2e]
+    needs: [check, e2e, prod-build]
     runs-on: ubuntu-latest
     concurrency:
       group: deploy-prod
@@ -188,29 +217,16 @@ jobs:
       VERCEL_ORG_ID: team_9hWAbMsXYoGYAiU580NQuJ2O
       VERCEL_PROJECT_ID: prj_rMO61dNfPz1bBBM5DOGmVGILQU4z
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-      # Сборка начинается с tsc по всему проекту: нужна куча больше 2 ГБ.
-      NODE_OPTIONS: --max-old-space-size=6144
-      # Вне Vercel Nitro сам не выбирает пресет vercel и собирает node-server в
-      # .output: на проде тогда пусто и 404 на всё (выкладка 09.10.2026 6:37).
-      NITRO_PRESET: vercel
+      URL: ${{ needs.prod-build.outputs.url }}
     steps:
-      - name: Токен Vercel задан
+      - run: npx --yes vercel@59.23.2 promote "$URL" --yes --token="$VERCEL_TOKEN"
+      # Прод отвечает, и стили на месте (09.10.2026 выкладка без статики дала
+      # страницу без CSS и картинок).
+      - name: Прод открывается со стилями
         run: |
-          if [ -z "$VERCEL_TOKEN" ]; then
-            echo "::error::нет секрета VERCEL_TOKEN"; exit 1
-          fi
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: npx --yes vercel@59.23.2 pull --yes --environment=production --token="$VERCEL_TOKEN"
-      - run: npx --yes vercel@59.23.2 build --prod --token="$VERCEL_TOKEN"
-      - name: В сборке есть серверная функция
-        run: |
-          if ! ls -d .vercel/output/functions/*.func >/dev/null 2>&1; then
-            echo "::error::в .vercel/output нет функций: выкладывать нечего"; ls -R .vercel/output | head -50; exit 1
-          fi
-          node scripts/check-vercel-output.mjs
-      - run: npx --yes vercel@59.23.2 deploy --prebuilt --prod --token="$VERCEL_TOKEN"
+          page=$(curl -fsS --max-time 20 https://www.frogflow.tech/)
+          css=$(echo "$page" | grep -oE '/assets/[^"]+\.css' | head -1)
+          if [ -z "$css" ]; then echo "::error::на главной нет ссылки на CSS"; exit 1; fi
+          curl -fsS --max-time 20 -o /dev/null "https://www.frogflow.tech$css"
+          curl -fsS --max-time 20 -o /dev/null https://www.frogflow.tech/brand/frog-mark.webp
+          echo "главная, $css и картинка отвечают 200"
