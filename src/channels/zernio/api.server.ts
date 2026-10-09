@@ -113,6 +113,19 @@ export function buttonTitle(title: string): string {
  * URL — postback с непустым payload; не больше трёх (ограничение Direct),
  * заголовок не длиннее 20 символов.
  */
+/** Instagram: сколько знаков текста принимает сообщение с кнопками. */
+export const IG_BUTTONS_TEXT_MAX = 640;
+
+/** Текст сообщения с кнопками в Instagram — не длиннее 640 знаков, с «…» на обрезе. */
+export function capButtonText(text: string): string {
+  if (text.length <= IG_BUTTONS_TEXT_MAX) return text;
+  console.warn(`[zernio] текст с кнопками длиннее ${IG_BUTTONS_TEXT_MAX} знаков — обрезан`);
+  // Считаем единицы UTF-16 (с запасом) и не рвём эмодзи посередине.
+  let cut = text.slice(0, IG_BUTTONS_TEXT_MAX - 1);
+  if (/[\uD800-\uDBFF]$/.test(cut)) cut = cut.slice(0, -1);
+  return `${cut.trimEnd()}…`;
+}
+
 export function normalizeDmButtons(buttons?: DmButton[]): DmButton[] {
   if (!Array.isArray(buttons)) return [];
   return buttons
@@ -183,13 +196,18 @@ export async function sendInboxMessage(
       ok: false,
       error: "Zernio не подключён на платформе (ZERNIO_API_KEY) — обратитесь к оператору.",
     };
-  const body: Record<string, unknown> = { accountId, message: text };
+  const buttons = normalizeDmButtons(opts.buttons);
+  // С кнопками Instagram берёт не больше 640 знаков текста; длиннее — отказ, и
+  // покупатель не получал ничего (выдача 07.10, оплата и «Купить» Копилки 09.10).
+  // Обрезанный текст с кнопками лучше молчания: единая страховка для всех отправок.
+  const capped =
+    platform === "instagram" && buttons.length && !opts.interactive ? capButtonText(text) : text;
+  const body: Record<string, unknown> = { accountId, message: capped };
   if (opts.attachmentUrl) {
     body.attachmentUrl = opts.attachmentUrl;
     body.attachmentType = opts.attachmentType ?? "image";
     if (opts.attachmentName) body.attachmentName = opts.attachmentName;
   }
-  const buttons = normalizeDmButtons(opts.buttons);
   if (opts.interactive) body.interactive = opts.interactive;
   else if (buttons.length) body.buttons = buttons;
   if (opts.messagingType) {

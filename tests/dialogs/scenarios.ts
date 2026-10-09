@@ -197,6 +197,8 @@ export const PRODUCTS: Product[] = [
 ];
 
 const PHONE = "87770637152";
+/** Описание карточки длиннее, чем Instagram берёт с кнопками (Палитра Копилки — 1067 знаков). */
+const LONG_DESC = "Яркие таблички по литературе: средства выразительности с примерами. ".repeat(16);
 const KNOWN: Record<Locale, Record<string, string>> = {
   ru: { voice: "Я понимаю только текст", welcome: "Добро пожаловать", cart: "Добавлено в корзину" },
   kk: { voice: "Мен тек мәтінді түсінемін", welcome: "қош келдіңіз", cart: "Себетке қосылды" },
@@ -345,6 +347,26 @@ export const SCENARIOS: Scenario[] = [
     steps: [
       { say: { photo: true }, expect: { says: ["Передал ваше фото продавцу"], sellerNotices: 1 } },
       { say: { photo: true }, expect: { silent: true, sellerNotices: 1 } },
+    ],
+  },
+  // ───── Кнопка «Купить» второго сообщения автоматизации ─────
+  {
+    id: "two-step-buy-long-description-ig-ru",
+    title:
+      "кнопка «Купить» (PROD:…) у товара с длинным описанием — карточка с ценой и кнопками уходит",
+    origin:
+      "Копилка русоведа 09.10 14:03: «Палитра», описание 1067 знаков — карточка длиннее 640 с кнопками отклонялась, «Купить» молчал",
+    channel: "instagram",
+    locale: "ru",
+    full: true,
+    modules: { helpdesk: true, manager_chat: true },
+    products: [{ id: P1, name: "Палитра средств выразительности", description: LONG_DESC }],
+    state: {},
+    steps: [
+      {
+        say: { button: `PROD:${P1}`, title: "Купить" },
+        expect: { count: 1, says: ["Палитра средств выразительности", "1000 ₸", "…"] },
+      },
     ],
   },
   // ───── Продавец вмешался (Б3) ─────

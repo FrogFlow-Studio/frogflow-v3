@@ -16,7 +16,8 @@ import { formatMoney } from "@/core/money/money";
 import { resolvePrice, strikePrice } from "@/core/pricing/pricing";
 import { formatRatingSummary } from "@/core/reviews/pure";
 import { loadQuiz } from "@/core/quiz/quiz";
-import { type DmButton } from "../api.server";
+import { IG_BUTTONS_TEXT_MAX, type DmButton } from "../api.server";
+import { type ZernioPlatform } from "../platform";
 import {
   rowSubtitle,
   whatsappList,
@@ -389,6 +390,27 @@ async function productByCode(s: Shop, number: string): Promise<Product | null> {
   return null;
 }
 
+/**
+ * Описание — после названия, сколько влезет: с кнопками Instagram берёт не
+ * больше 640 знаков текста, и длинное описание раньше съедало цену и кнопки
+ * (сообщение отклонялось целиком: «Купить» молчал, Копилка русоведа 09.10).
+ */
+export function withDescription(
+  card: string,
+  description: string,
+  platform: ZernioPlatform,
+): string {
+  if (!description) return card;
+  const [name, ...rest] = card.split("\n\n");
+  const tail = rest.length ? `\n\n${rest.join("\n\n")}` : "";
+  const max = platform === "instagram" ? IG_BUTTONS_TEXT_MAX : 1000;
+  const room = Math.min(600, max - plain(`${name}${tail}`).length - 4);
+  if (room < 40) return card;
+  const desc =
+    description.length > room ? `${description.slice(0, room - 1).trimEnd()}…` : description;
+  return `${name}\n\n${desc}${tail}`;
+}
+
 export async function sendProductCard(s: Shop, p: Product, force: boolean) {
   const country = s.customer.state.country_code ?? null;
   const variants = sortedVariants(p);
@@ -406,8 +428,8 @@ export async function sendProductCard(s: Shop, p: Product, force: boolean) {
   const outOfStock = stockedOut && !preorder;
   // Кнопок покупки нет: товара нет в наличии или в наборе недоступна составляющая.
   const noBuy = outOfStock || (bundle != null && !bundle.available);
-  const desc = p.description ? `\n\n${p.description.slice(0, 600)}` : "";
-  let text = `${p.name}${desc}`;
+  const description = p.description?.trim() ?? "";
+  let text = p.name;
   const buttons: DmButton[] = [];
   let variantList: string[] = [];
   if (variants.length > 0) {
@@ -485,5 +507,9 @@ export async function sendProductCard(s: Shop, p: Product, force: boolean) {
     s,
     imgs.map((i) => i.image_path),
   );
-  await reply(s, text, { force, buttons: buttons.slice(0, 3), attachmentUrl });
+  await reply(s, withDescription(text, description, s.platform), {
+    force,
+    buttons: buttons.slice(0, 3),
+    attachmentUrl,
+  });
 }
