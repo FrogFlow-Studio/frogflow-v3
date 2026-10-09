@@ -17,6 +17,7 @@ import { sellsNowOrShop } from "@/core/tenant/sells.server";
 import { isLocale } from "@/core/i18n/locale";
 import { currentZernioEventId } from "./event-context.server";
 import { isPollEvent, zernioMessageKeys } from "./inbox-poll";
+import type { TwoStepBuyer } from "./automations.server";
 
 /**
  * Входящее из Instagram Direct или WhatsApp. Адаптер разбирает событие,
@@ -154,11 +155,24 @@ export async function handleZernioMessage(
       await import("./automations.server");
     const { isTwoStepAcknowledgement, isShopStartWord } =
       await import("@/core/instagram/comment-rules");
-    const who = {
+    const who: TwoStepBuyer = {
       accountId: m.accountId,
       conversationId: m.conversationId,
       username: m.senderUsername,
       senderId: m.senderId,
+      // Быстрая покупка: «Купить» правила сразу становится заказом с кнопками
+      // оплаты, без корзины (Копилка русоведа, 09.10). Магазин решает сам,
+      // включена ли она; false — уходит обычное второе сообщение.
+      express: async (productId) => {
+        if (!ctx.tenant.modules.dm_shop || !(await sells())) return false;
+        const { expressFromAutomation } = await import("./shop.server");
+        return expressFromAutomation(
+          ctx,
+          customer,
+          { conversationId: m.conversationId!, accountId: m.accountId!, productId },
+          transport,
+        );
+      },
     };
     const pending = () => deliverPendingTwoStepDm(ctx, who);
     let delivered = await pending();

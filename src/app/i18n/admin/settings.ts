@@ -157,6 +157,9 @@ export const ru = {
   "settings.dbot.feature.search": "поиск по номеру",
   "settings.dbot.feature.cart": "корзина",
   "settings.dbot.feature.checkout": "оформление заказа",
+  "settings.dbot.feature.express": "быстрая покупка по автоматизации",
+  "settings.dbot.feature.expressHint":
+    "«+» или кодовое слово под рилсом сразу оформляют заказ на товар правила: одно сообщение с суммой и кнопками оплаты, без корзины.",
   "settings.dbot.ignoreExcluded": "Не отвечать номерам из списка исключений (раздел «Рассылки»)",
   "settings.dbot.notifyTemplate": "Шаблон для сообщений вне 24-часового окна",
   "settings.dbot.sellerPause": "Пауза бота после вашего ответа руками",
@@ -660,6 +663,9 @@ export const kk: SectionDict<typeof ru> = {
   "settings.dbot.feature.search": "нөмір бойынша іздеу",
   "settings.dbot.feature.cart": "себет",
   "settings.dbot.feature.checkout": "тапсырысты рәсімдеу",
+  "settings.dbot.feature.express": "автоматтандыру бойынша жылдам сатып алу",
+  "settings.dbot.feature.expressHint":
+    "Рилс астындағы «+» немесе кодтық сөз ереже тауарына бірден тапсырыс ресімдейді: сомасы мен төлем батырмалары бар бір хабарлама, себетсіз.",
   "settings.dbot.ignoreExcluded":
     "Ерекшелік тізіміндегі нөмірлерге жауап бермеу («Хабарламалар» бөлімі)",
   "settings.dbot.notifyTemplate": "24 сағаттық терезеден тыс хабарламалар шаблоны",
@@ -1155,6 +1161,9 @@ export const en: SectionDict<typeof ru> = {
   "settings.dbot.feature.search": "search by number",
   "settings.dbot.feature.cart": "cart",
   "settings.dbot.feature.checkout": "checkout",
+  "settings.dbot.feature.express": "quick purchase from automation",
+  "settings.dbot.feature.expressHint":
+    "A «+» or the keyword under a reel places the order for the rule’s product right away: one message with the amount and payment buttons, no cart.",
   "settings.dbot.ignoreExcluded":
     "Do not reply to numbers on the exclusion list (Broadcasts section)",
   "settings.dbot.notifyTemplate": "Template for messages outside the 24-hour window",
@@ -1654,6 +1663,9 @@ export const uz: SectionDict<typeof ru> = {
   "settings.dbot.feature.search": "raqam bo‘yicha qidiruv",
   "settings.dbot.feature.cart": "savat",
   "settings.dbot.feature.checkout": "buyurtmani rasmiylashtirish",
+  "settings.dbot.feature.express": "avtomatlashtirish orqali tezkor xarid",
+  "settings.dbot.feature.expressHint":
+    "Rils ostidagi «+» yoki kalit soʻz qoida mahsulotiga darhol buyurtma beradi: summa va toʻlov tugmalari bilan bitta xabar, savatsiz.",
   "settings.dbot.ignoreExcluded":
     "Istisno ro‘yxatidagi raqamlarga javob bermaslik («Xabarlar» bo‘limi)",
   "settings.dbot.notifyTemplate": "24 soatlik oynadan tashqari xabarlar uchun shablon",

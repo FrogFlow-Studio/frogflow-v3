@@ -231,6 +231,7 @@ describe("Comment-to-DM: второй быстрый «+»", () => {
       conversationId: "conv-1",
       username: "boris",
       senderId: "ig-1",
+      express: expect.any(Function),
     });
     deliverTwoStepFromDm.mockClear();
   });

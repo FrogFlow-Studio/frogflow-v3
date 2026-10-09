@@ -609,6 +609,40 @@ function telegramRoom(o: RoomOptions): Room {
  * кладём в строки корзины сам товар, как это сделал бы запрос с join.
  */
 function withCartJoin(r: Room): Room {
+  // И внутри одной реплики: быстрая покупка кладёт товар и сразу оформляет заказ.
+  const tables = r.db.tables as Record<string, Record<string, unknown>[] | undefined>;
+  let cart = tables.cart_items;
+  Object.defineProperty(tables, "cart_items", {
+    configurable: true,
+    enumerable: true,
+    get() {
+      for (const c of cart ?? []) {
+        if (c.products) continue;
+        c.products = r.db.tables.products?.find((p) => p.id === c.product_id) ?? null;
+        c.product_variants = null;
+      }
+      return cart;
+    },
+    set(v) {
+      cart = v;
+    },
+  });
+  // Заказ с позициями — как select("*, order_items(*)") после оформления.
+  let orders = tables.orders;
+  Object.defineProperty(tables, "orders", {
+    configurable: true,
+    enumerable: true,
+    get() {
+      for (const o of orders ?? []) {
+        const items = (r.db.tables.order_items ?? []).filter((i) => i.order_id === o.id);
+        if (items.length) o.order_items = items;
+      }
+      return orders;
+    },
+    set(v) {
+      orders = v;
+    },
+  });
   const say = r.say.bind(r);
   r.say = async (i) => {
     await say(i);

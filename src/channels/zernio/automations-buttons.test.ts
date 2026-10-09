@@ -378,6 +378,91 @@ describe("Comment-to-DM: пересохранение правила", () => {
   });
 });
 
+describe("Comment-to-DM: быстрая покупка вместо второго сообщения с «Купить»", () => {
+  function buySetup(buttons: unknown[]) {
+    const { ctx, db } = setup();
+    db.tables.zernio_logs = [
+      {
+        id: 1,
+        bot_id: BOT,
+        event_id: "two-step-dm:c-7",
+        event_type: "two_step_dm_pending",
+        status: "pending",
+        created_at: new Date().toISOString(),
+        payload: { username: "boris", secondText: "Палитра — жмите «Купить»", buttons },
+      },
+    ];
+    return { ctx, db };
+  }
+  const buy = { type: "postback", title: "Купить", payload: "PROD:p-1" };
+
+  it("«+» на правило с «Купить» — сразу заказ магазином, второе сообщение не уходит; повторный «+» — ничего", async () => {
+    const { ctx, db } = buySetup([buy]);
+    const inbox = vi.fn(async () => ({ ok: true }));
+    const express = vi.fn(async (_id: string) => true);
+    const api = { inbox } as unknown as AutomationApi;
+    const who = { accountId: "acc-1", conversationId: "conv-7", username: "boris", express };
+    expect(await deliverPendingTwoStepDm(ctx, who, api)).toBe(true);
+    expect(express).toHaveBeenCalledWith("p-1");
+    expect(inbox).not.toHaveBeenCalled();
+    expect(db.tables.zernio_logs![0]).toMatchObject({
+      event_type: "two_step_dm_sent",
+      status: "processed",
+      payload: expect.objectContaining({ express: "p-1" }),
+    });
+    expect(await deliverPendingTwoStepDm(ctx, who, api)).toBe(false);
+    expect(express).toHaveBeenCalledTimes(1);
+  });
+
+  it("быстрая покупка выключена (false) — уходит обычное второе сообщение с «Купить»", async () => {
+    const { ctx } = buySetup([buy]);
+    const inbox = vi.fn(async () => ({ ok: true }));
+    const api = { inbox } as unknown as AutomationApi;
+    const who = {
+      accountId: "acc-1",
+      conversationId: "conv-7",
+      username: "boris",
+      express: async () => false,
+    };
+    expect(await deliverPendingTwoStepDm(ctx, who, api)).toBe(true);
+    expect(inbox).toHaveBeenCalledTimes(1);
+    expect(inbox.mock.calls[0]).toEqual(expect.arrayContaining(["Палитра — жмите «Купить»"]));
+  });
+
+  it("упала посреди — второе сообщение вдогонку не шлём (могла уже написать покупателю)", async () => {
+    const { ctx, db } = buySetup([buy]);
+    const inbox = vi.fn(async () => ({ ok: true }));
+    const api = { inbox } as unknown as AutomationApi;
+    const who = {
+      accountId: "acc-1",
+      conversationId: "conv-7",
+      username: "boris",
+      express: async () => {
+        throw new Error("сбой");
+      },
+    };
+    expect(await deliverPendingTwoStepDm(ctx, who, api)).toBe(true);
+    expect(inbox).not.toHaveBeenCalled();
+    expect(db.tables.zernio_logs![0]).toMatchObject({ status: "processed" });
+  });
+
+  it("без «Купить» или с двумя товарами — обычное второе сообщение", async () => {
+    for (const buttons of [
+      [{ type: "url", title: "Сайт", url: "https://x.kz" }],
+      [buy, { type: "postback", title: "Ещё", payload: "PROD:p-2" }],
+    ]) {
+      const { ctx } = buySetup(buttons);
+      const inbox = vi.fn(async () => ({ ok: true }));
+      const express = vi.fn(async () => true);
+      const api = { inbox } as unknown as AutomationApi;
+      const who = { accountId: "acc-1", conversationId: "conv-7", username: "boris", express };
+      expect(await deliverPendingTwoStepDm(ctx, who, api)).toBe(true);
+      expect(express).not.toHaveBeenCalled();
+      expect(inbox).toHaveBeenCalledTimes(1);
+    }
+  });
+});
+
 describe("Comment-to-DM: второй шаг из очереди уходит один раз", () => {
   function pendingSetup() {
     const { ctx, db } = setup();

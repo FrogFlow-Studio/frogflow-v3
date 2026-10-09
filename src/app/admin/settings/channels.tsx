@@ -509,6 +509,12 @@ export function DirectBotCard({ platform }: { platform: "instagram" | "whatsapp"
                 {feature("cart", t("settings.dbot.feature.cart"))}
                 {feature("checkout", t("settings.dbot.feature.checkout"))}
               </div>
+              {platform === "instagram" && (
+                <div className="mt-1">
+                  {feature("express", t("settings.dbot.feature.express"))}
+                  <p className="text-xs text-muted">{t("settings.dbot.feature.expressHint")}</p>
+                </div>
+              )}
             </Field>
           )}
           {platform === "whatsapp" && (

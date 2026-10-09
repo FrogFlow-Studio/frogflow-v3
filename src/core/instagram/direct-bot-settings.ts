@@ -37,6 +37,13 @@ export type DirectBotFeatures = {
   search: boolean;
   cart: boolean;
   checkout: boolean;
+  /**
+   * Быстрая покупка по автоматизации Instagram: «+» или кодовое слово под
+   * рилсом сразу оформляет заказ на товар правила и присылает одно
+   * сообщение с суммой и кнопками оплаты — без «Купить», корзины и
+   * «Оформить заказ» (Копилка русоведа, 09.10: ~80 обращений, 0 оплат).
+   */
+  express: boolean;
 };
 
 /** Сколько бот молчит после реплики продавца руками: минуты или «до конца дня» (Б3). */
@@ -61,7 +68,7 @@ export const DEFAULT_DIRECT_BOT: DirectBotSettings = {
   scope: "purchases",
   triggers: [],
   script: "",
-  features: { catalog: true, search: true, cart: true, checkout: true },
+  features: { catalog: true, search: true, cart: true, checkout: true, express: true },
   sellerPause: "30",
   ignoreExcluded: false,
   notifyTemplate: "",

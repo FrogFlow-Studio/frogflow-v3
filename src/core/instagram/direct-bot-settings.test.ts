@@ -20,7 +20,7 @@ describe("настройки автоответчика Direct/WhatsApp", () => 
       scope: "purchases",
       triggers: [],
       script: "",
-      features: { catalog: true, search: true, cart: true, checkout: true },
+      features: { catalog: true, search: true, cart: true, checkout: true, express: true },
       sellerPause: "30",
       ignoreExcluded: false,
       notifyTemplate: "",
@@ -48,7 +48,13 @@ describe("настройки автоответчика Direct/WhatsApp", () => 
     expect(s.enabled).toBe(false);
     expect(s.scope).toBe("all");
     expect(s.triggers).toEqual(["заказать", "купить", "прайс"]);
-    expect(s.features).toEqual({ catalog: true, search: true, cart: true, checkout: false });
+    expect(s.features).toEqual({
+      catalog: true,
+      search: true,
+      cart: true,
+      checkout: false,
+      express: true,
+    });
     expect(s.script).toBe("Напишите «каталог».");
     expect(s.ignoreExcluded).toBe(true);
     expect(s.notifyTemplate).toBe("order_update:ru");

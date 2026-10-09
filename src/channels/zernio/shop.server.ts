@@ -7,7 +7,7 @@ import { fingerprint } from "./shop/context.server";
  * catalog, cart, checkout (оформление и оплата), receipt (чек, выдача, заказы, баллы).
  */
 export { type ShopOutcome } from "./shop/context.server";
-export { handleShopMessage } from "./shop/route.server";
+export { expressFromAutomation, handleShopMessage } from "./shop/route.server";
 export { cartCard } from "./shop/cart.server";
 
 export const __test = { fingerprint, env };

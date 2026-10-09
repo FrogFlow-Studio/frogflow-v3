@@ -965,10 +965,37 @@ async function alreadyDelivered(
   }
 }
 
+/** Кто ждёт второе сообщение. `express` — быстрая покупка магазина (handle-message). */
+export type TwoStepBuyer = {
+  accountId: string;
+  conversationId: string;
+  username: string;
+  senderId?: string;
+  /**
+   * Быстрая покупка: у правила кнопка «Купить» (PROD:<id>) — вместо второго
+   * сообщения магазин сразу оформляет заказ на этот товар. false — ничего не
+   * отправлено, уходит обычное второе сообщение.
+   */
+  express?: (productId: string) => Promise<boolean>;
+};
+
+/** Товар кнопки «Купить» правила: ровно один PROD:<id> среди кнопок, иначе null. */
+export function buyButtonProduct(buttons: DmButton[]): string | null {
+  const ids = new Set(
+    buttons
+      .filter((b) => b.type === "postback" && typeof b.payload === "string")
+      .map((b) => b.payload!)
+      .filter((x) => x.startsWith("PROD:"))
+      .map((x) => x.slice("PROD:".length).trim())
+      .filter(Boolean),
+  );
+  return ids.size === 1 ? [...ids][0]! : null;
+}
+
 /** Покупатель написал в Direct первым — отдать ему обещанное второе сообщение из очереди. */
 export async function deliverPendingTwoStepDm(
   ctx: TenantContext,
-  p: { accountId: string; conversationId: string; username: string; senderId?: string },
+  p: TwoStepBuyer,
   api: AutomationApi = liveAutomationApi,
   now: () => Date = () => new Date(),
 ): Promise<boolean> {
@@ -1084,14 +1111,29 @@ export async function deliverPendingTwoStepDm(
     return false;
   }
   const buttons = normalizeDmButtons(Array.isArray(pl.buttons) ? pl.buttons : []);
+  // Быстрая покупка: товар «Купить» сразу становится заказом, второе
+  // сообщение правила не шлём. Упала посреди — могла уже написать
+  // покупателю: второе сообщение вдогонку не шлём, отмечаем как ушедшее.
+  const productId = p.express ? buyButtonProduct(buttons) : null;
+  let expressed = false;
+  if (productId && p.express) {
+    try {
+      expressed = await p.express(productId);
+    } catch (e) {
+      console.warn(`[comment-dm] ${ctx.tenant.id}: быстрая покупка упала: ${String(e)}`);
+      expressed = true;
+    }
+  }
   // Ключ идемпотентности — от строки очереди, а не от вебхука: повтор после
   // зависшего захвата приходит с другим вебхуком, и если первая отправка всё
   // же ушла, Zernio вернёт её ответ, а не пошлёт второе сообщение.
-  const r = await api.inbox(p.conversationId, p.accountId, text, {
-    buttons: buttons.length ? buttons : undefined,
-    platform: "instagram",
-    idempotencyScope: `two-step-dm:${matched.id}`,
-  });
+  const r = expressed
+    ? { ok: true as const }
+    : await api.inbox(p.conversationId, p.accountId, text, {
+        buttons: buttons.length ? buttons : undefined,
+        platform: "instagram",
+        idempotencyScope: `two-step-dm:${matched.id}`,
+      });
   if (!r.ok) {
     // Не ушло — вернуть в очередь (или сдаться после предела попыток):
     // следующий ответ покупателя попробует снова.
@@ -1118,6 +1160,7 @@ export async function deliverPendingTwoStepDm(
         ...(matched.payload as Record<string, Json>),
         attempts: attempts + 1,
         sent_at: now().toISOString(),
+        ...(expressed && productId ? { express: productId } : {}),
       },
     })
     .eq("id", matched.id)
@@ -1214,7 +1257,7 @@ function ruleOfFirstDm(text: string, rules: CommentAutomation[]): CommentAutomat
  */
 export async function deliverTwoStepFromDm(
   ctx: TenantContext,
-  p: { accountId: string; conversationId: string; username: string; senderId?: string },
+  p: TwoStepBuyer,
   api: AutomationApi = liveAutomationApi,
   now: () => Date = () => new Date(),
 ): Promise<boolean> {
@@ -1318,7 +1361,7 @@ export const DM_KEYWORD_MAX_LEN = 40;
  */
 export async function deliverTwoStepForDmKeyword(
   ctx: TenantContext,
-  p: { accountId: string; conversationId: string; username: string; senderId?: string },
+  p: TwoStepBuyer,
   text: string,
   api: AutomationApi = liveAutomationApi,
   now: () => Date = () => new Date(),

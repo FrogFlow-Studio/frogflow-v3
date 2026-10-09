@@ -126,6 +126,7 @@ import {
   pickZone,
   proceedToFulfillmentOrPlace,
   proceedToLanguageOrPlace,
+  resumeExpressOrder,
   saveOrderEmail,
   startCheckout,
   startQuiz,
@@ -890,6 +891,72 @@ async function buyFromPost(s: Shop, p: Product): Promise<void> {
   await sendProductCard(s, p, true);
 }
 
+/** Быстрая покупка по автоматизации Instagram (features.express) — при включённых корзине и оформлении. */
+function expressOn(s: Shop): boolean {
+  const f = s.bot.features;
+  return f.express && f.cart && f.checkout;
+}
+
+/**
+ * Быстрая покупка: товар правила автоматизации сразу становится заказом —
+ * одно сообщение с суммой и кнопками оплаты, без корзины и «Оформить заказ».
+ * В BotHelp у Копилки русоведа было два шага, у нас пять — покупатели
+ * путались и уходили в каталог (09.10: ~80 обращений, 0 оплат). Корзина —
+ * только этот товар: покупатель пришёл за ним. Товар с вариантами или не в
+ * продаже — обычная карточка. Цены во всех валютах — страна с суммами
+ * остаётся единственным шагом до оплаты (finishCheckout).
+ */
+async function expressBuy(s: Shop, p: Product, card = true): Promise<boolean> {
+  if (await resumeExpressOrder(s, p.id)) return true;
+  const mode = s.customer.state.mode;
+  if (mode && mode !== "idle") await setMode(s, { mode: "idle" });
+  await clearCart(s.ctx, s.customer);
+  const r = await addToCart(s.ctx, s.customer, p.id, null);
+  if (r !== "ok") {
+    if (card) await sendProductCard(s, p, true);
+    return false;
+  }
+  await continueCheckout(s);
+  return true;
+}
+
+/**
+ * «+» или кодовое слово по правилу автоматизации с кнопкой «Купить»: вместо
+ * второго сообщения правила — сразу заказ (expressBuy). false — быстрая
+ * покупка тут не работает (выключена, магазина в переписке нет, товара нет),
+ * пусть уходит обычное второе сообщение с «Купить».
+ */
+export async function expressFromAutomation(
+  ctx: TenantContext,
+  customer: Customer,
+  p: { conversationId: string; accountId: string; productId: string },
+  transport: ZernioTransport = liveTransport,
+): Promise<boolean> {
+  if (!ctx.tenant.modules.dm_shop) return false;
+  if (ctx.tenant.status === "paused" || ctx.tenant.status === "suspended") return false;
+  const { loadDirectBotSettings } = await import("@/core/instagram/direct-bot-settings");
+  const bot = await loadDirectBotSettings(ctx, "instagram");
+  if (!bot.enabled || !bot.features.express || !bot.features.cart || !bot.features.checkout)
+    return false;
+  const product = await getProduct(ctx, p.productId);
+  if (!product) return false;
+  const locale = localeOf(ctx, customer);
+  const s: Shop = {
+    ctx,
+    customer,
+    transport,
+    conversationId: p.conversationId,
+    accountId: p.accountId,
+    platform: "instagram",
+    locale,
+    m: COPY[locale],
+    bot,
+    inboundAt: null,
+    why: "быстрая покупка по автоматизации",
+  };
+  return expressBuy(s, product, false);
+}
+
 /** Шаг «почта» без почты: к стране (если её нет) или сразу к оплате. */
 async function skipEmail(s: Shop): Promise<void> {
   await remember(s, { email_skipped: true }, { mode: "idle" });
@@ -1046,6 +1113,7 @@ async function handlePostback(s: Shop, payload: string): Promise<ShopOutcome> {
       if (!p) await reply(s, s.m.productNotFound);
       // В Instagram PROD:… приходит только с кнопки «Купить» автоматизации (в
       // WhatsApp — ещё и строка списка каталога): покупатель уже выбрал товар.
+      else if (s.platform === "instagram" && expressOn(s)) await expressBuy(s, p);
       else if (s.platform === "instagram" && s.bot.features.cart) await buyFromPost(s, p);
       else await sendProductCard(s, p, true);
       return "handled";

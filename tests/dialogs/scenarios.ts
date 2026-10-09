@@ -122,6 +122,14 @@ const prodamusOrder = (r: Room): void => {
   });
 };
 
+/** Быстрая покупка выключена: «Купить» кладёт в корзину, дальше «Оформить заказ». */
+const noExpress = (r: Room): void => {
+  r.db.tables.app_settings!.push({
+    key: "instagram_direct_bot_features",
+    value: JSON.stringify({ express: false }),
+  });
+};
+
 /** Ответ подменённой модели консультанта в сценариях. */
 const CONSULTANT_SAYS = "Консультант: кирпич М150 есть, 95 ₸ за штуку.";
 
@@ -367,7 +375,8 @@ export const SCENARIOS: Scenario[] = [
   // ───── Кнопка «Купить» второго сообщения автоматизации ─────
   {
     id: "two-step-buy-long-description-ig-ru",
-    title: "кнопка «Купить» (PROD:…) у товара с длинным описанием — ответ уходит, товар в корзине",
+    title:
+      "кнопка «Купить» (PROD:…) у товара с длинным описанием — ответ уходит: сразу заказ с оплатой",
     origin:
       "Копилка русоведа 09.10 14:03: «Палитра», описание 1067 знаков — карточка длиннее 640 с кнопками отклонялась, «Купить» молчал",
     channel: "instagram",
@@ -379,16 +388,16 @@ export const SCENARIOS: Scenario[] = [
     steps: [
       {
         say: { button: `PROD:${P1}`, title: "Купить" },
-        expect: { count: 1, says: ["Добавлено в корзину"], cart: 1 },
+        expect: { count: 1, says: ["Палитра средств выразительности", "К оплате"] },
       },
     ],
   },
   {
-    id: "two-step-buy-adds-to-cart-ig-ru",
+    id: "two-step-buy-express-ig-ru",
     title:
-      "«Купить» из автоматизации — товар сразу в корзине, первой кнопкой «Оформить заказ»; повторное нажатие не удваивает",
+      "«Купить» из автоматизации — сразу заказ: одно сообщение с товаром, суммой и способом оплаты, без корзины; повторное нажатие — тот же заказ",
     origin:
-      "Яков 09.10 14:37: после «Купить» покупатели путались между «В корзину» и «Корзина» — «пусть сразу попадает в корзину»",
+      "Копилка русоведа 09.10 17:05: «Купить» → корзина → «Оформить заказ» → оплата; ~80 обращений, ни одной оплаты, «они путаются» (в BotHelp было два шага)",
     channel: "instagram",
     locale: "ru",
     full: true,
@@ -400,18 +409,79 @@ export const SCENARIOS: Scenario[] = [
         say: { button: `PROD:${P1}`, title: "Купить" },
         expect: {
           count: 1,
-          says: ["Добавлено в корзину", "Ваша корзина"],
-          buttons: ["✅ Оформить заказ"],
-          noButtons: ["➕ Добавить в корзину"],
-          cart: 1,
+          says: ["Палитра средств выразительности", "К оплате"],
+          notSays: ["Ваша корзина", "Добавлено в корзину"],
+          noButtons: ["✅ Оформить заказ", "➕ Добавить в корзину"],
+          cart: 0,
+          state: { mode: "awaiting_proof" },
         },
       },
       {
         say: { button: `PROD:${P1}`, title: "Купить" },
         expect: {
           count: 1,
-          says: ["Ваша корзина"],
-          notSays: ["Добавлено в корзину"],
+          says: ["К оплате"],
+          notSays: ["Ваша корзина"],
+          cart: 0,
+          state: { mode: "awaiting_proof" },
+        },
+      },
+    ],
+  },
+  {
+    id: "two-step-buy-express-prodamus-ig-ru",
+    title:
+      "«Купить» при кассе Продамуса и Kaspi — одно сообщение: товар, сумма, «Картой онлайн» и «Перевод Kaspi»",
+    origin:
+      "Копилка русоведа 09.10 17:11: «Выбирают страну, там цена и способ оплаты» — без корзины и «Оформить заказ»",
+    channel: "instagram",
+    locale: "ru",
+    full: true,
+    modules: { helpdesk: true, manager_chat: true, prodamus: true },
+    products: [{ id: P1, name: "Палитра средств выразительности" }],
+    arrange: (r) => {
+      r.db.tables.app_settings!.push(
+        { key: "prodamus_enabled", value: "true" },
+        { key: "prodamus_form_url", value: "https://kopilka.proeducation.kz" },
+        { key: "prodamus_secret_key", value: "k".repeat(64) },
+        { key: "prodamus_currency", value: "KZT" },
+      );
+      r.db.tables.payment_methods![0]!.instructions = "Kaspi Gold 4400 0000 0000 0000, Кристина К.";
+    },
+    steps: [
+      {
+        say: { button: `PROD:${P1}`, title: "Купить" },
+        expect: {
+          count: 1,
+          says: ["Палитра средств выразительности", "К оплате"],
+          buttons: [COPY.ru.payByCardBtn, COPY.ru.payKaspiBtn],
+          noButtons: ["✅ Оформить заказ"],
+          state: { mode: "choose_pay" },
+        },
+      },
+      {
+        say: { button: `PROD:${P1}`, title: "Купить" },
+        expect: { count: 1, buttons: [COPY.ru.payByCardBtn], state: { mode: "choose_pay" } },
+      },
+    ],
+  },
+  {
+    id: "two-step-buy-express-off-ig-ru",
+    title: "быстрая покупка выключена продавцом — «Купить» кладёт в корзину, как раньше",
+    origin: "настройка «быстрая покупка по автоматизации» (09.10): выключенная не меняет сценарий",
+    channel: "instagram",
+    locale: "ru",
+    full: true,
+    modules: { helpdesk: true, manager_chat: true },
+    products: [{ id: P1, name: "Палитра средств выразительности" }],
+    arrange: noExpress,
+    state: {},
+    steps: [
+      {
+        say: { button: `PROD:${P1}`, title: "Купить" },
+        expect: {
+          count: 1,
+          says: ["Добавлено в корзину", "Ваша корзина"],
           buttons: ["✅ Оформить заказ"],
           cart: 1,
         },
@@ -430,6 +500,7 @@ export const SCENARIOS: Scenario[] = [
     modules: { helpdesk: true, manager_chat: true },
     products: [{ id: P1, name: "Палитра средств выразительности" }],
     state: { country_code: null, country_name: null },
+    arrange: noExpress,
     steps: [
       { say: { button: `PROD:${P1}`, title: "Купить" }, expect: { cart: 1 } },
       {
@@ -450,6 +521,7 @@ export const SCENARIOS: Scenario[] = [
     modules: { helpdesk: true, manager_chat: true, prodamus: true },
     products: [{ id: P1, name: "Палитра средств выразительности" }],
     arrange: (r) => {
+      noExpress(r);
       r.db.tables.app_settings!.push(
         { key: "prodamus_enabled", value: "true" },
         { key: "prodamus_form_url", value: "https://kopilka.proeducation.kz" },
