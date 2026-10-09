@@ -9,6 +9,7 @@ import {
   prodamusCharge,
   prodamusAccepts,
   prodamusConfig,
+  prodamusCardCurrency,
   prodamusOutcome,
   prodamusSign,
   verifyProdamusSign,
@@ -136,7 +137,17 @@ describe("Продамус", () => {
     expect(prodamusOutcome(n, exp)).toBe("paid");
     expect(prodamusOutcome({ ...n, payment_status: "order_canceled" }, exp)).toBe("ignore");
     expect(prodamusOutcome({ ...n, sum: "1.00" }, exp)).toBe("mismatch");
-    expect(prodamusOutcome({ ...n, currency: "kzt" }, exp)).toBe("mismatch");
+  });
+
+  it("форма в тенге, оплата картой РФ: sum в тенге, currency=rub — оплата засчитывается", () => {
+    // Копилка русоведа 09.10, платёж 511523: заказ на 150 ₸, списано 41,98 ₽.
+    const exp = { amount: 150, currency: "KZT" };
+    const n = { payment_status: "success", sum: "150.00", currency: "rub" };
+    expect(prodamusOutcome(n, exp)).toBe("paid");
+    expect(prodamusOutcome({ ...n, sum: "41.98" }, exp)).toBe("mismatch");
+    expect(prodamusCardCurrency(n, "KZT")).toBe("RUB");
+    expect(prodamusCardCurrency({ ...n, currency: "kzt" }, "KZT")).toBeNull();
+    expect(prodamusCardCurrency({}, "KZT")).toBeNull();
   });
 
   it("ссылка: форма продавца, заказ, сумма, адрес уведомления и подпись по этим же полям", () => {

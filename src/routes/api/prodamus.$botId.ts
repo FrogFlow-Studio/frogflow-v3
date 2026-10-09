@@ -36,8 +36,13 @@ async function handle(request: Request, rawBotId: string): Promise<Response> {
 
   const raw = await request.text();
   if (raw.length > 256 * 1024) return new Response("too large", { status: 413 });
-  const { parsePhpForm, verifyProdamusSign, prodamusOutcome, parseChargeRef } =
-    await import("@/core/payments/prodamus");
+  const {
+    parsePhpForm,
+    verifyProdamusSign,
+    prodamusOutcome,
+    parseChargeRef,
+    prodamusCardCurrency,
+  } = await import("@/core/payments/prodamus");
   let n: Record<string, unknown>;
   try {
     n = (request.headers.get("content-type") ?? "").includes("json")
@@ -81,7 +86,10 @@ async function handle(request: Request, rawBotId: string): Promise<Response> {
   }
   // Заказ в тенге оплачен рублями: в журнале — и номер платежа, и списанная сумма.
   const converted = charge.currency !== order.currency.toUpperCase();
-  const ref = `${String(n.order_id ?? "")}${converted ? `, ${charge.amount} ${charge.currency}` : ""}`;
+  // Карта в другой валюте (карта РФ в форме в тенге): сумма — в валюте формы,
+  // валюта карты — пометкой, чтобы продавец видел, откуда платёж.
+  const card = prodamusCardCurrency(n, charge.currency);
+  const ref = `${String(n.order_id ?? "")}${converted ? `, ${charge.amount} ${charge.currency}` : ""}${card ? `, картой ${card}` : ""}`;
 
   const unapplied = { currency: order.currency, provider: "Продамус", ref };
   if (outcome === "mismatch") {
@@ -90,7 +98,8 @@ async function handle(request: Request, rawBotId: string): Promise<Response> {
     const { reportUnappliedPayment } = await import("@/app/payments/unapplied-payment.server");
     await reportUnappliedPayment(ctx, order, "payment_mismatch", {
       ...unapplied,
-      currency: String(n.currency ?? charge.currency).toUpperCase(),
+      // sum Продамус шлёт в валюте формы, currency — валюта карты.
+      currency: charge.currency,
       amount: Number(String(n.sum ?? "0").replace(",", ".")) || 0,
     });
     return new Response("success");

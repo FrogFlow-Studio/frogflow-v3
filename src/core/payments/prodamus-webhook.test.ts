@@ -23,6 +23,7 @@ const recordUnappliedPayment = vi.fn(async () => firstDelivery);
 const afterPaidOnline = vi.fn(async () => {});
 const notifyAdminsHtml = vi.fn(async () => 1);
 let servedBy = "v2";
+let formCfg: ProdamusConfig = CFG;
 let ready = true;
 
 const resolvedIds: string[] = [];
@@ -34,7 +35,7 @@ vi.mock("@/core/tenant/resolve.server", () => ({
   tenantContext: (tenant: unknown) => ({ tenant, appUrl: "https://app.test" }),
 }));
 vi.mock("@/core/payments/payment", () => ({
-  prodamusFor: async () => (ready ? { ready: true, ...CFG } : { ready: false }),
+  prodamusFor: async () => (ready ? { ready: true, ...formCfg } : { ready: false }),
   markPaidOnline,
   recordUnappliedPayment,
 }));
@@ -95,6 +96,7 @@ function call(raw: string, key = "key", botId = BOT) {
 beforeEach(() => {
   vi.clearAllMocks();
   servedBy = "v2";
+  formCfg = CFG;
   ready = true;
   firstDelivery = true;
   markPaidOnline.mockResolvedValue({ ok: true, kind: "digital", alreadyDone: false });
@@ -119,6 +121,37 @@ describe("уведомление Продамуса", () => {
       "9001, 259 RUB",
     );
     expect(afterPaidOnline).toHaveBeenCalledOnce();
+  });
+
+  it("форма в тенге, оплата картой РФ: sum в тенге и currency=rub — заказ оплачен, в журнале «картой RUB»", async () => {
+    // Копилка русоведа 09.10, платёж 511523: заказ #17 на 150 ₸, покупатель списал 41,98 ₽.
+    formCfg = { ...CFG, currency: "KZT" };
+    const kzt = chargeRef(formCfg, 43, { amount: 1500, currency: "KZT" });
+    const res = await call(body({ order_id: "511523", order_num: kzt, sum: "1500.00" }));
+    expect(res.status).toBe(200);
+    expect(recordUnappliedPayment).not.toHaveBeenCalled();
+    expect(markPaidOnline).toHaveBeenCalledWith(
+      expect.anything(),
+      43,
+      1500,
+      "Продамус",
+      "511523, картой RUB",
+    );
+    expect(afterPaidOnline).toHaveBeenCalledOnce();
+    expect(traced()).toEqual(["payment:paid"]);
+  });
+
+  it("форма в тенге, сумма не та — расхождение записано в тенге, а не в валюте карты", async () => {
+    formCfg = { ...CFG, currency: "KZT" };
+    const kzt = chargeRef(formCfg, 43, { amount: 1500, currency: "KZT" });
+    await call(body({ order_id: "511524", order_num: kzt, sum: "41.98" }));
+    expect(markPaidOnline).not.toHaveBeenCalled();
+    expect(recordUnappliedPayment).toHaveBeenCalledWith(expect.anything(), 43, "payment_mismatch", {
+      amount: 41.98,
+      currency: "KZT",
+      provider: "Продамус",
+      ref: "511524, картой RUB",
+    });
   });
 
   it("сумму в ссылке подменили — подпись order_id не сходится, заказ не трогается", async () => {
