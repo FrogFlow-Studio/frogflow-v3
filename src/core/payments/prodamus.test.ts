@@ -46,6 +46,25 @@ describe("Продамус", () => {
     expect(kzt.ready && kzt.rate).toBe(null);
   });
 
+  it("форма на .kz считает только в тенге: валюта кассы KZT, курс не действует", () => {
+    // Копилка Русоведа, 09.10.2026: RUB и курс 5,23 — форма proeducation.kz выставила
+    // 1148 ₸ за заказ на 6000 ₸ (параметр currency она не берёт).
+    const cfg = prodamusConfig(
+      {
+        ...s,
+        prodamus_form_url: "https://kopilka-rusoveda.proeducation.kz/",
+        prodamus_currency: "RUB",
+        prodamus_rate: "5.23",
+      },
+      true,
+    );
+    if (!cfg.ready) throw new Error("not ready");
+    expect(cfg.currency).toBe("KZT");
+    expect(cfg.rate).toBe(null);
+    expect(prodamusCharge(cfg, 6000, "KZT")).toEqual({ amount: 6000, currency: "KZT" });
+    expect(prodamusAccepts(cfg, "RUB")).toBe(false);
+  });
+
   it("касса в рублях, цены в тенге: без курса кнопки нет, с курсом — рубли вверх до целого", () => {
     const plain = prodamusConfig(s, true);
     if (!plain.ready) throw new Error("not ready");

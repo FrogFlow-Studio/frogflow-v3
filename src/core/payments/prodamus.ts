@@ -46,7 +46,7 @@ export type ProdamusConfig = {
   rate: number | null;
 };
 
-/** Адрес формы из настройки: только https://*.payform.ru (или свой домен формы). */
+/** Адрес формы из настройки: https://*.payform.ru, *.proeducation.kz или свой домен формы. */
 export function normalizeFormUrl(raw: string | undefined): string | null {
   const v = (raw ?? "").trim();
   if (!v) return null;
@@ -59,6 +59,11 @@ export function normalizeFormUrl(raw: string | undefined): string | null {
   }
 }
 
+/** Форма считает только в тенге: казахстанский домен Продамуса. */
+export function tengeOnlyForm(formUrl: string): boolean {
+  return new URL(formUrl).hostname.endsWith(".kz");
+}
+
 export function prodamusConfig(
   s: Record<string, string>,
   moduleOn: boolean,
@@ -67,9 +72,13 @@ export function prodamusConfig(
   const secretKey = s.prodamus_secret_key?.trim() ?? "";
   if (!moduleOn || s.prodamus_enabled !== "true" || !formUrl || !secretKey) return { ready: false };
   const c = (s.prodamus_currency ?? "").toUpperCase();
-  const currency = (PRODAMUS_CURRENCIES as readonly string[]).includes(c)
-    ? (c as ProdamusCurrency)
-    : "RUB";
+  // Форма Продамуса для Казахстана (*.kz, например proeducation.kz) не берёт параметр
+  // currency и выставляет сумму в тенге: 1148 «рублей» за заказ на 6000 ₸ ушли бы как 1148 ₸.
+  const currency = tengeOnlyForm(formUrl)
+    ? PRODAMUS_RATE_FROM
+    : (PRODAMUS_CURRENCIES as readonly string[]).includes(c)
+      ? (c as ProdamusCurrency)
+      : "RUB";
   const rate = Number(String(s.prodamus_rate ?? "").replace(",", "."));
   return {
     ready: true,
