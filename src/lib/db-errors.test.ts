@@ -11,12 +11,12 @@ import { describe, expect, it } from "vitest";
  */
 export function findUncheckedReads(source: string): number[] {
   const lines: number[] = [];
-  const re = /(?:const|let)\s*\{([^}]*)\}\s*=\s*await\s+((?:[^;]|\n)*?)\.from\(/g;
+  // Хвост ограничен в самом выражении: `(?:[^;]|\n)*?` без границы давал
+  // перебор с возвратами и 30+ с на весь src/ под нагрузкой.
+  const re = /(?:const|let)\s*\{([^}]*)\}\s*=\s*await\s+([^;]{0,119}?)\.from\(/g;
   for (const m of source.matchAll(re)) {
     const [, pattern, chain] = m;
     if (!/\b(?:data|count)\b/.test(pattern!) || /\berror\b/.test(pattern!)) continue;
-    // Слишком длинный «хвост» до .from( — это уже другое выражение.
-    if (chain!.length >= 120) continue;
     // Хранилище файлов — не таблица: у него своя обработка.
     if (/\.storage\b/.test(chain!)) continue;
     lines.push(source.slice(0, m.index).split("\n").length);
