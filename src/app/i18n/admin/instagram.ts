@@ -64,7 +64,7 @@ export const ru = {
   "instagram.buttons.addProduct": "+ Товар",
   "instagram.buttons.buyTitle": "Купить",
   "instagram.buttons.productHint":
-    "Покупатель нажмёт кнопку — бот пришлёт карточку этого товара с кнопкой «В корзину».",
+    "Покупатель нажмёт кнопку — бот пришлёт карточку этого товара с кнопкой «Добавить в корзину».",
   "instagram.buttons.productConsultant":
     "Кнопки с товаром здесь нет: в переписке отвечает консультант по прайсу. Какой товар показан в публикации, отмечают в разделе «{section}» на странице консультанта.",
   "instagram.buttons.productConsultantLink": "Открыть страницу консультанта",
@@ -203,7 +203,7 @@ export const kk: SectionDict<typeof ru> = {
   "instagram.buttons.addProduct": "+ Тауар",
   "instagram.buttons.buyTitle": "Сатып алу",
   "instagram.buttons.productHint":
-    "Сатып алушы түймені басады — бот осы тауардың карточкасын «Себетке» түймесімен жібереді.",
+    "Сатып алушы түймені басады — бот осы тауардың карточкасын «Себетке қосу» түймесімен жібереді.",
   "instagram.buttons.productConsultant":
     "Мұнда тауар түймесі жоқ: хат алмасуда кеңесші прайс бойынша жауап береді. Жарияланымда қай тауар көрсетілгенін кеңесші бетіндегі «{section}» бөлімінде белгілейді.",
   "instagram.buttons.productConsultantLink": "Кеңесші бетін ашу",
@@ -479,7 +479,7 @@ export const uz: SectionDict<typeof ru> = {
   "instagram.buttons.addProduct": "+ Mahsulot",
   "instagram.buttons.buyTitle": "Sotib olish",
   "instagram.buttons.productHint":
-    "Xaridor tugmani bosadi — bot shu mahsulot kartochkasini «Savatga» tugmasi bilan yuboradi.",
+    "Xaridor tugmani bosadi — bot shu mahsulot kartochkasini «Savatga qo‘shish» tugmasi bilan yuboradi.",
   "instagram.buttons.productConsultant":
     "Bu yerda mahsulot tugmasi yo‘q: yozishmada maslahatchi narxlar ro‘yxati bo‘yicha javob beradi. Nashrda qaysi mahsulot ko‘rsatilganini maslahatchi sahifasidagi «{section}» bo‘limida belgilang.",
   "instagram.buttons.productConsultantLink": "Maslahatchi sahifasini ochish",

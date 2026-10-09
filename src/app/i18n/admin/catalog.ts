@@ -161,7 +161,7 @@ export const ru = {
   "module.multi_bot.desc": "Несколько ботов и магазинов под одним входом в панель.",
   "module.stock.title": "Складской учёт",
   "module.stock.desc":
-    "Остатки по товарам: закончился — кнопка «В корзину» пропадает, при заказе остаток списывается.",
+    "Остатки по товарам: закончился — кнопка «Добавить в корзину» пропадает, при заказе остаток списывается.",
   "module.limited_offers.title": "Ограниченные предложения",
   "module.limited_offers.desc":
     "Акции с таймером и ограниченным количеством: скидка на товар до даты или на N штук, в карточке — отсчёт и остаток.",
@@ -369,7 +369,7 @@ export const kk: SectionDict<typeof ru> = {
   "module.multi_bot.desc": "Панельге бір кіру арқылы бірнеше бот пен дүкен.",
   "module.stock.title": "Қойма есебі",
   "module.stock.desc":
-    "Тауарлар бойынша қалдықтар: тауар бітсе — «Себетке» түймесі жоғалады, тапсырыс кезінде қалдық шегеріледі.",
+    "Тауарлар бойынша қалдықтар: тауар бітсе — «Себетке қосу» түймесі жоғалады, тапсырыс кезінде қалдық шегеріледі.",
   "module.limited_offers.title": "Шектеулі ұсыныстар",
   "module.limited_offers.desc":
     "Таймері және шектеулі саны бар акциялар: белгілі күнге дейін немесе N данаға тауар жеңілдігі, карточкада — кері санақ пен қалдық.",
@@ -708,7 +708,7 @@ export const uz: SectionDict<typeof ru> = {
   "module.multi_bot.desc": "Panelga bitta kirish orqali bir nechta bot va doʻkon.",
   "module.stock.title": "Ombor hisobi",
   "module.stock.desc":
-    "Mahsulotlar boʻyicha qoldiqlar: tugasa — «Savatga» tugmasi yoʻqoladi, buyurtmada qoldiq kamaytiriladi.",
+    "Mahsulotlar boʻyicha qoldiqlar: tugasa — «Savatga qo‘shish» tugmasi yoʻqoladi, buyurtmada qoldiq kamaytiriladi.",
   "module.limited_offers.title": "Cheklangan takliflar",
   "module.limited_offers.desc":
     "Taymer va cheklangan miqdordagi aksiyalar: sanagacha yoki N dona uchun mahsulotga chegirma, kartochkada — teskari sanoq va qoldiq.",
