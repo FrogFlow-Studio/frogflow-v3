@@ -155,3 +155,36 @@ test("регистрация со страницы ниши: ниша выбра
   ).toBeVisible();
   expect(errors).toEqual([]);
 });
+
+test("иконки: /favicon.ico и иконки манифеста отдаются, у главной ссылки в head, у витрины своя", async ({
+  page,
+  request,
+}) => {
+  for (const [path, type] of [
+    ["/favicon.ico", /image\/(x-icon|vnd\.microsoft\.icon)/],
+    ["/favicon-32.png", /image\/png/],
+    ["/icon-192.png", /image\/png/],
+    ["/apple-touch-icon.png", /image\/png/],
+    ["/site.webmanifest", /manifest\+json|application\/json/],
+  ] as const) {
+    const res = await request.get(path);
+    expect(res.status(), path).toBe(200);
+    expect(res.headers()["content-type"], path).toMatch(type);
+  }
+  await page.goto("/");
+  await expect(page.locator('head link[rel="icon"][href="/favicon.ico"]')).toHaveCount(1);
+  await expect(page.locator('head link[rel="manifest"]')).toHaveAttribute(
+    "href",
+    "/site.webmanifest",
+  );
+  await expect(page.locator('head link[hreflang="ru-KZ"]')).toHaveAttribute(
+    "href",
+    /frogflow\.tech\/$/,
+  );
+  await page.goto(`/s/${F.SHOP_SLUG}`);
+  await expect(page.locator('head link[rel="icon"]')).toHaveAttribute(
+    "href",
+    `/s/${F.SHOP_SLUG}/icon/192`,
+  );
+  await expect(page.locator('head link[rel="manifest"]')).toHaveCount(1);
+});

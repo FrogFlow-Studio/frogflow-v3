@@ -125,9 +125,11 @@ export function shortName(name: string): string {
 export const ICON_SIZES = [192, 512] as const;
 export type IconSize = (typeof ICON_SIZES)[number] | 180;
 
-/** Ссылки в <head>: манифест и иконка для iPhone. */
+/** Ссылки в <head>: иконка вкладки, манифест и иконка для iPhone. */
 export function shopLinks(slug: string) {
   return [
+    // Без своей иконки браузер возьмёт /favicon.ico — лягушку платформы.
+    { rel: "icon", type: "image/png", href: `/s/${slug}/icon/192` },
     { rel: "manifest", href: `/s/${slug}/manifest.webmanifest` },
     { rel: "apple-touch-icon", href: `/s/${slug}/icon/180` },
   ];
