@@ -31,8 +31,8 @@ import { isOffHours, offHoursNote, pricelistHours, type ShopHours } from "./mode
 import { knowledgeAboutModels } from "./model-knowledge";
 import { buildV2SystemPrompt, formatAssortmentMapForV2 } from "./prompt";
 import type { PricelistPersona } from "./persona";
-import type { StoredVtbRate } from "./rate";
-import { getFreshRate } from "./rate.server";
+import { isRateFresh, type StoredVtbRate } from "./rate";
+import { getUsableRate } from "./rate.server";
 import { getStoreInfo, type StoreInfo } from "./store-info.server";
 import { formatSynonymsForPrompt, withSynonyms } from "./synonyms";
 import { executeConsultantTool, type StoryTagHit } from "./tools";
@@ -110,11 +110,11 @@ const RUBLES_NOTE =
   "[Покупателю нужны рубли: тенге из вашего ответа заменятся на рубли автоматически. Пишите цены в тенге и не упоминайте ни замену, ни курс.]";
 
 /**
- * Рубли нужны, а свежего курса нет: тенге останутся тенге (tengeToRubles без
+ * Рубли нужны, а курса нет совсем: тенге останутся тенге (tengeToRubles без
  * курса текст не меняет). Обещать покупателю рубли нельзя — честно сказать.
  */
 const RUBLES_NO_RATE_NOTE =
-  "[Покупателю нужны рубли, но актуального курса сейчас нет: цены останутся в тенге. Пишите цены в тенге и одной фразой честно скажите, что точную сумму в рублях подтвердит менеджер. Рубли сами не считайте.]";
+  "[Покупателю нужны рубли, но курса рубля сейчас нет: цены останутся в тенге. Пишите цены в тенге и одной фразой честно скажите, что точную сумму в рублях подтвердит менеджер. Рубли сами не считайте.]";
 
 /**
  * Заказ без телефона не уходит менеджеру с первого раза: v1 спрашивал
@@ -176,7 +176,7 @@ export async function loadPricelistData(
   let knowledgeError: string | undefined;
   const [snap, rate, store, articles, storyTags] = await Promise.all([
     loadPricelist(ctx, now),
-    getFreshRate(ctx, now).catch(() => null),
+    getUsableRate(ctx, now).catch(() => null),
     getStoreInfo(ctx),
     loadKnowledge(ctx).catch((e: unknown): ConsultantKnowledgeArticle[] => {
       knowledgeError = e instanceof Error ? e.message : String(e);
@@ -253,8 +253,13 @@ export type PricelistDecision = {
   };
   /** Вызов модели не состоялся: лимит частоты или потолок времени. */
   stopped: "limited" | "late" | null;
-  /** Покупателю нужны рубли, а свежего курса нет: цены остались в тенге. */
+  /** Покупателю нужны рубли, а курса нет совсем: цены остались в тенге. */
   rateMissing: boolean;
+  /**
+   * Рубли посчитаны по курсу старше суток (источник не отвечает): к ответу
+   * с рублями toTurn добавляет «цены в рублях ориентировочные».
+   */
+  rateApprox?: boolean;
   /**
    * Черновик не прошёл сверку цен и после переписывания: ответ с ценой не
    * по прайсу покупателю не уходит, вопрос — менеджеру.
@@ -443,6 +448,8 @@ async function decide(data: PricelistData, input: PricelistInput): Promise<Price
   if (aboutModels) notes.push(aboutModels);
   const rubles = wantsRubles(text, state, knownProfile);
   const rateMissing = rubles && !(rate && rate > 0);
+  const rateApprox =
+    rubles && !rateMissing && !isRateFresh(rateRow, (input.now ?? new Date()).getTime());
   if (rubles) notes.push(rateMissing ? RUBLES_NO_RATE_NOTE : RUBLES_NOTE);
   if (isOffHours(input.now ?? new Date(), data.hours, data.timezone))
     notes.push(offHoursNote(data.hours));
@@ -713,6 +720,7 @@ async function decide(data: PricelistData, input: PricelistInput): Promise<Price
     },
     stopped,
     rateMissing,
+    ...(rateApprox ? { rateApprox } : {}),
     priceBlocked,
   };
 

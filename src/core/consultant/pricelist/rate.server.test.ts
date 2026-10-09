@@ -4,7 +4,7 @@ import type { TenantContext } from "@/core/tenant/resolve.server";
 import {
   VTB_LAST_ERROR_KEY,
   VTB_RATE_KEY,
-  getFreshRate,
+  getUsableRate,
   getStoredRateStrict,
   loadAttemptLog,
   refreshRate,
@@ -71,7 +71,7 @@ describe("курс рубля магазина", () => {
     const r = await refreshRate(ctx, page as unknown as typeof fetch, NOW);
     expect(r).toMatchObject({ ok: true, fetched: true, kind: "finkaz" });
     expect(r.stored).toMatchObject({ rate: 4.45, sell: 4.95 });
-    expect((await getFreshRate(ctx, NOW))?.rate).toBe(4.45);
+    expect((await getUsableRate(ctx, NOW))?.rate).toBe(4.45);
     const log = JSON.parse(
       String(db.tables.app_settings!.find((x) => x.key === VTB_LAST_ERROR_KEY)!.value),
     );
@@ -86,7 +86,7 @@ describe("курс рубля магазина", () => {
     expect(r.stored?.rate).toBe(6);
   });
 
-  it("источник недоступен — прежний курс остаётся; трёхдневный в цену не идёт", async () => {
+  it("источник недоступен — прежний курс остаётся и идёт в цену даже через трое суток", async () => {
     const old = JSON.stringify({
       rate: 4.4,
       updatedAt: new Date(NOW - 80 * 3600_000).toISOString(),
@@ -97,7 +97,7 @@ describe("курс рубля магазина", () => {
     });
     const r = await refreshRate(ctx, down as unknown as typeof fetch, NOW);
     expect(r.error).toBe("fetch_failed_kept_last");
-    expect(await getFreshRate(ctx, NOW)).toBeNull();
+    expect((await getUsableRate(ctx, NOW))?.rate).toBe(4.4);
   });
 
   it("курс вручную — крон его не трогает", async () => {

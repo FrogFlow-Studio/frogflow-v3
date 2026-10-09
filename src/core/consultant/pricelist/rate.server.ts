@@ -4,7 +4,7 @@ import { getSetting, setSetting } from "@/core/settings/settings";
 import { serverFailure } from "@/lib/server-failure";
 import { attemptText, errorAttempt, parseAttempts, type RateAttempt } from "./rate-attempts";
 import { bankNameFromFinkazUrl, parseFinkazRubQuote } from "./finkaz-parse";
-import { effectiveRateSource, isRateFresh, parseStoredRate, type StoredVtbRate } from "./rate";
+import { effectiveRateSource, parseStoredRate, type StoredVtbRate } from "./rate";
 import {
   parseVtbRateQuote,
   rateSourceKind,
@@ -95,13 +95,17 @@ async function readStoredRate(
   return value;
 }
 
-/** Курс для цены покупателю; протухший не отдаём — рубли подтвердит менеджер. */
-export async function getFreshRate(
+/**
+ * Курс для цены покупателю: последний сохранённый, какой бы старый ни был.
+ * Старше суток (isRateFresh — false) рубли уходят с пометкой
+ * «ориентировочно», а оператор узнаёт о сломанном источнике через шесть
+ * часов (platform-alerts). Нет курса вовсе — null, цены в тенге.
+ */
+export async function getUsableRate(
   ctx: TenantContext,
   now = Date.now(),
 ): Promise<StoredVtbRate | null> {
-  const stored = await getStoredRate(ctx, now);
-  return isRateFresh(stored, now) ? stored : null;
+  return getStoredRate(ctx, now);
 }
 
 export async function saveRate(
