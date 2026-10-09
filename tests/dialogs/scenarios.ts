@@ -424,6 +424,37 @@ export const SCENARIOS: Scenario[] = [
     ],
   },
   {
+    id: "checkout-kaspi-card-buttons-ig-ru",
+    title:
+      "касса в тенге и реквизиты Kaspi — кнопки «Картой онлайн» и «Перевод Kaspi», без «Карта РФ / СБП»",
+    origin:
+      "Копилка русоведа 09.10 15:43: «Оплата на каспи?» — покупатель не понял, какая кнопка для Kaspi",
+    channel: "instagram",
+    locale: "ru",
+    full: true,
+    modules: { helpdesk: true, manager_chat: true, prodamus: true },
+    products: [{ id: P1, name: "Палитра средств выразительности" }],
+    arrange: (r) => {
+      r.db.tables.app_settings!.push(
+        { key: "prodamus_enabled", value: "true" },
+        { key: "prodamus_form_url", value: "https://kopilka.proeducation.kz" },
+        { key: "prodamus_secret_key", value: "k".repeat(64) },
+        { key: "prodamus_currency", value: "KZT" },
+      );
+      r.db.tables.payment_methods![0]!.instructions = "Kaspi Gold 4400 0000 0000 0000, Кристина К.";
+    },
+    steps: [
+      { say: { button: `PROD:${P1}`, title: "Купить" }, expect: { cart: 1 } },
+      {
+        say: { button: "CHECKOUT", title: "✅ Оформить заказ" },
+        expect: {
+          buttons: [COPY.ru.payByCardBtn, COPY.ru.payKaspiBtn],
+          noButtons: [COPY.ru.payViaProdamusBtn, COPY.ru.payManualBtn],
+        },
+      },
+    ],
+  },
+  {
     id: "checkout-email-words-skip-ig-ru",
     title: "на шаге «почта» пишут не адрес — бот идёт к оплате без почты, а не по кругу",
     origin:
@@ -1490,7 +1521,8 @@ export const SCENARIOS: Scenario[] = [
   // ───── «Карта РФ / СБП» в Instagram: бот молчал (заказ #15 Копилки Русоведа, 09.10) ─────
   {
     id: "prodamus-link-ig-ru",
-    title: "«Карта РФ / СБП» — ссылка на оплату приходит кнопкой, текст не длиннее предела Meta",
+    title:
+      "касса в тенге — «💳 Картой онлайн», без «Карта РФ / СБП»; ссылка кнопкой, текст не длиннее предела Meta",
     origin: "заказ #15 Копилки Русоведа, скрин Кристины 09.10: после кнопки бот ничего не прислал",
     channel: "instagram",
     locale: "ru",
@@ -1502,8 +1534,9 @@ export const SCENARIOS: Scenario[] = [
         say: { button: "PAY:pdm" },
         expect: {
           count: 1,
-          says: [(c) => c.prodamusHint, "150 ₸"],
-          buttons: [COPY.ru.payViaProdamusBtn],
+          says: [(c) => c.prodamusCardHint, "150 ₸"],
+          notSays: ["российского банка"],
+          buttons: [COPY.ru.payByCardBtn],
           state: { mode: "awaiting_payment", pending_order_id: 15 },
         },
       },
@@ -1524,7 +1557,7 @@ export const SCENARIOS: Scenario[] = [
         say: { button: "PAY:pdm" },
         expect: {
           count: 1,
-          says: [(c) => c.prodamusHint, "https://kopilka.proeducation.kz/?do=pay"],
+          says: [(c) => c.prodamusCardHint, "https://kopilka.proeducation.kz/?do=pay"],
           state: { mode: "awaiting_payment" },
         },
       },

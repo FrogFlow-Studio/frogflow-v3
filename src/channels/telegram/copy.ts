@@ -213,6 +213,11 @@ export type Msg = {
   payViaProdamusBtn: string;
   prodamusHint: string;
   payManualBtn: string;
+  /** Ручной способ, в реквизитах которого есть Kaspi. */
+  payKaspiBtn: string;
+  /** Продамус с кассой не в рублях (форма KZ): карта любого банка, без «РФ / СБП». */
+  payByCardBtn: string;
+  prodamusCardHint: string;
   robokassaHint: string;
   paymentReceived: (no: number) => string;
   chooseCountry: string;
@@ -383,6 +388,10 @@ export type Msg = {
 };
 
 const ru: Msg = {
+  payKaspiBtn: "🧾 Перевод Kaspi",
+  payByCardBtn: "💳 Картой онлайн",
+  prodamusCardHint:
+    "Откройте ссылку и оплатите банковской картой. Заказ подтвердится сам сразу после оплаты.",
   payBalanceBtn: (no) => `💳 Оплатить остаток #${no}`,
   balanceTitle: (no, sum) => `💳 <b>Остаток по заказу #${no}</b>\n\n💰 К оплате: <b>${sum}</b>`,
   balanceNoDetails: "Реквизиты для оплаты уточните у продавца.",
@@ -777,6 +786,10 @@ const ru: Msg = {
 
 const kk: Msg = {
   ...ru,
+  payKaspiBtn: "🧾 Kaspi аударым",
+  payByCardBtn: "💳 Картамен онлайн",
+  prodamusCardHint:
+    "Сілтемені ашып, банк картасымен төлеңіз. Тапсырыс төлемнен кейін бірден өзі расталады.",
   payViaProdamusBtn: "🇷🇺 РФ картасы / СБП",
   prodamusHint:
     "Сілтемені ашып, Ресей банкінің картасымен немесе СБП арқылы төлеңіз. Тапсырыс төлемнен кейін бірден өзі расталады.",
@@ -1062,6 +1075,10 @@ const kk: Msg = {
 
 const en: Msg = {
   ...ru,
+  payKaspiBtn: "🧾 Kaspi transfer",
+  payByCardBtn: "💳 Card payment",
+  prodamusCardHint:
+    "Open the link and pay by bank card. The order is confirmed automatically right after payment.",
   phoneNoted: "Got your number 👍",
   loginCodeMsg: (code, minutes) =>
     `🔐 Your website login code: <b>${code}</b>\nValid for ${minutes} minutes, works once. Do not share it with anyone.`,
@@ -1374,6 +1391,10 @@ const en: Msg = {
 
 const uz: Msg = {
   ...ru,
+  payKaspiBtn: "🧾 Kaspi o‘tkazma",
+  payByCardBtn: "💳 Karta orqali",
+  prodamusCardHint:
+    "Havolani oching va bank kartasi bilan to‘lang. Buyurtma to‘lovdan so‘ng darhol avtomatik tasdiqlanadi.",
   payViaProdamusBtn: "🇷🇺 RF kartasi / SBP",
   prodamusHint:
     "Havolani oching va Rossiya banki kartasi yoki SBP orqali to‘lang. Buyurtma to‘lovdan so‘ng darhol o‘zi tasdiqlanadi.",
@@ -1809,4 +1830,16 @@ export function normalizePhone(raw: string): string | null {
   const n = cleaned.replace(/\D/g, "");
   if (n.length < 10 || n.length > 15) return null;
   return cleaned.startsWith("+") ? cleaned : `+${n}`;
+}
+
+/** Кнопка и подсказка Продамуса: форма в рублях — «Карта РФ / СБП», иначе (KZ) — просто картой. */
+export function prodamusCopy(m: Msg, kassaCurrency: string | null | undefined) {
+  return (kassaCurrency ?? "").toUpperCase() === "RUB"
+    ? { btn: m.payViaProdamusBtn, hint: m.prodamusHint }
+    : { btn: m.payByCardBtn, hint: m.prodamusCardHint };
+}
+
+/** Кнопка ручной оплаты: в реквизитах Kaspi — так и пишем, иначе общий «перевод по реквизитам». */
+export function manualPayBtn(m: Msg, instructions: string | null | undefined): string {
+  return /kaspi|каспи/i.test(instructions ?? "") ? m.payKaspiBtn : m.payManualBtn;
 }
