@@ -481,6 +481,8 @@ describe("консультант по прайсу", () => {
     expect(requests[4]!.tool_choice).toEqual({ type: "none" });
     expect(turn.reply).toBe("Семейных комплектов сейчас нет. Показать полотенца Uchino?");
     expect(turn.tools).toContain("fix:final_without_tools");
+    // Последний запрос просит текст: 09.10 22:34 модель после фото молчала.
+    expect(JSON.stringify(requests[4]!.messages.at(-1))).toContain("Поиск окончен");
   });
 
   it("вызов поиска текстом — модель переписывает, покупателю разметка не уходит (BOVI 30.09)", async () => {

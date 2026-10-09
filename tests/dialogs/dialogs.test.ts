@@ -3,7 +3,15 @@ import { setEnvForTests } from "@/config/env";
 import { COPY } from "@/channels/telegram/copy";
 import { commissionableAmount } from "@/core/commission/commission";
 import type { Locale } from "@/core/i18n/locale";
-import { notices, outbound, room, ROOM_BOT, type Channel, type Product } from "./harness";
+import {
+  modelHold,
+  notices,
+  outbound,
+  room,
+  ROOM_BOT,
+  type Channel,
+  type Product,
+} from "./harness";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { invalidatePricelist } from "@/core/consultant/pricelist/catalog.server";
 import { SCENARIOS, type Says } from "./scenarios";
@@ -54,8 +62,9 @@ vi.mock("@anthropic-ai/sdk", () => {
     status?: number;
   }
   const create = async () => {
-    // Модель думает (в жизни — секунды): соседние вебхуки успевают встать в очередь диалога.
-    await new Promise((r) => setTimeout(r, 15));
+    // Модель думает (в жизни — секунды): соседние вебхуки успевают встать в очередь
+    // диалога. В пачке — ровно до того, как встали все (harness.modelHold).
+    await (modelHold.wait ?? new Promise((r) => setTimeout(r, 15)));
     return {
       stop_reason: "end_turn",
       content: modelRounds.list.shift() ?? [{ type: "text", text: "" }],

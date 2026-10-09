@@ -125,7 +125,9 @@ export async function runPlatformAlerts(): Promise<unknown> {
     );
     // Сбой проверки вебхука не роняет пробы кронов и аккаунтов; сам он — сбой пробы.
     const zernioWebhook = zernioInUse
-      ? await (await import("@/channels/zernio/connect.server"))
+      ? await (
+          await import("@/channels/zernio/connect.server")
+        )
           .v2WebhookStatus()
           .catch((e: unknown) => ({
             ok: false,

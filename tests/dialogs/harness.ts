@@ -139,6 +139,34 @@ export const ROOM_BOT = "00000000-0000-4000-8000-0000000000aa";
 const BOT = ROOM_BOT;
 export const notices = { count: 0 };
 
+/**
+ * Модель «думает», пока все сообщения пачки не встали в очередь диалога: в
+ * жизни ответ модели — секунды, а соседние вебхуки — миллисекунды. Раньше
+ * это было 15 мс сна, и под нагрузкой прогона третий вебхук не успевал —
+ * сценарий пачки падал через раз (09.10, gate #64 и #65).
+ */
+export const modelHold: { wait: Promise<void> | null } = { wait: null };
+
+function holdModelUntilQueued(rows: () => Array<{ state?: unknown }>, n: number): () => void {
+  let done = false;
+  modelHold.wait = (async () => {
+    const until = Date.now() + 2_000;
+    while (!done && Date.now() < until) {
+      const queued = rows().reduce((max, r) => {
+        const inbox = (r.state as { consultant?: { inbox?: unknown[] } } | undefined)?.consultant
+          ?.inbox;
+        return Math.max(max, Array.isArray(inbox) ? inbox.length : 0);
+      }, 0);
+      if (queued >= n) return;
+      await new Promise((r) => setTimeout(r, 1));
+    }
+  })();
+  return () => {
+    done = true;
+    modelHold.wait = null;
+  };
+}
+
 const plain = (s: string) => s.replace(/<[^>]+>/g, "").replace(/&amp;/g, "&");
 
 const productRow = (p: Product, i: number) => ({
@@ -444,7 +472,12 @@ function directRoom(o: RoomOptions): Room {
       if (o.full && "burst" in i) {
         // Каждая реплика — свой вебхук; обрабатываются одновременно, как на Vercel.
         const hooks = i.burst.map((text) => webhook({ text }));
-        await Promise.all(hooks.map((h) => handleZernioMessage(ctx, h as never, transport)));
+        const release = holdModelUntilQueued(() => db.tables.bot_users ?? [], hooks.length);
+        try {
+          await Promise.all(hooks.map((h) => handleZernioMessage(ctx, h as never, transport)));
+        } finally {
+          release();
+        }
         current.state = db.tables.bot_users![0]!.state as Customer["state"];
         return;
       }
@@ -555,12 +588,17 @@ function telegramRoom(o: RoomOptions): Room {
             message: { message_id: updateId, date, chat, from, text },
           };
         });
-        await Promise.all(
-          updates.map(async (u) => {
-            if (await claimTelegramUpdate(ctx, u.update_id))
-              await handleTelegramUpdate(ctx, api, u as never);
-          }),
-        );
+        const release = holdModelUntilQueued(() => db.tables.bot_users ?? [], updates.length);
+        try {
+          await Promise.all(
+            updates.map(async (u) => {
+              if (await claimTelegramUpdate(ctx, u.update_id))
+                await handleTelegramUpdate(ctx, api, u as never);
+            }),
+          );
+        } finally {
+          release();
+        }
         return;
       }
       const again = "repeat" in i && lastUpdate !== null;
