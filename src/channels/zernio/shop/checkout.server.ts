@@ -163,6 +163,7 @@ export async function finishQuiz(s: Shop, tags: string[]): Promise<void> {
 
 export async function startCheckout(s: Shop) {
   if ((await cartCount(s.ctx, s.customer)) === 0) {
+    if (await resumePendingPayChoice(s)) return;
     await reply(s, s.m.cartEmpty, { force: true, buttons: [BTN.catalog(s.m)] });
     return;
   }
@@ -670,38 +671,12 @@ export async function finishCheckout(s: Shop, countryCode: string) {
       pending_order_id: order.id,
       pending_display_no: no,
     });
-    await reply(
-      s,
-      `${plain(s.m.manualTitleNew(no))}\n\n${plain(s.m.amountToPay(formatMoney(due, order.currency)))}\n\n${plain(s.m.choosePayMethod)}`,
-      {
-        force: true,
-        buttons: [
-          ...(rk.ready
-            ? [
-                {
-                  type: "postback" as const,
-                  title: plain(s.m.payViaRobokassaBtn),
-                  payload: "PAY:rk",
-                },
-              ]
-            : []),
-          ...(pdm.ready
-            ? [
-                {
-                  type: "postback" as const,
-                  title: plain(prodamusCopy(s.m, pdm.currency).btn),
-                  payload: "PAY:pdm",
-                },
-              ]
-            : []),
-          {
-            type: "postback",
-            title: plain(manualPayBtn(s.m, method.instructions)),
-            payload: "PAY:manual",
-          },
-        ],
-      },
-    );
+    await sendPayChoice(s, {
+      no,
+      due,
+      currency: order.currency,
+      instructions: method.instructions,
+    });
     return;
   }
   s.customer = await setState(s.ctx, s.customer, {
@@ -723,6 +698,70 @@ export async function finishCheckout(s: Shop, countryCode: string) {
     physical,
     depositLine,
   });
+}
+
+/**
+ * «Выберите способ оплаты» с кнопками. Способы названы и словами: кнопки
+ * покупательница не заметила, дважды нажала «Оформить заказ» и ушла в
+ * каталог (заказ #19 Копилки русоведа, 09.10).
+ */
+async function sendPayChoice(
+  s: Shop,
+  p: { no: number; due: number; currency: string; instructions: string | null },
+) {
+  const rk = await robokassaFor(s.ctx, p.currency);
+  const pdm = await prodamusFor(s.ctx, p.currency);
+  const buttons = [
+    ...(rk.ready
+      ? [{ type: "postback" as const, title: plain(s.m.payViaRobokassaBtn), payload: "PAY:rk" }]
+      : []),
+    ...(pdm.ready
+      ? [
+          {
+            type: "postback" as const,
+            title: plain(prodamusCopy(s.m, pdm.currency).btn),
+            payload: "PAY:pdm",
+          },
+        ]
+      : []),
+    {
+      type: "postback" as const,
+      title: plain(manualPayBtn(s.m, p.instructions)),
+      payload: "PAY:manual",
+    },
+  ];
+  await reply(
+    s,
+    `${plain(s.m.manualTitleNew(p.no))}\n\n${plain(s.m.amountToPay(formatMoney(p.due, p.currency)))}\n\n${plain(s.m.choosePayMethodNamed(buttons.map((b) => b.title)))}`,
+    { force: true, buttons },
+  );
+}
+
+/**
+ * Повторное «Оформить заказ», когда корзина уже стала заказом и он ждёт
+ * выбора оплаты: показываем этот заказ с кнопками оплаты, а не «Корзина
+ * пуста» (заказ #19 Копилки русоведа, 09.10). true — показали.
+ */
+async function resumePendingPayChoice(s: Shop): Promise<boolean> {
+  if (s.customer.state.mode !== "choose_pay") return false;
+  const orderId = Number(s.customer.state.pending_order_id);
+  const order = orderId ? await getOrder(s.ctx, orderId) : null;
+  if (!order || order.telegram_id !== s.customer.telegramId || order.status !== "awaiting_payment")
+    return false;
+  const method = (await listActivePaymentMethods(s.ctx)).find(
+    (x) => x.country_code === order.country_code,
+  );
+  const due = await amountDueNow(s.ctx, {
+    total: Number(order.total),
+    fulfillment_kind: order.fulfillment_kind,
+  });
+  await sendPayChoice(s, {
+    no: displayNo(order),
+    due,
+    currency: order.currency,
+    instructions: method?.instructions ?? null,
+  });
+  return true;
 }
 
 async function sendManualInstructions(

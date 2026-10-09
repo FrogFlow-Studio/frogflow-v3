@@ -1607,6 +1607,30 @@ export const SCENARIOS: Scenario[] = [
     ],
   },
   {
+    id: "checkout-again-shows-pending-order-ig-ru",
+    title:
+      "заказ ждёт выбора оплаты, снова «Оформить заказ» — тот же заказ с кнопками оплаты, а не «Корзина пуста»",
+    origin:
+      "заказ #19 Копилки русоведа 09.10 16:5x: кнопки оплаты не заметила, дважды «Оформить заказ» → «Корзина пуста» → каталог",
+    channel: "instagram",
+    locale: "ru",
+    modules: { prodamus: true },
+    state: { mode: "choose_pay", pending_order_id: 15, pending_display_no: 15 },
+    arrange: prodamusOrder,
+    steps: [
+      {
+        say: { button: "CHECKOUT", title: "✅ Оформить заказ" },
+        expect: {
+          count: 1,
+          says: ["150 ₸", `«${COPY.ru.payByCardBtn}»`],
+          notSays: [(c) => c.cartEmpty],
+          buttons: [COPY.ru.payByCardBtn],
+          state: { mode: "choose_pay", pending_order_id: 15 },
+        },
+      },
+    ],
+  },
+  {
     id: "prodamus-link-no-buttons-ig-ru",
     title: "кнопки канал не принял — ссылка на оплату приходит текстом",
     origin: "заказ #15 Копилки Русоведа, 09.10",

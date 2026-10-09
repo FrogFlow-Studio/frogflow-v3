@@ -200,6 +200,8 @@ export type Msg = {
   /** Продавец перенёс срок предзаказа: покупателю с открытым заказом на этот товар. */
   preorderMoved: (name: string, from: string | null) => string;
   choosePayMethod: string;
+  /** Выбор оплаты с названиями кнопок словами (в переписке кнопки не всегда замечают). */
+  choosePayMethodNamed: (labels: string[]) => string;
   /** Оплата — акцепт оферты; ссылки на опубликованные документы. */
   payConsent: (offer: string | null, privacy: string | null) => string;
   payViaRobokassaBtn: string;
@@ -390,6 +392,8 @@ export type Msg = {
 };
 
 const ru: Msg = {
+  choosePayMethodNamed: (l) =>
+    `Выберите способ оплаты и нажмите кнопку ниже: ${l.map((x) => `«${x}»`).join(" или ")}.`,
   payKaspiBtn: "🧾 Перевод Kaspi",
   payByCardBtn: "💳 Картой онлайн",
   prodamusCardHint:
@@ -789,6 +793,8 @@ const ru: Msg = {
 
 const kk: Msg = {
   ...ru,
+  choosePayMethodNamed: (l) =>
+    `Төлем тәсілін таңдап, төмендегі батырманы басыңыз: ${l.map((x) => `«${x}»`).join(" немесе ")}.`,
   payKaspiBtn: "🧾 Kaspi аударым",
   payByCardBtn: "💳 Картамен онлайн",
   prodamusCardHint:
@@ -1079,6 +1085,8 @@ const kk: Msg = {
 
 const en: Msg = {
   ...ru,
+  choosePayMethodNamed: (l) =>
+    `Choose how to pay and tap a button below: ${l.map((x) => `“${x}”`).join(" or ")}.`,
   payKaspiBtn: "🧾 Kaspi transfer",
   payByCardBtn: "💳 Card payment",
   prodamusCardHint:
@@ -1396,6 +1404,8 @@ const en: Msg = {
 
 const uz: Msg = {
   ...ru,
+  choosePayMethodNamed: (l) =>
+    `To‘lov usulini tanlang va pastdagi tugmani bosing: ${l.map((x) => `«${x}»`).join(" yoki ")}.`,
   choosePayCountry: "💳 Qaysi davlatdan to‘laysiz? Summa o‘sha davlat valyutasida:",
   payKaspiBtn: "🧾 Kaspi o‘tkazma",
   payByCardBtn: "💳 Karta orqali",
