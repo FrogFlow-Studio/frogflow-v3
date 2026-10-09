@@ -81,6 +81,32 @@ const oneAiCallLeft = (r: Room): void => {
   });
 };
 
+/** Касса Продамуса на казахстанской форме и заказ №15 на 150 ₸, ждущий оплаты. */
+const prodamusOrder = (r: Room): void => {
+  r.db.tables.app_settings!.push(
+    { key: "prodamus_enabled", value: "true" },
+    { key: "prodamus_form_url", value: "https://kopilka.proeducation.kz" },
+    { key: "prodamus_secret_key", value: "k".repeat(64) },
+    { key: "prodamus_currency", value: "KZT" },
+  );
+  const buyer = r.db.tables.bot_users![0]!;
+  r.db.tables.orders!.push({
+    id: 15,
+    order_no: 15,
+    display_no: 15,
+    bot_id: buyer.bot_id,
+    telegram_id: buyer.telegram_id,
+    user_key: buyer.user_key,
+    platform: buyer.platform,
+    status: "awaiting_payment",
+    total: 150,
+    currency: "KZT",
+    fulfillment_kind: "digital",
+    created_at: "2026-10-09T06:21:49Z",
+    order_items: [],
+  });
+};
+
 /** Ответ подменённой модели консультанта в сценариях. */
 const CONSULTANT_SAYS = "Консультант: кирпич М150 есть, 95 ₸ за штуку.";
 
@@ -154,6 +180,8 @@ export interface Scenario {
   tenantSettings?: Record<string, unknown>;
   /** Instagram/WhatsApp: отправка покупателю не подтверждена (обрыв, тайм-аут). */
   sendFails?: boolean;
+  /** Instagram/WhatsApp: канал отклоняет кнопки (400), текст без кнопок проходит. */
+  rejectButtons?: boolean;
   /** Direct/WhatsApp: реплика идёт через весь разбор входящего (слова «позови человека», пауза). */
   full?: boolean;
   /** Подготовка до первой реплики (например, «продавец ответил руками»). */
@@ -1337,4 +1365,47 @@ export const SCENARIOS: Scenario[] = [
     }),
     ["instagram", "whatsapp"],
   ),
+  // ───── «Карта РФ / СБП» в Instagram: бот молчал (заказ #15 Копилки Русоведа, 09.10) ─────
+  {
+    id: "prodamus-link-ig-ru",
+    title: "«Карта РФ / СБП» — ссылка на оплату приходит кнопкой, текст не длиннее предела Meta",
+    origin: "заказ #15 Копилки Русоведа, скрин Кристины 09.10: после кнопки бот ничего не прислал",
+    channel: "instagram",
+    locale: "ru",
+    modules: { prodamus: true },
+    state: { mode: "choose_pay", pending_order_id: 15, pending_display_no: 15 },
+    arrange: prodamusOrder,
+    steps: [
+      {
+        say: { button: "PAY:pdm" },
+        expect: {
+          count: 1,
+          says: [(c) => c.prodamusHint, "150 ₸"],
+          buttons: [COPY.ru.payViaProdamusBtn],
+          state: { mode: "awaiting_payment", pending_order_id: 15 },
+        },
+      },
+    ],
+  },
+  {
+    id: "prodamus-link-no-buttons-ig-ru",
+    title: "кнопки канал не принял — ссылка на оплату приходит текстом",
+    origin: "заказ #15 Копилки Русоведа, 09.10",
+    channel: "instagram",
+    locale: "ru",
+    modules: { prodamus: true },
+    rejectButtons: true,
+    state: { mode: "choose_pay", pending_order_id: 15, pending_display_no: 15 },
+    arrange: prodamusOrder,
+    steps: [
+      {
+        say: { button: "PAY:pdm" },
+        expect: {
+          count: 1,
+          says: [(c) => c.prodamusHint, "https://kopilka.proeducation.kz/?do=pay"],
+          state: { mode: "awaiting_payment" },
+        },
+      },
+    ],
+  },
 ];
