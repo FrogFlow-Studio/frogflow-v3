@@ -39,6 +39,9 @@ export const ru = {
   "pricelist.settings.digest": "Сводка качества ответов каждое утро",
   "pricelist.settings.digestHint":
     "После 9:00 — сколько ответов за вчера, сколько передано менеджеру, замечания к ценам и форме, расход.",
+  "pricelist.settings.taskReminders": "Напоминать о неразобранных задачах в Telegram",
+  "pricelist.settings.taskRemindersHint":
+    "Задача не отмечена сделанной 2 часа — одно напоминание (в рабочие часы консультанта). В 9:00 — список всех открытых задач.",
   "pricelist.save": "Сохранить",
   "pricelist.saved": "Сохранено.",
   "pricelist.hours":
@@ -91,7 +94,7 @@ export const ru = {
     "Бот берёт курс отсюда: {source}. Сменить источник можно через поддержку FrogFlow.",
   "pricelist.rate.sourceManual": "Бот берёт курс, введённый вручную.",
   "pricelist.rate.stale":
-    "Курс старше трёх дней — цены в рублях покупателям не называются, пока он не обновится.",
+    "Курс не обновлялся больше суток — консультант называет цены в рублях по нему с пометкой «ориентировочно», пока курс не обновится.",
   "pricelist.rate.none": "Курса ещё нет — цены в рублях покупателям не называются.",
   "pricelist.rate.refresh": "Обновить сейчас",
   "pricelist.rate.manual": "Курс вручную",
@@ -219,6 +222,9 @@ export const kk: SectionDict<typeof ru> = {
   "pricelist.settings.digest": "Әр таң сайын жауап сапасының жиынтығы",
   "pricelist.settings.digestHint":
     "9:00-ден кейін — кешегі жауаптар саны, менеджерге берілгені, баға мен пішінге ескертулер, шығын.",
+  "pricelist.settings.taskReminders": "Қаралмаған тапсырмалар туралы Telegram-да еске салу",
+  "pricelist.settings.taskRemindersHint":
+    "Тапсырма 2 сағат орындалды деп белгіленбесе — бір рет еске салу (кеңесшінің жұмыс уақытында). 9:00-де — барлық ашық тапсырмалар тізімі.",
   "pricelist.save": "Сақтау",
   "pricelist.saved": "Сақталды.",
   "pricelist.hours":
@@ -271,7 +277,7 @@ export const kk: SectionDict<typeof ru> = {
     "Бот бағамды осыдан алады: {source}. Көзді FrogFlow қолдауы арқылы ауыстыруға болады.",
   "pricelist.rate.sourceManual": "Бот қолмен енгізілген бағамды алады.",
   "pricelist.rate.stale":
-    "Бағам үш күннен ескі — жаңартылмайынша сатып алушыларға рубльдегі баға айтылмайды.",
+    "Бағам бір тәуліктен астам жаңартылмаған — бағам жаңарғанша кеңесші рубльдегі бағаны соған қарап «шамамен» деген белгімен айтады.",
   "pricelist.rate.none": "Бағам әлі жоқ — сатып алушыларға рубльдегі баға айтылмайды.",
   "pricelist.rate.refresh": "Қазір жаңарту",
   "pricelist.rate.manual": "Бағамды қолмен енгізу",
@@ -400,6 +406,9 @@ export const en: SectionDict<typeof ru> = {
   "pricelist.settings.digest": "Reply quality summary every morning",
   "pricelist.settings.digestHint":
     "After 9:00 — yesterday's replies, handoffs to a manager, price and form remarks, spend.",
+  "pricelist.settings.taskReminders": "Remind me about open tasks in Telegram",
+  "pricelist.settings.taskRemindersHint":
+    "A task not marked done for 2 hours gets one reminder (during the consultant's working hours). At 9:00, a list of all open tasks.",
   "pricelist.save": "Save",
   "pricelist.saved": "Saved.",
   "pricelist.hours":
@@ -452,7 +461,7 @@ export const en: SectionDict<typeof ru> = {
     "The bot takes the rate from: {source}. To change the source, contact FrogFlow support.",
   "pricelist.rate.sourceManual": "The bot uses the rate entered manually.",
   "pricelist.rate.stale":
-    "The rate is older than three days — ruble prices are not quoted to customers until it updates.",
+    "The rate has not updated for over a day — the consultant quotes ruble prices at it, marked “approximate”, until it updates.",
   "pricelist.rate.none": "No rate yet — ruble prices are not quoted to customers.",
   "pricelist.rate.refresh": "Refresh now",
   "pricelist.rate.manual": "Manual rate",
@@ -584,6 +593,9 @@ export const uz: SectionDict<typeof ru> = {
   "pricelist.settings.digest": "Har tongda javoblar sifati xulosasi",
   "pricelist.settings.digestHint":
     "9:00 dan keyin — kechagi javoblar soni, menejerga berilganlari, narx va shakl bo‘yicha izohlar, xarajat.",
+  "pricelist.settings.taskReminders": "Ko‘rilmagan vazifalar haqida Telegram’da eslatish",
+  "pricelist.settings.taskRemindersHint":
+    "Vazifa 2 soat bajarildi deb belgilanmasa — bitta eslatma (maslahatchining ish vaqtida). Soat 9:00 da — barcha ochiq vazifalar ro‘yxati.",
   "pricelist.save": "Saqlash",
   "pricelist.saved": "Saqlandi.",
   "pricelist.hours":
@@ -636,7 +648,7 @@ export const uz: SectionDict<typeof ru> = {
     "Bot kursni shu yerdan oladi: {source}. Manbani FrogFlow yordami orqali almashtirish mumkin.",
   "pricelist.rate.sourceManual": "Bot qo‘lda kiritilgan kursni oladi.",
   "pricelist.rate.stale":
-    "Kurs uch kundan eski — yangilanmaguncha xaridorlarga rubldagi narx aytilmaydi.",
+    "Kurs bir kundan ortiq yangilanmagan — kurs yangilanguncha maslahatchi rubldagi narxlarni shu kurs bo‘yicha «taxminiy» belgisi bilan aytadi.",
   "pricelist.rate.none": "Kurs hali yo‘q — xaridorlarga rubldagi narx aytilmaydi.",
   "pricelist.rate.refresh": "Hozir yangilash",
   "pricelist.rate.manual": "Kursni qo‘lda kiritish",

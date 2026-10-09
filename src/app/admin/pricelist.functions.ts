@@ -63,6 +63,7 @@ export const savePricelistSettingsFn = createServerFn({ method: "POST" })
         }),
         followUp: z.boolean().optional(),
         qualityDigest: z.boolean().optional(),
+        taskReminders: z.boolean().optional(),
         hours: z
           .object({ open: z.number().int().min(0).max(24), close: z.number().int().min(0).max(24) })
           .optional(),

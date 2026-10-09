@@ -66,6 +66,7 @@ import {
 import { clearTasks, loadTasks, setTaskDone } from "@/core/consultant/tasks";
 import { getSetting, setSetting } from "@/core/settings/settings";
 import { FOLLOW_UP_SETTING_KEY, followUpEnabled } from "@/core/consultant/pricelist/follow-up";
+import { remindersOn, TASK_REMINDERS_KEY } from "@/core/consultant/task-reminders";
 import { DIGEST_SETTING_KEY } from "@/core/consultant/pricelist/quality-digest";
 import { loadConsultantUsage } from "@/core/consultant/runs";
 import { isIssuedUploadKey } from "@/core/storage/upload";
@@ -162,6 +163,7 @@ export async function pricelistOverview(ctx: TenantContext) {
     usage,
     followUp: followUpEnabled(await getSetting(ctx, FOLLOW_UP_SETTING_KEY)),
     qualityDigest: (await getSetting(ctx, DIGEST_SETTING_KEY))?.trim() === "on",
+    taskReminders: remindersOn(await getSetting(ctx, TASK_REMINDERS_KEY)),
   };
 }
 
@@ -349,6 +351,8 @@ export async function savePricelistSettings(
     store: StoreInfo;
     followUp?: boolean;
     qualityDigest?: boolean;
+    /** Напоминания о неразобранных задачах (по умолчанию включены). */
+    taskReminders?: boolean;
     /** Рабочие часы консультанта (нерабочее время — «менеджер ответит утром»). */
     hours?: ShopHours;
   },
@@ -372,6 +376,8 @@ export async function savePricelistSettings(
     await setSetting(ctx, FOLLOW_UP_SETTING_KEY, data.followUp ? "on" : "off");
   if (data.qualityDigest !== undefined)
     await setSetting(ctx, DIGEST_SETTING_KEY, data.qualityDigest ? "on" : "off");
+  if (data.taskReminders !== undefined)
+    await setSetting(ctx, TASK_REMINDERS_KEY, data.taskReminders ? "on" : "off");
   // Часы пишутся, только если поменялись: не тронутые часы BOVI остаются «по умолчанию».
   const cur = pricelistHours(ctx.tenant);
   if (h && (h.open !== cur.open || h.close !== cur.close))
