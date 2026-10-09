@@ -14,6 +14,7 @@ import { SELLER_PHONE } from "../phone-notice";
 import { noteOrderContact } from "@/core/orders/chat-contact";
 import { CHAT_PHONE_REPLY_KEY, serviceNoticeEnabled } from "@/core/notify/service-notices";
 import { getSetting } from "@/core/settings/settings";
+import { paymentMethodFor } from "@/core/orders/order-model";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import {
   setContactPhone,
@@ -57,6 +58,7 @@ import {
   extractProductNumber,
   isCancel,
   isPaymentComplaint,
+  isPayTrouble,
   matchCountry,
   matchDeliveryLangChoice,
   matchLoyaltyPointsChoice,
@@ -638,6 +640,18 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
     case "choose_pay":
     case "awaiting_payment": {
       if (isPaymentComplaint(text)) return "question";
+      // «Не смогла оплатить», «я из России, можно по номеру»: не «пришлите
+      // чек» (заказ #46 Копилки, 09.10) — реквизиты для России, если они
+      // заведены, иначе честно: вопрос у продавца, он напишет здесь.
+      if (isPayTrouble(text)) {
+        const ru = /росси|рубл|сбп|рф/i.test(text)
+          ? await paymentMethodFor(s.ctx, "RU").catch(() => null)
+          : null;
+        if (ru?.instructions && ru.country_code !== s.customer.state.country_code)
+          await reply(s, `${ru.instructions}\n\n${plain(s.m.afterProofManual)}`, { force: true });
+        else await reply(s, s.m.payTroubleHandoff, { force: true });
+        return "question";
+      }
       const rm = parseRemoveCommand(text);
       if (!rm && extractProductNumber(text) === null && !matchDirectCommand(text)) {
         // Вопрос по ходу оплаты — человеку, но напомним про чек (строгий

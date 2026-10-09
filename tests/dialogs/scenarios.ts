@@ -1729,6 +1729,32 @@ export const SCENARIOS: Scenario[] = [
     ],
   },
   {
+    id: "pay-trouble-from-russia-ig-ru",
+    title:
+      "«не смогла оплатить», «я из России, можно по номеру» — не «пришлите чек», а вопрос продавцу",
+    origin:
+      "заказ #46 Копилки русоведа 09.10: «У меня спрашивают номер телефона», «Я не смогла оплатить» — бот ответил «Пришлите чек»",
+    channel: "instagram",
+    locale: "ru",
+    modules: { prodamus: true },
+    state: { mode: "awaiting_payment", pending_order_id: 15, pending_display_no: 15 },
+    arrange: prodamusOrder,
+    steps: [
+      {
+        say: { text: "Я не смогла оплатить" },
+        expect: {
+          count: 1,
+          says: [(c) => c.payTroubleHandoff],
+          notSays: [(c) => c.sendReceiptPrompt],
+        },
+      },
+      {
+        say: { text: "Я из России, можно перевести по номеру?" },
+        expect: { says: [(c) => c.payTroubleHandoff], notSays: [(c) => c.sendReceiptPrompt] },
+      },
+    ],
+  },
+  {
     id: "prodamus-link-no-buttons-ig-ru",
     title: "кнопки канал не принял — ссылка на оплату приходит текстом",
     origin: "заказ #15 Копилки Русоведа, 09.10",
