@@ -73,6 +73,13 @@ export const Route = createFileRoute("/")({
       links: [
         { rel: "canonical", href: landingUrl(locale) },
         ...SUPPORTED_LOCALES.map((l) => ({ rel: "alternate", hrefLang: l, href: landingUrl(l) })),
+        // Яндекс по региону Казахстана показывал русскоязычным казахскую версию:
+        // русская страница прямо названа и для них (и для Узбекистана).
+        ...["ru-KZ", "ru-UZ"].map((l) => ({
+          rel: "alternate",
+          hrefLang: l,
+          href: landingUrl("ru"),
+        })),
         { rel: "alternate", hrefLang: "x-default", href: landingUrl("ru") },
         ...LANDING_FONT_LINKS,
       ],
