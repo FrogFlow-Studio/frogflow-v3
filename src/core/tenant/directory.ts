@@ -398,6 +398,10 @@ function billingFromJson(json: unknown): BillingSettings | undefined {
       ? { ai_dialogs: quota(q.ai_dialogs), receipt_checks: quota(q.receipt_checks) }
       : undefined,
     period: b.period === "year" ? "year" : b.period === "month" ? "month" : undefined,
+    monthly_price:
+      typeof b.monthly_price === "number" && Number.isFinite(b.monthly_price) && b.monthly_price > 0
+        ? b.monthly_price
+        : undefined,
     connection_paid_at: str(b.connection_paid_at),
     connection_invoice_id: str(b.connection_invoice_id),
     plan_version: typeof b.plan_version === "number" ? b.plan_version : undefined,

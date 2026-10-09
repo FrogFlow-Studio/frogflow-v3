@@ -45,6 +45,8 @@ export const myPlanFn = createServerFn({ method: "GET" }).handler(async () => {
     addons: billing.addons ?? [],
     availableAddons: ADDON_KEYS,
     prices: { monthly: MONTHLY_PRICE, connection: CONNECTION_PRICE },
+    /** Цена своего плана в месяц по договору (billing.monthly_price); null — по тарифу. */
+    contractMonthly: billing.monthly_price ?? null,
     usage: planUsage(ctx.tenant, values),
     pending: (pending ?? []).map((r) => r.module_key),
   };

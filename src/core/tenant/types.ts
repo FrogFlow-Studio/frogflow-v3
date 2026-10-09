@@ -257,6 +257,11 @@ export type BillingSettings = {
   ai_quota?: { ai_dialogs?: number | null; receipt_checks?: number | null };
   /** Оплата раз в месяц или раз в год (10 месяцев за 12). */
   period?: "month" | "year";
+  /**
+   * Цена плана в месяц по договору, ₸ (без надбавок каналов): вместо цены
+   * тарифа в счетах, продлении и выручке. Нет — цена тарифа (MONTHLY_PRICE).
+   */
+  monthly_price?: number;
   /** Подключение оплачено (или не берётся — действующий клиент). */
   connection_paid_at?: string;
   /** Счёт, в который включено подключение: его подтверждение ставит connection_paid_at. */

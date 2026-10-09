@@ -90,6 +90,23 @@ export const setAiQuotaFn = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const setContractTermsFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        botId,
+        monthly_price: z.number().int().min(1).max(10_000_000).nullable(),
+        waive_connection: z.boolean(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    await guard();
+    const { botId: id, ...input } = data;
+    await (await plans()).setContractTerms(id, input, await actor());
+    return { ok: true };
+  });
+
 const addonPrices = z
   .object({ whatsapp: z.number().min(0).optional(), instagram: z.number().min(0).optional() })
   .default({});

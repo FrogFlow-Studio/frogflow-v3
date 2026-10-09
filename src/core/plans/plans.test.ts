@@ -224,6 +224,16 @@ describe("счёт по плану", () => {
     ).toBe(9_900);
   });
 
+  it("цена по договору вместо цены тарифа; та же цена — без пометки", () => {
+    const r = planInvoice("basic", { period: "month", withConnection: false, monthlyPrice: 4_950 });
+    expect(r.amount).toBe(4_950);
+    expect(r.lines[0]!.title).toBe("План Basic на месяц, цена по договору");
+    expect(
+      planInvoice("basic", { period: "month", withConnection: false, monthlyPrice: 9_900 })
+        .lines[0]!.title,
+    ).toBe("План Basic на месяц");
+  });
+
   it("год — 10 месяцев вместо 12", () => {
     expect(planInvoice("business", { period: "year", withConnection: false }).amount).toBe(399_000);
   });

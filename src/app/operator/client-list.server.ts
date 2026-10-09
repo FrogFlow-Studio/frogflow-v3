@@ -57,6 +57,8 @@ export type ClientView = {
   slug: string | null;
   hosts: string[];
   telegram: { connected: boolean; username: string | null; webhookOk: boolean };
+  /** VIP-бот (модуль vip): второй токен в settings.vip. */
+  vipBot: { connected: boolean; username: string | null; webhookOk: boolean };
   zernioAccounts: string[];
   /** Своя дата начала комиссии (`settings.commission.start`); null — общая. */
   commissionStart: string | null;
@@ -141,6 +143,11 @@ function toView(
       connected: Boolean(t.telegramTokenEnc),
       username: t.settings.telegram?.username ?? null,
       webhookOk: Boolean(t.settings.telegram?.webhook_ok),
+    },
+    vipBot: {
+      connected: Boolean(t.settings.vip?.token_enc),
+      username: t.settings.vip?.username ?? null,
+      webhookOk: t.settings.vip?.webhook_ok === true,
     },
     zernioAccounts: t.settings.zernio?.account_ids ?? [],
     commissionStart: t.settings.commission?.start ?? null,

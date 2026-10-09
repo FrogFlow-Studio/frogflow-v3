@@ -48,6 +48,10 @@ describe("цена продления", () => {
       amount: 199_000,
       period: "year",
     });
+    expect(renewalPrice(t("digital.basic", { monthly_price: 4_950 }))).toEqual({
+      amount: 4_950,
+      period: "month",
+    });
     expect(renewalPrice(t(null))).toBeNull();
   });
 });

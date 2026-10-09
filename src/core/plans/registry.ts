@@ -63,6 +63,12 @@ export const MONTHLY_PRICE: Record<PlanTier, number> = {
   pro: 19_900,
   business: 39_900,
 };
+/** Цена плана в месяц: по договору (`billing.monthly_price`), иначе по тарифу. */
+export function planMonthlyPrice(tier: PlanTier, billing?: { monthly_price?: number }): number {
+  const p = billing?.monthly_price;
+  return typeof p === "number" && Number.isFinite(p) && p > 0 ? p : MONTHLY_PRICE[tier];
+}
+
 /**
  * Комиссия платформы с продаж (решение Якова 04.10.2026): процент по тарифу с
  * оплаченных заказов, оформленных на витрине сайта и маркете (`orders.platform

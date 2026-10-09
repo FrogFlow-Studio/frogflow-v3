@@ -13,7 +13,7 @@ import {
   tenantContext,
   tenantDirectory,
 } from "@/core/tenant/resolve.server";
-import { ensureTelegramWebhook } from "@/channels/telegram/webhook-setup.server";
+import { ensureTelegramWebhook, type WebhookState } from "@/channels/telegram/webhook-setup.server";
 import type { Tenant } from "@/core/tenant/types";
 import { foreignZernioAccounts } from "@/core/tenant/zernio-accounts";
 import { pricelistDefaultFor } from "@/core/consultant/pricelist/mode";
@@ -259,7 +259,11 @@ export async function setServedBy(botId: string, servedBy: "v1" | "v2", actor = 
       console.warn(`[operator] story tags import for ${botId}: ${String(e)}`);
       return { error: e instanceof Error ? e.message : String(e) };
     });
-    const r = { ...(await reinstallWebhook(botId, actor)), storyTags };
+    const r = {
+      ...(await reinstallWebhook(botId, actor)),
+      storyTags,
+      vip: await moveVipBot(botId, actor),
+    };
     await applyIceBreakers(botId);
     return r;
   }
@@ -283,6 +287,26 @@ export async function setServedBy(botId: string, servedBy: "v1" | "v2", actor = 
     );
   }
   return null;
+}
+
+/**
+ * VIP-бот переезжает вместе с магазином: вебхук сразу сюда, а не через час
+ * кроном ensure-webhook — иначе после паузы v1 заявки и чеки VIP до следующего
+ * часа копятся в Telegram. Без модуля или токена — null; сбой не мешает
+ * переезду (крон повторит), оператор видит его в ответе и журнале.
+ */
+async function moveVipBot(botId: string, actor: string): Promise<WebhookState | null> {
+  const t = await requireTenant({ by: "id", value: botId });
+  if (!t.modules.vip || !t.settings.vip?.token_enc) return null;
+  const { ensureVipWebhook } = await import("@/channels/telegram/vip-webhook-setup.server");
+  const r = await ensureVipWebhook(t, true).catch((e): WebhookState => ({
+    ok: false,
+    url: null,
+    pending: 0,
+    error: String(e),
+  }));
+  await logEvent(botId, "webhook", { action: "vip_set", ...r }, actor);
+  return r;
 }
 
 /** Быстрые вопросы Instagram после переезда; сбой не мешает переезду — крон повторит. */

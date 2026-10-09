@@ -8,6 +8,7 @@ import {
   setAiQuotaFn,
   planInvoicePreviewFn,
   createPlanInvoiceFn,
+  setContractTermsFn,
 } from "@/app/operator/client-plans.functions";
 import {
   ADDONS,
@@ -94,6 +95,20 @@ export function PlanCard({ c, onDone }: { c: C; onDone: () => Promise<void> }) {
       data: { botId: c.id, ai_dialogs: val("ai_dialogs"), receipt_checks: val("receipt_checks") },
     });
     setNote("Лимиты сохранены.");
+    await load.run();
+  });
+  const terms = useAction(async (f: FormData) => {
+    const x = String(f.get("monthly_price") ?? "").trim();
+    const waive = f.get("waive_connection") === "on";
+    await setContractTermsFn({
+      data: { botId: c.id, monthly_price: x === "" ? null : Number(x), waive_connection: waive },
+    });
+    setNote(
+      x === ""
+        ? "Цена плана снова по тарифу."
+        : `Цена по договору: ${fmt(Number(x))} в месяц — со следующего счёта.`,
+    );
+    setShown(null);
     await load.run();
   });
   const [shown, setShown] = useState<Awaited<ReturnType<typeof planInvoicePreviewFn>> | null>(null);
@@ -311,6 +326,43 @@ export function PlanCard({ c, onDone }: { c: C; onDone: () => Promise<void> }) {
                   </p>
                 </form>
               </div>
+              <form
+                className="border-t border-line pt-3"
+                onSubmit={(e: FormEvent<HTMLFormElement>) => {
+                  e.preventDefault();
+                  void terms.run(new FormData(e.currentTarget)).catch(() => {});
+                }}
+              >
+                <div className="font-medium">Условия по договору</div>
+                <label className="mt-1 flex items-center gap-2">
+                  <span className="w-40 text-muted">Цена плана, ₸ в месяц</span>
+                  <input
+                    className="input w-32"
+                    name="monthly_price"
+                    type="number"
+                    min={1}
+                    step={1}
+                    placeholder={
+                      parsed?.kind === "tier" ? `${MONTHLY_PRICE[parsed.tier]} по тарифу` : ""
+                    }
+                    defaultValue={v.billing.monthly_price ?? ""}
+                  />
+                </label>
+                {!v.billing.connection_paid_at && (
+                  <label className="mt-1 flex items-center gap-2">
+                    <input type="checkbox" name="waive_connection" />
+                    Подключение не берётся (действующий клиент)
+                  </label>
+                )}
+                <button className="btn-secondary mt-2 text-xs" disabled={terms.busy}>
+                  Сохранить условия
+                </button>
+                <p className="mt-1 text-xs text-muted">
+                  Пусто — цена тарифа. Своя цена идёт в счета по плану, в том числе в счёт, который
+                  обход подписок выставляет сам перед продлением, и в выручку. Надбавки каналов
+                  считаются отдельно.
+                </p>
+              </form>
               <div className="border-t border-line pt-3">
                 <div className="font-medium">Счёт по плану</div>
                 {(v.billing.addons ?? []).map((a) => (
@@ -377,6 +429,7 @@ export function PlanCard({ c, onDone }: { c: C; onDone: () => Promise<void> }) {
               save.error ??
               action.error ??
               quota.error ??
+              terms.error ??
               preview.error ??
               invoice.error
             }
