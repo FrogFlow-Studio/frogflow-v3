@@ -122,6 +122,8 @@ export interface RoomOptions {
   full?: boolean;
   /** Instagram/WhatsApp: отправка покупателю не прошла (обрыв, тайм-аут) — дошло ли, неизвестно. */
   sendFails?: boolean;
+  /** Instagram/WhatsApp: канал отклоняет любые кнопки (400), текст без кнопок проходит. */
+  rejectButtons?: boolean;
   /** Добавка к bots.settings клиента (например, консультант по прайсу). */
   tenantSettings?: Record<string, unknown>;
 }
@@ -282,6 +284,10 @@ function directRoom(o: RoomOptions): Room {
       ) => {
         // Обрыв: покупатель (насколько известно) ничего не получил.
         if (o.sendFails) return { ok: false, error: "timeout" };
+        // Meta: с кнопками текст не длиннее 640 знаков, иначе отказ и ничего не уходит
+        // (заказ #10 Дидактики 07.10, заказ #15 Копилки 09.10).
+        if (opts.buttons?.length && (o.rejectButtons || text.length > 640))
+          return { ok: false, error: "buttons rejected", failure: { status: 400 } };
         sent.push({ text: plain(text), buttons: (opts.buttons ?? []).map((b) => b.title ?? "") });
         return { ok: true };
       },

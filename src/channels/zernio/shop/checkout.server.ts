@@ -704,6 +704,19 @@ async function sendManualInstructions(
   await reply(s, text, { force: true, attachmentUrl: await photoFor(s, [p.qr]) });
 }
 
+/**
+ * Ссылка на оплату — только в кнопке: с кнопками Instagram берёт не больше 640
+ * знаков текста, а подписанная ссылка Продамуса длиннее (~700). Текст со
+ * ссылкой и кнопкой не уходил вовсе: заказ #15 Копилки Русоведа, 09.10.
+ */
+async function sendPayLink(s: Shop, text: string, title: string, url: string) {
+  await reply(s, text, {
+    force: true,
+    buttons: [{ type: "url", title, url }],
+    textWithoutButtons: `${text}\n\n${url}`,
+  });
+}
+
 export async function choosePayment(s: Shop, kind: "rk" | "pdm" | "manual") {
   const orderId = Number(s.customer.state.pending_order_id);
   const order = orderId ? await getOrder(s.ctx, orderId) : null;
@@ -729,10 +742,11 @@ export async function choosePayment(s: Shop, kind: "rk" | "pdm" | "manual") {
       pending_order_id: order.id,
       pending_display_no: no,
     });
-    await reply(
+    await sendPayLink(
       s,
-      `${plain(s.m.manualTitleNew(no))}\n\n${plain(s.m.amountToPay(formatMoney(due, order.currency)))}\n\n${plain(s.m.robokassaHint)}\n\n${url}`,
-      { force: true, buttons: [{ type: "url", title: plain(s.m.payViaRobokassaBtn), url }] },
+      `${plain(s.m.manualTitleNew(no))}\n\n${plain(s.m.amountToPay(formatMoney(due, order.currency)))}\n\n${plain(s.m.robokassaHint)}`,
+      plain(s.m.payViaRobokassaBtn),
+      url,
     );
     return;
   }
@@ -760,10 +774,11 @@ export async function choosePayment(s: Shop, kind: "rk" | "pdm" | "manual") {
       pending_order_id: order.id,
       pending_display_no: no,
     });
-    await reply(
+    await sendPayLink(
       s,
-      `${plain(s.m.manualTitleNew(no))}\n\n${plain(s.m.amountToPay(sum))}\n\n${plain(s.m.prodamusHint)}\n\n${url}`,
-      { force: true, buttons: [{ type: "url", title: plain(s.m.payViaProdamusBtn), url }] },
+      `${plain(s.m.manualTitleNew(no))}\n\n${plain(s.m.amountToPay(sum))}\n\n${plain(s.m.prodamusHint)}`,
+      plain(s.m.payViaProdamusBtn),
+      url,
     );
     return;
   }

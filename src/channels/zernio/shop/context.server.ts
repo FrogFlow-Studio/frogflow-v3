@@ -9,7 +9,7 @@ import { loadQuiz } from "@/core/quiz/quiz";
 import { cartLanguageChoices } from "@/core/cart/languages";
 import { normalizePhone, type Msg } from "@/channels/telegram/copy";
 import { type DmButton, type ZernioTransport } from "../api.server";
-import { isAttachmentRejected } from "../errors";
+import { classifyZernioFailure, isAttachmentRejected } from "../errors";
 import { type ZernioPlatform } from "../platform";
 import {
   extractEmail,
@@ -216,18 +216,25 @@ export function fingerprint(text: string): string {
 export async function reply(
   s: Shop,
   html: string,
-  opts: { buttons?: DmButton[]; attachmentUrl?: string; force?: boolean; interactive?: Json } = {},
+  opts: {
+    buttons?: DmButton[];
+    attachmentUrl?: string;
+    force?: boolean;
+    interactive?: Json;
+    /** Кнопки отклонены (отказ, не обрыв) — этот текст без кнопок. */
+    textWithoutButtons?: string;
+  } = {},
 ): Promise<boolean> {
-  const text = plain(html).slice(0, 2000);
+  let text = plain(html).slice(0, 2000);
   const mem = memory(s.customer);
   const mark = fingerprint(text);
   const fresh =
     Boolean(mem.last_reply_at) && Date.now() - Date.parse(mem.last_reply_at!) < REPEAT_WINDOW_MS;
   if (!opts.force && mem.last_reply === mark && fresh) return false;
-  const send = (attachmentUrl?: string) =>
+  const send = (attachmentUrl?: string, buttons = opts.buttons) =>
     s.transport.send(s.conversationId, s.accountId, text, {
       platform: s.platform,
-      buttons: opts.buttons,
+      buttons,
       attachmentUrl,
       attachmentType: attachmentUrl ? "image" : undefined,
       interactive: opts.interactive,
@@ -238,6 +245,12 @@ export async function reply(
   if (!r.ok && opts.attachmentUrl && isAttachmentRejected(r.failure)) {
     console.warn(`[zernio-shop] фото не принято для ${s.customer.userKey}: ${r.error}`);
     r = await send();
+  }
+  // Кнопки не приняли (отказ, а не обрыв: дошедшее не дублируем) — ссылка текстом.
+  if (!r.ok && opts.textWithoutButtons && classifyZernioFailure(r.failure) === "permanent") {
+    console.warn(`[zernio-shop] кнопки не приняты для ${s.customer.userKey}: ${r.error}`);
+    text = plain(opts.textWithoutButtons).slice(0, 2000);
+    r = await send(undefined, []);
   }
   if (!r.ok) {
     console.error(`[zernio-shop] reply failed for ${s.customer.userKey}: ${r.error}`);
