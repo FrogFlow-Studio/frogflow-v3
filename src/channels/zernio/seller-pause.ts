@@ -5,7 +5,11 @@ import type { Customer } from "@/core/customers/customers";
 import { claimStateSection } from "@/core/customers/customers";
 import { utcToZonedLocal, zonedDayToUtc } from "@/core/export/csv";
 import type { SellerPause } from "@/core/instagram/direct-bot-settings";
-import { DEFAULT_REPLY_PROMPT, isShopStartWord } from "@/core/instagram/comment-rules";
+import {
+  DEFAULT_REPLY_PROMPT,
+  LEGACY_REPLY_PROMPTS,
+  isShopStartWord,
+} from "@/core/instagram/comment-rules";
 import { escapeHtml } from "@/channels/telegram/copy";
 import { PLATFORM_LABEL } from "./platform";
 import { lastPersonMessageAt } from "./manager-guard";
@@ -199,7 +203,7 @@ async function automationPrompts(ctx: TenantContext): Promise<string[]> {
   const prompts = Object.values(meta)
     .map((x) => (x.replyPrompt ?? "").trim())
     .filter(Boolean);
-  return [...new Set([DEFAULT_REPLY_PROMPT, ...prompts])];
+  return [...new Set([DEFAULT_REPLY_PROMPT, ...LEGACY_REPLY_PROMPTS, ...prompts])];
 }
 
 const fold = (s: string) => s.replace(/\s+/g, " ").trim().toLowerCase();
