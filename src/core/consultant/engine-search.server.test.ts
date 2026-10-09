@@ -123,7 +123,8 @@ const search = (input: Record<string, unknown>, id = "s1"): Resp => ({
 });
 
 beforeEach(() => {
-  setEnvForTests({ ANTHROPIC_API_KEY: "sk-test" });
+  // Цены в тестах посчитаны по Haiku 4.5 — модель задана явно.
+  setEnvForTests({ ANTHROPIC_API_KEY: "sk-test", CONSULTANT_MODEL: "claude-haiku-4-5" });
   queue = [];
   aiAllowed = true;
   resetCatalogCache();

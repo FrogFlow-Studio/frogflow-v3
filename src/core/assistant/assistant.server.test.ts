@@ -34,6 +34,8 @@ const ctxOf = (consultant_limits?: { daily_usd: number }) =>
     tenant: { id: BOT, settings: consultant_limits ? { consultant_limits } : {} },
     db: fakeDb({ unique: { app_settings: [["bot_id", "key"]] } }),
   }) as unknown as TenantContext;
+/** Цены в тестах ниже посчитаны по Haiku 4.5 ($1/$5) — модель задана явно. */
+const HAIKU = { ANTHROPIC_API_KEY: "sk-test", CONSULTANT_MODEL: "claude-haiku-4-5" };
 const req = { task: "description", product: { name: "Пазлы" }, lang: "ru" } as const;
 
 afterEach(() => {
@@ -50,9 +52,24 @@ afterEach(() => {
   clientOpts.length = 0;
 });
 
+describe("ИИ-помощник продавца: модель", () => {
+  it("по умолчанию Sonnet 5 без рассуждений, цена — по его ставкам", async () => {
+    setEnvForTests({ ANTHROPIC_API_KEY: "sk-test" });
+    const ctx = ctxOf();
+    await assistText(ctx, req as never);
+    expect((create.mock.calls as unknown[][])[0]![0]).toMatchObject({
+      model: "claude-sonnet-5",
+      thinking: { type: "disabled" },
+    });
+    // 1000 × $2 + 400 × $10 за миллион токенов.
+    const daily = JSON.parse((await getSetting(ctx, "consultant_daily"))!);
+    expect(daily.usd).toBeCloseTo(0.006, 6);
+  });
+});
+
 describe("ИИ-помощник продавца: пределы при параллельных запросах", () => {
   it("из 60 одновременных черновиков модель зовётся не больше дневного предела", async () => {
-    setEnvForTests({ ANTHROPIC_API_KEY: "sk-test" });
+    setEnvForTests(HAIKU);
     const ctx = ctxOf();
     const res = await Promise.allSettled(
       Array.from({ length: 60 }, () => assistText(ctx, req as never)),
@@ -64,7 +81,7 @@ describe("ИИ-помощник продавца: пределы при пара
   });
 
   it("предел в долларах держится: параллельные запросы видят брони друг друга", async () => {
-    setEnvForTests({ ANTHROPIC_API_KEY: "sk-test" });
+    setEnvForTests(HAIKU);
     // $0.01 при брони $0.03: одновременно в работе не больше одного вызова,
     // а следующие проходят, только когда бронь сменилась настоящей ценой.
     const ctx = ctxOf({ daily_usd: 0.01 });
@@ -78,7 +95,7 @@ describe("ИИ-помощник продавца: пределы при пара
   });
 
   it("после ответа бронь меняется на настоящую цену", async () => {
-    setEnvForTests({ ANTHROPIC_API_KEY: "sk-test" });
+    setEnvForTests(HAIKU);
     const ctx = ctxOf();
     await assistText(ctx, req as never);
     const daily = JSON.parse((await getSetting(ctx, "consultant_daily"))!);
@@ -88,7 +105,7 @@ describe("ИИ-помощник продавца: пределы при пара
   });
 
   it("отказ в деньгах не съедает черновик из дневного счёта", async () => {
-    setEnvForTests({ ANTHROPIC_API_KEY: "sk-test" });
+    setEnvForTests(HAIKU);
     const ctx = ctxOf({ daily_usd: 0.01 });
     const d = new Date().toISOString().slice(0, 10);
     await ctx.db.from("app_settings").insert({
@@ -104,7 +121,7 @@ describe("ИИ-помощник продавца: пределы при пара
 
 describe("ИИ-помощник: ИИ-баланс клиента", () => {
   it("баланс кончился — модель не зовём, черновик и дневной расход возвращены", async () => {
-    setEnvForTests({ ANTHROPIC_API_KEY: "sk-test" });
+    setEnvForTests(HAIKU);
     const ctx = ctxOf();
     await ctx.db.from("app_settings").insert({
       bot_id: BOT,
@@ -120,7 +137,7 @@ describe("ИИ-помощник: ИИ-баланс клиента", () => {
   });
 
   it("черновик списывает с баланса свою цену", async () => {
-    setEnvForTests({ ANTHROPIC_API_KEY: "sk-test" });
+    setEnvForTests(HAIKU);
     const ctx = ctxOf();
     await assistText(ctx, req as never);
     expect(JSON.parse((await getSetting(ctx, "ai_balance"))!).usd).toBeCloseTo(5 - 0.003, 6);
@@ -144,7 +161,7 @@ describe("«Почему изменились продажи»: explainSales", (
   const bullets = "- Выручка упала на 25 %\n- Меньше заказов";
 
   it("сводка уходит модели, ответ — пунктами, расход списан с баланса", async () => {
-    setEnvForTests({ ANTHROPIC_API_KEY: "sk-test" });
+    setEnvForTests(HAIKU);
     create.mockResolvedValue({
       stop_reason: "end_turn",
       content: [{ type: "text", text: `**Итоги**\n${bullets}` }],
@@ -164,14 +181,14 @@ describe("«Почему изменились продажи»: explainSales", (
   });
 
   it("у запроса к модели есть тайм-аут", async () => {
-    setEnvForTests({ ANTHROPIC_API_KEY: "sk-test" });
+    setEnvForTests(HAIKU);
     await explainSales(ctxOf(), digest, "en");
     expect(clientOpts[0]!.timeout).toBeGreaterThan(0);
     expect(clientOpts[0]!.timeout).toBeLessThan(120_000);
   });
 
   it("нет баланса — модель не зовём, расход и черновик возвращены", async () => {
-    setEnvForTests({ ANTHROPIC_API_KEY: "sk-test" });
+    setEnvForTests(HAIKU);
     const ctx = ctxOf();
     await ctx.db.from("app_settings").insert({
       bot_id: BOT,
@@ -186,7 +203,7 @@ describe("«Почему изменились продажи»: explainSales", (
   });
 
   it("ошибка модели — резерв снят, баланс и дневной расход целы", async () => {
-    setEnvForTests({ ANTHROPIC_API_KEY: "sk-test" });
+    setEnvForTests(HAIKU);
     create.mockRejectedValue(new Error("timeout"));
     const ctx = ctxOf();
     await expect(explainSales(ctx, digest, "ru")).rejects.toMatchObject({
@@ -197,7 +214,7 @@ describe("«Почему изменились продажи»: explainSales", (
   });
 
   it("продаж нет в обоих периодах — отказ без вызова модели", async () => {
-    setEnvForTests({ ANTHROPIC_API_KEY: "sk-test" });
+    setEnvForTests(HAIKU);
     const none = { ...totals, orders: 0, revenue: 0 };
     await expect(
       explainSales(ctxOf(), { ...digest, current: none, previous: none }, "ru"),
@@ -206,7 +223,7 @@ describe("«Почему изменились продажи»: explainSales", (
   });
 
   it("дневной счётчик исчерпан — свой текст отказа, не «черновики закончились»", async () => {
-    setEnvForTests({ ANTHROPIC_API_KEY: "sk-test" });
+    setEnvForTests(HAIKU);
     const ctx = ctxOf();
     const d = new Date().toISOString().slice(0, 10);
     await ctx.db.from("app_settings").insert({

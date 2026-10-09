@@ -132,13 +132,15 @@ describe("консультант: ответ и состояние", () => {
     ]);
   });
 
-  it("по умолчанию Haiku 4.5, имя можно сменить ENV", async () => {
-    await runConsultant(ctxOf(), null, "привет", { platform: "telegram" });
-    expect(args().model).toBe("claude-haiku-4-5");
-    create.mockClear();
-    setEnvForTests({ ANTHROPIC_API_KEY: "sk-test", CONSULTANT_MODEL: "claude-sonnet-5" });
+  it("по умолчанию Sonnet 5 без рассуждений, имя можно сменить ENV", async () => {
     await runConsultant(ctxOf(), null, "привет", { platform: "telegram" });
     expect(args().model).toBe("claude-sonnet-5");
+    expect(args()).toMatchObject({ thinking: { type: "disabled" } });
+    create.mockClear();
+    setEnvForTests({ ANTHROPIC_API_KEY: "sk-test", CONSULTANT_MODEL: "claude-haiku-4-5" });
+    await runConsultant(ctxOf(), null, "привет", { platform: "telegram" });
+    expect(args().model).toBe("claude-haiku-4-5");
+    expect(args()).not.toHaveProperty("thinking");
   });
 
   it("контакт, который покупатель уже давал, попадает в данные диалога", async () => {
@@ -245,6 +247,10 @@ describe("консультант: сообщения для модели", () =>
 });
 
 describe("консультант: цена ответа и кеш промпта", () => {
+  // Ставки ниже — Haiku 4.5: модель задана явно, не по умолчанию платформы.
+  beforeEach(() =>
+    setEnvForTests({ ANTHROPIC_API_KEY: "sk-test", CONSULTANT_MODEL: "claude-haiku-4-5" }),
+  );
   const spent = async (ctx: TenantContext) =>
     JSON.parse((await getSetting(ctx, KEYS.usage))!) as {
       usd: number;
