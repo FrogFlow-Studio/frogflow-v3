@@ -35,7 +35,7 @@ import { isDeliveryLangChoice } from "@/core/catalog/materials";
 import { askDeliveryLangBeforeOrder, cartLanguageChoices } from "@/core/cart/languages";
 import { freeDeliveryView } from "@/core/fulfillment/free-delivery-cart";
 import { localeFlags as flags, SUPPORTED_LOCALES } from "@/core/i18n/locale";
-import { escapeHtml, minOrderText } from "@/channels/telegram/copy";
+import { escapeHtml, manualPayBtn, minOrderText, prodamusCopy } from "@/channels/telegram/copy";
 import { adminTelegramApi } from "@/channels/telegram/notify";
 import { isMailConfigured } from "@/core/mail/mail.server";
 import { emailStep, languagePickerText, WA_LIST_MAX_ROWS, clipRowTitle, plain } from "../shop-flow";
@@ -668,12 +668,16 @@ export async function finishCheckout(s: Shop, countryCode: string) {
             ? [
                 {
                   type: "postback" as const,
-                  title: plain(s.m.payViaProdamusBtn),
+                  title: plain(prodamusCopy(s.m, pdm.currency).btn),
                   payload: "PAY:pdm",
                 },
               ]
             : []),
-          { type: "postback", title: plain(s.m.payManualBtn), payload: "PAY:manual" },
+          {
+            type: "postback",
+            title: plain(manualPayBtn(s.m, method.instructions)),
+            payload: "PAY:manual",
+          },
         ],
       },
     );
@@ -790,8 +794,8 @@ export async function choosePayment(s: Shop, kind: "rk" | "pdm" | "manual") {
     });
     await sendPayLink(
       s,
-      `${plain(s.m.manualTitleNew(no))}\n\n${plain(s.m.amountToPay(sum))}\n\n${plain(s.m.prodamusHint)}`,
-      plain(s.m.payViaProdamusBtn),
+      `${plain(s.m.manualTitleNew(no))}\n\n${plain(s.m.amountToPay(sum))}\n\n${plain(prodamusCopy(s.m, link.currency).hint)}`,
+      plain(prodamusCopy(s.m, link.currency).btn),
       url,
     );
     return;

@@ -3,7 +3,7 @@ import { imageUrl } from "@/core/catalog/catalog";
 import { isDeliveryLangChoice } from "@/core/catalog/materials";
 import { sendPhotoOrText } from "../api";
 import { orderThanksHtml } from "../screens";
-import { escapeHtml, minOrderText } from "../copy";
+import { escapeHtml, manualPayBtn, minOrderText, prodamusCopy } from "../copy";
 import { localeFlags, localeNames } from "@/core/i18n/locale";
 import { storefrontBase } from "@/core/tenant/custom-domain";
 import { formatMoney } from "@/core/money/money";
@@ -497,9 +497,21 @@ export async function finishCheckout(b: Bot, countryCode: string) {
               ? [[{ text: b.m.payViaStripeBtn, callback_data: `pay:stripe:${order.id}` }]]
               : []),
             ...(prodamus.ready
-              ? [[{ text: b.m.payViaProdamusBtn, callback_data: `pay:pdm:${order.id}` }]]
+              ? [
+                  [
+                    {
+                      text: prodamusCopy(b.m, prodamus.currency).btn,
+                      callback_data: `pay:pdm:${order.id}`,
+                    },
+                  ],
+                ]
               : []),
-            [{ text: b.m.payManualBtn, callback_data: `pay:manual:${order.id}` }],
+            [
+              {
+                text: manualPayBtn(b.m, method.instructions),
+                callback_data: `pay:manual:${order.id}`,
+              },
+            ],
           ],
         },
       },

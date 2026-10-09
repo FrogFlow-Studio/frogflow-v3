@@ -7,6 +7,7 @@ import { buildPaymentUrl } from "@/core/payments/robokassa";
 import { type Bot, send } from "./bot";
 import { sendManualInstructions } from "./checkout";
 import { starsDue } from "./payments";
+import { prodamusCopy } from "../copy";
 
 /** Кнопка «Оплатить …» под заказом: ссылка на кассу, счёт Stars или реквизиты. */
 export async function payButton(b: Bot, customer: Customer, data: string): Promise<void> {
@@ -136,8 +137,9 @@ export async function payButton(b: Bot, customer: Customer, data: string): Promi
       pending_order_id: order.id,
       pending_display_no: no,
     });
-    await send(b, `${b.m.manualTitleNew(no)}\n\n${b.m.amountToPay(sum)}\n\n${b.m.prodamusHint}`, {
-      reply_markup: { inline_keyboard: [[{ text: b.m.payViaProdamusBtn, url: link.url }]] },
+    const pc = prodamusCopy(b.m, link.currency);
+    await send(b, `${b.m.manualTitleNew(no)}\n\n${b.m.amountToPay(sum)}\n\n${pc.hint}`, {
+      reply_markup: { inline_keyboard: [[{ text: pc.btn, url: link.url }]] },
     });
     return;
   }
