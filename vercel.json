@@ -5,6 +5,11 @@
   "framework": "tanstack-start",
   "trailingSlash": false,
   "regions": ["icn1"],
+  "git": {
+    "deploymentEnabled": {
+      "claude/**": false
+    }
+  },
   "crons": [
     {
       "path": "/api/cron/ensure-webhook",
