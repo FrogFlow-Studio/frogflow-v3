@@ -5,6 +5,8 @@ import {
   foreignZernioAccounts,
   zernioAccountOwners,
   zernioProfileOwner,
+  zernioReconnects,
+  zernioTwins,
 } from "./zernio-accounts";
 
 const row = (id: string, ids: string[], archived = false): TenantRow => ({
@@ -71,5 +73,64 @@ describe("профиль Zernio у одного клиента", () => {
     expect(zernioProfileOwner([x, old], "x", "p1")).toBeUndefined();
     expect(zernioProfileOwner([x, old], "y", "p2")).toBeUndefined();
     expect(zernioProfileOwner([x], "y", "  ")).toBeUndefined();
+  });
+});
+
+describe("переподключение аккаунта: новый id той же страницы", () => {
+  const ig = (id: string, username?: string, expired = false) => ({
+    id,
+    platform: "instagram",
+    username,
+    expired,
+  });
+
+  it("BOVI 07.10: тот же @username с новым id — переподключение, прежний пропал", () => {
+    expect(zernioReconnects([ig("6aa5", "bovi.kz")], [ig("6ac6", "Bovi.KZ")])).toEqual([
+      {
+        platform: "instagram",
+        username: "Bovi.KZ",
+        name: undefined,
+        oldId: "6aa5",
+        newId: "6ac6",
+        oldStillLive: false,
+      },
+    ]);
+  });
+
+  it("прежний ещё живой — помечается; отвязанный прежний живым не считается", () => {
+    expect(
+      zernioReconnects([ig("old", "shop")], [ig("old", "shop"), ig("new", "shop")])[0]
+        ?.oldStillLive,
+    ).toBe(true);
+    expect(
+      zernioReconnects([ig("old", "shop")], [ig("old", "shop", true), ig("new", "shop")])[0]
+        ?.oldStillLive,
+    ).toBe(false);
+  });
+
+  it("без имени — только замена единственного аккаунта канала", () => {
+    expect(zernioReconnects([ig("old")], [ig("new", "shop")]).map((r) => r.oldId)).toEqual(["old"]);
+    // Прежний на месте — это второй аккаунт, а не переподключение.
+    expect(zernioReconnects([ig("old")], [ig("old"), ig("new")])).toEqual([]);
+  });
+
+  it("другая страница, другой канал, первый аккаунт и ничего нового — не переподключение", () => {
+    expect(zernioReconnects([ig("old", "shop")], [ig("new", "other")])).toEqual([]);
+    expect(
+      zernioReconnects(
+        [ig("old", "shop")],
+        [ig("old", "shop"), { id: "wa", platform: "whatsapp" }],
+      ),
+    ).toEqual([]);
+    expect(zernioReconnects([], [ig("new", "shop")])).toEqual([]);
+    expect(zernioReconnects([ig("a", "shop")], [ig("a", "shop")])).toEqual([]);
+  });
+
+  it("два живых подключения одной страницы — пара; отвязанное и без имени не считаются", () => {
+    expect(zernioTwins([ig("a", "Shop"), ig("b", "shop"), ig("c", "other")])).toEqual([
+      { platform: "instagram", username: "Shop", ids: ["a", "b"] },
+    ]);
+    expect(zernioTwins([ig("a", "shop", true), ig("b", "shop")])).toEqual([]);
+    expect(zernioTwins([ig("a"), ig("b")])).toEqual([]);
   });
 });

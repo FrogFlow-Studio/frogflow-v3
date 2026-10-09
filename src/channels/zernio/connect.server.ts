@@ -5,7 +5,12 @@ import {
   patchZernioIfSyncedAt,
   tenantDirectory,
 } from "@/core/tenant/resolve.server";
-import { foreignZernioAccounts, zernioProfileOwner } from "@/core/tenant/zernio-accounts";
+import {
+  foreignZernioAccounts,
+  zernioProfileOwner,
+  zernioReconnects,
+  type ZernioReconnect,
+} from "@/core/tenant/zernio-accounts";
 import { servedByV2 } from "@/core/tenant/directory";
 import { UserError } from "@/core/i18n/user-error";
 import { serverFailure } from "@/lib/server-failure";
@@ -133,14 +138,47 @@ export async function syncAccounts(tenant: Tenant): Promise<SyncResult> {
   if (!profileId)
     return { accounts: [], accountIds: tenant.settings.zernio?.account_ids ?? [], conflicts: [] };
   const r = await accountSync(tenant, profileId);
-  await patchTenantSettings(tenant.id, {
-    zernio: {
-      account_ids: r.accountIds,
-      accounts: r.accounts,
-      synced_at: new Date().toISOString(),
-    },
-  });
+  const patch = {
+    account_ids: r.accountIds,
+    accounts: r.accounts,
+    synced_at: new Date().toISOString(),
+  };
+  const moved = zernioReconnects(tenant.settings.zernio?.accounts ?? [], r.accounts);
+  if (!moved.length) {
+    await patchTenantSettings(tenant.id, { zernio: patch });
+    return r;
+  }
+  // «Один раз»: о переподключении пишет оператору только тот, чья условная
+  // запись прошла; опередивший прогон (крон и кнопка вместе) уже написал сам.
+  const prev = tenant.settings.zernio?.synced_at ?? null;
+  if (await patchZernioIfSyncedAt(tenant.id, prev, patch)) await alertReconnects(tenant, moved);
+  else await patchTenantSettings(tenant.id, { zernio: patch });
   return r;
+}
+
+/**
+ * Оператору — о каждом переподключении (новый id той же страницы). Только
+ * клиенты v2; сбой отправки не роняет сверку и не повторяется: сообщение
+ * могло дойти, а тишину всё равно поймает проба входящих.
+ */
+async function alertReconnects(tenant: Tenant, moved: readonly ZernioReconnect[]): Promise<void> {
+  if (!servedByV2(tenant)) return;
+  try {
+    const [{ sendOperatorAlert }, { reconnectAlertText }] = await Promise.all([
+      import("@/app/operator/health-alerts.server"),
+      import("@/app/operator/health-alerts"),
+    ]);
+    const base = env().APP_URL.replace(/\/$/, "");
+    for (const r of moved) {
+      const sent = await sendOperatorAlert(
+        reconnectAlertText(r, { clientName: tenant.name, botId: tenant.id, base }),
+      );
+      if (!sent.ok && sent.reason === "failed")
+        console.warn(`[zernio] переподключение ${tenant.id}: оператору не ушло (${sent.error})`);
+    }
+  } catch (e) {
+    console.warn(`[zernio] переподключение ${tenant.id}: ${e instanceof Error ? e.message : e}`);
+  }
 }
 
 /** Сверка после переподключения — не чаще раза в это окно на магазин. */
@@ -160,11 +198,16 @@ export async function resyncAfterReconnect(tenant: Tenant, now = new Date()): Pr
   const last = prev ? Date.parse(prev) : NaN;
   if (Number.isFinite(last) && now.getTime() - last < RESYNC_WINDOW_MS) return false;
   const r = await accountSync(tenant, profileId);
-  return patchZernioIfSyncedAt(tenant.id, prev, {
+  const won = await patchZernioIfSyncedAt(tenant.id, prev, {
     account_ids: r.accountIds,
     accounts: r.accounts,
     synced_at: now.toISOString(),
   });
+  if (won) {
+    const moved = zernioReconnects(tenant.settings.zernio?.accounts ?? [], r.accounts);
+    if (moved.length) await alertReconnects(tenant, moved);
+  }
+  return won;
 }
 
 export type V2WebhookState = {

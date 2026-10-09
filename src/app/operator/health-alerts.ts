@@ -170,20 +170,23 @@ export function alertSummaryText(
  * а про платформу. Ключ события говорит, о чём оно:
  * `cron:<задача>`, `zernio:webhook`, `account:<bot_id>:<id аккаунта>`,
  * `inbound:<bot_id>` (у клиента перестали приходить сообщения),
- * `rate:<bot_id>` (курс рубля консультанта не обновляется).
+ * `rate:<bot_id>` (курс рубля консультанта не обновляется),
+ * `twin:<bot_id>:<канал>:<username>` (у страницы два живых подключения в Zernio).
  */
 export type PlatformSubject =
   | { kind: "cron"; job: string }
   | { kind: "zernio_webhook" }
   | { kind: "account"; botId: string; accountId: string }
   | { kind: "inbound"; botId: string }
-  | { kind: "rate"; botId: string };
+  | { kind: "rate"; botId: string }
+  | { kind: "twin"; botId: string; platform: string; username: string };
 
 export function platformKey(s: PlatformSubject): string {
   if (s.kind === "cron") return `cron:${s.job}`;
   if (s.kind === "zernio_webhook") return "zernio:webhook";
   if (s.kind === "inbound") return `inbound:${s.botId}`;
   if (s.kind === "rate") return `rate:${s.botId}`;
+  if (s.kind === "twin") return `twin:${s.botId}:${s.platform}:${s.username.toLowerCase()}`;
   return `account:${s.botId}:${s.accountId}`;
 }
 
@@ -193,6 +196,8 @@ export function parsePlatformKey(key: string): PlatformSubject | null {
   if (inbound) return { kind: "inbound", botId: inbound[1]! };
   const rate = /^rate:(.+)$/.exec(key);
   if (rate) return { kind: "rate", botId: rate[1]! };
+  const twin = /^twin:([^:]+):([^:]+):(.+)$/.exec(key);
+  if (twin) return { kind: "twin", botId: twin[1]!, platform: twin[2]!, username: twin[3]! };
   const cron = /^cron:(.+)$/.exec(key);
   if (cron) return { kind: "cron", job: cron[1]! };
   const acc = /^account:([^:]+):(.+)$/.exec(key);
@@ -310,7 +315,7 @@ function platformLink(key: string, base: string): string {
       ? [`${base}/operator/crons`, "Открыть кроны"]
       : s?.kind === "zernio_webhook"
         ? [`${base}/operator/settings`, "Открыть настройки платформы"]
-        : s?.kind === "account" || s?.kind === "inbound" || s?.kind === "rate"
+        : s?.kind === "account" || s?.kind === "inbound" || s?.kind === "rate" || s?.kind === "twin"
           ? [`${base}/operator/clients/${s.botId}`, "Открыть клиента в панели"]
           : [`${base}/operator`, "Открыть панель"];
   return `<a href="${escapeHtml(href).replace(/"/g, "&quot;")}">${title}</a>`;
@@ -326,6 +331,8 @@ function platformTitle(e: AlertEvent, label: string): string {
     return `${label}: ${down ? "сутки нет входящих сообщений" : "входящие снова идут"}`;
   if (s?.kind === "rate")
     return `${label}: ${down ? "курс рубля не обновляется" : "курс рубля снова обновляется"}`;
+  if (s?.kind === "twin")
+    return `${label}: ${down ? "два подключения в Zernio" : "в Zernio снова одно подключение"}`;
   return `${label} ${down ? "отключился" : "снова подключён"}`;
 }
 
@@ -343,7 +350,9 @@ export function platformAlertText(e: AlertEvent, o: PlatformTextOptions): string
             ? "Обычно клиенту пишут каждый день. Проверьте подключение Instagram/WhatsApp в Zernio и напишите в директ клиента с другого аккаунта: так 07.10 у BOVI трое суток терялись сообщения."
             : s?.kind === "rate"
               ? "Консультант называет рубли по последнему курсу, а когда тот старше суток, — с пометкой «ориентировочно»; без курса — только тенге. Проверьте источник в карточке клиента: «Оплата» → «Курс рубля», или введите курс вручную."
-              : null
+              : s?.kind === "twin"
+                ? "Страницу переподключили, а старое подключение в Zernio не отвязалось. Сообщения могут приходить только на одно из них. Оставьте в Zernio одно подключение и напишите клиенту в директ с другого аккаунта."
+                : null
       : null;
   if (e.kind === "down")
     return [
@@ -377,5 +386,37 @@ export function platformSummaryText(
     `<b>Платформа: сбоев ${events.filter((e) => e.kind === "down").length}, восстановлено ${events.filter((e) => e.kind === "up").length}</b>`,
     ...events.map(line),
     `<a href="${escapeHtml(`${o.base}/operator/crons`).replace(/"/g, "&quot;")}">Открыть кроны</a>`,
+  ].join("\n");
+}
+
+/**
+ * Разовое сообщение оператору: клиент переподключил Instagram/WhatsApp в
+ * Zernio, у аккаунта новый id. Новый id уже записан клиенту (сверка
+ * аккаунтов), но 07.10 у BOVI после переподключения трое суток не доходили
+ * сообщения, и узнали мы по тишине. Теперь — сразу.
+ */
+export function reconnectAlertText(
+  r: {
+    platform: string;
+    username?: string;
+    name?: string;
+    oldId: string;
+    newId: string;
+    oldStillLive: boolean;
+  },
+  o: { clientName: string; botId: string; base: string },
+): string {
+  const channel =
+    r.platform === "whatsapp" ? "WhatsApp" : r.platform === "instagram" ? "Instagram" : r.platform;
+  const who = r.username ? ` @${r.username}` : r.name ? ` «${r.name}»` : "";
+  const href = `${o.base}/operator/clients/${o.botId}`;
+  return [
+    `🔄 <b>${escapeHtml(`${channel}${who}`)} клиента «${escapeHtml(o.clientName)}» переподключён в Zernio</b>`,
+    `Новый id ${escapeHtml(r.newId)} привязан к клиенту автоматически, прежний — ${escapeHtml(r.oldId)}.`,
+    r.oldStillLive
+      ? "Прежнее подключение в Zernio тоже живо: оставьте одно, сообщения могут приходить только на одно из них."
+      : "Прежнего подключения в Zernio больше нет.",
+    "Проверьте приём: напишите клиенту в директ с другого аккаунта и посмотрите журнал.",
+    `<a href="${escapeHtml(href).replace(/"/g, "&quot;")}">Открыть клиента в панели</a>`,
   ].join("\n");
 }
