@@ -281,9 +281,12 @@ export function buildProdamusLink(
 export type ProdamusOutcome = "paid" | "mismatch" | "ignore";
 
 /**
- * Что значит уведомление для заказа: оплата только при `success`, и сумма с
- * валютой должны совпасть с выставленной (ссылку покупатель может поправить
- * руками).
+ * Что значит уведомление для заказа: оплата только при `success`, и сумма
+ * должна совпасть с выставленной (ссылку покупатель может поправить руками).
+ * `sum` Продамус шлёт в валюте формы, а `currency` — валюта карты: форма в
+ * тенге, оплаченная картой РФ, приходит как sum=150.00, currency=rub
+ * (Копилка русоведа 09.10, платёж 511523 — покупатель списал 41,98 ₽).
+ * Поэтому валюта на решение не влияет; её видно в журнале заказа.
  */
 export function prodamusOutcome(
   n: Record<string, unknown>,
@@ -291,8 +294,17 @@ export function prodamusOutcome(
 ): ProdamusOutcome {
   if (String(n.payment_status ?? "") !== "success") return "ignore";
   const sum = Number(String(n.sum ?? "").replace(",", "."));
-  const currency = String(n.currency ?? expected.currency).toUpperCase();
   if (!Number.isFinite(sum) || Math.abs(sum - expected.amount) > 0.005) return "mismatch";
-  if (currency !== expected.currency.toUpperCase()) return "mismatch";
   return "paid";
+}
+
+/** Валюта карты, если она не валюта формы (оплата картой РФ в форме в тенге); иначе null. */
+export function prodamusCardCurrency(
+  n: Record<string, unknown>,
+  formCurrency: string,
+): string | null {
+  const c = String(n.currency ?? "")
+    .trim()
+    .toUpperCase();
+  return c && c !== formCurrency.toUpperCase() ? c : null;
 }
