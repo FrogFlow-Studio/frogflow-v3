@@ -5,7 +5,22 @@ import { add, encrypt, hash } from "./util.ts";
 
 const own = <T extends object>(r: T) => ({ bot_id: F.BATCH_SHOP_ID, ...r });
 
+/**
+ * Часовой пояс магазина, в котором сейчас около полудня. «Сегодня» у фильтра «К сборке
+ * сегодня» считается по часам сервера в поясе магазина; сид пишет заказы при старте, тесты
+ * идут минуты спустя. В UTC прогон через полночь превращал заказ «на завтра» в сегодняшний.
+ * Etc/GMT-N — это UTC+N (знак в именах Etc обратный).
+ */
+function noonZone(at: Date): { tz: string; localDay: (offset: number) => string } {
+  const shift = 12 - at.getUTCHours();
+  const tz = shift === 0 ? "Etc/GMT" : shift > 0 ? `Etc/GMT-${shift}` : `Etc/GMT+${-shift}`;
+  const localDay = (offset: number) =>
+    new Date(at.getTime() + (shift * 3600 + offset * 86400) * 1000).toISOString().slice(0, 10);
+  return { tz, localDay };
+}
+
 export function seedShop19ABatch(db: StubDb, now: string) {
+  const zone = noonZone(new Date());
   add(db, "bots", [
     {
       id: F.BATCH_SHOP_ID,
@@ -16,7 +31,7 @@ export function seedShop19ABatch(db: StubDb, now: string) {
       settings: {
         served_by: "v2",
         default_locale: "ru",
-        timezone: "UTC",
+        timezone: zone.tz,
         slug: F.BATCH_SHOP_SLUG,
         telegram: { username: "e2e_batch16_bot", webhook_ok: true },
         admin: { username: F.BATCH_SELLER_LOGIN, password_hash: hash(F.BATCH_SELLER_PASSWORD) },
@@ -33,8 +48,7 @@ export function seedShop19ABatch(db: StubDb, now: string) {
     },
   ]);
   add(db, "app_settings", [own({ key: "shop_name", value: F.BATCH_SHOP_NAME, updated_at: now })]);
-  const day = (offset: number) =>
-    `${new Date(Date.now() + offset * 86400_000).toISOString().slice(0, 10)}T00:00:00Z`;
+  const day = (offset: number) => `${zone.localDay(offset)}T00:00:00Z`;
   F.BATCH_ORDERS.forEach(([id, name, delivery, offset], i) => {
     add(db, "orders", [
       own({
