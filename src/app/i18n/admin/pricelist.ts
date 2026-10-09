@@ -35,7 +35,7 @@ export const ru = {
   "pricelist.settings.storeHours": "Часы работы бутика",
   "pricelist.settings.followUp": "Напоминать замолчавшему покупателю",
   "pricelist.settings.followUpHint":
-    "Через 3 часа после ответа с товаром — одна строка «Остались вопросы по …?», не ночью и не после передачи менеджеру.",
+    "Instagram и WhatsApp: через 3 часа после ответа с товаром — одна строка «Остались вопросы по …?», только пока не прошли сутки с последнего сообщения покупателя (позже Instagram не даст написать). Не ночью, не после ответа менеджера и не пока открыта задача по покупателю.",
   "pricelist.settings.digest": "Сводка качества ответов каждое утро",
   "pricelist.settings.digestHint":
     "После 9:00 — сколько ответов за вчера, сколько передано менеджеру, замечания к ценам и форме, расход.",
@@ -215,7 +215,7 @@ export const kk: SectionDict<typeof ru> = {
   "pricelist.settings.storeHours": "Бутиктің жұмыс уақыты",
   "pricelist.settings.followUp": "Үнсіз қалған сатып алушыға еске салу",
   "pricelist.settings.followUpHint":
-    "Тауармен жауаптан 3 сағат өткен соң — бір жол «… бойынша сұрақтар қалды ма?», түнде емес және менеджерге бергеннен кейін емес.",
+    "Instagram және WhatsApp: тауармен жауаптан 3 сағат өткен соң — бір жол «… бойынша сұрақтар қалды ма?», сатып алушының соңғы хабарламасынан бір тәулік өтпей тұрғанда ғана (кейін Instagram жазуға бермейді). Түнде емес, менеджер жауап бергеннен кейін емес және сатып алушы бойынша ашық тапсырма болса емес.",
   "pricelist.settings.digest": "Әр таң сайын жауап сапасының жиынтығы",
   "pricelist.settings.digestHint":
     "9:00-ден кейін — кешегі жауаптар саны, менеджерге берілгені, баға мен пішінге ескертулер, шығын.",
@@ -396,7 +396,7 @@ export const en: SectionDict<typeof ru> = {
   "pricelist.settings.storeHours": "Store opening hours",
   "pricelist.settings.followUp": "Follow up with customers who went quiet",
   "pricelist.settings.followUpHint":
-    "Three hours after a reply about a product — one line “Any questions about …?”, not at night and not after a manager handoff.",
+    "Instagram and WhatsApp: three hours after a reply about a product — one line “Any questions about …?”, only within 24 hours of the customer’s last message (Instagram blocks later messages). Not at night, not after a manager replied and not while a task for this customer is open.",
   "pricelist.settings.digest": "Reply quality summary every morning",
   "pricelist.settings.digestHint":
     "After 9:00 — yesterday's replies, handoffs to a manager, price and form remarks, spend.",
@@ -580,7 +580,7 @@ export const uz: SectionDict<typeof ru> = {
   "pricelist.settings.storeHours": "Butik ish vaqti",
   "pricelist.settings.followUp": "Jim qolgan xaridorga eslatish",
   "pricelist.settings.followUpHint":
-    "Mahsulot haqidagi javobdan 3 soat o‘tib — bitta qator «… bo‘yicha savollar qoldimi?», tunda emas va menejerga berilgandan keyin emas.",
+    "Instagram va WhatsApp: mahsulot haqidagi javobdan 3 soat o‘tib — bitta qator «… bo‘yicha savollar qoldimi?», faqat xaridorning oxirgi xabaridan bir sutka o‘tmaguncha (keyin Instagram yozishga ruxsat bermaydi). Tunda emas, menejer javob bergandan keyin emas va xaridor bo‘yicha ochiq vazifa bo‘lsa emas.",
   "pricelist.settings.digest": "Har tongda javoblar sifati xulosasi",
   "pricelist.settings.digestHint":
     "9:00 dan keyin — kechagi javoblar soni, menejerga berilganlari, narx va shakl bo‘yicha izohlar, xarajat.",
