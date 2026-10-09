@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { fakeDb } from "../../../tests/fake-db";
 import type { TenantContext } from "@/core/tenant/resolve.server";
-import { DEFAULT_REPLY_PROMPT } from "@/core/instagram/comment-rules";
+import { DEFAULT_REPLY_PROMPT, LEGACY_REPLY_PROMPTS } from "@/core/instagram/comment-rules";
 import {
   TWO_STEP_CLAIM_STALE_MS,
   TWO_STEP_MAX_ATTEMPTS,
@@ -295,6 +295,140 @@ describe("Comment-to-DM: правило в старом формате (v1) пр
     const { listAutomations } = await import("./automations.server");
     const { ctx, api, update, rules } = v1Setup("v2");
     (rules[0] as Record<string, unknown>).trigger = "story_reply";
+    await listAutomations(ctx, api);
+    expect(update).not.toHaveBeenCalled();
+  });
+});
+
+describe("Comment-to-DM: прежний призыв по умолчанию меняется на новый при чтении (Копилка, 09.10)", () => {
+  const OLD = LEGACY_REPLY_PROMPTS[0];
+  const oldFirst = `Палитра — таблички для кабинета\n\n${OLD}`;
+
+  function promptSetup(servedBy: "v1" | "v2", dmMessage = oldFirst) {
+    const { ctx, db } = setup();
+    (ctx.tenant.settings as Record<string, unknown>).served_by = servedBy;
+    db.tables.app_settings = [
+      {
+        bot_id: BOT,
+        key: "ig_comment_automations_meta",
+        value: JSON.stringify({
+          rule1: {
+            twoStepDm: true,
+            secondDmMessage: "Держите материалы",
+            secondDmButtons: [{ type: "postback", title: "Купить", payload: "PROD:p-1" }],
+            replyPrompt: OLD,
+          },
+        }),
+      },
+    ];
+    const rules = [{ id: "rule1", name: "Палитра", accountId: "acc-1", keywords: [], dmMessage }];
+    const update = vi.fn(async (id: string, body: Record<string, unknown>) => {
+      const r = rules.find((x) => x.id === id)!;
+      if (typeof body.dmMessage === "string") r.dmMessage = body.dmMessage;
+      return r;
+    });
+    const inbox = vi.fn(async () => ({ ok: true }));
+    const tail = vi.fn(async (): Promise<Array<Record<string, unknown>>> => []);
+    const api = {
+      list: async () => rules.map((r) => ({ ...r })),
+      update,
+      inbox,
+      tail,
+    } as unknown as AutomationApi;
+    return { ctx, db, api, update, inbox, tail, rules };
+  }
+
+  it("текст продавца остаётся, хвост — новый призыв; мета и журнал с временем замены; повторно Zernio не трогаем", async () => {
+    const { listAutomations, getAutomationsMeta } = await import("./automations.server");
+    const { ctx, db, api, update, rules } = promptSetup("v2");
+    const listed = await listAutomations(ctx, api);
+    const next = `Палитра — таблички для кабинета\n\n${DEFAULT_REPLY_PROMPT}`;
+    expect(update).toHaveBeenCalledWith("rule1", { dmMessage: next });
+    expect(rules[0]!.dmMessage).toBe(next);
+    expect((await getAutomationsMeta(ctx)).rule1).toMatchObject({
+      twoStepDm: true,
+      replyPrompt: DEFAULT_REPLY_PROMPT,
+      secondDmButtons: [{ type: "postback", title: "Купить", payload: "PROD:p-1" }],
+    });
+    // В форме — текст продавца без призыва, первое сообщение целиком — с новым.
+    expect(listed[0]).toMatchObject({
+      dmMessage: "Палитра — таблички для кабинета",
+      firstMessage: next,
+      replyPrompt: DEFAULT_REPLY_PROMPT,
+    });
+    const log = db.tables.zernio_logs!.filter(
+      (l) => l.event_type === "comment_rule.prompt_upgraded",
+    );
+    expect(log).toHaveLength(1);
+    expect(log[0]).toMatchObject({
+      event_id: "prompt-upgrade:rule1",
+      payload: { automationId: "rule1", from: OLD, to: DEFAULT_REPLY_PROMPT, textChanged: true },
+    });
+
+    update.mockClear();
+    await listAutomations(ctx, api);
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("два чтения одновременно — у Zernio один и тот же текст, строка журнала одна", async () => {
+    const { listAutomations } = await import("./automations.server");
+    const { ctx, db, api, rules } = promptSetup("v2");
+    await Promise.all([listAutomations(ctx, api), listAutomations(ctx, api)]);
+    expect(rules[0]!.dmMessage).toBe(`Палитра — таблички для кабинета\n\n${DEFAULT_REPLY_PROMPT}`);
+    expect(
+      db.tables.zernio_logs!.filter((l) => l.event_type === "comment_rule.prompt_upgraded"),
+    ).toHaveLength(1);
+  });
+
+  it("«+» на первое сообщение, ушедшее до замены, — второе сообщение с кнопкой уходит", async () => {
+    const { listAutomations } = await import("./automations.server");
+    const { ctx, db, api, inbox, tail } = promptSetup("v2");
+    await listAutomations(ctx, api);
+    const at = (msAgo: number) => new Date(Date.now() - msAgo).toISOString();
+    tail.mockResolvedValue([
+      { id: "m-1", direction: "outgoing", message: oldFirst, createdAt: at(20_000) },
+      { id: "m-2", direction: "incoming", message: "+", createdAt: at(1_000) },
+    ]);
+    const who = { accountId: "acc-1", conversationId: "conv-1", username: "Anya" };
+    expect(await deliverTwoStepFromDm(ctx, who, api)).toBe(true);
+    expect(inbox).toHaveBeenCalledWith(
+      "conv-1",
+      "acc-1",
+      "Держите материалы",
+      expect.objectContaining({
+        buttons: [{ type: "postback", title: "Купить", payload: "PROD:p-1" }],
+      }),
+    );
+    expect(secondSteps(db).map((l) => [l.event_id, l.status])).toEqual([
+      ["two-step-dm:dm:m-1", "processed"],
+    ]);
+  });
+
+  it("«любое слово» в ответ на новое первое сообщение тоже отдаёт второе", async () => {
+    const { listAutomations } = await import("./automations.server");
+    const { ctx, api, inbox, tail, rules } = promptSetup("v2");
+    await listAutomations(ctx, api);
+    const at = (msAgo: number) => new Date(Date.now() - msAgo).toISOString();
+    tail.mockResolvedValue([
+      { id: "m-1", direction: "outgoing", message: rules[0]!.dmMessage, createdAt: at(20_000) },
+      { id: "m-2", direction: "incoming", message: "Как получить?", createdAt: at(1_000) },
+    ]);
+    const who = { accountId: "acc-1", conversationId: "conv-1", username: "Anya" };
+    expect(await deliverTwoStepFromDm(ctx, who, api)).toBe(true);
+    expect(inbox).toHaveBeenCalledTimes(1);
+  });
+
+  it("продавец сам убрал призыв из текста — правило не трогаем", async () => {
+    const { listAutomations, getAutomationsMeta } = await import("./automations.server");
+    const { ctx, api, update } = promptSetup("v2", "Свой текст без призыва");
+    await listAutomations(ctx, api);
+    expect(update).not.toHaveBeenCalled();
+    expect((await getAutomationsMeta(ctx)).rule1).toMatchObject({ replyPrompt: OLD });
+  });
+
+  it("клиент ещё на v1 — правило не трогаем", async () => {
+    const { listAutomations } = await import("./automations.server");
+    const { ctx, api, update } = promptSetup("v1");
     await listAutomations(ctx, api);
     expect(update).not.toHaveBeenCalled();
   });

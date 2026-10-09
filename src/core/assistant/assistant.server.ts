@@ -2,7 +2,12 @@ import { PREVIEW_AI_OFF, previewReadonly } from "@/lib/preview";
 import Anthropic from "@anthropic-ai/sdk";
 import { env } from "@/config/env";
 import { limitsFor, parseDaily, RESERVE_USD, settleRaw, today } from "@/core/consultant/budget";
-import { KEYS as CONSULTANT_KEYS } from "@/core/consultant/engine.server";
+import {
+  DEFAULT_MODEL,
+  KEYS as CONSULTANT_KEYS,
+  modelPrice,
+} from "@/core/consultant/engine.server";
+import { modelParams } from "@/core/ai/pure";
 import { UserError } from "@/core/i18n/user-error";
 import type { Locale } from "@/core/i18n/locale";
 import { updateSettingAtomic } from "@/core/settings/settings";
@@ -20,10 +25,6 @@ import {
   type SalesDigest,
 } from "./prompts";
 
-/** Модель та же, что у консультанта: платформа уже выбрала её по цене (CONSULTANT_MODEL). */
-const DEFAULT_MODEL = "claude-haiku-4-5";
-/** Цена Haiku 4.5, $ за миллион токенов — как в core/consultant. */
-const PRICE = { in: 1, out: 5 };
 const TIMEOUT_MS = 40_000;
 const DAILY_KEY = "seller_assist_daily";
 
@@ -156,10 +157,14 @@ async function callAssist(
   }
 
   const client = new Anthropic({ apiKey, maxRetries: 1, timeout: TIMEOUT_MS });
+  // Модель та же, что у консультанта (CONSULTANT_MODEL или модель платформы).
+  const model = env().CONSULTANT_MODEL?.trim() || DEFAULT_MODEL;
+  const price = modelPrice(model);
   let response: Anthropic.Message;
   try {
     response = await client.messages.create({
-      model: env().CONSULTANT_MODEL?.trim() || DEFAULT_MODEL,
+      model,
+      ...modelParams(model),
       max_tokens: req.maxTokens,
       system: req.system,
       messages: [{ role: "user", content: req.user }],
@@ -176,7 +181,7 @@ async function callAssist(
   }
 
   const usd =
-    (response.usage.input_tokens * PRICE.in + response.usage.output_tokens * PRICE.out) / 1_000_000;
+    (response.usage.input_tokens * price.in + response.usage.output_tokens * price.out) / 1_000_000;
   await aiSettle(ctx, hold, usd);
   await updateSettingAtomic(ctx, CONSULTANT_KEYS.daily, (raw) =>
     settleRaw(raw, date, RESERVE_USD, usd),

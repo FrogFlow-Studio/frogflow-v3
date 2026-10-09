@@ -36,6 +36,7 @@ import {
 } from "./catalog-tool.server";
 import { pauseHours, pausedUntilIso } from "./pause";
 import { takeAiCall } from "./rate.server";
+import { modelParams } from "@/core/ai/pure";
 import { serverFailure } from "@/lib/server-failure";
 import {
   ASK_CONTACT_RESULT,
@@ -74,7 +75,11 @@ export const KEYS = {
   lastError: "consultant_last_error",
 } as const;
 
-export const DEFAULT_MODEL = "claude-haiku-4-5";
+/**
+ * Модель платформы. Sonnet 5 с 09.10.2026: на Haiku 4.5 BOVI до 25.09 ошибался
+ * заметно чаще (выдуманные цены, лишние уточнения). Ход дороже вдвое ($2/$10).
+ */
+export const DEFAULT_MODEL = "claude-sonnet-5";
 const TIMEOUT_MS = 20_000;
 export const HISTORY_TURNS = 16;
 /** Раундов с инструментами каталога на одно сообщение (v1: 4). */
@@ -1035,6 +1040,7 @@ async function answerConsultant(
       const last = round === MAX_ROUNDS - 1;
       const got = await callModel({
         model,
+        ...modelParams(model),
         max_tokens: 700,
         system: [
           { type: "text", text: system, cache_control: { type: "ephemeral", ttl: CACHE_TTL } },

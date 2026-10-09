@@ -53,6 +53,12 @@ type DirectMemory = {
   nontext_at?: string;
   /** Последний ответ бота — подсказка на нераспознанный ответ шага (строгий режим). */
   hinted?: boolean;
+  /**
+   * Последний ответ бота — «передал продавцу» (оплата из-за рубежа, рубли):
+   * дальше переписку ведёт продавец, подсказки шага («пришлите чек») не
+   * шлём, пока бот не ответит на команду (Копилка, заказ #65, 10.10).
+   */
+  handed_off?: boolean;
 };
 
 export type Shop = {
@@ -70,6 +76,8 @@ export type Shop = {
   bot: DirectBotSettings;
   /** Ответ этого сообщения — подсказка на нераспознанный ответ шага. */
   hint?: boolean;
+  /** Ответ этого сообщения — передача продавцу: подсказки шага замолкают. */
+  handoff?: boolean;
   /** Почему бот ответил (channels/zernio/reason): уходит в журнал диалога вместе с ответом. */
   why?: string | null;
 };
@@ -106,6 +114,7 @@ export function inDialog(s: Shop): boolean {
 
 /** Подсказка на нераспознанный ответ: одна и только сразу после вопроса бота. */
 export function mayHint(s: Shop): boolean {
+  if (memory(s.customer).handed_off) return false;
   if (!strict(s)) return true;
   return !memory(s.customer).hinted && sinceBotReply(s) < HINT_WINDOW_MS;
 }
@@ -262,6 +271,7 @@ export async function reply(
     last_reply: mark,
     last_reply_at: new Date().toISOString(),
     hinted: s.hint === true ? true : undefined,
+    handed_off: s.handoff === true ? true : undefined,
   });
   if (s.ctx.tenant.modules.manager_chat) {
     const { recordMessage } = await import("@/core/chat/chat");
