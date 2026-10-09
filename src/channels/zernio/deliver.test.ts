@@ -2,13 +2,18 @@ import { describe, expect, it, vi } from "vitest";
 import type { ZernioTransport } from "./api.server";
 
 const ttls: number[] = [];
+// Настоящая подписанная ссылка хранилища — с токеном на сотни знаков.
+let tokenPad = "";
 vi.mock("@/core/db/client.server", () => ({
   serviceDb: () => ({
     storage: {
       from: (bucket: string) => ({
         createSignedUrl: async (key: string, ttl: number) => {
           ttls.push(ttl);
-          return { data: { signedUrl: `https://s.test/${bucket}/${key}` }, error: null };
+          return {
+            data: { signedUrl: `https://s.test/${bucket}/${key}${tokenPad}` },
+            error: null,
+          };
         },
       }),
     },
@@ -75,6 +80,48 @@ describe("выдача материалов в Direct/WhatsApp", () => {
     expect(calls[1]!.buttons).toEqual([
       expect.objectContaining({ type: "url", title: "📥 Скачать" }),
     ]);
+  });
+
+  it("два PDF с длинными ссылками (заказ #20 Копилки): сообщения ≤1000 знаков, все ссылки дошли", async () => {
+    const calls: Array<{ text: string; scope?: string; buttons?: unknown }> = [];
+    const t = {
+      send: vi.fn(
+        async (
+          _c: string,
+          _a: string,
+          text: string,
+          o: { idempotencyScope?: string; buttons?: unknown },
+        ) => {
+          calls.push({ text, scope: o.idempotencyScope, buttons: o.buttons });
+          // Как Instagram: длиннее 1000 знаков — отказ.
+          return text.length > 1000 ? { ok: false, error: "message too long" } : { ok: true };
+        },
+      ),
+    } as unknown as ZernioTransport;
+    const send = zernioMaterialSender(t, "conv-1", "acc-1", "instagram", {
+      pageUrl: "https://app.test/s/kopilka/order/4063?t=" + "a".repeat(64),
+    });
+    const long = "palitra";
+    tokenPad = `?token=${"t".repeat(380)}`;
+    const r = await send(
+      { name_snapshot: "Палитра средств выразительности", id: "it-20" } as typeof item,
+      [
+        { path: `${BOT}/${long}1.pdf`, name: "Тропы а4.pdf", url: null },
+        { path: `${BOT}/${long}2.pdf`, name: "Тропы формат А3.pdf", url: null },
+      ],
+    );
+    expect(r).toBe("sent");
+    const texts = calls.filter((c) => !c.buttons).map((c) => c.text);
+    expect(texts.length).toBeGreaterThan(1);
+    for (const x of texts) expect(x.length).toBeLessThanOrEqual(1000);
+    const all = texts.join("\n");
+    expect(all).toContain(`${long}1.pdf`);
+    expect(all).toContain(`${long}2.pdf`);
+    expect(all).toContain("действуют 7 дней");
+    expect(all).toContain("https://app.test/s/kopilka/order/4063");
+    expect(new Set(calls.map((c) => c.scope)).size).toBe(calls.length);
+    expect(calls.at(-1)!.buttons).toHaveLength(2);
+    tokenPad = "";
   });
 
   it("ключ идемпотентности — по позиции заказа", async () => {

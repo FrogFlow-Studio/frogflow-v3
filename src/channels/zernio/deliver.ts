@@ -58,13 +58,25 @@ export function zernioMaterialSender(
       links.push({ name: mat.name ?? null, url });
       lines.push(`${mat.name ? `${mat.name}: ` : ""}${url}`);
     }
-    if (materials.some((m) => m.path)) lines.push("", m.deliveryLinksExpire);
-    if (opts.pageUrl) lines.push("", `${m.deliveryOrderPage} ${opts.pageUrl}`);
-    // Позиция + тело: повтор после таймаута не шлёт ссылки второй раз.
-    const r = await transport.send(conversationId, accountId, lines.join("\n"), {
-      platform,
-      idempotencyScope: `deliver:${item.id}`,
-    });
+    const tail: string[] = [];
+    if (materials.some((m) => m.path)) tail.push(`\n${m.deliveryLinksExpire}`);
+    if (opts.pageUrl) tail.push(`\n${m.deliveryOrderPage} ${opts.pageUrl}`);
+    // Подписанная ссылка с именем файла — около 450 знаков: два-три файла в
+    // одном сообщении не влезают в лимит Instagram, и выдача падала целиком
+    // (заказ #20 Копилки, 09.10). Режем на несколько сообщений по строкам.
+    const parts = packLines([...lines, ...tail], TEXT_MAX[platform]);
+    let r: Awaited<ReturnType<ZernioTransport["send"]>> = { ok: false };
+    for (let k = 0; k < parts.length; k++) {
+      // Позиция + тело: повтор после таймаута не шлёт ссылки второй раз.
+      r = await transport.send(conversationId, accountId, parts[k]!, {
+        platform,
+        idempotencyScope: k === 0 ? `deliver:${item.id}` : `deliver:${item.id}:${k}`,
+      });
+      // Первая часть ушла, следующая нет — позиция не выдана, продавец
+      // повторит; часть ссылок у покупателя уже есть, это не вредно.
+      if (!r.ok && k > 0) return "failed";
+      if (!r.ok) break;
+    }
     if (r.ok) {
       // Кнопки «Скачать» — отдельным коротким сообщением после ссылок. С
       // кнопками Instagram берёт не больше 640 знаков текста, а подписанные
@@ -95,6 +107,28 @@ export function zernioMaterialSender(
     }
     return "failed";
   };
+}
+
+/** Лимит текста одного сообщения: Instagram — 1000 знаков (берём с запасом), WhatsApp — 4096. */
+const TEXT_MAX: Record<ZernioPlatform, number> = { instagram: 950, whatsapp: 4000 };
+
+/**
+ * Строки — в сообщения не длиннее max: строка не рвётся, первая строка
+ * (название позиции) повторяется в начале каждой следующей части.
+ */
+export function packLines(lines: string[], max: number): string[] {
+  const [head = "", ...rest] = lines;
+  const parts: string[] = [];
+  let cur = head;
+  for (const line of rest) {
+    if (cur !== head && cur.length + 1 + line.length > max) {
+      parts.push(cur);
+      cur = head;
+    }
+    cur = `${cur}\n${line}`;
+  }
+  parts.push(cur);
+  return parts;
 }
 
 /**
