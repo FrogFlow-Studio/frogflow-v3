@@ -11,6 +11,11 @@ test("переключатель Авторы / Все товары и филь�
   await page.goto("/market");
   await page.getByRole("link", { name: "Все товары", exact: true }).click();
   await expect(page).toHaveURL(/\/market\/search/);
+  // У «Авторов» своя форма с тем же полем «Категория»: ждём, пока отрисуется поиск товаров,
+  // иначе выбор уходит в старую форму, а «Найти» шлёт пустую категорию.
+  await expect(
+    page.getByRole("heading", { name: "Поиск товаров на FrogFlow", exact: true }),
+  ).toBeVisible();
   await hydrated(page, 'select[name="category"]');
   await openFilters(page);
   await page.getByRole("combobox", { name: "Категория", exact: true }).selectOption("Цветы");

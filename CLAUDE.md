@@ -92,8 +92,11 @@ FrogFlow v3 — продолжение v2, переписывания платф
   Дважды PR возвращали из-за prettier, один раз master покраснел из-за
   `tests/db-columns.test.ts` (#240).
 - **CI нет** (GitHub Actions сняты 09.10.2026, решение Якова). Ворота перед
-  вливанием — проверки в сессии: `npm run verify` (lint, типы, тесты, сборка)
-  и e2e на сборке; вливаем на зелёном, прод собирает Vercel из git сам.
+  вливанием — `npm run gate` в сессии: precheck, сборка, потом
+  e2e тех разделов, что тронуты (выбор — `scripts/e2e-select.ts`: specs адресов
+  затронутых маршрутов, дымовой набор; общее — все e2e). Вливаем на «можно
+  вливать», `check` после него не нужен. Прод собирает Vercel из git сам.
+  Раз в день `npm run gate -- --full` (verify и все e2e) на master.
 - **Поломка диалога — сначала сценарий.** Любая найденная ошибка в переписке бота (ответ не туда, молчание, чужой язык, дубль) сначала становится сценарием в `tests/dialogs/scenarios.ts` (поле `origin` — откуда), падает, потом чинится. Прогон `tests/dialogs` входит в `precheck`.
 - **Проверки без ключей живой базы.** `check`, `verify` и `precheck` сами
   убирают ключи Supabase из окружения тестов. Живые тесты
@@ -130,6 +133,8 @@ FrogFlow v3 — продолжение v2, переписывания платф
 ## Проверки
 
 ```bash
+npm run gate        # перед вливанием: precheck + e2e затронутых разделов
+npm run gate -- --full  # раз в день: verify + все e2e
 npm run check       # lint + typecheck + test
 npm run build       # typecheck + vite build (Nitro, Vercel preset)
 
