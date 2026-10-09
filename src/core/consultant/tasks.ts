@@ -64,6 +64,8 @@ export type ConsultantTask = {
   doneAt?: string;
   /** v2: чем закрыта (кнопкой или ответом менеджера покупателю). */
   doneVia?: TaskCloseVia;
+  /** v2: когда продавцу напомнили о задаче (core/consultant/task-reminders) — один раз. */
+  remindedAt?: string;
 };
 
 const MAX = { text: 600, contact: 300, name: 120, product: 200, products: 5, link: 300 };
@@ -102,6 +104,7 @@ function taskFrom(raw: unknown): ConsultantTask | null {
     ...(products.length ? { products } : {}),
     ...(link && /^https:\/\//i.test(link) ? { link } : {}),
     ...(typeof r.doneAt === "string" ? { doneAt: r.doneAt } : {}),
+    ...(typeof r.remindedAt === "string" ? { remindedAt: r.remindedAt } : {}),
     ...(r.done === true && CLOSE_VIA.includes(r.doneVia as TaskCloseVia)
       ? { doneVia: r.doneVia as TaskCloseVia }
       : {}),

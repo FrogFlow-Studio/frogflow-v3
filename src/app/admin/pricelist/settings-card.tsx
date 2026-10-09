@@ -11,12 +11,13 @@ export function SettingsCard({ t, data, canEdit, onDone }: CardProps) {
   const [store, setStore] = useState(data.store);
   const [followUp, setFollowUp] = useState(data.followUp);
   const [qualityDigest, setQualityDigest] = useState(data.qualityDigest);
+  const [taskReminders, setTaskReminders] = useState(data.taskReminders);
   const [hours, setHours] = useState(data.hours);
   const [saved, setSaved] = useState(false);
   const save = useAction(async () => {
     setSaved(false);
     await savePricelistSettingsFn({
-      data: { synonyms, shopUrl, store, followUp, qualityDigest, hours },
+      data: { synonyms, shopUrl, store, followUp, qualityDigest, taskReminders, hours },
     });
     setSaved(true);
     await onDone();
@@ -116,6 +117,21 @@ export function SettingsCard({ t, data, canEdit, onDone }: CardProps) {
           <span>
             {t("pricelist.settings.digest")}
             <span className="block text-xs text-muted">{t("pricelist.settings.digestHint")}</span>
+          </span>
+        </label>
+        <label className="flex items-start gap-2 text-sm">
+          <input
+            type="checkbox"
+            className="mt-1"
+            checked={taskReminders}
+            disabled={!canEdit}
+            onChange={(e) => setTaskReminders(e.target.checked)}
+          />
+          <span>
+            {t("pricelist.settings.taskReminders")}
+            <span className="block text-xs text-muted">
+              {t("pricelist.settings.taskRemindersHint")}
+            </span>
           </span>
         </label>
         {canEdit && (

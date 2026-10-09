@@ -31,6 +31,12 @@ import { findManagerMessage } from "./manager-guard";
 import type { ZernioPlatform } from "./platform";
 import { pageAll } from "@/core/db/page";
 import { buyerLocale } from "@/core/consultant/messages";
+import { sellerLocaleSafe } from "@/core/ai/seller-text";
+import {
+  sendMorningTaskList,
+  sendTaskReminders,
+  type NotifySeller,
+} from "@/core/consultant/task-reminders";
 import { loadTasks } from "@/core/consultant/tasks";
 import type { ZernioInboxMessage } from "./inbox-types";
 
@@ -38,7 +44,8 @@ import type { ZernioInboxMessage } from "./inbox-types";
  * Фоновые задачи консультанта по прайсу (крон health, раз в 15 минут, как
  * кроны v1): свежий курс рубля (шаг 18), прайс из подключённой Google
  * Таблицы (как refreshCatalogFromSavedSheet v1) и одно напоминание
- * замолчавшему покупателю в директе (шаг 16). Только клиенты v2 с режимом
+ * замолчавшему покупателю в директе (шаг 16), напоминания продавцу о
+ * неразобранных задачах. Только клиенты v2 с режимом
  * «по прайсу» — список уже отобран маршрутом крона.
  */
 const MAX_FOLLOW_UPS_PER_RUN = 20;
@@ -75,11 +82,16 @@ export async function runPricelistJobs(
       ).catch((e: unknown) => ({ ok: false, error: e instanceof Error ? e.message : String(e) }));
       const followUps = await sendPricelistFollowUps(ctx, now, transport);
       const digest = await sendQualityDigest(ctx, now);
+      const tasks = await sendTaskNudges(ctx, now).catch((e: unknown) => ({
+        ok: false,
+        error: e instanceof Error ? e.message : String(e),
+      }));
       out[t.id] = {
         rate: rate.fetched ? rate.stored?.rate : (rate.error ?? "kept"),
         sheet,
         followUps,
         digest,
+        tasks,
       };
     } catch (e) {
       out[t.id] = { ok: false, error: e instanceof Error ? e.message : String(e) };
@@ -285,6 +297,23 @@ function managerInChat(
       now.getTime(),
     ),
   );
+}
+
+/**
+ * Задачи консультанта, которые никто не разобрал: утренний список в 9:00 и
+ * напоминание через 2 ч (core/consultant/task-reminders). Утро — первым:
+ * показанные в списке задачи днём второй раз не напоминаются.
+ */
+export async function sendTaskNudges(
+  ctx: TenantContext,
+  now = new Date(),
+  notify: NotifySeller = async (c, html, kind) =>
+    (await import("@/channels/telegram/notify")).notifyAdminsHtml(c, html, { kind }),
+): Promise<Record<string, unknown>> {
+  const locale = await sellerLocaleSafe(ctx);
+  const morning = await sendMorningTaskList(ctx, locale, notify, now);
+  const reminders = await sendTaskReminders(ctx, locale, notify, now);
+  return { morning, reminders };
 }
 
 /**
