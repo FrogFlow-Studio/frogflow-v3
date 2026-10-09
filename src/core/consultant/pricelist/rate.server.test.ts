@@ -9,6 +9,7 @@ import {
   loadAttemptLog,
   refreshRate,
 } from "./rate.server";
+import { effectiveRateSource } from "./rate";
 import { adminT } from "@/app/i18n/admin";
 import { rateAttemptText } from "@/app/admin/pricelist-cards";
 
@@ -43,6 +44,28 @@ function shop(rateRow?: string, source: "vtb" | "finkaz" | "manual" = "finkaz") 
 const page = vi.fn(async () => new Response(PAGE));
 
 describe("курс рубля магазина", () => {
+  it("источник не выбран — курс с Kaspi (finkaz), и панели показывают его же", async () => {
+    // BOVI 07.10: форма оператора показывала «ВТБ» при пустой настройке и при
+    // сохранении записала ВТБ; без ретранслятора ВТБ молчит, курс протух.
+    expect(effectiveRateSource(undefined)).toBe("finkaz");
+    expect(effectiveRateSource({})).toBe("finkaz");
+    expect(effectiveRateSource({ rate_source: "vtb" })).toBe("vtb");
+    const db = fakeDb({ unique: { app_settings: [["bot_id", "key"]] } });
+    db.tables.app_settings = [];
+    const ctx = {
+      tenant: {
+        id: `bot-${++n}`,
+        modules: {},
+        settings: { consultant_pricelist: { enabled: true } },
+      },
+      db,
+    } as unknown as TenantContext;
+    const fetchImpl = vi.fn(async () => new Response(PAGE));
+    const r = await refreshRate(ctx, fetchImpl as unknown as typeof fetch, NOW);
+    expect(r).toMatchObject({ ok: true, fetched: true, kind: "finkaz" });
+    expect(String((fetchImpl.mock.calls[0] as unknown[])[0])).toContain("finkaz.kz/kaspi-bank");
+  });
+
   it("обновляется со страницы банка и годится для цены", async () => {
     const { ctx, db } = shop();
     const r = await refreshRate(ctx, page as unknown as typeof fetch, NOW);

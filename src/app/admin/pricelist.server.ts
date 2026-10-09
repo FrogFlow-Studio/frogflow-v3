@@ -40,7 +40,7 @@ import {
   updateProductMedia,
 } from "@/core/consultant/pricelist/media.server";
 import { mediaMatchesProduct, type ProductMedia } from "@/core/consultant/pricelist/media";
-import { isRateFresh } from "@/core/consultant/pricelist/rate";
+import { effectiveRateSource, isRateFresh } from "@/core/consultant/pricelist/rate";
 import {
   getStoredRate,
   loadAttemptLog,
@@ -113,7 +113,7 @@ export async function pricelistOverview(ctx: TenantContext) {
     persona: p.persona ?? DEFAULT_PERSONA,
     personaCustom: Boolean(p.persona),
     personaLimits: PERSONA_LIMITS,
-    rateSource: p.rate_source ?? "vtb",
+    rateSource: effectiveRateSource(p),
     rate: stored
       ? {
           rate: stored.rate,

@@ -2,6 +2,7 @@ import { serviceDb } from "@/core/db/client.server";
 import { patchTenantSettings, requireTenant } from "@/core/tenant/resolve.server";
 import { serverFailure } from "@/lib/server-failure";
 import { logEvent } from "./client-log.server";
+import { effectiveRateSource } from "@/core/consultant/pricelist/rate";
 
 /** Консультант, умный поиск и витрина клиента: бюджеты и лимиты. */
 
@@ -31,7 +32,7 @@ export async function consultantBudget(botId: string) {
     pricelist: t.settings.consultant_pricelist?.enabled === true,
     pricelistOptions: {
       hours: t.settings.consultant_pricelist?.hours ?? null,
-      rateSource: t.settings.consultant_pricelist?.rate_source ?? "vtb",
+      rateSource: effectiveRateSource(t.settings.consultant_pricelist),
       rateUrl: t.settings.consultant_pricelist?.rate_url ?? "",
     },
   };

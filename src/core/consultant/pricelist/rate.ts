@@ -94,6 +94,18 @@ export type StoredVtbRate = {
  */
 export const RATE_MAX_AGE_HOURS = 72;
 
+/**
+ * Источник курса магазина. Не выбран — Kaspi через finkaz.kz: так курс брал
+ * BOVI в v1, и так его берёт обновление (rate.server). Панели показывают то
+ * же значение: форма с «ВТБ» по умолчанию при сохранении записывала ВТБ, а
+ * ВТБ без ретранслятора не отвечает — курс BOVI протух (07.10).
+ */
+export function effectiveRateSource(
+  cfg: { rate_source?: "vtb" | "finkaz" | "manual" } | null | undefined,
+): "vtb" | "finkaz" | "manual" {
+  return cfg?.rate_source ?? "finkaz";
+}
+
 export function isRateFresh(rate: StoredVtbRate | null, now: number = Date.now()): boolean {
   if (!rate?.rate) return false;
   const ageHours = (now - Date.parse(rate.updatedAt)) / 36e5;
