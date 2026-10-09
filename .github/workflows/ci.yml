@@ -18,7 +18,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - run: npm ci --legacy-peer-deps
+      - run: npm ci
       - run: npm run lint
       - run: npm run typecheck
       # Живые тесты (tests/integration) — в задаче live ниже.
@@ -43,7 +43,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - run: npm ci --legacy-peer-deps
+      - run: npm ci
       - run: npx vitest run tests/integration
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -75,7 +75,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - run: npm ci --legacy-peer-deps
+      - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npx vite build
         env:
