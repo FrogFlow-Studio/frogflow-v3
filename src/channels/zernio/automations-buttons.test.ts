@@ -463,6 +463,71 @@ describe("Comment-to-DM: быстрая покупка вместо второг
   });
 });
 
+describe("Comment-to-DM: быстрая покупка только на кодовое слово (Копилка, 09.10, заказ #45)", () => {
+  function anyCommentRule() {
+    const { ctx, db } = setup();
+    db.tables.bot_users = [];
+    db.tables.products = [{ id: "p-1", bot_id: BOT, name: "Палитра средств выразительности" }];
+    db.tables.app_settings = [
+      {
+        bot_id: BOT,
+        key: "ig_comment_automations_meta",
+        value: JSON.stringify({
+          reel: {
+            twoStepDm: true,
+            secondDmButtons: [{ type: "postback", title: "Купить", payload: "PROD:p-1" }],
+          },
+        }),
+      },
+    ];
+    const inbox = vi.fn(async () => ({ ok: true }));
+    const api = {
+      // Правило рилса без кодовых слов: Zernio отвечает на любой комментарий.
+      list: async () => [
+        { id: "reel", name: "Рилс", accountId: "acc-1", keywords: [], dmMessage: "Привет!" },
+      ],
+      inbox,
+      tail: vi.fn(async () => []),
+    } as unknown as AutomationApi;
+    const comment = async (text: string) => {
+      await handleCommentReceived(ctx, event(text), api, { delayMs: 0 });
+      for (const l of db.tables.zernio_logs!) l.created_at ??= new Date().toISOString();
+    };
+    return { ctx, api, inbox, comment };
+  }
+  const event = (text: string) => ({
+    account: { id: "acc-1" },
+    post: { platformPostId: "ig-reel-1", content: "Пишите слово «Палитра»" },
+    comment: { id: `c-${text}`, text, author: { id: "u-1", username: "dinara" } },
+  });
+  const who = (express: (id: string) => Promise<boolean>) => ({
+    accountId: "acc-1",
+    conversationId: "conv-1",
+    username: "dinara",
+    express,
+  });
+
+  it("«Уголок» под рилсом с «Палитрой» — не заказ на «Палитру», а обычное второе сообщение с «Купить»", async () => {
+    const { ctx, api, inbox, comment } = anyCommentRule();
+    await comment("Уголок");
+    const express = vi.fn(async () => true);
+    expect(await deliverPendingTwoStepDm(ctx, who(express), api)).toBe(true);
+    expect(express).not.toHaveBeenCalled();
+    expect(inbox).toHaveBeenCalledTimes(1);
+  });
+
+  it("«Палитра» (и «Политра») — сразу заказ на товар", async () => {
+    for (const word of ["Палитра", "политра"]) {
+      const { ctx, api, inbox, comment } = anyCommentRule();
+      await comment(word);
+      const express = vi.fn(async () => true);
+      expect(await deliverPendingTwoStepDm(ctx, who(express), api)).toBe(true);
+      expect(express).toHaveBeenCalledWith("p-1");
+      expect(inbox).not.toHaveBeenCalled();
+    }
+  });
+});
+
 describe("Comment-to-DM: второй шаг из очереди уходит один раз", () => {
   function pendingSetup() {
     const { ctx, db } = setup();

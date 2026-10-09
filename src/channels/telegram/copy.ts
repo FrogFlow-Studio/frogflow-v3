@@ -404,7 +404,7 @@ const ru: Msg = {
     "Нажмите кнопку ниже. Если не открывается — скопируйте ссылку и откройте её в браузере или в приложении Kaspi.",
   payByCardBtn: "💳 Картой онлайн",
   prodamusCardHint:
-    "Откройте ссылку и оплатите банковской картой. Заказ подтвердится сам сразу после оплаты.",
+    "Откройте ссылку и оплатите банковской картой. Форма попросит номер телефона: укажите свой, на него придёт чек. Заказ подтвердится сам сразу после оплаты.",
   payBalanceBtn: (no) => `💳 Оплатить остаток #${no}`,
   balanceTitle: (no, sum) => `💳 <b>Остаток по заказу #${no}</b>\n\n💰 К оплате: <b>${sum}</b>`,
   balanceNoDetails: "Реквизиты для оплаты уточните у продавца.",
@@ -701,7 +701,7 @@ const ru: Msg = {
   stripeUnavailable: "Оплата иностранной картой сейчас недоступна — выберите другой способ.",
   payViaProdamusBtn: "🇷🇺 Карта РФ / СБП",
   prodamusHint:
-    "Откройте ссылку и оплатите картой российского банка или через СБП. Заказ подтвердится сам сразу после оплаты.",
+    "Откройте ссылку и оплатите картой российского банка или через СБП. Форма попросит номер телефона: укажите свой, на него придёт чек. Заказ подтвердится сам сразу после оплаты.",
   payManualBtn: "🧾 Перевод по реквизитам + чек",
   robokassaHint: "Нажмите кнопку, оплатите картой — после оплаты всё придёт сюда автоматически.",
   paymentReceived: (no) => `✅ Оплата по заказу #${no} получена.`,
@@ -808,10 +808,10 @@ const kk: Msg = {
     "Төмендегі батырманы басыңыз. Ашылмаса — сілтемені көшіріп, браузерде немесе Kaspi қосымшасында ашыңыз.",
   payByCardBtn: "💳 Картамен онлайн",
   prodamusCardHint:
-    "Сілтемені ашып, банк картасымен төлеңіз. Тапсырыс төлемнен кейін бірден өзі расталады.",
+    "Сілтемені ашып, банк картасымен төлеңіз. Форма телефон нөмірін сұрайды: өз нөміріңізді жазыңыз, чек соған келеді. Тапсырыс төлемнен кейін бірден өзі расталады.",
   payViaProdamusBtn: "🇷🇺 РФ картасы / СБП",
   prodamusHint:
-    "Сілтемені ашып, Ресей банкінің картасымен немесе СБП арқылы төлеңіз. Тапсырыс төлемнен кейін бірден өзі расталады.",
+    "Сілтемені ашып, Ресей банкінің картасымен немесе СБП арқылы төлеңіз. Форма телефон нөмірін сұрайды: өз нөміріңізді жазыңыз, чек соған келеді. Тапсырыс төлемнен кейін бірден өзі расталады.",
   phoneNoted: "Нөміріңізді жазып алдым 👍",
   loginCodeMsg: (code, minutes) =>
     `🔐 Сайтқа кіру коды: <b>${code}</b>\n${minutes} минут жарамды, бір рет қана қолданылады. Оны ешкімге айтпаңыз.`,
@@ -1103,7 +1103,7 @@ const en: Msg = {
     "Tap the button below. If it does not open, copy the link and open it in your browser or the Kaspi app.",
   payByCardBtn: "💳 Card payment",
   prodamusCardHint:
-    "Open the link and pay by bank card. The order is confirmed automatically right after payment.",
+    "Open the link and pay by bank card. The form will ask for a phone number: enter yours, the receipt goes there. The order is confirmed automatically right after payment.",
   phoneNoted: "Got your number 👍",
   loginCodeMsg: (code, minutes) =>
     `🔐 Your website login code: <b>${code}</b>\nValid for ${minutes} minutes, works once. Do not share it with anyone.`,
@@ -1154,7 +1154,7 @@ const en: Msg = {
     "Foreign card payment is unavailable right now — please choose another method.",
   payViaProdamusBtn: "🇷🇺 RU card / SBP",
   prodamusHint:
-    "Open the link and pay with a Russian bank card or via SBP. The order is confirmed automatically right after payment.",
+    "Open the link and pay with a Russian bank card or via SBP. The form will ask for a phone number: enter yours, the receipt goes there. The order is confirmed automatically right after payment.",
   payBalanceBtn: (no) => `💳 Pay the balance #${no}`,
   balanceTitle: (no, sum) => `💳 <b>Balance for order #${no}</b>\n\n💰 To pay: <b>${sum}</b>`,
   balanceNoDetails: "Please ask the seller for payment details.",
@@ -1426,10 +1426,10 @@ const uz: Msg = {
     "Quyidagi tugmani bosing. Ochilmasa — havolani nusxalab, brauzerda yoki Kaspi ilovasida oching.",
   payByCardBtn: "💳 Karta orqali",
   prodamusCardHint:
-    "Havolani oching va bank kartasi bilan to‘lang. Buyurtma to‘lovdan so‘ng darhol avtomatik tasdiqlanadi.",
+    "Havolani oching va bank kartasi bilan to‘lang. Forma telefon raqamini so‘raydi: o‘z raqamingizni kiriting, chek unga keladi. Buyurtma to‘lovdan so‘ng darhol avtomatik tasdiqlanadi.",
   payViaProdamusBtn: "🇷🇺 RF kartasi / SBP",
   prodamusHint:
-    "Havolani oching va Rossiya banki kartasi yoki SBP orqali to‘lang. Buyurtma to‘lovdan so‘ng darhol o‘zi tasdiqlanadi.",
+    "Havolani oching va Rossiya banki kartasi yoki SBP orqali to‘lang. Forma telefon raqamini so‘raydi: o‘z raqamingizni kiriting, chek unga keladi. Buyurtma to‘lovdan so‘ng darhol o‘zi tasdiqlanadi.",
   cartHeader: "🛒 <b>Savatingiz</b>\n\n",
   phoneNoted: "Raqamingizni yozib oldim 👍",
   loginCodeMsg: (code, minutes) =>
