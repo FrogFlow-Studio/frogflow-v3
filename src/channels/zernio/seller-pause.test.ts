@@ -224,3 +224,78 @@ describe("событие «исходящее сообщение продавц�
     expect(notify).not.toHaveBeenCalled();
   });
 });
+
+describe("сообщения автоответа Zernio паузу не ставят (Копилка, 09.10, aigul1975zh)", () => {
+  const firstDm = "Палитра — 1700 ₸\n\nОтветьте «+» в этот чат, и я пришлю ссылку 👇";
+
+  it("первое сообщение автоответа на комментарий в хвосте — не реплика продавца", async () => {
+    const { ctx, customer, transport, tail, msg } = setup();
+    tail.mockResolvedValue([seller(3, firstDm)]);
+    const r = await sellerPauseActive(
+      ctx,
+      customer,
+      msg({ text: "87081929907" }),
+      transport,
+      "day",
+      NOW,
+    );
+    expect(r.paused).toBe(false);
+    expect(notify).not.toHaveBeenCalled();
+  });
+
+  it("призыв из правила продавца — тоже узнаём; сообщение с automationId — не человек", async () => {
+    const { db, ctx, customer, transport, tail, msg } = setup();
+    db.tables.app_settings = [
+      {
+        bot_id: BOT,
+        key: "ig_comment_automations_meta",
+        value: JSON.stringify({ r1: { twoStepDm: true, replyPrompt: "Напишите «да» 👇" } }),
+      },
+    ];
+    tail.mockResolvedValue([
+      seller(5, "Таблички для кабинета. Напишите «да» 👇"),
+      { ...seller(4, "Держите материалы"), automationId: "r1" },
+    ]);
+    const r = await sellerPauseActive(ctx, customer, msg(), transport, "day", NOW);
+    expect(r.paused).toBe(false);
+  });
+
+  it("отметка паузы от автоответа в памяти снимается, когда хвост её покрывает", async () => {
+    const { ctx, customer, transport, tail, msg } = setup({
+      locale: "ru",
+      direct: { seller_at: ago(3), seller_noted: ago(3) },
+    });
+    tail.mockResolvedValue([
+      seller(3, firstDm),
+      { direction: "incoming", message: "+", createdAt: ago(2) },
+    ]);
+    const r = await sellerPauseActive(ctx, customer, msg(), transport, "day", NOW);
+    expect(r.paused).toBe(false);
+  });
+
+  it("продавец написал руками после автоответа — пауза есть", async () => {
+    const { ctx, customer, transport, tail, msg } = setup();
+    tail.mockResolvedValue([
+      seller(5, firstDm),
+      seller(2, "Здравствуйте! Сейчас пришлю реквизиты"),
+    ]);
+    const r = await sellerPauseActive(ctx, customer, msg(), transport, "day", NOW);
+    expect(r.paused).toBe(true);
+  });
+
+  it("событие исходящего: автоответ (по призыву или automationId) паузу не ставит", async () => {
+    const { ctx, customer, msg } = setup();
+    const out = (m: Partial<ParsedZernioMessage>) =>
+      handleSellerOutgoing(
+        ctx,
+        customer,
+        msg({ outgoing: true, sentVia: null, sentAt: ago(1), ...m }),
+        "day",
+        undefined,
+        NOW,
+      );
+    expect(await out({ text: firstDm })).toBe(false);
+    expect(await out({ text: "Держите", fromScenario: true })).toBe(false);
+    expect(await out({ text: "Добрый день, сейчас отвечу" })).toBe(true);
+  });
+});

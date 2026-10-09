@@ -65,6 +65,11 @@ export type ZernioWebhookMessagePayload = {
     sentAt?: string;
     /** Чем отправлено исходящее: null/«human» — человек, остальное — бот и сценарии Zernio. */
     sentVia?: string | null;
+    automationId?: string | null;
+    workflowId?: string | null;
+    sequenceId?: string | null;
+    broadcastId?: string | null;
+    executionId?: string | null;
   };
   conversation?: {
     id?: string;
@@ -124,6 +129,8 @@ export type ParsedZernioMessage = {
   outgoing: boolean;
   /** Только у исходящего: кто отправил (см. `ZernioInboxMessage.sentVia`); нет поля — неизвестно. */
   sentVia?: string | null;
+  /** Исходящее ушло сценарием Zernio (автоответ, цепочка, рассылка), а не человеком. */
+  fromScenario?: boolean;
   /** Время сообщения по часам Zernio (ISO), если пришло. */
   sentAt?: string | null;
 };
@@ -339,6 +346,13 @@ export function parseZernioMessage(payload: ZernioWebhookMessagePayload): Parsed
     storyMediaUrl,
     outgoing: message.direction === "outgoing",
     ...(message.sentVia !== undefined ? { sentVia: message.sentVia } : {}),
+    fromScenario: Boolean(
+      message.automationId ||
+      message.workflowId ||
+      message.sequenceId ||
+      message.broadcastId ||
+      message.executionId,
+    ),
     sentAt: message.sentAt ?? null,
   };
 }

@@ -487,20 +487,9 @@ describe("emailStep — шаг «ваша почта»", () => {
     skipped: false,
     mailReady: true,
   };
-  it("Instagram — почта по желанию: файлы приходят кнопкой «Скачать» в Direct", () => {
-    expect(emailStep(base)).toBe("optional");
-    expect(emailStep({ ...base, skipped: true })).toBeNull();
-  });
-  it("WhatsApp — предлагаем с кнопкой «Без почты», после отказа не спрашиваем", () => {
-    expect(emailStep({ ...base, platform: "whatsapp" })).toBe("optional");
-    expect(emailStep({ ...base, platform: "whatsapp", skipped: true })).toBeNull();
-  });
-  it("шага нет: почта известна, физический товар, Telegram, почта платформы не настроена", () => {
-    expect(emailStep({ ...base, knownEmail: "a@b.kz" })).toBeNull();
-    expect(emailStep({ ...base, knownEmail: "  " })).toBe("optional");
-    expect(emailStep({ ...base, physical: true })).toBeNull();
-    expect(emailStep({ ...base, platform: "telegram" })).toBeNull();
-    expect(emailStep({ ...base, mailReady: false })).toBeNull();
+  it("в переписке шага нет нигде: файлы приходят в чат, вопрос терял покупателей (Копилка, 09.10)", () => {
+    for (const platform of ["instagram", "whatsapp", "telegram"])
+      expect(emailStep({ ...base, platform }), platform).toBeNull();
   });
   it("«отмена» понимается на всех языках покупателя", () => {
     for (const w of ["отмена", "Cancel", "болдырмау", "bekor"]) expect(isCancel(w), w).toBe(true);
