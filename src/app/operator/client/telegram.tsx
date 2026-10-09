@@ -2,6 +2,7 @@
 import { useState, type FormEvent } from "react";
 import {
   connectTelegramFn,
+  connectVipBotOperatorFn,
   reinstallWebhookFn,
   setServedByFn,
 } from "@/app/operator/clients.functions";
@@ -52,6 +53,10 @@ export function TelegramCard({
     await reinstallWebhookFn({ data: { botId: c.id } });
     await onDone();
   });
+  const vip = useAction(async (token: string) => {
+    await connectVipBotOperatorFn({ data: { botId: c.id, token } });
+    await onDone();
+  });
   return (
     <Card
       title="Telegram"
@@ -87,7 +92,51 @@ export function TelegramCard({
           {c.telegram.connected ? "Заменить" : "Подключить"}
         </button>
       </form>
-      <ErrorBox error={connect.error ?? reinstall.error} />
+      {(c.modules.vip || c.vipBot.connected) && (
+        <form
+          className="mt-3 space-y-1"
+          onSubmit={(e: FormEvent<HTMLFormElement>) => {
+            e.preventDefault();
+            const f = new FormData(e.currentTarget);
+            void vip
+              .run(String(f.get("vip_token")).trim())
+              .then(() => (e.target as HTMLFormElement).reset?.())
+              .catch(() => {});
+          }}
+        >
+          <div className="flex items-center justify-between text-xs">
+            <span className="font-medium">VIP-бот</span>
+            {c.vipBot.connected ? (
+              <Badge tone={c.vipBot.webhookOk ? "ok" : "neutral"}>
+                @{c.vipBot.username ?? "бот"}
+              </Badge>
+            ) : (
+              <Badge>не подключён</Badge>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <input
+              className="input"
+              name="vip_token"
+              placeholder={
+                c.vipBot.connected ? "Новый токен VIP-бота" : "Токен VIP-бота из проекта Vercel v1"
+              }
+              autoComplete="off"
+              required
+            />
+            <button className="btn-secondary shrink-0" disabled={vip.busy}>
+              {c.vipBot.connected ? "Заменить" : "Подключить"}
+            </button>
+          </div>
+          {c.servedBy !== "v2" && (
+            <p className="text-xs text-muted">
+              Пока клиент на v1, токен только сохраняется: вебхук VIP-бота переставится сюда при
+              переключении на v2.
+            </p>
+          )}
+        </form>
+      )}
+      <ErrorBox error={connect.error ?? reinstall.error ?? vip.error} />
       {webhook && (c.telegram.connected || c.servedBy === "v2") && (
         <div className="mt-4 rounded-md bg-surface-2 p-3 text-xs">
           <div className="flex items-center justify-between">
@@ -136,13 +185,22 @@ export function MigrationCard({
     const r = await setServedByFn({ data: { botId: c.id, servedBy: v } });
     await onDone();
     const tags = r && "storyTags" in r ? r.storyTags : undefined;
-    if (tags && "error" in tags) setServed(`Теги сторис не перенесены: ${tags.error}`);
+    const notes: string[] = [];
+    if (tags && "error" in tags) notes.push(`Теги сторис не перенесены: ${tags.error}`);
     else if (tags && (tags.added || tags.dropped))
-      setServed(
+      notes.push(
         `Теги сторис: перенесено ${tags.added}` +
           (tags.dropped ? `, не влезло в предел ${tags.dropped}` : "") +
           ".",
       );
+    const vipHook = r && "vip" in r ? r.vip : null;
+    if (vipHook)
+      notes.push(
+        vipHook.ok
+          ? "Вебхук VIP-бота переставлен сюда."
+          : `Вебхук VIP-бота не переставлен (${vipHook.error ?? "ошибка Telegram"}): крон повторит в начале часа.`,
+      );
+    if (notes.length) setServed(notes.join(" "));
   });
   return (
     <Card title="Переезд на v2">

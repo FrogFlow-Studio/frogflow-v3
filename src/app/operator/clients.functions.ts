@@ -155,6 +155,25 @@ export const connectTelegramFn = createServerFn({ method: "POST" })
     return (await impl()).connectTelegram(data.botId, data.token);
   });
 
+/**
+ * Токен VIP-бота из карточки клиента: до переезда тоже — его требует проверка
+ * перед переездом, а в админку продавца v1-клиента не пускают. Вебхук VIP
+ * ставится только клиенту на v2 (ensureVipWebhook), у v1 его не забираем.
+ */
+export const connectVipBotOperatorFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        botId,
+        token: z.string().regex(/^\d+:[\w-]{30,}$/, "Не похоже на токен BotFather"),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    await guard();
+    return (await impl()).connectVipBot(data.botId, data.token);
+  });
+
 export const setServedByFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ botId, servedBy: z.enum(["v1", "v2"]) }).parse(d))
   .handler(async ({ data }) => {

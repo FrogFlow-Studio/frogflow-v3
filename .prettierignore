@@ -16,3 +16,4 @@ playwright-report
 
 # Файлы подтверждения поисковиков: содержимое строго как выдал поисковик.
 public/google*.html
+public/yandex_*.html
