@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import * as F from "./fixtures.ts";
-import { watch } from "./helpers.ts";
+import { addToCart, watch } from "./helpers.ts";
 
 /**
  * Бесплатная доставка от суммы на сайте: до порога — «осталось добрать» и платный район;
@@ -12,7 +12,7 @@ test("сайт: до порога доставки подсказка «оста
   const errors = await watch(page);
   const shop = `/s/${F.FREE14_SHOP_SLUG}`;
   await page.goto(`${shop}/p/${F.FREE14_CAKE_ID}`);
-  await page.getByRole("button", { name: "🛒 В корзину", exact: true }).click();
+  await addToCart(page);
   await page.goto(`${shop}/checkout`);
   await page.getByRole("radio", { name: "Доставка", exact: true }).check();
 
@@ -25,7 +25,7 @@ test("сайт: до порога доставки подсказка «оста
   ).toHaveCount(1);
 
   await page.goto(`${shop}/p/${F.FREE14_SWEET_ID}`);
-  await page.getByRole("button", { name: "🛒 В корзину", exact: true }).click();
+  await addToCart(page);
   await page.goto(`${shop}/checkout`);
   await page.getByRole("radio", { name: "Доставка", exact: true }).check();
   // 3500 ≥ 3000: бесплатно.
