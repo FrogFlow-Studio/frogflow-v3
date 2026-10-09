@@ -644,6 +644,7 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
       // чек» (заказ #46 Копилки, 09.10) — реквизиты для России, если они
       // заведены, иначе честно: вопрос у продавца, он напишет здесь.
       if (isPayTrouble(text)) {
+        s.handoff = true;
         const ru = /росси|рубл|сбп|рф/i.test(text)
           ? await paymentMethodFor(s.ctx, "RU").catch(() => null)
           : null;

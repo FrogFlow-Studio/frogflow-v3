@@ -1820,6 +1820,29 @@ export const SCENARIOS: Scenario[] = [
     ],
   },
   {
+    id: "pay-trouble-then-thanks-no-receipt-prompt-ig-ru",
+    title: "после «передал продавцу» на «Спасибо» бот молчит, а не просит чек",
+    origin:
+      "заказ #65 Копилки русоведа 10.10 (sultanahmedovatamila798): «Рублями сколько стоит? Я с Дагестана» → «Передал продавцу», на «Спасибо ❤️» — «Пришлите чек»",
+    channel: "instagram",
+    locale: "ru",
+    modules: { prodamus: true },
+    state: { mode: "choose_pay", pending_order_id: 15, pending_display_no: 15 },
+    arrange: prodamusOrder,
+    steps: [
+      {
+        say: { text: "Рублями сколько стоит? Я с Дагестана" },
+        expect: {
+          count: 1,
+          says: [(c) => c.payTroubleHandoff],
+          notSays: [(c) => c.sendReceiptPrompt],
+        },
+      },
+      { say: { text: "Спасибо ❤️" }, expect: { silent: true } },
+      { say: { text: "Хорошо, жду" }, expect: { silent: true } },
+    ],
+  },
+  {
     id: "prodamus-link-no-buttons-ig-ru",
     title: "кнопки канал не принял — ссылка на оплату приходит текстом",
     origin: "заказ #15 Копилки Русоведа, 09.10",
