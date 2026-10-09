@@ -15,6 +15,12 @@ export type ZernioInboxMessage = {
   sentAt?: string;
   /** Чем отправлено: через Zernio или из приложения Instagram. */
   sentVia?: string | null;
+  /** Отправлено сценарием Zernio (автоответ на комментарий, цепочка, рассылка) — не человеком. */
+  automationId?: string | null;
+  workflowId?: string | null;
+  sequenceId?: string | null;
+  broadcastId?: string | null;
+  executionId?: string | null;
   /**
    * Поля сообщения в той же форме, что в событии вебхука (message.received):
    * опрос ящика (inbox-poll.server) отдаёт их обработчику как есть — фото,
