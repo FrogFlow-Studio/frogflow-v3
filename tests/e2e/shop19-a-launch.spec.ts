@@ -6,8 +6,8 @@ import { watch } from "./helpers.ts";
 test("главная: запуск магазина с процентом и скрытием шага", async ({ page }) => {
   const errors = await watch(page);
   await page.goto("/admin/login");
-  await page.locator('input[name="username"]').fill(F.SELLER_LOGIN);
-  await page.locator('input[name="password"]').fill(F.SELLER_PASSWORD);
+  await page.locator('input[name="username"]').fill(F.LAUNCH19_SELLER_LOGIN);
+  await page.locator('input[name="password"]').fill(F.LAUNCH19_SELLER_PASSWORD);
   await page.getByRole("button", { name: "Войти", exact: true }).click();
   await expect(page).toHaveURL(/\/admin$/);
 

@@ -18,3 +18,17 @@ export async function openFilters(page: Page): Promise<void> {
     await expect(button).toHaveAttribute("aria-expanded", "true", { timeout: 1000 });
   }).toPass({ timeout: 10_000 });
 }
+
+/**
+ * «В корзину» на странице товара. Клик до гидратации ничего не кладёт, и оформление
+ * открывается с пустой корзиной: повторяем, пока не появится «Добавлено в корзину».
+ * Корзина в браузере, сервер не участвует: зарегистрированный клик сразу даёт надпись.
+ */
+export async function addToCart(page: Page): Promise<void> {
+  const button = page.getByRole("button", { name: "🛒 В корзину", exact: true });
+  const added = page.getByText("Добавлено в корзину", { exact: true });
+  await expect(async () => {
+    if (!(await added.isVisible())) await button.click();
+    await expect(added).toBeVisible({ timeout: 1000 });
+  }).toPass({ timeout: 10_000 });
+}

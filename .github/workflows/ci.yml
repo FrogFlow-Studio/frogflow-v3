@@ -7,8 +7,33 @@ on:
   # Ручной перезапуск на master: заново выложить прод (задача deploy).
   workflow_dispatch:
 
+# Новый пуш в ту же ветку PR отменяет её старый прогон: проверять устаревший
+# коммит незачем. Прогоны на master не отменяются.
+concurrency:
+  group: ci-${{ github.event_name == 'pull_request' && github.head_ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
-  check:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # Кэш eslint и prettier по содержимому файлов: заново проверяются только
+      # изменившиеся. Правила eslint без информации о типах, кэш не устаревает.
+      - uses: actions/cache@v4
+        with:
+          path: node_modules/.cache/lint
+          key: lint-${{ hashFiles('package-lock.json', 'eslint.config.js', '.prettierignore') }}-${{ github.sha }}
+          restore-keys: lint-${{ hashFiles('package-lock.json', 'eslint.config.js', '.prettierignore') }}-
+      - run: npx eslint . --cache --cache-strategy content --cache-location node_modules/.cache/lint/eslint
+      - run: npx prettier --check . --cache --cache-strategy content --cache-location node_modules/.cache/lint/prettier
+
+  typecheck:
     runs-on: ubuntu-latest
     # tsc по всему проекту не помещается в куче Node по умолчанию (~2 ГБ на раннере):
     # падал с «JavaScript heap out of memory» на typecheck.
@@ -21,13 +46,56 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm run lint
-      - run: npm run typecheck
-      # Живые тесты (tests/integration) — в задаче live ниже.
-      - run: npx vitest run --exclude "tests/integration/**"
+      # Инкрементальная проверка: tsc сверяет файлы по хэшу содержимого.
+      - uses: actions/cache@v4
+        with:
+          path: node_modules/.cache/tsc
+          key: tsc-${{ hashFiles('package-lock.json', 'tsconfig.json') }}-${{ github.sha }}
+          restore-keys: tsc-${{ hashFiles('package-lock.json', 'tsconfig.json') }}-
+      - run: npx tsc --noEmit --incremental --tsBuildInfoFile node_modules/.cache/tsc/tsbuildinfo
+
+  # Unit-тесты без живой базы: 4 части, внутри части файлы идут параллельно
+  # (в vitest.config.ts они по одному только ради живых тестов).
+  # Живые тесты (tests/integration) — в задаче live ниже.
+  unit:
+    name: unit ${{ matrix.shard }}/4
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx vitest run --exclude "tests/integration/**" --fileParallelism --shard=${{ matrix.shard }}/4
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
       - run: npx vite build
         env:
           APP_URL: https://ci.invalid
+
+  # Общий итог под прежним именем «check»: на него может ссылаться защита ветки.
+  check:
+    runs-on: ubuntu-latest
+    needs: [lint, typecheck, unit, build]
+    if: always()
+    steps:
+      - run: |
+          for r in ${{ needs.lint.result }} ${{ needs.typecheck.result }} ${{ needs.unit.result }} ${{ needs.build.result }}; do
+            test "$r" = success
+          done
 
   # Живые тесты (tests/integration) ходят в настоящую базу, в одного
   # демо-клиента, поэтому по очереди с ночным прогоном (группа live-db).
@@ -62,15 +130,16 @@ jobs:
 
   # Сквозной прогон в браузере: собранное приложение против подставной базы
   # с демо-магазином (tests/e2e/pg-stub.ts, seed.ts) — ключи настоящей базы здесь не нужны.
-  # Разбит на 4 параллельных части (--shard): одним заходом шёл ~14 минут.
-  # У каждой части своя сборка и своя подставная база.
+  # 8 параллельных частей (--shard): одним заходом шёл ~14 минут. У каждой
+  # части своя сборка и своя подставная база. Больше 2 потоков на машину не
+  # ставим: при 4 тесты мешают друг другу.
   e2e-shard:
-    name: e2e ${{ matrix.shard }}/4
+    name: e2e ${{ matrix.shard }}/8
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -78,12 +147,16 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ hashFiles('package-lock.json') }}
       - run: npx playwright install --with-deps chromium
       - run: npx vite build
         env:
           NITRO_PRESET: node-server
           APP_URL: https://ci.invalid
-      - run: npm run e2e -- --shard=${{ matrix.shard }}/4
+      - run: npm run e2e -- --shard=${{ matrix.shard }}/8
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
@@ -100,9 +173,10 @@ jobs:
       - run: test "${{ needs.e2e-shard.result }}" = success
 
   # Выкладка на прод (Vercel, frogflowplatform) после зелёных check и e2e на
-  # master. Через Deploy Hook: выкладки по push от аккаунта без доступа к
-  # Vercel он блокирует, а запуск хуком — нет. Ссылка хука — секрет
-  # VERCEL_DEPLOY_HOOK; без него задача падает, а не молча пропускается.
+  # master. Через Vercel CLI с токеном владельца: выкладки из git (и через
+  # Deploy Hook) Vercel блокирует по автору коммита, а выкладка CLI идёт от
+  # владельца токена. Токен — секрет VERCEL_TOKEN; без него задача падает,
+  # а не молча пропускается.
   deploy:
     if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request'
     needs: [check, e2e]
@@ -110,12 +184,24 @@ jobs:
     concurrency:
       group: deploy-prod
       cancel-in-progress: false
+    env:
+      VERCEL_ORG_ID: team_9hWAbMsXYoGYAiU580NQuJ2O
+      VERCEL_PROJECT_ID: prj_rMO61dNfPz1bBBM5DOGmVGILQU4z
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      # Сборка начинается с tsc по всему проекту: нужна куча больше 2 ГБ.
+      NODE_OPTIONS: --max-old-space-size=6144
     steps:
-      - name: Запуск выкладки
-        env:
-          VERCEL_DEPLOY_HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK }}
+      - name: Токен Vercel задан
         run: |
-          if [ -z "$VERCEL_DEPLOY_HOOK" ]; then
-            echo "::error::нет секрета VERCEL_DEPLOY_HOOK"; exit 1
+          if [ -z "$VERCEL_TOKEN" ]; then
+            echo "::error::нет секрета VERCEL_TOKEN"; exit 1
           fi
-          curl -fsS --max-time 30 -X POST "$VERCEL_DEPLOY_HOOK" -o /dev/null
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx --yes vercel@59.23.2 pull --yes --environment=production --token="$VERCEL_TOKEN"
+      - run: npx --yes vercel@59.23.2 build --prod --token="$VERCEL_TOKEN"
+      - run: npx --yes vercel@59.23.2 deploy --prebuilt --prod --token="$VERCEL_TOKEN"
