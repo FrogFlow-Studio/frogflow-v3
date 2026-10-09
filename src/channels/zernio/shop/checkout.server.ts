@@ -676,6 +676,7 @@ export async function finishCheckout(s: Shop, countryCode: string) {
       due,
       currency: order.currency,
       instructions: method.instructions,
+      items: (order.order_items ?? []).map((i) => i.name_snapshot),
     });
     return;
   }
@@ -697,6 +698,7 @@ export async function finishCheckout(s: Shop, countryCode: string) {
     qr: method.qr_code_path,
     physical,
     depositLine,
+    items: (order.order_items ?? []).map((i) => i.name_snapshot),
   });
 }
 
@@ -707,7 +709,7 @@ export async function finishCheckout(s: Shop, countryCode: string) {
  */
 async function sendPayChoice(
   s: Shop,
-  p: { no: number; due: number; currency: string; instructions: string | null },
+  p: { no: number; due: number; currency: string; instructions: string | null; items?: string[] },
 ) {
   const rk = await robokassaFor(s.ctx, p.currency);
   const pdm = await prodamusFor(s.ctx, p.currency);
@@ -732,9 +734,21 @@ async function sendPayChoice(
   ];
   await reply(
     s,
-    `${plain(s.m.manualTitleNew(p.no))}\n\n${plain(s.m.amountToPay(formatMoney(p.due, p.currency)))}\n\n${plain(s.m.choosePayMethodNamed(buttons.map((b) => b.title)))}`,
+    `${plain(s.m.manualTitleNew(p.no))}\n${itemsLine(p.items)}\n${plain(s.m.amountToPay(formatMoney(p.due, p.currency)))}\n\n${plain(s.m.choosePayMethodNamed(buttons.map((b) => b.title)))}`,
     { force: true, buttons },
   );
+}
+
+/**
+ * Что в заказе — строкой над суммой: в быстрой покупке это единственное
+ * сообщение, и покупатель должен видеть, за что платит. Короткая: с кнопками
+ * Instagram берёт не больше 640 знаков текста.
+ */
+function itemsLine(items: string[] | undefined): string {
+  const names = (items ?? []).map((n) => n.trim()).filter(Boolean);
+  if (!names.length) return "";
+  const line = names.join(", ");
+  return `${line.length > 120 ? `${line.slice(0, 119)}…` : line}\n`;
 }
 
 /**
@@ -760,6 +774,43 @@ async function resumePendingPayChoice(s: Shop): Promise<boolean> {
     due,
     currency: order.currency,
     instructions: method?.instructions ?? null,
+    items: (order.order_items ?? []).map((i) => i.name_snapshot),
+  });
+  return true;
+}
+
+/**
+ * Быстрая покупка того же товара, когда его заказ уже ждёт оплаты (двойное
+ * нажатие «Купить», повторный «+»): тот же заказ с оплатой, а не второй
+ * заказ. true — показали.
+ */
+export async function resumeExpressOrder(s: Shop, productId: string): Promise<boolean> {
+  const mode = s.customer.state.mode;
+  if (mode !== "choose_pay" && mode !== "awaiting_proof") return false;
+  const orderId = Number(s.customer.state.pending_order_id);
+  const order = orderId ? await getOrder(s.ctx, orderId) : null;
+  if (!order || order.telegram_id !== s.customer.telegramId || order.status !== "awaiting_payment")
+    return false;
+  const items = order.order_items ?? [];
+  if (items.length !== 1 || items[0]!.product_id !== productId) return false;
+  if (mode === "choose_pay") return resumePendingPayChoice(s);
+  const method = (await listActivePaymentMethods(s.ctx)).find(
+    (x) => x.country_code === order.country_code,
+  );
+  const physical = order.fulfillment_kind === "physical";
+  const due = await amountDueNow(s.ctx, {
+    total: Number(order.total),
+    fulfillment_kind: order.fulfillment_kind,
+  });
+  await sendManualInstructions(s, {
+    no: displayNo(order),
+    due,
+    currency: order.currency,
+    instructions: method?.instructions ?? null,
+    qr: method?.qr_code_path ?? null,
+    physical,
+    depositLine: "",
+    items: items.map((i) => i.name_snapshot),
   });
   return true;
 }
@@ -774,10 +825,11 @@ async function sendManualInstructions(
     qr: string | null;
     physical: boolean;
     depositLine: string;
+    items?: string[];
   },
 ) {
   const text =
-    `${plain(s.m.manualTitleNew(p.no))}\n\n${plain(s.m.amountToPay(formatMoney(p.due, p.currency)))}\n${p.depositLine}\n` +
+    `${plain(s.m.manualTitleNew(p.no))}\n${itemsLine(p.items)}\n${plain(s.m.amountToPay(formatMoney(p.due, p.currency)))}\n${p.depositLine}\n` +
     `${p.instructions || plain(s.m.defaultInstructions)}\n\n${plain(p.physical ? s.m.afterProofPhysical : s.m.afterProofManual)}`;
   await reply(s, text, { force: true, attachmentUrl: await photoFor(s, [p.qr]) });
 }
