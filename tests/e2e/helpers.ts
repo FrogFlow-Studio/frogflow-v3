@@ -32,3 +32,15 @@ export async function addToCart(page: Page): Promise<void> {
     await expect(added).toBeVisible({ timeout: 1000 });
   }).toPass({ timeout: 10_000 });
 }
+
+/**
+ * Ждёт, пока React возьмёт элемент страницы. До гидратации клик по кнопке ничего
+ * не делает, а выбор в `<select>` гидратация сбрасывает на `defaultValue`: под
+ * нагрузкой (несколько потоков Playwright) такие шаги теряются.
+ */
+export async function hydrated(page: Page, selector: string): Promise<void> {
+  await page.waitForFunction((sel) => {
+    const el = document.querySelector(sel);
+    return !!el && Object.keys(el).some((k) => k.startsWith("__reactFiber"));
+  }, selector);
+}
