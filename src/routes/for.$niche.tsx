@@ -100,7 +100,7 @@ function NichePageView() {
       <Header t={t} locale={locale} niche={niche} />
 
       <main>
-        <section className="mx-auto w-full max-w-6xl px-4 pt-10 pb-14 md:pt-16 md:pb-20">
+        <section className="mx-auto w-full max-w-[1440px] px-4 xl:px-8 pt-10 pb-14 md:pt-16 md:pb-20">
           <h1 className="max-w-3xl font-display text-3xl leading-[1.15] font-bold tracking-tight text-balance md:text-[42px]">
             {k("h1")}
           </h1>
@@ -140,7 +140,7 @@ function NichePageView() {
         </section>
 
         <section className="border-y border-line bg-surface">
-          <div className="mx-auto w-full max-w-6xl px-4 py-16">
+          <div className="mx-auto w-full max-w-[1440px] px-4 xl:px-8 py-16">
             <SectionTitle>{t("niche.featuresTitle")}</SectionTitle>
             <ul className="mt-8 grid gap-6 sm:grid-cols-2">
               {([1, 2, 3, 4] as const).map((n) => (
@@ -155,7 +155,7 @@ function NichePageView() {
           </div>
         </section>
 
-        <section className="mx-auto w-full max-w-6xl px-4 py-16">
+        <section className="mx-auto w-full max-w-[1440px] px-4 xl:px-8 py-16">
           <SectionTitle>{t("scen.title")}</SectionTitle>
           <div className="mt-6 grid gap-4 md:grid-cols-2">
             <div className="rounded-xl border border-line p-6">
@@ -185,7 +185,7 @@ function NichePageView() {
         <Pricing t={t} signup={signup} niche={NICHE_PRICING[niche]} page={niche} />
         <Faq t={t} />
 
-        <section className="mx-auto w-full max-w-6xl px-4 pb-16">
+        <section className="mx-auto w-full max-w-[1440px] px-4 xl:px-8 pb-16">
           <h2 className="font-semibold">{t("niche.others")}</h2>
           <NicheLinks
             t={t}
