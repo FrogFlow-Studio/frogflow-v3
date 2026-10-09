@@ -109,6 +109,7 @@ import { Route as OperatorAuthedMarketReportsRouteImport } from './routes/operat
 import { Route as OperatorAuthedMarketStatsRouteImport } from './routes/operator._authed.market-stats'
 import { Route as OperatorAuthedMigrationRouteImport } from './routes/operator._authed.migration'
 import { Route as OperatorAuthedNewsRouteImport } from './routes/operator._authed.news'
+import { Route as OperatorAuthedObserverRouteImport } from './routes/operator._authed.observer'
 import { Route as OperatorAuthedPartnersRouteImport } from './routes/operator._authed.partners'
 import { Route as OperatorAuthedRenewalsRouteImport } from './routes/operator._authed.renewals'
 import { Route as OperatorAuthedRequestsRouteImport } from './routes/operator._authed.requests'
@@ -660,6 +661,11 @@ const OperatorAuthedNewsRoute = OperatorAuthedNewsRouteImport.update({
   path: '/news',
   getParentRoute: () => OperatorAuthedRoute,
 } as any)
+const OperatorAuthedObserverRoute = OperatorAuthedObserverRouteImport.update({
+  id: '/observer',
+  path: '/observer',
+  getParentRoute: () => OperatorAuthedRoute,
+} as any)
 const OperatorAuthedPartnersRoute = OperatorAuthedPartnersRouteImport.update({
   id: '/partners',
   path: '/partners',
@@ -1010,6 +1016,7 @@ export interface FileRoutesByFullPath {
   '/operator/market-stats': typeof OperatorAuthedMarketStatsRoute
   '/operator/migration': typeof OperatorAuthedMigrationRoute
   '/operator/news': typeof OperatorAuthedNewsRoute
+  '/operator/observer': typeof OperatorAuthedObserverRoute
   '/operator/partners': typeof OperatorAuthedPartnersRoute
   '/operator/renewals': typeof OperatorAuthedRenewalsRoute
   '/operator/requests': typeof OperatorAuthedRequestsRoute
@@ -1156,6 +1163,7 @@ export interface FileRoutesByTo {
   '/operator/market-stats': typeof OperatorAuthedMarketStatsRoute
   '/operator/migration': typeof OperatorAuthedMigrationRoute
   '/operator/news': typeof OperatorAuthedNewsRoute
+  '/operator/observer': typeof OperatorAuthedObserverRoute
   '/operator/partners': typeof OperatorAuthedPartnersRoute
   '/operator/renewals': typeof OperatorAuthedRenewalsRoute
   '/operator/requests': typeof OperatorAuthedRequestsRoute
@@ -1305,6 +1313,7 @@ export interface FileRoutesById {
   '/operator/_authed/market-stats': typeof OperatorAuthedMarketStatsRoute
   '/operator/_authed/migration': typeof OperatorAuthedMigrationRoute
   '/operator/_authed/news': typeof OperatorAuthedNewsRoute
+  '/operator/_authed/observer': typeof OperatorAuthedObserverRoute
   '/operator/_authed/partners': typeof OperatorAuthedPartnersRoute
   '/operator/_authed/renewals': typeof OperatorAuthedRenewalsRoute
   '/operator/_authed/requests': typeof OperatorAuthedRequestsRoute
@@ -1455,6 +1464,7 @@ export interface FileRouteTypes {
     | '/operator/market-stats'
     | '/operator/migration'
     | '/operator/news'
+    | '/operator/observer'
     | '/operator/partners'
     | '/operator/renewals'
     | '/operator/requests'
@@ -1601,6 +1611,7 @@ export interface FileRouteTypes {
     | '/operator/market-stats'
     | '/operator/migration'
     | '/operator/news'
+    | '/operator/observer'
     | '/operator/partners'
     | '/operator/renewals'
     | '/operator/requests'
@@ -1749,6 +1760,7 @@ export interface FileRouteTypes {
     | '/operator/_authed/market-stats'
     | '/operator/_authed/migration'
     | '/operator/_authed/news'
+    | '/operator/_authed/observer'
     | '/operator/_authed/partners'
     | '/operator/_authed/renewals'
     | '/operator/_authed/requests'
@@ -2548,6 +2560,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OperatorAuthedNewsRouteImport
       parentRoute: typeof OperatorAuthedRoute
     }
+    '/operator/_authed/observer': {
+      id: '/operator/_authed/observer'
+      path: '/observer'
+      fullPath: '/operator/observer'
+      preLoaderRoute: typeof OperatorAuthedObserverRouteImport
+      parentRoute: typeof OperatorAuthedRoute
+    }
     '/operator/_authed/partners': {
       id: '/operator/_authed/partners'
       path: '/partners'
@@ -3068,6 +3087,7 @@ interface OperatorAuthedRouteChildren {
   OperatorAuthedMarketStatsRoute: typeof OperatorAuthedMarketStatsRoute
   OperatorAuthedMigrationRoute: typeof OperatorAuthedMigrationRoute
   OperatorAuthedNewsRoute: typeof OperatorAuthedNewsRoute
+  OperatorAuthedObserverRoute: typeof OperatorAuthedObserverRoute
   OperatorAuthedPartnersRoute: typeof OperatorAuthedPartnersRoute
   OperatorAuthedRenewalsRoute: typeof OperatorAuthedRenewalsRoute
   OperatorAuthedRequestsRoute: typeof OperatorAuthedRequestsRoute
@@ -3092,6 +3112,7 @@ const OperatorAuthedRouteChildren: OperatorAuthedRouteChildren = {
   OperatorAuthedMarketStatsRoute: OperatorAuthedMarketStatsRoute,
   OperatorAuthedMigrationRoute: OperatorAuthedMigrationRoute,
   OperatorAuthedNewsRoute: OperatorAuthedNewsRoute,
+  OperatorAuthedObserverRoute: OperatorAuthedObserverRoute,
   OperatorAuthedPartnersRoute: OperatorAuthedPartnersRoute,
   OperatorAuthedRenewalsRoute: OperatorAuthedRenewalsRoute,
   OperatorAuthedRequestsRoute: OperatorAuthedRequestsRoute,

@@ -61,6 +61,7 @@ export const OPERATOR_MENU: OperatorMenuGroup[] = [
       { to: "/operator/log", label: "Журнал действий" },
       { to: "/operator/health", label: "Здоровье платформы" },
       { to: "/operator/crons", label: "Кроны" },
+      { to: "/operator/observer", label: "Наблюдатель" },
     ],
   },
 ];
