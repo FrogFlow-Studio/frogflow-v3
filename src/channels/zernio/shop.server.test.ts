@@ -778,9 +778,16 @@ describe("строгий режим «Только по заказам» (Educat
     expect((db.tables.bot_users![0]!.state as { mode?: string }).mode).toBe("awaiting_email");
   });
 
-  it("сразу после вопроса — одна подсказка, вторая реплика — тишина", async () => {
+  it("сразу после вопроса о почте не адрес — шаг пропущен, без «не похоже на почту» (Копилка 09.10)", async () => {
+    const { send, sent, db } = setup({ platform: "instagram", state: state("awaiting_email", 1) });
+    expect((await send({ text: "Оплата на каспи?" })).outcome).toBe("handled");
+    expect(sent.map((x) => JSON.stringify(x)).join("\n")).not.toContain("не похоже");
+    expect((db.tables.bot_users![0]!.state as { mode?: string }).mode).not.toBe("awaiting_email");
+  });
+
+  it("сразу после вопроса о почте адрес с опечаткой — одна подсказка, вторая реплика — тишина", async () => {
     const { send, sent } = setup({ platform: "instagram", state: state("awaiting_email", 1) });
-    await send({ text: "Страна Россия" });
+    await send({ text: "anna@mail" });
     expect(sent).toHaveLength(1);
     await send({ text: "2" });
     expect(sent).toHaveLength(1);

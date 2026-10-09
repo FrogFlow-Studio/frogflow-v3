@@ -403,6 +403,47 @@ export const SCENARIOS: Scenario[] = [
       },
     ],
   },
+  // ───── Оформление в Direct (Копилка 09.10 15:44, «идёт слив заявок») ─────
+  {
+    id: "checkout-single-country-ig-ru",
+    title: "одна страна оплаты — «Оформить заказ» не спрашивает страну, а идёт дальше",
+    origin:
+      "Копилка русоведа 09.10 15:44: «Оформить заказ» → «Выберите страну оплаты: 1. Казахстан» → «Россия» → по кругу",
+    channel: "instagram",
+    locale: "ru",
+    full: true,
+    modules: { helpdesk: true, manager_chat: true },
+    products: [{ id: P1, name: "Палитра средств выразительности" }],
+    state: { country_code: null, country_name: null },
+    steps: [
+      { say: { button: `PROD:${P1}`, title: "Купить" }, expect: { cart: 1 } },
+      {
+        say: { button: "CHECKOUT", title: "✅ Оформить заказ" },
+        expect: { notSays: ["Выберите страну"], state: { country_code: "KZ" } },
+      },
+    ],
+  },
+  {
+    id: "checkout-email-words-skip-ig-ru",
+    title: "на шаге «почта» пишут не адрес — бот идёт к оплате без почты, а не по кругу",
+    origin:
+      "Копилка русоведа 09.10 15:43: «Можете на почту», «Оплата на каспи?» — «Это не похоже на адрес почты» по кругу",
+    channel: "instagram",
+    locale: "ru",
+    full: true,
+    modules: { helpdesk: true, manager_chat: true },
+    products: [{ id: P1, name: "Палитра средств выразительности" }],
+    state: {
+      mode: "awaiting_email",
+      direct: { last_reply: "Почта", last_reply_at: new Date().toISOString() },
+    },
+    steps: [
+      {
+        say: { text: "Оплата на каспи?" },
+        expect: { notSays: ["не похоже на адрес"], state: { mode: "idle" } },
+      },
+    ],
+  },
   // ───── Ответ словами на список «напишите номер» ─────
   {
     id: "list-words-hint-once-ig-ru",
