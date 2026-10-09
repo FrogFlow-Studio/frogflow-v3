@@ -673,6 +673,18 @@ export const SCENARIOS: Scenario[] = [
     steps: [{ say: { text: PHONE }, expect: { silent: true, state: { phone: "+87770637152" } } }],
   },
   {
+    id: "how-to-buy-shows-catalog-ig-ru",
+    title: "«Как купить?» ответом на сторис — каталог, а не молчание до продавца",
+    origin:
+      "обращение #77 Копилки русоведа 09.10: «Как купить?» ответом на сторис ушло менеджеру, бот промолчал",
+    channel: "instagram",
+    locale: "ru",
+    full: true,
+    modules: { helpdesk: true, manager_chat: true },
+    products: PRODUCTS,
+    steps: [{ say: { text: "Как купить?" }, expect: { says: ["018. Прописи"] } }],
+  },
+  {
     id: "seller-typed-command-ig-ru",
     title: "продавец писал руками, но «каталог» — явная команда: бот отвечает",
     origin: "Б3",
@@ -1778,6 +1790,31 @@ export const SCENARIOS: Scenario[] = [
       },
       {
         say: { text: "Я из России, можно перевести по номеру?" },
+        expect: { says: [(c) => c.payTroubleHandoff], notSays: [(c) => c.sendReceiptPrompt] },
+      },
+    ],
+  },
+  {
+    id: "pay-trouble-from-belarus-ig-ru",
+    title: "«Я из Беларуси» на шаге оплаты — вопрос продавцу, а не «пришлите чек»",
+    origin:
+      "заказ #62 Копилки русоведа 09.10 (nadegdastachovez): «Я из Беларуси» — бот ответил «Пришлите чек»",
+    channel: "instagram",
+    locale: "ru",
+    modules: { prodamus: true },
+    state: { mode: "awaiting_payment", pending_order_id: 15, pending_display_no: 15 },
+    arrange: prodamusOrder,
+    steps: [
+      {
+        say: { text: "Я из Беларуси" },
+        expect: {
+          count: 1,
+          says: [(c) => c.payTroubleHandoff],
+          notSays: [(c) => c.sendReceiptPrompt],
+        },
+      },
+      {
+        say: { text: "А из Узбекистана можно оплатить? Каспи у меня нет" },
         expect: { says: [(c) => c.payTroubleHandoff], notSays: [(c) => c.sendReceiptPrompt] },
       },
     ],
