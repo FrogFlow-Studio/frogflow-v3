@@ -501,7 +501,7 @@
     "не принимает число вне разумного коридора": "src/core/consultant/pricelist/finkaz-rate.test.ts › не принимает число вне разумного коридора",
     "не принимает страницу без строки по рублю": "src/core/consultant/pricelist/finkaz-rate.test.ts › не принимает страницу без строки по рублю",
     "называет банк по адресу страницы": "src/core/consultant/pricelist/finkaz-rate.test.ts › называет банк по адресу страницы",
-    "свежий курс годится, трёхдневный — нет": "src/core/consultant/pricelist/finkaz-rate.test.ts › свежий курс годится, трёхдневный — нет",
+    "свежий курс годится, трёхдневный — нет": "src/core/consultant/pricelist/finkaz-rate.test.ts › моложе суток — точный, старше — ориентировочный",
     "цена в рублях считается от курса покупки": "src/core/consultant/pricelist/finkaz-rate.test.ts › цена в рублях считается от курса покупки"
   },
   "tests/consultant-knowledge-search.test.ts": {
@@ -613,7 +613,7 @@
     "карточка и шаблон — не вмешательство менеджера": "drop: правило консультанта BOVI v1 без модели (выбор страны, шаблоны, корзина, фильтры ответа); в v2 консультант по прайсу — решает модель по поиску в прайсе, код даёт данные и сверяет черновик (core/consultant/pricelist/engine.server.ts)",
     "своё исходящее не считает вмешательством менеджера": "src/channels/zernio/manager-guard.test.ts › свой же ответ бота менеджером не считает, включая пришедший в ленту с задержкой",
     "state читается из вложенного ключа и не ломает shop DirectState": "src/core/consultant/engine.server.test.ts › состояние живёт в state.consultant и не ломает шаг магазина",
-    "по умолчанию Haiku 4.5, имя можно сменить ENV": "src/core/consultant/engine.server.test.ts › по умолчанию Haiku 4.5, имя можно сменить ENV",
+    "по умолчанию Haiku 4.5, имя можно сменить ENV": "src/core/consultant/engine.server.test.ts › по умолчанию Sonnet 5 без рассуждений, имя можно сменить ENV",
     "покупка → регламентированный handoff и pause": "src/core/consultant/engine.server.test.ts › покупка — заявка продавцу и пауза",
     "без страны — сначала KZ/RU, не поиск товара": "drop: правило консультанта BOVI v1 без модели (выбор страны, шаблоны, корзина, фильтры ответа); в v2 консультант по прайсу — решает модель по поиску в прайсе, код даёт данные и сверяет черновик (core/consultant/pricelist/engine.server.ts)",
     "после страны — запрос товара по ТЗ (Какой товар вас интересует?)": "drop: правило консультанта BOVI v1 без модели (выбор страны, шаблоны, корзина, фильтры ответа); в v2 консультант по прайсу — решает модель по поиску в прайсе, код даёт данные и сверяет черновик (core/consultant/pricelist/engine.server.ts)",
@@ -954,7 +954,7 @@
     "keeps Instagram and WhatsApp orders in their own channels": "src/app/admin/notify-customer.test.ts › заказы из Instagram и WhatsApp уходят в свой диалог через Zernio, а не в Telegram",
     "treats legacy and unknown orders as Telegram": "src/app/admin/notify-customer.test.ts › пустая или незнакомая платформа — это Telegram, а не Instagram/WhatsApp",
     "ждёт почту только у цифрового Instagram-заказа без адреса": "drop: с #565 в Instagram почта по желанию, файлы приходят кнопкой «Скачать» в Direct (src/channels/zernio/shop-flow.test.ts › Instagram — почта по желанию: файлы приходят кнопкой «Скачать» в Direct)",
-    "не блокирует Telegram, WhatsApp, физический заказ и уже указанную почту": "src/channels/zernio/shop-flow.test.ts › шага нет: почта известна, физический товар, Telegram, почта платформы не настроена"
+    "не блокирует Telegram, WhatsApp, физический заказ и уже указанную почту": "src/channels/zernio/shop-flow.test.ts › в переписке шага нет нигде: файлы приходят в чат, вопрос терял покупателей (Копилка, 09.10)"
   },
   "tests/orders-pure.test.ts": {
     "оборачивает внешнюю ссылку": "src/core/catalog/materials.test.ts › старые поля — запасной путь только для ru и kk",
