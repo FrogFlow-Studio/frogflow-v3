@@ -39,6 +39,9 @@ export const ru = {
   "pricelist.settings.digest": "Сводка качества ответов каждое утро",
   "pricelist.settings.digestHint":
     "После 9:00 — сколько ответов за вчера, сколько передано менеджеру, замечания к ценам и форме, расход.",
+  "pricelist.settings.taskReminders": "Напоминать о неразобранных задачах в Telegram",
+  "pricelist.settings.taskRemindersHint":
+    "Задача не отмечена сделанной 2 часа — одно напоминание (в рабочие часы консультанта). В 9:00 — список всех открытых задач.",
   "pricelist.save": "Сохранить",
   "pricelist.saved": "Сохранено.",
   "pricelist.hours":
@@ -219,6 +222,9 @@ export const kk: SectionDict<typeof ru> = {
   "pricelist.settings.digest": "Әр таң сайын жауап сапасының жиынтығы",
   "pricelist.settings.digestHint":
     "9:00-ден кейін — кешегі жауаптар саны, менеджерге берілгені, баға мен пішінге ескертулер, шығын.",
+  "pricelist.settings.taskReminders": "Қаралмаған тапсырмалар туралы Telegram-да еске салу",
+  "pricelist.settings.taskRemindersHint":
+    "Тапсырма 2 сағат орындалды деп белгіленбесе — бір рет еске салу (кеңесшінің жұмыс уақытында). 9:00-де — барлық ашық тапсырмалар тізімі.",
   "pricelist.save": "Сақтау",
   "pricelist.saved": "Сақталды.",
   "pricelist.hours":
@@ -400,6 +406,9 @@ export const en: SectionDict<typeof ru> = {
   "pricelist.settings.digest": "Reply quality summary every morning",
   "pricelist.settings.digestHint":
     "After 9:00 — yesterday's replies, handoffs to a manager, price and form remarks, spend.",
+  "pricelist.settings.taskReminders": "Remind me about open tasks in Telegram",
+  "pricelist.settings.taskRemindersHint":
+    "A task not marked done for 2 hours gets one reminder (during the consultant's working hours). At 9:00, a list of all open tasks.",
   "pricelist.save": "Save",
   "pricelist.saved": "Saved.",
   "pricelist.hours":
@@ -584,6 +593,9 @@ export const uz: SectionDict<typeof ru> = {
   "pricelist.settings.digest": "Har tongda javoblar sifati xulosasi",
   "pricelist.settings.digestHint":
     "9:00 dan keyin — kechagi javoblar soni, menejerga berilganlari, narx va shakl bo‘yicha izohlar, xarajat.",
+  "pricelist.settings.taskReminders": "Ko‘rilmagan vazifalar haqida Telegram’da eslatish",
+  "pricelist.settings.taskRemindersHint":
+    "Vazifa 2 soat bajarildi deb belgilanmasa — bitta eslatma (maslahatchining ish vaqtida). Soat 9:00 da — barcha ochiq vazifalar ro‘yxati.",
   "pricelist.save": "Saqlash",
   "pricelist.saved": "Saqlandi.",
   "pricelist.hours":
