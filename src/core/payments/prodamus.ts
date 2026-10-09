@@ -42,7 +42,11 @@ export type ProdamusConfig = {
   secretKey: string;
   /** Валюта кассы: кнопка только у заказов в ней, иначе 1500 ₸ списались бы как 1500 ₽. */
   currency: ProdamusCurrency;
-  /** Сколько тенге за 1 единицу валюты кассы; null — без пересчёта. */
+  /**
+   * Сколько тенге за 1 единицу валюты кассы; у кассы в тенге (форма *.kz) —
+   * сколько тенге за 1 ₽: по нему заказ в рублях выставляется в тенге. null —
+   * без пересчёта.
+   */
   rate: number | null;
 };
 
@@ -85,14 +89,17 @@ export function prodamusConfig(
     formUrl,
     secretKey,
     currency,
-    rate: Number.isFinite(rate) && rate > 0 && currency !== PRODAMUS_RATE_FROM ? rate : null,
+    rate: Number.isFinite(rate) && rate > 0 ? rate : null,
   };
 }
 
 /**
  * Сколько списать Продамусом за сумму заказа: в валюте кассы как есть, заказ
  * в тенге при заданном курсе — в валюте кассы, округлено вверх до целой.
- * null — эту валюту касса не примет.
+ * Касса в тенге (форма *.kz валюту из ссылки не берёт) и заказ в рублях при
+ * курсе — в тенге по курсу, вверх до тенге: покупатель из России платит
+ * картой РФ, банк списывает рубли (Копилка русоведа 09.10: цена 490 ₽, а не
+ * 1700 ₸ по курсу Продамуса). null — эту валюту касса не примет.
  */
 export function prodamusCharge(
   cfg: ProdamusConfig,
@@ -103,6 +110,8 @@ export function prodamusCharge(
   if (c === cfg.currency) return { amount: Math.round(amount * 100) / 100, currency: cfg.currency };
   if (c === PRODAMUS_RATE_FROM && cfg.rate)
     return { amount: Math.ceil(amount / cfg.rate - 1e-9), currency: cfg.currency };
+  if (cfg.currency === PRODAMUS_RATE_FROM && c === "RUB" && cfg.rate)
+    return { amount: Math.ceil(amount * cfg.rate - 1e-9), currency: cfg.currency };
   return null;
 }
 

@@ -528,7 +528,7 @@ export async function finishCheckout(b: Bot, countryCode: string) {
               ? [
                   [
                     {
-                      text: prodamusCopy(b.m, prodamus.currency).btn,
+                      text: prodamusCopy(b.m, prodamus.currency, order.currency).btn,
                       callback_data: `pay:pdm:${order.id}`,
                     },
                   ],

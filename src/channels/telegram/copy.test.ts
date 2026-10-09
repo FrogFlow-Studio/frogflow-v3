@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { COPY, categoryButtonLabel, menuActionFor, normalizePhone } from "./copy";
+import {
+  COPY,
+  categoryButtonLabel,
+  menuActionFor,
+  normalizePhone,
+  prodamusCopy,
+  prodamusSum,
+} from "./copy";
 
 describe("telegram copy helpers", () => {
   it("кнопка меню на любом языке → каноническое действие", () => {
@@ -61,5 +68,22 @@ describe("предзаказ в боте: дата словами, не сыры
   it("без даты — прежний текст «срок уточним»", () => {
     expect(COPY.ru.preorderLabel(null)).toMatch(/срок отправки уточним/);
     expect(COPY.en.preorderCartNote(null)).toBe("   🕒 pre-order\n");
+  });
+
+  it("Продамус: заказ в рублях через форму в тенге — сумма в рублях, форма в тенге, текст про карту РФ", () => {
+    const m = COPY.ru;
+    const kzt = { amount: 1751, currency: "KZT" };
+    expect(prodamusSum(m, kzt, 490, "RUB")).toMatch(/^490 ₽ \(в форме оплаты — 1[\s ]?751 ₸\)$/);
+    expect(prodamusCopy(m, "KZT", "RUB")).toEqual({
+      btn: m.payViaProdamusBtn,
+      hint: m.prodamusRubViaKztHint,
+    });
+    // Прежние случаи без изменений.
+    expect(prodamusCopy(m, "KZT", "KZT").hint).toBe(m.prodamusCardHint);
+    expect(prodamusCopy(m, "RUB", "KZT").hint).toBe(m.prodamusHint);
+    expect(prodamusSum(m, { amount: 259, currency: "RUB" }, 1500, "KZT")).toMatch(/^259 ₽ \(/);
+    expect(prodamusSum(m, kzt, 1751, "KZT")).toMatch(/₸$/);
+    for (const l of ["ru", "kk", "en", "uz"] as const)
+      expect(COPY[l].prodamusFormSum("1 ₸")).toContain("1 ₸");
   });
 });

@@ -214,6 +214,10 @@ export type Msg = {
   /** Продамус: карта российского банка или СБП. */
   payViaProdamusBtn: string;
   prodamusHint: string;
+  /** Заказ в рублях, форма Продамуса в тенге (*.kz): форма покажет тенге, банк спишет рубли. */
+  prodamusRubViaKztHint: string;
+  /** «490 ₽ (в форме — 1750 ₸)»: сумма, которую покажет форма. */
+  prodamusFormSum: (sum: string) => string;
   payManualBtn: string;
   /** Ручной способ, в реквизитах которого есть Kaspi. */
   payKaspiBtn: string;
@@ -706,6 +710,9 @@ const ru: Msg = {
   payViaProdamusBtn: "🇷🇺 Карта РФ / СБП",
   prodamusHint:
     "Откройте ссылку и оплатите картой российского банка или через СБП. Форма попросит номер телефона: укажите свой, на него придёт чек. Заказ подтвердится сам сразу после оплаты.",
+  prodamusRubViaKztHint:
+    "Откройте ссылку и оплатите картой российского банка. Форма покажет сумму в тенге, а банк спишет её с карты в рублях. Форма попросит номер телефона: укажите свой, на него придёт чек. Заказ подтвердится сам сразу после оплаты.",
+  prodamusFormSum: (sum) => `в форме оплаты — ${sum}`,
   payManualBtn: "🧾 Перевод по реквизитам + чек",
   robokassaHint: "Нажмите кнопку, оплатите картой — после оплаты всё придёт сюда автоматически.",
   paymentReceived: (no) => `✅ Оплата по заказу #${no} получена.`,
@@ -818,6 +825,9 @@ const kk: Msg = {
   payViaProdamusBtn: "🇷🇺 РФ картасы / СБП",
   prodamusHint:
     "Сілтемені ашып, Ресей банкінің картасымен немесе СБП арқылы төлеңіз. Форма телефон нөмірін сұрайды: өз нөміріңізді жазыңыз, чек соған келеді. Тапсырыс төлемнен кейін бірден өзі расталады.",
+  prodamusRubViaKztHint:
+    "Сілтемені ашып, Ресей банкінің картасымен төлеңіз. Форма соманы теңгемен көрсетеді, ал банк оны картадан рубльмен шешеді. Форма телефон нөмірін сұрайды: өз нөміріңізді жазыңыз, чек соған келеді. Тапсырыс төлемнен кейін бірден өзі расталады.",
+  prodamusFormSum: (sum) => `төлем формасында — ${sum}`,
   phoneNoted: "Нөміріңізді жазып алдым 👍",
   loginCodeMsg: (code, minutes) =>
     `🔐 Сайтқа кіру коды: <b>${code}</b>\n${minutes} минут жарамды, бір рет қана қолданылады. Оны ешкімге айтпаңыз.`,
@@ -1163,6 +1173,9 @@ const en: Msg = {
   payViaProdamusBtn: "🇷🇺 RU card / SBP",
   prodamusHint:
     "Open the link and pay with a Russian bank card or via SBP. The form will ask for a phone number: enter yours, the receipt goes there. The order is confirmed automatically right after payment.",
+  prodamusRubViaKztHint:
+    "Open the link and pay with a Russian bank card. The form shows the amount in tenge, and your bank charges it to the card in rubles. The form will ask for a phone number: enter yours, the receipt goes there. The order is confirmed automatically right after payment.",
+  prodamusFormSum: (sum) => `${sum} in the payment form`,
   payBalanceBtn: (no) => `💳 Pay the balance #${no}`,
   balanceTitle: (no, sum) => `💳 <b>Balance for order #${no}</b>\n\n💰 To pay: <b>${sum}</b>`,
   balanceNoDetails: "Please ask the seller for payment details.",
@@ -1440,6 +1453,9 @@ const uz: Msg = {
   payViaProdamusBtn: "🇷🇺 RF kartasi / SBP",
   prodamusHint:
     "Havolani oching va Rossiya banki kartasi yoki SBP orqali to‘lang. Forma telefon raqamini so‘raydi: o‘z raqamingizni kiriting, chek unga keladi. Buyurtma to‘lovdan so‘ng darhol o‘zi tasdiqlanadi.",
+  prodamusRubViaKztHint:
+    "Havolani oching va Rossiya banki kartasi bilan to‘lang. Forma summani tengeda ko‘rsatadi, bank esa uni kartadan rublda yechadi. Forma telefon raqamini so‘raydi: o‘z raqamingizni kiriting, chek unga keladi. Buyurtma to‘lovdan so‘ng darhol o‘zi tasdiqlanadi.",
+  prodamusFormSum: (sum) => `to‘lov formasida — ${sum}`,
   cartHeader: "🛒 <b>Savatingiz</b>\n\n",
   phoneNoted: "Raqamingizni yozib oldim 👍",
   loginCodeMsg: (code, minutes) =>
@@ -1875,10 +1891,34 @@ export function normalizePhone(raw: string): string | null {
 }
 
 /** Кнопка и подсказка Продамуса: форма в рублях — «Карта РФ / СБП», иначе (KZ) — просто картой. */
-export function prodamusCopy(m: Msg, kassaCurrency: string | null | undefined) {
-  return (kassaCurrency ?? "").toUpperCase() === "RUB"
-    ? { btn: m.payViaProdamusBtn, hint: m.prodamusHint }
-    : { btn: m.payByCardBtn, hint: m.prodamusCardHint };
+export function prodamusCopy(
+  m: Msg,
+  kassaCurrency: string | null | undefined,
+  orderCurrency?: string | null,
+) {
+  const kassa = (kassaCurrency ?? "").toUpperCase();
+  if (kassa === "RUB") return { btn: m.payViaProdamusBtn, hint: m.prodamusHint };
+  // Заказ в рублях через форму в тенге (*.kz): платят картой РФ, форма покажет тенге.
+  if ((orderCurrency ?? "").toUpperCase() === "RUB")
+    return { btn: m.payViaProdamusBtn, hint: m.prodamusRubViaKztHint };
+  return { btn: m.payByCardBtn, hint: m.prodamusCardHint };
+}
+
+/**
+ * Сумма к оплате Продамусом. Касса в рублях, заказ в тенге — «259 ₽ (1500 ₸)»;
+ * заказ в рублях через форму в тенге — «490 ₽ (в форме оплаты — 1750 ₸)».
+ */
+export function prodamusSum(
+  m: Msg,
+  link: { amount: number; currency: string },
+  due: number,
+  orderCurrency: string,
+): string {
+  const order = orderCurrency.toUpperCase();
+  if (link.currency.toUpperCase() === order) return formatMoney(due, orderCurrency);
+  if (order === "RUB")
+    return `${formatMoney(due, orderCurrency)} (${m.prodamusFormSum(formatMoney(link.amount, link.currency))})`;
+  return `${formatMoney(link.amount, link.currency)} (${formatMoney(due, orderCurrency)})`;
 }
 
 /** Кнопка ручной оплаты: в реквизитах Kaspi — так и пишем, иначе общий «перевод по реквизитам». */

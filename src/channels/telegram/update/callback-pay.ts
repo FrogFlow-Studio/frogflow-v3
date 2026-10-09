@@ -7,7 +7,7 @@ import { buildPaymentUrl } from "@/core/payments/robokassa";
 import { type Bot, send } from "./bot";
 import { sendManualInstructions } from "./checkout";
 import { starsDue } from "./payments";
-import { prodamusCopy } from "../copy";
+import { prodamusCopy, prodamusSum } from "../copy";
 
 /** Кнопка «Оплатить …» под заказом: ссылка на кассу, счёт Stars или реквизиты. */
 export async function payButton(b: Bot, customer: Customer, data: string): Promise<void> {
@@ -126,18 +126,14 @@ export async function payButton(b: Bot, customer: Customer, data: string): Promi
       email: order.customer_email,
     });
     if (!link) return;
-    // Заказ в тенге, касса в рублях: к оплате — рубли, в скобках — сумма заказа.
-    const sum =
-      link.currency !== order.currency.toUpperCase()
-        ? `${formatMoney(link.amount, link.currency)} (${formatMoney(due, order.currency)})`
-        : formatMoney(due, order.currency);
+    const sum = prodamusSum(b.m, link, due, order.currency);
     b.customer = await setState(ctx, customer, {
       ...customer.state,
       mode: "awaiting_payment",
       pending_order_id: order.id,
       pending_display_no: no,
     });
-    const pc = prodamusCopy(b.m, link.currency);
+    const pc = prodamusCopy(b.m, link.currency, order.currency);
     await send(b, `${b.m.manualTitleNew(no)}\n\n${b.m.amountToPay(sum)}\n\n${pc.hint}`, {
       reply_markup: { inline_keyboard: [[{ text: pc.btn, url: link.url }]] },
     });
