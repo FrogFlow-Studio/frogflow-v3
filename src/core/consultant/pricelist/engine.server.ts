@@ -1,6 +1,7 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { getSettings } from "@/core/settings/settings";
+import { hasToolMarkup, stripToolMarkup } from "../prompt";
 import { findStoryTag, listStoryTags, storyProductsOf, type StoryTag } from "../story-tags";
 import { findProducts, type ConsultantProduct } from "./catalog";
 import { loadPricelist } from "./catalog.server";
@@ -82,6 +83,10 @@ export function modelParams(model: string): Record<string, unknown> {
   if (/^claude-(sonnet-5|haiku-5)/.test(model)) return { thinking: { type: "disabled" } };
   return {};
 }
+
+/** Вызов инструмента текстом (BOVI 30.09): модель переписывает ответ сама. */
+const TOOL_MARKUP_RETRY_NOTE =
+  "[Вызов инструмента написан текстом, а не вызван. Если нужен поиск — вызовите инструмент. Если нет — напишите покупателю ответ обычными словами, без тегов.]";
 
 const RUBLES_RETRY_NOTE =
   "[В ответе суммы в рублях. Напишите тот же ответ, но цены — в тенге, как в выдаче поиска. О замене на рубли покупателю не пишите.]";
@@ -465,6 +470,7 @@ async function decide(data: PricelistData, input: PricelistInput): Promise<Price
   let stopped: "limited" | "late" | null = null;
   let maxRounds = PRICELIST_MAX_ROUNDS;
   let rublesRetried = false;
+  let markupRetried = false;
   let draftChecked = false;
   let contactAsked = false;
   const attachments: PricelistDecision["attachments"] = [];
@@ -512,6 +518,13 @@ async function decide(data: PricelistData, input: PricelistInput): Promise<Price
     const calls = content.filter((b): b is Anthropic.ToolUseBlock => b.type === "tool_use");
     toolsPending = false;
     if (calls.length === 0) {
+      if (!markupRetried && hasToolMarkup(lastText)) {
+        markupRetried = true;
+        maxRounds++;
+        toolsUsed.push("fix:tool_markup");
+        messages.push({ role: "user", content: TOOL_MARKUP_RETRY_NOTE });
+        continue;
+      }
       if (!rublesRetried && writesRubles(lastText)) {
         rublesRetried = true;
         maxRounds++;
@@ -601,6 +614,13 @@ async function decide(data: PricelistData, input: PricelistInput): Promise<Price
   // не успели переписать, уходит, как раньше: цену в нём сверяет код ниже.
   if (stopped && toolsPending) lastText = "";
 
+  // Разметка вызова не уходит покупателю никогда: вырезается, а если кроме
+  // неё ничего не было — вопрос менеджеру (BOVI 30.09: «<invoke name=…>»).
+  if (hasToolMarkup(lastText)) {
+    toolsUsed.push("fix:tool_markup_stripped");
+    lastText = stripToolMarkup(lastText);
+    if (!lastText && !handoff) handoff = { reason: "no_answer", summary: "" };
+  }
   if (rublesRetried && writesRubles(lastText)) toolsUsed.push("fix:rubles_by_model_again");
   let priceBlocked = false;
   if (toolsUsed.some((t) => t.startsWith("fix:draft:")) && !handoff) {

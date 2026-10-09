@@ -68,6 +68,16 @@ export function priceRub(priceKzt: number, vtbBuyRate: number, date: Date = new 
   return Math.round(priceKzt / (vtbBuyRate * multiplier));
 }
 
+/**
+ * Обратный пересчёт: бюджет покупателя в рублях → потолок в тенге по той же
+ * формуле, что priceRub (позиция с этой ценой в тенге покажется ему ровно в
+ * этот бюджет). BOVI 04.10: «бюджет до 80 тыс» из России приняли за тенге.
+ */
+export function rubToKzt(rub: number, vtbBuyRate: number, date: Date = new Date()): number {
+  if (!(rub > 0) || !(vtbBuyRate > 0)) return 0;
+  return Math.round(rub * vtbBuyRate * getRubMultiplier(date));
+}
+
 export type StoredVtbRate = {
   /** Курс покупки рубля банком — от него считается цена в ₽. */
   rate: number;

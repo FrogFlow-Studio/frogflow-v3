@@ -61,10 +61,19 @@ export function findKztAmounts(text: string): { kzt: number; start: number; end:
   }));
 }
 
+/**
+ * Начало диапазона без знака валюты: «от 242 000 до 262 000 ₸», «45 000–52 000 ₸».
+ * Знак стоит только у второй суммы, и в рубли переводилась она одна — BOVI
+ * 04.10 получил «от 242 000 до 215 538 ₽». Начало — от тысячи, чтобы размер
+ * «70х140 - 15 000 ₸» не стал суммой.
+ */
+const RANGE_START_RE =
+  /(?<!\d[ \u00a0\u202f]?)(\d{1,3}(?:[ \u00a0\u202f]\d{3})+|\d{4,})(\s*(?:–|—|-|до)\s*)(?=(?:\d{1,3}(?:[ \u00a0\u202f]\d{3})+|\d+)[ \u00a0\u202f]?(?:₸|тг\.?(?![а-яё])|тенге))/gi;
+
 /** Все суммы в тенге → рубли по курсу магазина. Без курса текст не меняется. */
 export function tengeToRubles(text: string, rate: number | null): string {
   if (!rate || rate <= 0) return text;
-  return text.replace(KZT_AMOUNT_RE, (_match, digits: string) => {
+  return text.replace(RANGE_START_RE, "$1 ₸$2").replace(KZT_AMOUNT_RE, (_match, digits: string) => {
     const kzt = Number(digits.replace(/[ \u00a0\u202f]/g, ""));
     if (!Number.isFinite(kzt) || kzt <= 0) return _match;
     return `${priceRub(kzt, rate).toLocaleString("ru-RU")} ₽`;

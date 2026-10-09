@@ -27,13 +27,13 @@ const INPUT: V2PromptInput = {
 };
 const sha = (s: string) => createHash("sha256").update(s).digest("hex");
 
-/** Отпечаток подсказки v2.17 до переноса образа в настройки (тот же INPUT). */
-const BOVI_PROMPT_SHA = "6e1e49bfd8c2ac7a687af6e6ac91cce3364e5c0b823413a872389e753376edbe";
+/** Отпечаток подсказки v2.18 (v2.17 + бюджет в рублях, BOVI 04.10; тот же INPUT). */
+const BOVI_PROMPT_SHA = "f8956bf576c63816f8fe1a8a61bfe33ec3ba88a0409bf1e4862961514583ba79";
 
 describe("образ консультанта по прайсу", () => {
   it("без настройки — подсказка BOVI слово в слово прежняя", () => {
     const prompt = buildV2SystemPrompt(INPUT);
-    expect(prompt.length).toBe(8861);
+    expect(prompt.length).toBe(9117);
     expect(sha(prompt)).toBe(BOVI_PROMPT_SHA);
     expect(prompt).not.toContain(SELLER_TEXT_OPEN);
   });

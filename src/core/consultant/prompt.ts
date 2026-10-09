@@ -81,8 +81,41 @@ ${profile.website_url ? `Сайт: ${profile.website_url}\n` : ""}${profile.abou
 }
 
 /** Markdown-звёздочки и «сценарии» из ответа — единственная точка выхода наружу. */
+/**
+ * Вызов инструмента, написанный моделью текстом: «<invoke name="search_products">…».
+ * 30.09 такой текст ушёл покупателю BOVI вместо ответа (последний раунд без
+ * инструментов: модель всё равно «позвала» поиск, но словами).
+ */
+const TOOL_TAG = String.raw`(?:antml:)?(?:function_calls|invoke|parameter|function_results|tool_use|tool_result)`;
+const TOOL_TAG_RE = new RegExp(String.raw`<\/?${TOOL_TAG}\b[^>]*>`, "i");
+
+/** В тексте модели есть разметка вызова инструмента. */
+export function hasToolMarkup(text: string): boolean {
+  return TOOL_TAG_RE.test(text);
+}
+
+/** Текст без разметки вызова инструмента: блоки вызова целиком, затем одиночные теги. */
+export function stripToolMarkup(text: string): string {
+  if (!hasToolMarkup(text)) return text;
+  return text
+    .replace(
+      new RegExp(
+        String.raw`<(?:antml:)?function_calls\b[\s\S]*?(?:<\/(?:antml:)?function_calls>|$)`,
+        "gi",
+      ),
+      "",
+    )
+    .replace(
+      new RegExp(String.raw`<(?:antml:)?invoke\b[\s\S]*?(?:<\/(?:antml:)?invoke>|$)`, "gi"),
+      "",
+    )
+    .replace(new RegExp(String.raw`<\/?${TOOL_TAG}\b[^>]*>`, "gi"), "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 export function cleanReply(text: string): string {
-  const noMd = text
+  const noMd = stripToolMarkup(text)
     .replace(/\*\*(.*?)\*\*/g, "$1")
     .replace(/\*(.*?)\*/g, "$1")
     .replace(/__(.*?)__/g, "$1")
