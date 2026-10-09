@@ -9,6 +9,8 @@ export type Msg = {
   chooseLanguage: string;
   languageSaved: string;
   chooseSection: string;
+  /** Direct: на список ответили словами, а не номером (один раз). */
+  listNumberHint: string;
   catalog: string;
   search: string;
   cart: string;
@@ -479,6 +481,8 @@ const ru: Msg = {
   chooseLanguage: "Выберите язык",
   languageSaved: "✅ Язык сохранён.",
   chooseSection: "Выберите раздел:",
+  listNumberHint:
+    "Чтобы открыть, напишите номер из списка — например, 1. Если это вопрос продавцу, напишите его ещё раз — передам.",
   catalog: "📚 Каталог",
   search: "🔍 Поиск",
   cart: "🛒 Корзина",
@@ -991,6 +995,8 @@ const kk: Msg = {
   searchExpired: "Іздеу сессиясы ескірді. Іздеуді қайталаңыз.",
   languageSaved: "✅ Тіл сақталды.",
   chooseSection: "Бөлімді таңдаңыз:",
+  listNumberHint:
+    "Ашу үшін тізімнен нөмірін жазыңыз — мысалы, 1. Егер бұл сатушыға сұрақ болса, оны тағы бір рет жазыңыз — жеткіземін.",
   catalog: "📚 Каталог",
   search: "🔍 Іздеу",
   cart: "🛒 Себет",
@@ -1265,6 +1271,8 @@ const en: Msg = {
   searchExpired: "Your search session has expired. Please search again.",
   languageSaved: "✅ Language saved.",
   chooseSection: "Choose a section:",
+  listNumberHint:
+    "To open one, type its number from the list — for example, 1. If this is a question for the seller, send it again and I’ll pass it on.",
   catalog: "📚 Catalog",
   search: "🔍 Search",
   cart: "🛒 Cart",
@@ -1585,6 +1593,8 @@ const uz: Msg = {
   searchExpired: "Qidiruv sessiyasi eskirdi. Qayta qidiring.",
   languageSaved: "✅ Til saqlandi.",
   chooseSection: "Bo‘limni tanlang:",
+  listNumberHint:
+    "Ochish uchun ro‘yxatdagi raqamni yozing — masalan, 1. Agar bu sotuvchiga savol bo‘lsa, uni yana bir bor yozing — yetkazaman.",
   catalog: "📚 Katalog",
   search: "🔍 Qidirish",
   cart: "🛒 Savat",
