@@ -217,6 +217,10 @@ export type Msg = {
   payManualBtn: string;
   /** Ручной способ, в реквизитах которого есть Kaspi. */
   payKaspiBtn: string;
+  /** Кнопка-ссылка на оплату из реквизитов продавца (Instagram: ссылка в тексте не всегда нажимается). */
+  payLinkBtn: (kaspi: boolean) => string;
+  /** Подсказка под реквизитами со ссылкой. */
+  payLinkHint: string;
   /** Продамус с кассой не в рублях (форма KZ): карта любого банка, без «РФ / СБП». */
   payByCardBtn: string;
   prodamusCardHint: string;
@@ -395,6 +399,9 @@ const ru: Msg = {
   choosePayMethodNamed: (l) =>
     `Выберите способ оплаты и нажмите кнопку ниже: ${l.map((x) => `«${x}»`).join(" или ")}.`,
   payKaspiBtn: "🧾 Перевод Kaspi",
+  payLinkBtn: (kaspi) => (kaspi ? "💳 Оплатить в Kaspi" : "💳 Открыть оплату"),
+  payLinkHint:
+    "Нажмите кнопку ниже. Если не открывается — скопируйте ссылку и откройте её в браузере или в приложении Kaspi.",
   payByCardBtn: "💳 Картой онлайн",
   prodamusCardHint:
     "Откройте ссылку и оплатите банковской картой. Заказ подтвердится сам сразу после оплаты.",
@@ -796,6 +803,9 @@ const kk: Msg = {
   choosePayMethodNamed: (l) =>
     `Төлем тәсілін таңдап, төмендегі батырманы басыңыз: ${l.map((x) => `«${x}»`).join(" немесе ")}.`,
   payKaspiBtn: "🧾 Kaspi аударым",
+  payLinkBtn: (kaspi) => (kaspi ? "💳 Kaspi арқылы төлеу" : "💳 Төлемді ашу"),
+  payLinkHint:
+    "Төмендегі батырманы басыңыз. Ашылмаса — сілтемені көшіріп, браузерде немесе Kaspi қосымшасында ашыңыз.",
   payByCardBtn: "💳 Картамен онлайн",
   prodamusCardHint:
     "Сілтемені ашып, банк картасымен төлеңіз. Тапсырыс төлемнен кейін бірден өзі расталады.",
@@ -1088,6 +1098,9 @@ const en: Msg = {
   choosePayMethodNamed: (l) =>
     `Choose how to pay and tap a button below: ${l.map((x) => `“${x}”`).join(" or ")}.`,
   payKaspiBtn: "🧾 Kaspi transfer",
+  payLinkBtn: (kaspi) => (kaspi ? "💳 Pay with Kaspi" : "💳 Open payment"),
+  payLinkHint:
+    "Tap the button below. If it does not open, copy the link and open it in your browser or the Kaspi app.",
   payByCardBtn: "💳 Card payment",
   prodamusCardHint:
     "Open the link and pay by bank card. The order is confirmed automatically right after payment.",
@@ -1408,6 +1421,9 @@ const uz: Msg = {
     `To‘lov usulini tanlang va pastdagi tugmani bosing: ${l.map((x) => `«${x}»`).join(" yoki ")}.`,
   choosePayCountry: "💳 Qaysi davlatdan to‘laysiz? Summa o‘sha davlat valyutasida:",
   payKaspiBtn: "🧾 Kaspi o‘tkazma",
+  payLinkBtn: (kaspi) => (kaspi ? "💳 Kaspi orqali to‘lash" : "💳 To‘lovni ochish"),
+  payLinkHint:
+    "Quyidagi tugmani bosing. Ochilmasa — havolani nusxalab, brauzerda yoki Kaspi ilovasida oching.",
   payByCardBtn: "💳 Karta orqali",
   prodamusCardHint:
     "Havolani oching va bank kartasi bilan to‘lang. Buyurtma to‘lovdan so‘ng darhol avtomatik tasdiqlanadi.",
