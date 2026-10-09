@@ -988,6 +988,30 @@ describe("Comment-to-DM: кодовое слово прямо в Direct (Коп�
     expect(inbox).toHaveBeenCalledTimes(1);
   });
 
+  it("правило без кодовых слов узнаётся по подписи поста, и «Политра» тоже (Копилка, 09.10)", async () => {
+    const reel = {
+      ...palette,
+      id: "reel",
+      name: "Рилс 09.10",
+      keywords: [],
+      postTitle: "Палитра для уроков русского языка",
+      dmMessage: "Спасибо за интерес!",
+      buttons: [{ type: "postback", title: "Купить", payload: "buy" }],
+    };
+    const other = { ...palette, id: "want", name: "Хочу", keywords: ["хочу"] };
+    for (const word of ["Палитра", "политра", "Палитра!"]) {
+      const { ctx, api, inbox, db } = kwSetup([other, reel]);
+      expect(await deliverTwoStepForDmKeyword(ctx, who, word, api)).toBe(true);
+      expect(inbox).toHaveBeenCalledTimes(1);
+      expect(secondSteps(db)[0]?.payload).toMatchObject({ automationId: "reel" });
+    }
+    for (const word of ["Здравствуйте", "Хочу", "уроков нет?", "Пала"]) {
+      const { ctx, api, inbox } = kwSetup([{ ...reel, postTitle: "Палитра" }]);
+      expect(await deliverTwoStepForDmKeyword(ctx, who, word, api)).toBe(false);
+      expect(inbox).not.toHaveBeenCalled();
+    }
+  });
+
   it("правило без поля keywords не роняет разбор, промах оставляет след с правилами", async () => {
     const { ctx, db, api, inbox } = kwSetup([{ ...palette, keywords: undefined }, palette]);
     expect(await deliverTwoStepForDmKeyword(ctx, who, "Здравствуйте", api)).toBe(false);
