@@ -7,13 +7,13 @@ import type { ZernioTransport } from "./api.server";
 import { handleShopMessage } from "./shop.server";
 
 /** Direct/WhatsApp: каждый ответ бота в «Чате» несёт причину («Почему бот так ответил»). */
-function shop() {
+function shop(settings: Array<{ key: string; value: string }> = []) {
   const state = { locale: "ru", mode: "idle" };
   const db = fakeDb({ rpc: { manager_chat_touch: () => undefined } });
   db.tables.bot_users = [
     { user_key: "ig_1", platform: "instagram", telegram_id: -1, loyalty_points: 0, state },
   ];
-  db.tables.app_settings = [];
+  db.tables.app_settings = settings.map((x) => ({ bot_id: "bot-1", ...x }));
   db.tables.manager_chat_state = [];
   db.tables.manager_chat_messages = [];
   db.tables.manager_chat_reasons = [];
@@ -71,8 +71,8 @@ describe("Direct: причина ответа записывается вмес�
     expect(reasons.join(" ")).not.toContain("каталог");
   });
 
-  it("номер телефона вместо кода — причина говорит, что он пропущен", async () => {
-    const t = shop();
+  it("номер телефона вместо кода (ответ на номер включён) — причина говорит, что он пропущен", async () => {
+    const t = shop([{ key: "chat_phone_reply", value: "true" }]);
     await t.say("+7 701 123 45 67");
     expect(t.reasons().join(" ")).toContain("skipped=phone");
   });

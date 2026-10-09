@@ -277,9 +277,12 @@ export function ServiceNoticesCard({ settings }: { settings: Record<string, stri
     await saveSettingsFn({ data: { [key]: v ? "true" : "false" } });
     await router.invalidate();
   });
+  // on: включено, пока значение не "false"; chat_phone_reply наоборот — выключен, пока не "true".
   const rows = [
-    { key: "notify_photo_not_receipt", label: "settings.svcNotice.photo" },
-    { key: "notify_bot_pause", label: "settings.svcNotice.pause" },
+    { key: "notify_photo_not_receipt", label: "settings.svcNotice.photo", on: true },
+    { key: "notify_bot_pause", label: "settings.svcNotice.pause", on: true },
+    { key: "notify_chat_phone", label: "settings.svcNotice.phone", on: true },
+    { key: "chat_phone_reply", label: "settings.svcNotice.phoneReply", on: false },
   ] as const;
   return (
     <Card title={t("settings.svcNotice.title")}>
@@ -288,7 +291,7 @@ export function ServiceNoticesCard({ settings }: { settings: Record<string, stri
         {rows.map((r) => (
           <div key={r.key} className="flex items-center gap-3">
             <Switch
-              checked={settings[r.key] !== "false"}
+              checked={r.on ? settings[r.key] !== "false" : settings[r.key] === "true"}
               disabled={toggle.busy || !roleAllows(shop.role, "admin")}
               onChange={(v) => void toggle.run(r.key, v).catch(() => {})}
               label={t(r.label)}

@@ -137,7 +137,7 @@ export const SETTINGS_REGISTRY: readonly SettingsEntry[] = [
     id: "service-notices",
     theme: "shop",
     title: "settings.svcNotice.title",
-    keys: ["notify_photo_not_receipt", "notify_bot_pause"],
+    keys: ["notify_photo_not_receipt", "notify_bot_pause", "notify_chat_phone", "chat_phone_reply"],
   }),
   E({
     id: "payment-methods",

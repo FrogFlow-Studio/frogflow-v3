@@ -201,16 +201,18 @@ export const SCENARIOS: Scenario[] = [
   ...everyLocale(
     () => ({
       id: "phone",
-      title: "номер телефона записывается, а не превращается в коды товаров",
-      origin: "Б2, скрин Якова 04.10",
+      title:
+        "номер телефона записывается, а не превращается в коды товаров; бот молчит, продавцу — уведомление",
+      origin:
+        "Б2, скрин Якова 04.10; жалоба продавца 08.10: «Записал ваш номер» делал переписку прочитанной",
       channel: "instagram",
       products: PRODUCTS,
       steps: [
         {
           say: { text: PHONE },
           expect: {
-            says: [(c) => c.phoneNoted],
-            notSays: ["Не нашёл"],
+            silent: true,
+            sellerNotices: 1,
             cart: 0,
             state: { phone: "+87770637152" },
           },
@@ -232,14 +234,14 @@ export const SCENARIOS: Scenario[] = [
   },
   {
     id: "phone-twice-wa-ru",
-    title: "тот же номер дважды (двойная доставка вебхука) — один ответ",
+    title: "тот же номер дважды (двойная доставка вебхука) — одно уведомление продавцу",
     origin: "Б2",
     channel: "whatsapp",
     locale: "ru",
     products: PRODUCTS,
     steps: [
-      { say: { text: PHONE }, expect: { count: 1 } },
-      { say: { repeat: true }, expect: { silent: true } },
+      { say: { text: PHONE }, expect: { silent: true, sellerNotices: 1 } },
+      { say: { repeat: true }, expect: { silent: true, sellerNotices: 0 } },
     ],
   },
   // ───── «/start» открывает магазин ─────
@@ -339,11 +341,14 @@ export const SCENARIOS: Scenario[] = [
   },
   {
     id: "seller-typed-old-ig-ru",
-    title: "реплика продавца старше 30 минут — бот снова отвечает",
+    title: "ответ на номер включён: реплика продавца старше 30 минут — бот снова отвечает",
     origin: "Б3",
     channel: "instagram",
     locale: "ru",
-    arrange: (r) => r.sellerTyped(45),
+    arrange: (r) => {
+      r.db.tables.app_settings!.push({ key: "chat_phone_reply", value: "true" });
+      r.sellerTyped(45);
+    },
     steps: [{ say: { text: PHONE }, expect: { says: [(c) => c.phoneNoted] } }],
   },
   // ───── Корзина кодами ─────

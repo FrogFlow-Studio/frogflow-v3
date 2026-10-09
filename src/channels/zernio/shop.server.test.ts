@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fakeDb } from "../../../tests/fake-db";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Customer } from "@/core/customers/customers";
@@ -46,6 +46,13 @@ vi.mock("@/core/consultant/engine.server", () => ({
     consultant.paused++;
     return c;
   },
+}));
+
+// Уведомления продавцу в Telegram: ловим текст, никуда не шлём.
+const notifySeller = vi.hoisted(() => vi.fn(async (_c: unknown, _h: string, _o?: unknown) => 1));
+vi.mock("@/channels/telegram/notify", async (orig) => ({
+  ...(await orig<typeof import("@/channels/telegram/notify")>()),
+  notifyAdminsHtml: notifySeller,
 }));
 
 type Sent = { text: string; interactive?: Json; buttons?: unknown[] };
@@ -827,33 +834,125 @@ describe("номер телефона в переписке — не коды т
   ];
   const stateOf = (db: ReturnType<typeof setup>["db"]) =>
     db.tables.bot_users![0]!.state as Record<string, unknown>;
+  const replyOn = (db: ReturnType<typeof setup>["db"]) => {
+    db.tables.app_settings = [{ bot_id: BOT, key: "chat_phone_reply", value: "true" }];
+  };
+  const notices = () => notifySeller.mock.calls.map((c) => String(c[1]));
 
-  it.each(phones)("«%s»: записан контакт, кодов нет, корзина пуста", async (text, saved) => {
-    const { send, sent, db } = setup();
-    const r = await send({ text });
-    expect(r.outcome).toBe("handled");
-    expect(sent.map((x) => x.text)).toEqual([COPY.ru.phoneNoted]);
-    expect(stateOf(db).phone).toBe(saved);
-    expect(db.tables.cart_items).toEqual([]);
-    expect(sent.some((x) => x.text.includes("Не нашёл"))).toBe(false);
+  beforeEach(() => notifySeller.mockClear());
+
+  // Жалоба продавца 08.10: «Записал ваш номер» делает диалог в Instagram
+  // прочитанным, и продавец не видит, что покупатель ждёт звонка.
+  it.each(phones)(
+    "«%s»: записан контакт, бот молчит, продавцу — уведомление с номером",
+    async (text, saved) => {
+      const { send, sent, db } = setup({ platform: "instagram" });
+      const r = await send({ text });
+      expect(r.outcome).toBe("handled");
+      expect(sent).toEqual([]);
+      expect(stateOf(db).phone).toBe(saved);
+      expect(db.tables.cart_items).toEqual([]);
+      expect(notices()).toHaveLength(1);
+      expect(notices()[0]).toContain(saved);
+      expect(notices()[0]).toContain("Instagram");
+    },
+  );
+
+  it("номер попадает в свежий заказ без телефона и в уведомление", async () => {
+    const { send, db } = setup({ platform: "instagram" });
+    const recent = new Date(Date.now() - 3600_000).toISOString();
+    db.tables.orders = [
+      {
+        id: 7,
+        bot_id: BOT,
+        telegram_id: -1,
+        order_no: 41,
+        display_no: 12,
+        status: "awaiting_payment",
+        contact: null,
+        created_at: recent,
+      },
+    ];
+    await send({ text: "87770828833" });
+    expect(db.tables.orders![0]!.contact).toBe("+87770828833");
+    expect(notices()[0]).toContain("заказ №12");
   });
 
-  it("повтор того же номера (двойная доставка вебхука) — ответ один", async () => {
-    const { send, sent } = setup();
-    await send({ text: "87770637152" });
-    await send({ text: "87770637152" });
-    expect(sent).toHaveLength(1);
+  it("телефон заказа, введённый раньше, не затирается; отменённый и старый заказы не трогаем", async () => {
+    const { send, db } = setup({ platform: "instagram" });
+    const recent = new Date(Date.now() - 3600_000).toISOString();
+    const old = new Date(Date.now() - 10 * 24 * 3600_000).toISOString();
+    db.tables.orders = [
+      {
+        id: 1,
+        bot_id: BOT,
+        telegram_id: -1,
+        order_no: 1,
+        display_no: null,
+        status: "awaiting_payment",
+        contact: null,
+        created_at: old,
+      },
+      {
+        id: 2,
+        bot_id: BOT,
+        telegram_id: -1,
+        order_no: 2,
+        display_no: null,
+        status: "paid",
+        contact: "+77010000000",
+        created_at: recent,
+      },
+      {
+        id: 3,
+        bot_id: BOT,
+        telegram_id: -1,
+        order_no: 3,
+        display_no: null,
+        status: "cancelled",
+        contact: null,
+        created_at: new Date().toISOString(),
+      },
+    ];
+    await send({ text: "87770828833" });
+    expect(db.tables.orders!.map((o) => o.contact)).toEqual([null, "+77010000000", null]);
+    expect(notices()[0]).toContain("Последний заказ — №2");
   });
 
-  it("два одновременных сообщения с номером — «Записал» один раз", async () => {
-    const { send, sent, db } = setup();
-    await Promise.all([send({ text: "87770637152" }), send({ text: "87770637152" })]);
-    expect(sent).toHaveLength(1);
+  it("уведомление выключено в настройках — бот всё равно молчит, номер записан", async () => {
+    const { send, sent, db } = setup({ platform: "instagram" });
+    db.tables.app_settings = [{ bot_id: BOT, key: "notify_chat_phone", value: "false" }];
+    await send({ text: "87770637152" });
+    expect(sent).toEqual([]);
+    expect(notifySeller).not.toHaveBeenCalled();
     expect(stateOf(db).phone).toBe("+87770637152");
   });
 
-  it("продавец писал руками 10 минут назад — бот молчит, номер всё равно записан", async () => {
+  it("повтор того же номера (двойная доставка вебхука) — уведомление одно", async () => {
+    const { send } = setup();
+    await send({ text: "87770637152" });
+    await send({ text: "87770637152" });
+    expect(notifySeller).toHaveBeenCalledTimes(1);
+  });
+
+  it("два одновременных сообщения с номером — уведомление одно", async () => {
+    const { send, db } = setup();
+    await Promise.all([send({ text: "87770637152" }), send({ text: "87770637152" })]);
+    expect(notifySeller).toHaveBeenCalledTimes(1);
+    expect(stateOf(db).phone).toBe("+87770637152");
+  });
+
+  it("ответ включён продавцом: «Записал» один раз, и при гонке тоже", async () => {
+    const { send, sent, db } = setup();
+    replyOn(db);
+    await Promise.all([send({ text: "87770637152" }), send({ text: "87770637152" })]);
+    await send({ text: "87770637152" });
+    expect(sent.map((x) => x.text)).toEqual([COPY.ru.phoneNoted]);
+  });
+
+  it("ответ включён, но продавец писал руками 10 минут назад — бот молчит, номер записан", async () => {
     const { send, sent, db, transport } = setup();
+    replyOn(db);
     vi.mocked(transport.tail).mockResolvedValue([
       {
         direction: "outgoing",
@@ -868,8 +967,9 @@ describe("номер телефона в переписке — не коды т
     expect(stateOf(db).phone).toBe("+87770637152");
   });
 
-  it("ответы самого бота (через API) и реплика продавца старше 30 минут молчать не заставляют", async () => {
-    const { send, sent, transport } = setup();
+  it("ответ включён: ответы самого бота и реплика продавца старше 30 минут молчать не заставляют", async () => {
+    const { send, sent, db, transport } = setup();
+    replyOn(db);
     vi.mocked(transport.tail).mockResolvedValue([
       {
         direction: "outgoing",
