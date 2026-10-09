@@ -5,7 +5,27 @@ export async function watch(page: Page): Promise<string[]> {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.route(/^https?:\/\/(?!127\.0\.0\.1)/, (r) => r.abort());
+  waitForHydrationOnLoad(page);
   return errors;
+}
+
+/**
+ * `goto` и `reload` возвращают страницу, когда React её уже взял. До гидратации клик по кнопке
+ * ничего не делает, ввод в поле не вызывает обработчик, а выбор в `<select>` гидратация
+ * сбрасывает: под нагрузкой (4 потока Playwright) такие шаги терялись в разных specs.
+ */
+export function waitForHydrationOnLoad(page: Page): void {
+  for (const method of ["goto", "reload"] as const) {
+    const original = page[method].bind(page) as (...args: unknown[]) => ReturnType<Page["goto"]>;
+    (page as unknown as Record<string, unknown>)[method] = async (...args: unknown[]) => {
+      const response = await original(...args);
+      if (response?.headers()["content-type"]?.startsWith("text/html"))
+        await page.waitForFunction(() =>
+          Object.keys(document.body ?? {}).some((k) => k.startsWith("__reactFiber")),
+        );
+      return response;
+    };
+  }
 }
 
 /** На телефоне фильтры витрины спрятаны в панель «Фильтры»; на компьютере они на виду. */
