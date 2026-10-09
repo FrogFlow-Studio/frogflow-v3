@@ -3,16 +3,18 @@
  * командой, окружение без ключей живой базы, короткая сводка для описания PR.
  *
  *   npm run verify              — всё, включая сборку
- *   npm run verify -- --no-build — без сборки (разработчик; сборку гонит Контрольный)
+ *   npm run verify -- --no-build — без сборки (разработчик)
  *
  * tests/integration и e2e сюда не входят: живые тесты — только по заказу
  * интегратора, e2e — отдельной командой, если менялся интерфейс.
  */
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 
 export interface Step {
   name: string;
   cmd: string[];
+  /** Идёт одновременно с соседними такими же шагами; вывод печатается целиком по окончании. */
+  parallel?: boolean;
 }
 
 export interface StepResult {
@@ -34,9 +36,9 @@ export function withoutLiveKeys(cmd: string[]): string[] {
 
 export function steps(withBuild: boolean): Step[] {
   const list: Step[] = [
-    { name: "lint", cmd: ["npm", "run", "lint"] },
-    { name: "typecheck", cmd: ["npm", "run", "typecheck"] },
-    { name: "test", cmd: ["npm", "test"] },
+    { name: "lint", cmd: ["npm", "run", "lint"], parallel: true },
+    { name: "typecheck", cmd: ["npm", "run", "typecheck"], parallel: true },
+    { name: "test", cmd: ["npm", "test"], parallel: true },
   ];
   // Типы уже проверены шагом выше, поэтому не `npm run build` (он проверит их второй раз).
   if (withBuild) {
@@ -69,17 +71,51 @@ export function summary(results: StepResult[], commit: string, skipped: string[]
   return lines.join("\n");
 }
 
-function main(): number {
-  const withBuild = !process.argv.includes("--no-build");
-  const results: StepResult[] = [];
-  for (const step of steps(withBuild)) {
-    console.log(`\n▶ ${step.name}: ${step.cmd.join(" ")}`);
-    const started = Date.now();
-    const [bin, ...args] = withoutLiveKeys(step.cmd);
-    const run = spawnSync(bin!, args, { stdio: "inherit" });
-    results.push({ name: step.name, ok: run.status === 0, seconds: (Date.now() - started) / 1000 });
-    if (run.status !== 0) break;
+/** Подряд идущие шаги с `parallel` — одна пачка, остальные по одному. */
+export function batches<T extends Step>(list: T[]): T[][] {
+  const out: T[][] = [];
+  for (const step of list) {
+    const last = out.at(-1);
+    if (step.parallel && last?.[0]?.parallel) last.push(step);
+    else out.push([step]);
   }
+  return out;
+}
+
+function runOne(step: Step, buffered: boolean): Promise<StepResult> {
+  const started = Date.now();
+  const [bin, ...args] = withoutLiveKeys(step.cmd);
+  if (!buffered) console.log(`\n▶ ${step.name}: ${step.cmd.join(" ")}`);
+  const child = spawn(bin!, args, { stdio: buffered ? ["ignore", "pipe", "pipe"] : "inherit" });
+  const chunks: Buffer[] = [];
+  child.stdout?.on("data", (c: Buffer) => chunks.push(c));
+  child.stderr?.on("data", (c: Buffer) => chunks.push(c));
+  return new Promise((done) => {
+    child.on("close", (code) => {
+      const seconds = (Date.now() - started) / 1000;
+      if (buffered) {
+        console.log(`\n▶ ${step.name}: ${step.cmd.join(" ")} (${seconds.toFixed(0)} с)`);
+        process.stdout.write(Buffer.concat(chunks));
+      }
+      done({ name: step.name, ok: code === 0, seconds });
+    });
+  });
+}
+
+/** Пачки по очереди, шаги пачки одновременно; после упавшей пачки дальше не идём. */
+export async function runSteps(list: Step[]): Promise<StepResult[]> {
+  const results: StepResult[] = [];
+  for (const batch of batches(list)) {
+    const done = await Promise.all(batch.map((s) => runOne(s, batch.length > 1)));
+    results.push(...done);
+    if (done.some((r) => !r.ok)) break;
+  }
+  return results;
+}
+
+async function main(): Promise<number> {
+  const withBuild = !process.argv.includes("--no-build");
+  const results = await runSteps(steps(withBuild));
   const commit = spawnSync("git", ["rev-parse", "--short", "HEAD"], {
     encoding: "utf8",
   }).stdout.trim();
@@ -92,4 +128,4 @@ function main(): number {
   return results.every((r) => r.ok) ? 0 : 1;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) process.exit(main());
+if (import.meta.url === `file://${process.argv[1]}`) process.exit(await main());

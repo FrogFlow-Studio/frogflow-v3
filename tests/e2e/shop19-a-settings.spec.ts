@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import * as F from "./fixtures.ts";
-import { watch } from "./helpers.ts";
+import { hydrated, watch } from "./helpers.ts";
 
 /** А13: настройки по темам и поиск по названию. */
 test("настройки: темы, поиск, ссылка на отдельную страницу", async ({ page }) => {
@@ -119,6 +119,7 @@ test("Ctrl K: «часовой пояс» открывает настройки 
   await page.getByRole("button", { name: "Войти", exact: true }).click();
   await expect(page).toHaveURL(/\/admin$/);
   await page.goto("/admin/settings");
+  await hydrated(page, '[data-settings-section="shop"]');
   await page.getByRole("button", { name: "Оплата и доставка", exact: true }).click();
   await expect(page.locator('[data-settings-section="shop"]')).toBeHidden();
   await page.evaluate(() => window.dispatchEvent(new Event("admin:search")));

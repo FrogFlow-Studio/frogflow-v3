@@ -4,19 +4,21 @@
  *
  *   npm run precheck
  *
- * Шаги: prettier --write и eslint по изменённым файлам, tsc --noEmit, vitest по
+ * Шаги: prettier --write по изменённым файлам, затем одновременно eslint, tsc --noEmit, vitest по
  * тестам, которых коснулись изменения (`vitest related`), плюс всегда `src/lib` и
  * `tests/db-columns.test.ts`, `tests/dialogs` и сканирующие тесты (подписи аудита, роли, кроны, переводы). В конце одна строка: «готово к PR» или что упало.
- * tests/integration и e2e сюда не входят никогда. Полный `verify` и сборку гонит
- * Контрольный в конце партии.
+ * tests/integration и e2e сюда не входят никогда. Перед вливанием — полный
+ * `verify` и e2e на сборке (CI нет).
  */
 import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
-import { withoutLiveKeys } from "./verify.ts";
+import { runSteps } from "./verify.ts";
 
 export interface Step {
   name: string;
   cmd: string[];
+  /** Идёт одновременно с соседними такими же шагами (после prettier --write). */
+  parallel?: boolean;
 }
 
 export interface Plan {
@@ -63,18 +65,35 @@ export function steps(p: Plan): Step[] {
   const list: Step[] = [];
   if (p.format.length)
     list.push({ name: "prettier", cmd: ["npx", "prettier", "--write", ...p.format] });
-  if (p.lint.length) list.push({ name: "eslint", cmd: ["npx", "eslint", ...p.lint] });
-  list.push({ name: "e2e-скан", cmd: ["node", "scripts/e2e-scan.ts"] });
-  list.push({ name: "typecheck", cmd: ["npx", "tsc", "--noEmit"] });
+  // prettier правит файлы, поэтому он первым и один; остальное только читает и идёт разом.
+  if (p.lint.length)
+    list.push({
+      name: "eslint",
+      cmd: [
+        "npx",
+        "eslint",
+        "--cache",
+        "--cache-strategy",
+        "content",
+        "--cache-location",
+        "node_modules/.cache/eslint/",
+        ...p.lint,
+      ],
+      parallel: true,
+    });
+  list.push({ name: "e2e-скан", cmd: ["node", "scripts/e2e-scan.ts"], parallel: true });
+  list.push({ name: "typecheck", cmd: ["npm", "run", "typecheck"], parallel: true });
   const exclude = ["--exclude", "tests/integration/**", "--exclude", "tests/e2e/**"];
   if (p.related.length)
     list.push({
       name: "tests (изменённые)",
       cmd: ["npx", "vitest", "related", ...p.related, "--run", ...exclude],
+      parallel: true,
     });
   list.push({
     name: "tests (src/lib, db-columns)",
     cmd: ["npx", "vitest", "run", ...ALWAYS_TESTS, ...exclude],
+    parallel: true,
   });
   return list;
 }
@@ -100,22 +119,15 @@ export function changedFiles(): string[] {
   return all.filter((f) => existsSync(f));
 }
 
-function main(): number {
+async function main(): Promise<number> {
   const p = plan(changedFiles());
   console.log(
     `Изменено: форматирование ${p.format.length}, eslint ${p.lint.length}, тесты по изменённым ${p.related.length}.`,
   );
-  const results: { name: string; ok: boolean }[] = [];
-  for (const step of steps(p)) {
-    console.log(`\n▶ ${step.name}`);
-    const [bin, ...args] = withoutLiveKeys(step.cmd);
-    const run = spawnSync(bin!, args, { stdio: "inherit" });
-    results.push({ name: step.name, ok: run.status === 0 });
-    // Дальше смысла нет: сначала чиним первую ошибку.
-    if (run.status !== 0) break;
-  }
+  // Сначала чиним первую ошибку: после упавшей пачки дальше не идём.
+  const results = await runSteps(steps(p));
   console.log(`\n${verdict(results)}`);
   return results.every((r) => r.ok) ? 0 : 1;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) process.exit(main());
+if (import.meta.url === `file://${process.argv[1]}`) process.exit(await main());
