@@ -4,6 +4,8 @@ on:
   pull_request:
   push:
     branches: [master, main]
+  # Ручной перезапуск на master: заново выложить прод (задача deploy).
+  workflow_dispatch:
 
 jobs:
   check:
@@ -96,3 +98,24 @@ jobs:
     if: always()
     steps:
       - run: test "${{ needs.e2e-shard.result }}" = success
+
+  # Выкладка на прод (Vercel, frogflowplatform) после зелёных check и e2e на
+  # master. Через Deploy Hook: выкладки по push от аккаунта без доступа к
+  # Vercel он блокирует, а запуск хуком — нет. Ссылка хука — секрет
+  # VERCEL_DEPLOY_HOOK; без него задача падает, а не молча пропускается.
+  deploy:
+    if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request'
+    needs: [check, e2e]
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-prod
+      cancel-in-progress: false
+    steps:
+      - name: Запуск выкладки
+        env:
+          VERCEL_DEPLOY_HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK }}
+        run: |
+          if [ -z "$VERCEL_DEPLOY_HOOK" ]; then
+            echo "::error::нет секрета VERCEL_DEPLOY_HOOK"; exit 1
+          fi
+          curl -fsS --max-time 30 -X POST "$VERCEL_DEPLOY_HOOK" -o /dev/null
