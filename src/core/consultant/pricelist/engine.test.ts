@@ -66,6 +66,7 @@ type Opts = {
   images?: V2Image[];
   storyProductIds?: string[];
   storyMediaUrl?: string;
+  storyCaption?: string;
   fetchImage?: (url: string) => Promise<V2Image | null>;
   onToolCall?: (name: string) => void;
   /** Курс рубля; null — свежего нет (getFreshRate вернул null). */
@@ -99,7 +100,9 @@ async function decide(text: string, state: PricelistState = {}, o: Opts = {}) {
     now: o.now ?? DAY,
     images: o.images,
     storyProductIds: o.storyProductIds,
-    story: o.storyMediaUrl ? { storyId: null, mediaUrl: o.storyMediaUrl } : undefined,
+    story: o.storyMediaUrl
+      ? { storyId: null, mediaUrl: o.storyMediaUrl, caption: o.storyCaption }
+      : undefined,
     fetchImage: o.fetchImage ?? (async () => null),
     onToolCall: o.onToolCall,
     call: async (req) => {
@@ -679,6 +682,37 @@ describe("консультант по прайсу", () => {
     expect(last.content.at(-1)?.text).toContain("Картинка публикации — ниже");
     expect(last.content.at(-1)?.text).not.toContain("Покупатель прислал фото");
     expect(turn.tools).toContain("story_image");
+  });
+
+  it("рилс без отметки не скачался — модель видит его подпись, а не «спросите, что понравилось»", async () => {
+    // BOVI 25.09–09.10: восемь человек начали с «Цена?» на рилс и получили
+    // «что из публикации?». Видео рилса не картинка, а подпись Zernio присылает.
+    responses.push(reply([{ type: "text", text: "Полотенца Uchino 50х100 — 9 000 ₸." }]));
+    await decide(
+      "Цена?",
+      {},
+      {
+        storyProductIds: [],
+        storyMediaUrl: "https://www.instagram.com/reel/Dcaih_PMAZ2/",
+        storyCaption: "Почему эти полотенца [Uchino] раскупают\nбыстрее всех?",
+      },
+    );
+    const text = lastMessage(0);
+    expect(text).toContain(
+      "Подпись публикации: «Почему эти полотенца Uchino раскупают быстрее всех?»",
+    );
+    expect(text).toContain("найдите их поиском и назовите цены");
+    expect(text).not.toContain("Спросите, что из неё понравилось");
+  });
+
+  it("рилс без отметки и без подписи — как раньше, вопрос покупателю", async () => {
+    responses.push(reply([{ type: "text", text: "Что из публикации понравилось?" }]));
+    await decide(
+      "Цена?",
+      {},
+      { storyProductIds: [], storyMediaUrl: "https://www.instagram.com/reel/Dcaih_PMAZ2/" },
+    );
+    expect(lastMessage(0)).toContain("Спросите, что из неё понравилось");
   });
 
   it("фото товара из фотобазы — уходит покупателю вместе с ответом", async () => {

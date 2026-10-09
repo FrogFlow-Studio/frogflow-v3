@@ -59,6 +59,8 @@ describe("ответ на рилс", () => {
     // путём — на случай вложения без разбираемой ссылки.
     expect(parsed.storyId).toBe("Dcaih_PMAZ2");
     expect(parsed.storyMediaUrl).toBe("https://www.instagram.com/reel/Dcaih_PMAZ2/");
+    // Подпись рилса — в payload.title (BOVI 04.10, рилс про полотенца Pip Studio).
+    expect(parsed.storyCaption).toBe("Почему эти голландские полотенца раскупают быстрее");
   });
 
   it("без ссылки берётся числовой reel_video_id", () => {

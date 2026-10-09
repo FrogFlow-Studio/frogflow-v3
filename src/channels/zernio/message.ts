@@ -125,6 +125,12 @@ export type ParsedZernioMessage = {
   storyId: string | null;
   /** Ссылка на медиа сторис — запасной ключ для сопоставления с тегом товара. */
   storyMediaUrl: string | null;
+  /**
+   * Подпись публикации, если Zernio её прислал: у пересланного рилса или поста
+   * она лежит в `payload.title`. BOVI 25.09–09.10: восемь человек начали с
+   * «Цена?» на рилс, и ИИ, не зная, о чём речь, переспрашивал.
+   */
+  storyCaption: string | null;
   /** Исходящее (наш же ответ, если Zernio когда-нибудь начнёт их слать) — не обрабатываем. */
   outgoing: boolean;
   /** Только у исходящего: кто отправил (см. `ZernioInboxMessage.sentVia`); нет поля — неизвестно. */
@@ -165,6 +171,8 @@ const STORY_URL_PATHS = [
 /** Ссылка на публикацию Instagram — рилс, пост или сторис, а не файл покупателя. */
 const PUBLICATION_URL = /instagram\.com\/(?:reels?|p|stories)\//i;
 const SHORTCODE = /instagram\.com\/(?:reels?|p)\/([\w-]+)/i;
+/** Подпись публикации для модели: сути хватает начала, длинный текст — лишние токены. */
+const STORY_CAPTION_MAX = 800;
 const STORY_ATTACHMENT_TYPES = new Set([
   "story",
   "story_mention",
@@ -296,6 +304,7 @@ export function parseZernioMessage(payload: ZernioWebhookMessagePayload): Parsed
   const storySources = [payload.metadata, message.metadata, message, payload];
   let storyId: string | null = null;
   let storyMediaUrl: string | null = null;
+  let storyCaption: string | null = null;
   for (const src of storySources) {
     storyId ??= pick(src, STORY_ID_PATHS);
     storyMediaUrl ??= pick(src, STORY_URL_PATHS);
@@ -321,6 +330,7 @@ export function parseZernioMessage(payload: ZernioWebhookMessagePayload): Parsed
         continue;
       storyId ??= url.match(SHORTCODE)?.[1] ?? (reelId || null);
       if (published) storyMediaUrl ??= url;
+      storyCaption ??= str(p.title).trim() || str(p.caption).trim() || null;
       if (storyId && storyMediaUrl) break;
     }
   }
@@ -344,6 +354,7 @@ export function parseZernioMessage(payload: ZernioWebhookMessagePayload): Parsed
     mediaWithoutUrl: attachments.length < rawAttachments.length,
     storyId,
     storyMediaUrl,
+    storyCaption: storyCaption ? storyCaption.slice(0, STORY_CAPTION_MAX) : null,
     outgoing: message.direction === "outgoing",
     ...(message.sentVia !== undefined ? { sentVia: message.sentVia } : {}),
     fromScenario: Boolean(

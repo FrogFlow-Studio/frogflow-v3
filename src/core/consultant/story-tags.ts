@@ -280,7 +280,20 @@ export async function deleteStoryTag(ctx: TenantContext, id: string): Promise<vo
 }
 
 /** Контекст для модели: что на сторис, на которую ответил покупатель. */
-export function storyContextLine(tag: StoryTag | null, storyId: string | null): string {
+/**
+ * Подпись публикации одной строкой для пометки модели: без переносов и
+ * квадратных скобок (ими пометка закрывается), не длиннее 600 знаков.
+ */
+export function storyCaptionText(caption: string | null | undefined): string {
+  const flat = (caption ?? "").replace(/[[\]]/g, " ").replace(/\s+/g, " ").trim();
+  return flat.length > 600 ? `${flat.slice(0, 600)}…` : flat;
+}
+
+export function storyContextLine(
+  tag: StoryTag | null,
+  storyId: string | null,
+  caption?: string | null,
+): string {
   const head = `[Клиент ответил на сторис/рилс${storyId ? ` ${storyId}` : ""}`;
   if (tag) {
     const notes = tag.notes ? `. Заметка продавца: ${tag.notes}` : "";
@@ -293,6 +306,10 @@ export function storyContextLine(tag: StoryTag | null, storyId: string | null): 
     }
     const price = tag.price != null ? `, цена ${tag.price}` : "";
     return `${head}. На ней товар «${tag.product_name}»${price}${notes}. Отвечайте про этот товар.]`;
+  }
+  const text = storyCaptionText(caption);
+  if (text) {
+    return `${head}, товар к ней не отмечен. Подпись публикации: «${text}». Поймите по подписи, о каком товаре речь, и отвечайте про него; если по подписи не понять — уточните.]`;
   }
   return `${head}, товар к ней не отмечен. Вежливо уточните, какой именно товар со сторис его интересует.]`;
 }

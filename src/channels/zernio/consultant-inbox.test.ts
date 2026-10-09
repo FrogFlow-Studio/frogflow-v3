@@ -50,6 +50,7 @@ const msg = (p: Partial<ParsedZernioMessage>): ParsedZernioMessage =>
     attachments: [],
     storyId: null,
     storyMediaUrl: null,
+    storyCaption: null,
     ...p,
   }) as ParsedZernioMessage;
 
@@ -64,6 +65,7 @@ describe("публикация, а вопрос — следующим сооб�
       msg({
         storyId: "reel1",
         storyMediaUrl: REEL,
+        storyCaption: "Полотенца Pip Studio",
         attachments: [{ type: "share", url: REEL }] as never,
       }),
       s.transport,
@@ -74,6 +76,7 @@ describe("публикация, а вопрос — следующим сооб�
     expect(s.state().consultant!.pending_story).toEqual({
       id: "reel1",
       url: REEL,
+      caption: "Полотенца Pip Studio",
       at: new Date(now).toISOString(),
     });
     expect(s.state().direct).toEqual({ forwarded_at: "x" });
@@ -85,7 +88,11 @@ describe("публикация, а вопрос — следующим сооб�
       s.transport,
       { customerPhotos: 0, now: now + 60_000 },
     );
-    expect(second).toMatchObject({ done: false, story: { storyId: "reel1", mediaUrl: REEL } });
+    // Подпись едет вместе с публикацией: по ней ИИ поймёт, о каком товаре «Сколько стоит?».
+    expect(second).toMatchObject({
+      done: false,
+      story: { storyId: "reel1", mediaUrl: REEL, caption: "Полотенца Pip Studio" },
+    });
     // Отдана вопросу — к следующему не прилипает.
     expect(s.state().consultant!.pending_story).toBeUndefined();
     const third = await beforeConsultant(

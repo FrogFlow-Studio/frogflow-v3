@@ -139,6 +139,7 @@ function setup(
     mediaWithoutUrl: false,
     storyId: null,
     storyMediaUrl: null,
+    storyCaption: null,
     outgoing: false,
     ...m,
   });
