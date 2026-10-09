@@ -3,6 +3,7 @@ import type { Tenant } from "@/core/tenant/types";
 import { shownLeadDays } from "@/core/catalog/lead-time";
 import { sortedImages, sortedVariants, imageUrl, type Product } from "@/core/catalog/catalog";
 import { resolvePrice, strikePrice } from "@/core/pricing/pricing";
+import { allCountryPrices, formatPriceList } from "@/core/pricing/all-prices";
 import { formatRatingSummary } from "@/core/reviews/pure";
 import { formatMoney } from "@/core/money/money";
 import { verticalDef } from "@/core/verticals/registry";
@@ -163,7 +164,10 @@ export async function productCard(
     );
     const min = Math.min(...priced.map((r) => r.money.amount));
     const currency = priced[0]?.money.currency ?? p.currency;
-    caption = `📦 <b>${escapeHtml(p.name)}</b>${desc}\n\n💰 <b>${m.priceFrom(formatMoney(min, currency))}</b>`;
+    // Цены во всех валютах оплаты (core/pricing/all-prices): «от 1500 ₸ / 490 ₽».
+    const all = await allCountryPrices(ctx, p, variants);
+    const from = all ? formatPriceList(all) : formatMoney(min, currency);
+    caption = `📦 <b>${escapeHtml(p.name)}</b>${desc}\n\n💰 <b>${m.priceFrom(from)}</b>`;
     keyboard = {
       inline_keyboard: outOfStock
         ? waitRows
@@ -175,10 +179,16 @@ export async function productCard(
           ]),
     };
   } else {
-    const { price: money, old } = await strikePrice(ctx, p, country);
+    // Цены во всех валютах оплаты (core/pricing/all-prices) или одна — по стране покупателя.
+    const prices = (await allCountryPrices(ctx, p)) ?? [await strikePrice(ctx, p, country)];
     // Акция: прежняя цена зачёркнута, рядом новая.
-    const was = old != null ? `<s>${formatMoney(old, money.currency)}</s> ` : "";
-    caption = `📦 <b>${escapeHtml(p.name)}</b>${desc}\n\n💰 ${was}<b>${formatMoney(money.amount, money.currency)}</b>`;
+    const line = prices
+      .map(({ price: money, old }) => {
+        const was = old != null ? `<s>${formatMoney(old, money.currency)}</s> ` : "";
+        return `${was}<b>${formatMoney(money.amount, money.currency)}</b>`;
+      })
+      .join(" / ");
+    caption = `📦 <b>${escapeHtml(p.name)}</b>${desc}\n\n💰 ${line}`;
     keyboard = {
       inline_keyboard: outOfStock
         ? waitRows

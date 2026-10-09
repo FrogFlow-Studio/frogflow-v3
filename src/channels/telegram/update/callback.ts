@@ -25,6 +25,7 @@ import { type Bot, DEFAULT_PAUSED, localeOf, send } from "./bot";
 import { showCart } from "./cart";
 import { quizAsk, sendProductCard, showCategories, showSearch } from "./catalog";
 import { askCountry, finishCheckout, soleCountry, startCheckout } from "./checkout";
+import { allPriceCountries } from "@/core/pricing/all-prices";
 import { deliverInLanguage, reorderFrom } from "./orders";
 import { showBalancePayment } from "./payments";
 import { adminDecision, adminOrderButton } from "./seller";
@@ -152,11 +153,19 @@ export async function handleCallback(
       ...customer.state,
       country_code: method.country_code,
       country_name: method.country_name,
+      // Шаг оплаты при ценах во всех валютах пройден (core/pricing/all-prices).
+      pay_choice_pending: forCheckout ? undefined : customer.state.pay_choice_pending,
     });
     await send(b, b.m.countrySaved(escapeHtml(method.country_name)));
     return forCheckout ? finishCheckout(b, method.country_code) : undefined;
   }
-  if (NAV_NEEDS_COUNTRY.test(data) && !customer.state.country_code && !(await soleCountry(b)))
+  // Цены во всех валютах (core/pricing/all-prices): страну до оплаты не спрашиваем.
+  if (
+    NAV_NEEDS_COUNTRY.test(data) &&
+    !customer.state.country_code &&
+    !(await soleCountry(b)) &&
+    !(await allPriceCountries(ctx))
+  )
     return askCountry(b, false);
 
   if (data.startsWith("cat:")) {

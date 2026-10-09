@@ -71,6 +71,16 @@ export async function currencyForCountry(
   return (await loadMethods(ctx)).currencies.get(code.toUpperCase()) ?? null;
 }
 
+/** Активные страны оплаты с валютой, в порядке способов оплаты. */
+export async function payCountries(
+  ctx: TenantContext,
+): Promise<{ code: string; currency: string }[]> {
+  return [...(await loadMethods(ctx)).currencies].map(([code, currency]) => ({
+    code,
+    currency: currency.toUpperCase(),
+  }));
+}
+
 export async function defaultCountryCode(ctx: TenantContext): Promise<string | null> {
   return (await loadMethods(ctx)).defaultCode;
 }

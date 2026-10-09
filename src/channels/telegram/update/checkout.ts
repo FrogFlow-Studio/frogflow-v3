@@ -7,6 +7,8 @@ import { escapeHtml, manualPayBtn, minOrderText, prodamusCopy } from "../copy";
 import { localeFlags, localeNames } from "@/core/i18n/locale";
 import { storefrontBase } from "@/core/tenant/custom-domain";
 import { formatMoney } from "@/core/money/money";
+import { allPriceCountries, payAtLastStep, payChoiceTotals } from "@/core/pricing/all-prices";
+import { defaultCountryCode } from "@/core/pricing/pricing";
 import { setState } from "@/core/customers/customers";
 import { cartCount, listCart } from "@/core/cart/cart";
 import { freeDeliveryView } from "@/core/fulfillment/free-delivery-cart";
@@ -61,11 +63,21 @@ export async function askCountry(b: Bot, forCheckout: boolean): Promise<void> {
     return;
   }
   const prefix = forCheckout ? "country:" : "setcountry:";
-  await send(b, b.m.chooseCountry, {
+  // Цены во всех валютах: это шаг оплаты — у каждой страны сумма корзины.
+  const totals = forCheckout ? await payChoiceTotals(b.ctx, b.customer) : null;
+  await send(b, totals ? b.m.choosePayCountry : b.m.chooseCountry, {
     reply_markup: {
-      inline_keyboard: methods.map((m) => [
-        { text: m.country_name, callback_data: `${prefix}${m.country_code}` },
-      ]),
+      inline_keyboard: methods.map((m) => {
+        const sum = totals?.get(m.country_code);
+        return [
+          {
+            text: sum
+              ? `${m.country_name} — ${formatMoney(sum.amount, sum.currency)}`
+              : m.country_name,
+            callback_data: `${prefix}${m.country_code}`,
+          },
+        ];
+      }),
     },
   });
 }
@@ -92,6 +104,20 @@ export async function continueCheckout(b: Bot) {
       },
     });
     return;
+  }
+  // Цены во всех валютах, корзина цифровая: страну (валюту) спросим на шаге
+  // оплаты, с суммами; до него считаем по прежней или домашней стране.
+  if (await payAtLastStep(b.ctx, b.customer)) {
+    b.customer = await setState(b.ctx, b.customer, {
+      ...b.customer.state,
+      pay_choice_pending: true,
+    });
+    const cc = b.customer.state.country_code ?? (await defaultCountryCode(b.ctx));
+    if (cc) return proceedToFulfillmentOrPlace(b, cc);
+  } else if (b.customer.state.pay_choice_pending) {
+    // Отметка брошенного оформления не тянется в новое.
+    const { pay_choice_pending: _pp, ...rest } = b.customer.state;
+    b.customer = await setState(b.ctx, b.customer, rest);
   }
   if (!b.customer.state.country_code) return askCountry(b, true);
   return proceedToFulfillmentOrPlace(b, b.customer.state.country_code);
@@ -303,6 +329,8 @@ async function proceedToLanguageOrPlace(b: Bot, countryCode: string) {
 }
 
 export async function finishCheckout(b: Bot, countryCode: string) {
+  if (b.customer.state.pay_choice_pending && (await allPriceCountries(b.ctx)))
+    return askCountry(b, true);
   const st = b.customer.state;
   const result = await placeOrder(b.ctx, b.customer, countryCode, {
     promoCode: st.promo_code,

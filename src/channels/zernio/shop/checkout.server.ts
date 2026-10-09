@@ -4,6 +4,8 @@ import { localeNames } from "@/core/i18n/locale";
 import { getProduct, type Product } from "@/core/catalog/catalog";
 import { cartCount, listCart, priceCart } from "@/core/cart/cart";
 import { formatMoney } from "@/core/money/money";
+import { allPriceCountries, payAtLastStep, payChoiceTotals } from "@/core/pricing/all-prices";
+import { defaultCountryCode } from "@/core/pricing/pricing";
 import {
   displayNo,
   getOrder,
@@ -84,20 +86,27 @@ export async function askCountry(s: Shop, forCheckout: boolean) {
     return;
   }
   await setMode(s, { mode: "awaiting_country", placing_order: forCheckout ? true : undefined });
-  const lines = methods.map((m, i) => `${i + 1}. ${m.country_name}`);
+  // Цены во всех валютах: это шаг оплаты — у каждой страны сумма корзины.
+  const totals = forCheckout ? await payChoiceTotals(s.ctx, s.customer) : null;
+  const prompt = plain(totals ? s.m.choosePayCountry : s.m.chooseCountry);
+  const titles = methods.map((m) => {
+    const sum = totals?.get(m.country_code);
+    return sum ? `${m.country_name} — ${formatMoney(sum.amount, sum.currency)}` : m.country_name;
+  });
+  const lines = titles.map((t, i) => `${i + 1}. ${t}`);
   if (s.platform === "whatsapp" && methods.length <= WA_LIST_MAX_ROWS) {
-    await reply(s, plain(s.m.chooseCountry), {
+    await reply(s, prompt, {
       force: true,
       interactive: stepList(
-        plain(s.m.chooseCountry),
+        prompt,
         s.locale === "ru" ? "Выбрать страну" : plain(s.m.chooseCountry).slice(0, 20),
-        plain(s.m.chooseCountry),
-        methods.map((m) => m.country_name),
+        prompt,
+        titles,
       ),
     });
     return;
   }
-  await reply(s, `${plain(s.m.chooseCountry)}\n\n${lines.join("\n")}`, { force: true });
+  await reply(s, `${prompt}\n\n${lines.join("\n")}`, { force: true });
 }
 
 /**
@@ -168,6 +177,16 @@ export async function continueCheckout(s: Shop) {
     await setMode(s, { mode: "awaiting_contact" });
     await reply(s, s.m.phonePromptHtml, { force: true });
     return;
+  }
+  // Цены во всех валютах, корзина цифровая: страну (валюту) спросим на шаге
+  // оплаты, с суммами; до него считаем по прежней или домашней стране.
+  if (await payAtLastStep(s.ctx, s.customer)) {
+    await setMode(s, { pay_choice_pending: true });
+    const cc = s.customer.state.country_code ?? (await defaultCountryCode(s.ctx));
+    if (cc) return proceedToFulfillmentOrPlace(s, cc);
+  } else if (s.customer.state.pay_choice_pending) {
+    // Отметка брошенного оформления не тянется в новое.
+    await setMode(s, { pay_choice_pending: undefined });
   }
   if (!s.customer.state.country_code) return askCountry(s, true);
   return proceedToFulfillmentOrPlace(s, s.customer.state.country_code);
@@ -492,6 +511,8 @@ export async function askGiftWrap(s: Shop) {
 }
 
 export async function finishCheckout(s: Shop, countryCode: string) {
+  if (s.customer.state.pay_choice_pending && (await allPriceCountries(s.ctx)))
+    return askCountry(s, true);
   if (await askEmailFirst(s, countryCode)) return;
   if (await askPointsFirst(s, countryCode)) return;
   if (await askGiftFirst(s, countryCode)) return;

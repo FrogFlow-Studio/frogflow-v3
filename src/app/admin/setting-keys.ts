@@ -80,6 +80,7 @@ export const SETTING_KEYS = [
   "prodamus_secret_key",
   "prodamus_currency",
   "prodamus_rate",
+  "card_all_prices",
 ] as const;
 
 /**
@@ -146,6 +147,7 @@ export const PAYMENT_SETTING_KEYS: ReadonlySet<string> = new Set([
   "prodamus_currency",
   "prodamus_rate",
   "stars_rate",
+  "card_all_prices",
 ]);
 
 export function settingsForRole<T extends Partial<Record<string, string>>>(
