@@ -100,10 +100,14 @@ const ALLOWED: Record<string, string[]> = {
     `${BATCH} (очередь исходящих)`,
     `${SHOWN} (страница «Не доставлено»)`,
   ],
-  "src/core/broadcasts/broadcasts.ts": [
-    "активных рассылок на канале единицы: ACTIVE_SCAN с запасом",
+  "src/core/broadcasts/broadcast-batch.ts": [
     "активных рассылок на канале единицы: ACTIVE_SCAN с запасом",
     `${BATCH} (получатели рассылки, BATCH_SIZE)`,
+  ],
+  "src/core/broadcasts/broadcast-create.ts": [
+    "активных рассылок на канале единицы: ACTIVE_SCAN с запасом",
+  ],
+  "src/core/broadcasts/broadcast-list.ts": [
     "активных рассылок на канале единицы: ACTIVE_SCAN с запасом",
   ],
   "src/routes/api/v1.$.ts": [

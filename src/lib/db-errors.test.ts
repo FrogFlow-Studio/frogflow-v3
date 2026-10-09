@@ -34,7 +34,7 @@ const ALLOWED: Record<string, { n: number; why: string }> = {
     n: 1,
     why: "получатель платежей: пусто = только ручная проверка чека (безопасная сторона)",
   },
-  "src/core/broadcasts/broadcasts.ts": {
+  "src/core/broadcasts/broadcast-batch.ts": {
     n: 1,
     why: "итог отправки (settle): сбой = строка остаётся захваченной, через CLAIM_STALE_MS закрывается как failed без повтора и в счётчики не попадает",
   },
