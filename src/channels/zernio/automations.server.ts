@@ -1325,16 +1325,48 @@ export async function deliverTwoStepForDmKeyword(
 ): Promise<boolean> {
   const t = text.trim();
   if (!p.username || !t || t.length > DM_KEYWORD_MAX_LEN) return false;
-  const rules = (await listAutomations(ctx, api)).filter(
+  const all = await listAutomations(ctx, api);
+  const rules = all.filter(
     (a) =>
       (a.twoStepDm || Boolean(a.buttons?.length)) &&
       a.isActive !== false &&
       a.accountId === p.accountId &&
-      (a.trigger ?? "comment") === "comment" &&
-      a.keywords.some((k) => k.trim() !== ""),
+      // Тип правила не смотрим: Zernio может отдать его иначе, чем мы пишем,
+      // а ответ на историю — тоже личка (Копилка, 09.10: «Палитра» ответом
+      // на историю ушла в обращение #50).
+      (a.keywords ?? []).some((k) => typeof k === "string" && k.trim() !== ""),
   );
   const rule = rules.find((a) => commentMatchesAutomation(t, a.keywords, a.matchMode));
-  if (!rule) return false;
+  if (!rule) {
+    // След для разбора: какие правила видели и почему ни одно не подошло
+    // (обращение #50 Копилки ушло без следа). Только когда правила вообще есть.
+    if (all.length > 0) {
+      const { error } = await ctx.db.from("zernio_logs").insert({
+        bot_id: ctx.tenant.id,
+        event_id: `dm-keyword-miss:${p.conversationId}:${now().getTime()}`,
+        event_type: "dm_keyword_miss",
+        status: "skipped",
+        error_message: rules.length ? "кодовое слово не совпало" : "нет подходящих правил",
+        created_at: now().toISOString(),
+        payload: toJson({
+          text: t,
+          accountId: p.accountId,
+          rules: all.map((a) => ({
+            id: automationId(a),
+            accountId: a.accountId ?? null,
+            trigger: a.trigger ?? null,
+            keywords: a.keywords ?? null,
+            matchMode: a.matchMode ?? null,
+            twoStepDm: a.twoStepDm ?? null,
+            buttons: a.buttons?.length ?? 0,
+            isActive: a.isActive ?? null,
+          })),
+        }),
+      });
+      if (error) console.warn(`[comment-dm] след промаха не записан: ${error.message}`);
+    }
+    return false;
+  }
   const autoId = automationId(rule);
   const bucket = Math.floor(now().getTime() / TWO_STEP_FROM_DM_MS);
   const { error } = await ctx.db.from("zernio_logs").insert({
