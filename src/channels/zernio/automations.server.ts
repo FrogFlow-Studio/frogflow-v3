@@ -1336,7 +1336,9 @@ export async function deliverTwoStepForDmKeyword(
       // на историю ушла в обращение #50).
       (a.keywords ?? []).some((k) => typeof k === "string" && k.trim() !== ""),
   );
-  const rule = rules.find((a) => commentMatchesAutomation(t, a.keywords, a.matchMode));
+  const rule =
+    rules.find((a) => commentMatchesAutomation(t, a.keywords, a.matchMode)) ??
+    ruleNamedInTexts(t, all, p.accountId);
   if (!rule) {
     // След для разбора: какие правила видели и почему ни одно не подошло
     // (обращение #50 Копилки ушло без следа). Только когда правила вообще есть.
@@ -1360,6 +1362,8 @@ export async function deliverTwoStepForDmKeyword(
             twoStepDm: a.twoStepDm ?? null,
             buttons: a.buttons?.length ?? 0,
             isActive: a.isActive ?? null,
+            name: a.name ?? null,
+            postTitle: a.postTitle ?? null,
           })),
         }),
       });
@@ -1400,6 +1404,81 @@ export async function deliverTwoStepForDmKeyword(
     return false;
   }
   return deliverPendingTwoStepDm(ctx, p, api, now);
+}
+
+/** Слова, которые есть почти в любом тексте правила и товара не называют. */
+const GENERIC_DM_WORDS = new Set(
+  (
+    "здравствуйте привет добрый день вечер утро хочу цена сколько стоит купить " +
+    "оплата оплатить можно пожалуйста спасибо материал материалы файл заказ заказать " +
+    "сәлеметсіз сәлем рахмет hello hi price want buy thanks salom narxi"
+  ).split(" "),
+);
+
+function dmWords(text: string): string[] {
+  return text
+    .toLowerCase()
+    .replace(/ё/g, "е")
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter((w) => w.length >= 4);
+}
+
+/** Слова совпадают или отличаются одной буквой («Политра» — «Палитра»). */
+function sameWord(a: string, b: string): boolean {
+  if (a === b) return true;
+  if (Math.min(a.length, b.length) < 6 || Math.abs(a.length - b.length) > 1) return false;
+  let i = 0;
+  let j = 0;
+  let edits = 0;
+  while (i < a.length && j < b.length) {
+    if (a[i] === b[j]) {
+      i++;
+      j++;
+      continue;
+    }
+    if (++edits > 1) return false;
+    if (a.length > b.length) i++;
+    else if (b.length > a.length) j++;
+    else {
+      i++;
+      j++;
+    }
+  }
+  return edits + (a.length - i) + (b.length - j) <= 1;
+}
+
+/**
+ * Правило «любой комментарий» (список кодовых слов пуст) в Direct по самому
+ * списку не узнать. Узнаём по тексту: покупатель написал слово, которое есть
+ * в названии правила, подписи поста, сообщениях или кнопках (Копилка, 09.10:
+ * у рилса «Палитра» слова не вписаны, «Палитра» в личке молчала). Общие слова
+ * («хочу», «цена», «здравствуйте») не считаются.
+ */
+function ruleNamedInTexts(
+  text: string,
+  all: CommentAutomation[],
+  accountId: string,
+): CommentAutomation | undefined {
+  const words = dmWords(text).filter((w) => !GENERIC_DM_WORDS.has(w));
+  if (!words.length) return undefined;
+  return all.find((a) => {
+    if (!(a.twoStepDm || Boolean(a.buttons?.length))) return false;
+    if (a.isActive === false || a.accountId !== accountId) return false;
+    if ((a.keywords ?? []).some((k) => typeof k === "string" && k.trim() !== "")) return false;
+    const ruleWords = dmWords(
+      [
+        a.name,
+        a.postTitle,
+        a.firstMessage ?? a.dmMessage,
+        a.secondDmMessage,
+        ...(a.buttons ?? []).map((b) => b.title),
+        ...(a.secondDmButtons ?? []).map((b) => b.title),
+      ]
+        .filter((x): x is string => typeof x === "string")
+        .join(" "),
+    );
+    return words.some((w) => ruleWords.some((r) => sameWord(w, r)));
+  });
 }
 
 /** Строки второго шага, заведённые по ответу покупателя, а не по комментарию. */
