@@ -542,6 +542,32 @@ export const SCENARIOS: Scenario[] = [
     ],
   },
   {
+    id: "kaspi-link-as-button-ig-ru",
+    title: "реквизиты — ссылка pay.kaspi.kz: ссылка и кнопкой, и текстом",
+    origin:
+      "Копилка русоведа 09.10 19:01–19:18: «Перевод Kaspi» жали по три раза, «Не нажимается», «Как оплатить» — ссылка была только текстом",
+    channel: "instagram",
+    locale: "ru",
+    full: true,
+    modules: { helpdesk: true, manager_chat: true },
+    products: [{ id: P1, name: "Палитра средств выразительности" }],
+    arrange: (r) => {
+      noExpress(r);
+      r.db.tables.payment_methods![0]!.instructions = "https://pay.kaspi.kz/pay/fpf1rhkt";
+    },
+    steps: [
+      { say: { button: `PROD:${P1}`, title: "Купить" }, expect: { cart: 1 } },
+      {
+        // Kaspi — единственный способ: «Оформить заказ» сразу присылает реквизиты.
+        say: { button: "CHECKOUT", title: "✅ Оформить заказ" },
+        expect: {
+          buttons: [COPY.ru.payLinkBtn(true)],
+          says: ["https://pay.kaspi.kz/pay/fpf1rhkt", "скопируйте ссылку", "чека"],
+        },
+      },
+    ],
+  },
+  {
     id: "checkout-email-words-skip-ig-ru",
     title: "на шаге «почта» пишут не адрес — бот идёт к оплате без почты, а не по кругу",
     origin:

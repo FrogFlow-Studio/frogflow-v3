@@ -828,10 +828,34 @@ async function sendManualInstructions(
     items?: string[];
   },
 ) {
+  // Реквизиты — ссылка (pay.kaspi.kz): в Instagram ссылка в тексте у части
+  // покупателей не нажимается, жали «Перевод Kaspi» по три раза и писали «Не
+  // нажимается» (Копилка русоведа, 09.10). Ссылка — ещё и кнопкой, в тексте
+  // остаётся, чтобы её можно было скопировать.
+  const link = s.platform === "instagram" ? payLinkOf(p.instructions) : null;
   const text =
     `${plain(s.m.manualTitleNew(p.no))}\n${itemsLine(p.items)}\n${plain(s.m.amountToPay(formatMoney(p.due, p.currency)))}\n${p.depositLine}\n` +
-    `${p.instructions || plain(s.m.defaultInstructions)}\n\n${plain(p.physical ? s.m.afterProofPhysical : s.m.afterProofManual)}`;
-  await reply(s, text, { force: true, attachmentUrl: await photoFor(s, [p.qr]) });
+    `${p.instructions || plain(s.m.defaultInstructions)}\n\n` +
+    (link ? `${plain(s.m.payLinkHint)}\n\n` : "") +
+    plain(p.physical ? s.m.afterProofPhysical : s.m.afterProofManual);
+  await reply(s, text, {
+    force: true,
+    attachmentUrl: await photoFor(s, [p.qr]),
+    ...(link
+      ? {
+          buttons: [
+            { type: "url" as const, title: plain(s.m.payLinkBtn(/kaspi/i.test(link))), url: link },
+          ],
+          textWithoutButtons: text,
+        }
+      : {}),
+  });
+}
+
+/** Первая ссылка https из реквизитов продавца — для кнопки оплаты. */
+export function payLinkOf(instructions: string | null): string | null {
+  const m = /https:\/\/[^\s<>"'«»]+/i.exec(instructions ?? "");
+  return m ? m[0].replace(/[.,;:!?)\]]+$/, "") : null;
 }
 
 /**
