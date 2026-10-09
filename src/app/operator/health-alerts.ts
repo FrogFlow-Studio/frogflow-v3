@@ -168,21 +168,26 @@ export function alertSummaryText(
 /**
  * Те же переходы «сбой → восстановился» (stepHealthAlerts), но не про бота,
  * а про платформу. Ключ события говорит, о чём оно:
- * `cron:<задача>`, `zernio:webhook`, `account:<bot_id>:<id аккаунта>`.
+ * `cron:<задача>`, `zernio:webhook`, `account:<bot_id>:<id аккаунта>`,
+ * `inbound:<bot_id>` (у клиента перестали приходить сообщения).
  */
 export type PlatformSubject =
   | { kind: "cron"; job: string }
   | { kind: "zernio_webhook" }
-  | { kind: "account"; botId: string; accountId: string };
+  | { kind: "account"; botId: string; accountId: string }
+  | { kind: "inbound"; botId: string };
 
 export function platformKey(s: PlatformSubject): string {
   if (s.kind === "cron") return `cron:${s.job}`;
   if (s.kind === "zernio_webhook") return "zernio:webhook";
+  if (s.kind === "inbound") return `inbound:${s.botId}`;
   return `account:${s.botId}:${s.accountId}`;
 }
 
 export function parsePlatformKey(key: string): PlatformSubject | null {
   if (key === "zernio:webhook") return { kind: "zernio_webhook" };
+  const inbound = /^inbound:(.+)$/.exec(key);
+  if (inbound) return { kind: "inbound", botId: inbound[1]! };
   const cron = /^cron:(.+)$/.exec(key);
   if (cron) return { kind: "cron", job: cron[1]! };
   const acc = /^account:([^:]+):(.+)$/.exec(key);
@@ -212,6 +217,37 @@ export function cronProbe(c: {
     };
   if (!c.last.ok) return { bot_id, ok: false, error: c.last.error ?? "запуск упал" };
   return { bot_id, ok: true, error: null };
+}
+
+/** Сколько без входящих в Instagram/WhatsApp — уже сбой, а не тихий день. */
+export const INBOUND_SILENCE_MS = 24 * 60 * 60 * 1000;
+/**
+ * Клиент считается живым, если за неделю до тишины ему написали хотя бы
+ * столько раз: у BOVI 5–30 сообщений в день, а клиент, которому пишут раз в
+ * неделю, сутками молчит и без поломки.
+ */
+export const INBOUND_ACTIVE_MIN = 10;
+
+/**
+ * Входящие клиента в Zernio. BOVI 07.10: Instagram переподключили, аккаунт
+ * в Zernio не считался отвязанным, а сообщения трое суток не доходили —
+ * узнали по журналу. Теперь сутки тишины у клиента, которому обычно пишут, —
+ * сбой для оператора. Не было ни одного входящего — не проверяем.
+ */
+export function inboundProbe(s: {
+  botId: string;
+  /** Последнее входящее (ISO) или null. */
+  last: string | null;
+  /** Входящих за неделю до последнего (включая его). */
+  weekBefore: number;
+  now: number;
+}): HealthProbe | null {
+  if (!s.last) return null;
+  const bot_id = platformKey({ kind: "inbound", botId: s.botId });
+  const quiet = s.now - Date.parse(s.last);
+  if (!(quiet >= INBOUND_SILENCE_MS) || s.weekBefore < INBOUND_ACTIVE_MIN)
+    return { bot_id, ok: true, error: null };
+  return { bot_id, ok: false, error: `нет входящих ${formatDowntime(quiet)}` };
 }
 
 /** Вебхук Zernio v2: сбой чтения или запись, которую нужно обновить кнопкой «Привязать». */
@@ -244,7 +280,7 @@ function platformLink(key: string, base: string): string {
       ? [`${base}/operator/crons`, "Открыть кроны"]
       : s?.kind === "zernio_webhook"
         ? [`${base}/operator/settings`, "Открыть настройки платформы"]
-        : s?.kind === "account"
+        : s?.kind === "account" || s?.kind === "inbound"
           ? [`${base}/operator/clients/${s.botId}`, "Открыть клиента в панели"]
           : [`${base}/operator`, "Открыть панель"];
   return `<a href="${escapeHtml(href).replace(/"/g, "&quot;")}">${title}</a>`;
@@ -256,6 +292,8 @@ function platformTitle(e: AlertEvent, label: string): string {
   if (s?.kind === "cron") return `Крон «${label}» ${down ? "не работает" : "снова работает"}`;
   if (s?.kind === "zernio_webhook")
     return down ? "Вебхук Zernio v2 не в порядке" : "Вебхук Zernio v2 снова в порядке";
+  if (s?.kind === "inbound")
+    return `${label}: ${down ? "сутки нет входящих сообщений" : "входящие снова идут"}`;
   return `${label} ${down ? "отключился" : "снова подключён"}`;
 }
 
@@ -269,7 +307,9 @@ export function platformAlertText(e: AlertEvent, o: PlatformTextOptions): string
         ? "События Instagram и WhatsApp клиентов v2 не доходят. Нажмите «Привязать» в карточке «Вебхук Zernio»."
         : s?.kind === "account"
           ? "Бот в этом канале не видит сообщений. Продавцу ушло уведомление, аккаунт нужно подключить заново."
-          : null
+          : s?.kind === "inbound"
+            ? "Обычно клиенту пишут каждый день. Проверьте подключение Instagram/WhatsApp в Zernio и напишите в директ клиента с другого аккаунта: так 07.10 у BOVI трое суток терялись сообщения."
+            : null
       : null;
   if (e.kind === "down")
     return [

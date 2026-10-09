@@ -91,6 +91,10 @@ export function modelParams(model: string): Record<string, unknown> {
 }
 
 /** Вызов инструмента текстом (BOVI 30.09): модель переписывает ответ сама. */
+/** К последнему запросу без инструментов: поиск окончен, нужен текст покупателю. */
+const FINAL_ANSWER_NOTE =
+  "[Поиск окончен, инструменты больше недоступны. Напишите покупателю ответ обычными словами по тому, что нашли; если отправили фото — коротко скажите, что на нём и сколько стоит.]";
+
 const TOOL_MARKUP_RETRY_NOTE =
   "[Вызов инструмента написан текстом, а не вызван. Если нужен поиск — вызовите инструмент. Если нет — напишите покупателю ответ обычными словами, без тегов.]";
 
@@ -620,6 +624,12 @@ async function decide(data: PricelistData, input: PricelistInput): Promise<Price
     lastText = "";
   } else if (toolsPending && !stopped && !(handoff && lastText)) {
     toolsUsed.push("fix:final_without_tools");
+    // Без просьбы модель на этом запросе может вернуть пустой текст: она уже
+    // «ответила» фото (BOVI 09.10 22:34: нашла и отправила полотенце для
+    // волос, текста не дала — покупателю ушло «передаю менеджеру»).
+    const last = messages.at(-1);
+    if (last?.role === "user" && Array.isArray(last.content))
+      last.content.push({ type: "text", text: FINAL_ANSWER_NOTE });
     const res = await call({ tool_choice: { type: "none" } });
     if (res) lastText = textOf(res.content ?? []);
   }
