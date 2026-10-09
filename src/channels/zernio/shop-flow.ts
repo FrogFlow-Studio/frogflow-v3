@@ -36,6 +36,7 @@ export { isAffirmative, isDismissal, isCancel } from "./flow/replies";
 export { type DirectCommand, matchDirectCommand } from "./flow/commands";
 export {
   isPaymentComplaint,
+  isPayTrouble,
   type IncomingKind,
   classifyIncoming,
   plain,

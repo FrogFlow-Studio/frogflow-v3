@@ -221,6 +221,8 @@ export type Msg = {
   payLinkBtn: (kaspi: boolean) => string;
   /** Подсказка под реквизитами со ссылкой. */
   payLinkHint: string;
+  /** Покупатель не может оплатить предложенным способом — вопрос ушёл продавцу. */
+  payTroubleHandoff: string;
   /** Продамус с кассой не в рублях (форма KZ): карта любого банка, без «РФ / СБП». */
   payByCardBtn: string;
   prodamusCardHint: string;
@@ -400,6 +402,8 @@ const ru: Msg = {
     `Выберите способ оплаты и нажмите кнопку ниже: ${l.map((x) => `«${x}»`).join(" или ")}.`,
   payKaspiBtn: "🧾 Перевод Kaspi",
   payLinkBtn: (kaspi) => (kaspi ? "💳 Оплатить в Kaspi" : "💳 Открыть оплату"),
+  payTroubleHandoff:
+    "Передал ваш вопрос продавцу: он напишет вам здесь, как удобнее оплатить. Заказ сохранён.",
   payLinkHint:
     "Нажмите кнопку ниже. Если не открывается — скопируйте ссылку и откройте её в браузере или в приложении Kaspi.",
   payByCardBtn: "💳 Картой онлайн",
@@ -804,6 +808,8 @@ const kk: Msg = {
     `Төлем тәсілін таңдап, төмендегі батырманы басыңыз: ${l.map((x) => `«${x}»`).join(" немесе ")}.`,
   payKaspiBtn: "🧾 Kaspi аударым",
   payLinkBtn: (kaspi) => (kaspi ? "💳 Kaspi арқылы төлеу" : "💳 Төлемді ашу"),
+  payTroubleHandoff:
+    "Сұрағыңызды сатушыға жібердім: ол осында қалай төлеген ыңғайлы екенін жазады. Тапсырыс сақталды.",
   payLinkHint:
     "Төмендегі батырманы басыңыз. Ашылмаса — сілтемені көшіріп, браузерде немесе Kaspi қосымшасында ашыңыз.",
   payByCardBtn: "💳 Картамен онлайн",
@@ -1099,6 +1105,8 @@ const en: Msg = {
     `Choose how to pay and tap a button below: ${l.map((x) => `“${x}”`).join(" or ")}.`,
   payKaspiBtn: "🧾 Kaspi transfer",
   payLinkBtn: (kaspi) => (kaspi ? "💳 Pay with Kaspi" : "💳 Open payment"),
+  payTroubleHandoff:
+    "I passed your question to the seller: they will write here about the best way to pay. Your order is saved.",
   payLinkHint:
     "Tap the button below. If it does not open, copy the link and open it in your browser or the Kaspi app.",
   payByCardBtn: "💳 Card payment",
@@ -1422,6 +1430,8 @@ const uz: Msg = {
   choosePayCountry: "💳 Qaysi davlatdan to‘laysiz? Summa o‘sha davlat valyutasida:",
   payKaspiBtn: "🧾 Kaspi o‘tkazma",
   payLinkBtn: (kaspi) => (kaspi ? "💳 Kaspi orqali to‘lash" : "💳 To‘lovni ochish"),
+  payTroubleHandoff:
+    "Savolingizni sotuvchiga yubordim: u shu yerda qanday to‘lash qulayligini yozadi. Buyurtma saqlandi.",
   payLinkHint:
     "Quyidagi tugmani bosing. Ochilmasa — havolani nusxalab, brauzerda yoki Kaspi ilovasida oching.",
   payByCardBtn: "💳 Karta orqali",
