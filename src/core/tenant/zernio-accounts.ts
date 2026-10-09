@@ -95,3 +95,73 @@ export function parseGuard(
   }
   return Object.keys(out).length ? out : undefined;
 }
+
+/** Аккаунт переподключён: у Zernio новый id для той же страницы. */
+export type ZernioReconnect = {
+  platform: string;
+  username?: string;
+  name?: string;
+  oldId: string;
+  newId: string;
+  /** Старое подключение ещё живо в Zernio: у одной страницы два id. */
+  oldStillLive: boolean;
+};
+
+const handleOf = (a: ZernioAccountSnapshot) => a.username?.trim().toLowerCase() || "";
+
+/**
+ * Переподключения между двумя снимками. BOVI 07.10: Instagram переподключили,
+ * Zernio выдал новый id аккаунта, и трое суток сообщения не доходили, а мы
+ * узнали по тишине. Новый id той же страницы (тот же @username и канал) —
+ * переподключение. Без имени у одной из сторон — только если канал был один
+ * и его прежний id из Zernio пропал: иначе это второй аккаунт, а не замена.
+ */
+export function zernioReconnects(
+  prev: readonly ZernioAccountSnapshot[],
+  next: readonly ZernioAccountSnapshot[],
+): ZernioReconnect[] {
+  const before = new Set(prev.map((a) => a.id));
+  const after = new Map(next.map((a) => [a.id, a]));
+  const out: ZernioReconnect[] = [];
+  for (const a of next) {
+    if (before.has(a.id)) continue;
+    const same = prev.filter((p) => p.platform === a.platform);
+    const handle = handleOf(a);
+    const old =
+      (handle ? same.find((p) => handleOf(p) === handle) : undefined) ??
+      (same.length === 1 && !after.has(same[0]!.id) && (!handle || !handleOf(same[0]!))
+        ? same[0]
+        : undefined);
+    if (!old) continue;
+    const still = after.get(old.id);
+    out.push({
+      platform: a.platform,
+      username: a.username ?? old.username,
+      name: a.name ?? old.name,
+      oldId: old.id,
+      newId: a.id,
+      oldStillLive: Boolean(still && !still.expired),
+    });
+  }
+  return out;
+}
+
+/** Страница, у которой в снимке два живых подключения (канал и @username). */
+export type ZernioTwin = { platform: string; username: string; ids: string[] };
+
+/**
+ * Два живых подключения одной страницы в профиле клиента: Zernio не считает
+ * старое отвязанным, а сообщения могут идти только на одно из них.
+ */
+export function zernioTwins(accounts: readonly ZernioAccountSnapshot[]): ZernioTwin[] {
+  const groups = new Map<string, ZernioTwin>();
+  for (const a of accounts) {
+    const handle = handleOf(a);
+    if (!handle || a.expired || !a.id) continue;
+    const key = `${a.platform}:${handle}`;
+    const g = groups.get(key) ?? { platform: a.platform, username: a.username!.trim(), ids: [] };
+    g.ids.push(a.id);
+    groups.set(key, g);
+  }
+  return [...groups.values()].filter((g) => g.ids.length > 1);
+}
