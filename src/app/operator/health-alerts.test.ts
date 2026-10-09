@@ -14,6 +14,7 @@ import {
   platformAlertText,
   platformKey,
   platformSummaryText,
+  reconnectAlertText,
   stepHealthAlerts,
   zernioWebhookProbe,
   type AlertStates,
@@ -325,5 +326,104 @@ describe("сутки без входящих у клиента (BOVI 07.10: тр
     expect(down).toContain("https://ff.example/operator/clients/bovi");
     const up = platformAlertText({ kind: "up", botId: "inbound:bovi", since: T(0), at: T(60) }, o);
     expect(up).toContain("Клиент «BOVI»: входящие снова идут");
+  });
+});
+
+describe("переподключение Instagram в Zernio (BOVI 07.10: новый id, трое суток тишины)", () => {
+  const o = {
+    labels: new Map<string, string>(),
+    base: "https://ff.example",
+    timeZone: "Asia/Almaty",
+  };
+
+  it("два живых подключения одной страницы — сбой со ссылкой на клиента; одно — в порядке", () => {
+    const tenant = (accounts: object[]) => ({
+      id: "bovi",
+      name: "BOVI",
+      archived: false,
+      settings: { served_by: "v2", zernio: { accounts } } as never,
+    });
+    const twin = platformProbes({
+      crons: [],
+      zernioWebhook: null,
+      tenants: [
+        tenant([
+          { id: "6aa53be5", platform: "instagram", username: "Bovi.kz" },
+          { id: "6ac62be9", platform: "instagram", username: "bovi.kz" },
+        ]),
+      ],
+      cronTitles: new Map(),
+    });
+    expect(twin.probes).toContainEqual({
+      bot_id: "twin:bovi:instagram:bovi.kz",
+      ok: false,
+      error: "id 6aa53be5, 6ac62be9",
+    });
+    const down = platformAlertText(
+      {
+        kind: "down",
+        botId: "twin:bovi:instagram:bovi.kz",
+        since: T(0),
+        error: "id 6aa53be5, 6ac62be9",
+      },
+      { ...o, labels: twin.labels },
+    );
+    expect(down).toContain("клиента «BOVI»: два подключения в Zernio");
+    expect(down).toContain("Оставьте в Zernio одно подключение");
+    expect(down).toContain("https://ff.example/operator/clients/bovi");
+
+    // Старое отвязалось: та же страница — одна живая, проба в порядке (будет «снова одно»).
+    const one = platformProbes({
+      crons: [],
+      zernioWebhook: null,
+      tenants: [
+        tenant([
+          { id: "6aa53be5", platform: "instagram", username: "bovi.kz", expired: true },
+          { id: "6ac62be9", platform: "instagram", username: "bovi.kz" },
+        ]),
+      ],
+      cronTitles: new Map(),
+    });
+    expect(one.probes).toContainEqual({
+      bot_id: "twin:bovi:instagram:bovi.kz",
+      ok: true,
+      error: null,
+    });
+    const up = platformAlertText(
+      { kind: "up", botId: "twin:bovi:instagram:bovi.kz", since: T(0), at: T(30) },
+      { ...o, labels: one.labels },
+    );
+    expect(up).toContain("в Zernio снова одно подключение");
+    expect(parsePlatformKey("twin:bovi:instagram:bovi.kz")).toEqual({
+      kind: "twin",
+      botId: "bovi",
+      platform: "instagram",
+      username: "bovi.kz",
+    });
+  });
+
+  it("разовое сообщение: какой канал, новый и прежний id, что проверить", () => {
+    const text = reconnectAlertText(
+      {
+        platform: "instagram",
+        username: "bovi.kz",
+        oldId: "6aa53be5",
+        newId: "6ac62be9",
+        oldStillLive: false,
+      },
+      { clientName: "BOVI <shop>", botId: "bovi", base: o.base },
+    );
+    expect(text).toContain("Instagram @bovi.kz клиента «BOVI &lt;shop&gt;» переподключён в Zernio");
+    expect(text).toContain(
+      "Новый id 6ac62be9 привязан к клиенту автоматически, прежний — 6aa53be5.",
+    );
+    expect(text).toContain("Прежнего подключения в Zernio больше нет.");
+    expect(text).toContain("https://ff.example/operator/clients/bovi");
+    expect(
+      reconnectAlertText(
+        { platform: "instagram", oldId: "a", newId: "b", oldStillLive: true },
+        { clientName: "X", botId: "x", base: o.base },
+      ),
+    ).toContain("Прежнее подключение в Zernio тоже живо");
   });
 });

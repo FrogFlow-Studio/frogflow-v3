@@ -7,6 +7,7 @@ import {
   type HealthProbe,
 } from "./health-alerts";
 import { serverFailure } from "@/lib/server-failure";
+import { zernioTwins } from "@/core/tenant/zernio-accounts";
 
 /**
  * Проверки платформы для оповещений оператору (крон health, раз в 15
@@ -49,6 +50,28 @@ export function platformProbes(r: PlatformReadings): {
       probes.push({ bot_id: key, ok: !a.expired, error: a.expired ? "аккаунт отвязан" : null });
       const who = a.username ? `@${a.username}` : a.name || a.id;
       labels.set(key, `${PLATFORM_NAME[a.platform] ?? a.platform} ${who} клиента «${t.name}»`);
+    }
+    // Два живых подключения одной страницы — сбой; одно — проба «в порядке»,
+    // чтобы после сообщения о сбое пришло и «снова одно подключение».
+    const accounts = t.settings.zernio?.accounts ?? [];
+    const twins = zernioTwins(accounts);
+    const handles = new Map<string, { platform: string; username: string }>();
+    for (const a of accounts)
+      if (a.id && !a.expired && a.username?.trim())
+        handles.set(`${a.platform}:${a.username.trim().toLowerCase()}`, {
+          platform: a.platform,
+          username: a.username.trim(),
+        });
+    for (const h of handles.values()) {
+      const key = platformKey({ kind: "twin", botId: t.id, ...h });
+      const twin = twins.find(
+        (w) => w.platform === h.platform && w.username.toLowerCase() === h.username.toLowerCase(),
+      );
+      probes.push({ bot_id: key, ok: !twin, error: twin ? `id ${twin.ids.join(", ")}` : null });
+      labels.set(
+        key,
+        `${PLATFORM_NAME[h.platform] ?? h.platform} @${h.username} клиента «${t.name}»`,
+      );
     }
   }
   const names = new Map(r.tenants.map((t) => [t.id, t.name]));
