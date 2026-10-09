@@ -7,8 +7,33 @@ on:
   # Ручной перезапуск на master: заново выложить прод (задача deploy).
   workflow_dispatch:
 
+# Новый пуш в ту же ветку PR отменяет её старый прогон: проверять устаревший
+# коммит незачем. Прогоны на master не отменяются.
+concurrency:
+  group: ci-${{ github.event_name == 'pull_request' && github.head_ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
-  check:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # Кэш eslint и prettier по содержимому файлов: заново проверяются только
+      # изменившиеся. Правила eslint без информации о типах, кэш не устаревает.
+      - uses: actions/cache@v4
+        with:
+          path: node_modules/.cache/lint
+          key: lint-${{ hashFiles('package-lock.json', 'eslint.config.js', '.prettierignore') }}-${{ github.sha }}
+          restore-keys: lint-${{ hashFiles('package-lock.json', 'eslint.config.js', '.prettierignore') }}-
+      - run: npx eslint . --cache --cache-strategy content --cache-location node_modules/.cache/lint/eslint
+      - run: npx prettier --check . --cache --cache-strategy content --cache-location node_modules/.cache/lint/prettier
+
+  typecheck:
     runs-on: ubuntu-latest
     # tsc по всему проекту не помещается в куче Node по умолчанию (~2 ГБ на раннере):
     # падал с «JavaScript heap out of memory» на typecheck.
@@ -21,13 +46,56 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm run lint
-      - run: npm run typecheck
-      # Живые тесты (tests/integration) — в задаче live ниже.
-      - run: npx vitest run --exclude "tests/integration/**"
+      # Инкрементальная проверка: tsc сверяет файлы по хэшу содержимого.
+      - uses: actions/cache@v4
+        with:
+          path: node_modules/.cache/tsc
+          key: tsc-${{ hashFiles('package-lock.json', 'tsconfig.json') }}-${{ github.sha }}
+          restore-keys: tsc-${{ hashFiles('package-lock.json', 'tsconfig.json') }}-
+      - run: npx tsc --noEmit --incremental --tsBuildInfoFile node_modules/.cache/tsc/tsbuildinfo
+
+  # Unit-тесты без живой базы: 4 части, внутри части файлы идут параллельно
+  # (в vitest.config.ts они по одному только ради живых тестов).
+  # Живые тесты (tests/integration) — в задаче live ниже.
+  unit:
+    name: unit ${{ matrix.shard }}/4
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx vitest run --exclude "tests/integration/**" --fileParallelism --shard=${{ matrix.shard }}/4
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
       - run: npx vite build
         env:
           APP_URL: https://ci.invalid
+
+  # Общий итог под прежним именем «check»: на него может ссылаться защита ветки.
+  check:
+    runs-on: ubuntu-latest
+    needs: [lint, typecheck, unit, build]
+    if: always()
+    steps:
+      - run: |
+          for r in ${{ needs.lint.result }} ${{ needs.typecheck.result }} ${{ needs.unit.result }} ${{ needs.build.result }}; do
+            test "$r" = success
+          done
 
   # Живые тесты (tests/integration) ходят в настоящую базу, в одного
   # демо-клиента, поэтому по очереди с ночным прогоном (группа live-db).
@@ -62,15 +130,16 @@ jobs:
 
   # Сквозной прогон в браузере: собранное приложение против подставной базы
   # с демо-магазином (tests/e2e/pg-stub.ts, seed.ts) — ключи настоящей базы здесь не нужны.
-  # Разбит на 4 параллельных части (--shard): одним заходом шёл ~14 минут.
-  # У каждой части своя сборка и своя подставная база.
+  # 8 параллельных частей (--shard): одним заходом шёл ~14 минут. У каждой
+  # части своя сборка и своя подставная база. Больше 2 потоков на машину не
+  # ставим: при 4 тесты мешают друг другу.
   e2e-shard:
-    name: e2e ${{ matrix.shard }}/4
+    name: e2e ${{ matrix.shard }}/8
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -78,12 +147,16 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ hashFiles('package-lock.json') }}
       - run: npx playwright install --with-deps chromium
       - run: npx vite build
         env:
           NITRO_PRESET: node-server
           APP_URL: https://ci.invalid
-      - run: npm run e2e -- --shard=${{ matrix.shard }}/4
+      - run: npm run e2e -- --shard=${{ matrix.shard }}/8
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
