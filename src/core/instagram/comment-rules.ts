@@ -432,7 +432,25 @@ export function buildAutomationBody(data: Partial<AutomationInput>): Record<stri
  * (написать первым в Instagram нельзя), поэтому первое по умолчанию просит
  * ответить. «+» распознаёт isTwoStepAcknowledgement.
  */
-export const DEFAULT_REPLY_PROMPT = "Ответьте «+» в этот чат, и я пришлю ссылку 👇";
+export const DEFAULT_REPLY_PROMPT =
+  "👉 Ответьте на это сообщение «+» (подойдёт любое слово), и я сразу пришлю кнопку, чтобы получить материал.";
+
+/**
+ * Прежние призывы по умолчанию. Правило, у которого в мете стоит один из них,
+ * при чтении получает новый (upgradeReplyPrompt); первые сообщения, ушедшие
+ * до замены, по-прежнему узнаются как призыв (второй шаг, пауза продавца).
+ * Копилка, 09.10: на «Ответьте «+» в этот чат, и я пришлю ссылку» ответили
+ * 74 из 237 комментаторов — «ссылка» не говорит, что придёт, и «+» читается
+ * как единственный верный ответ.
+ */
+export const LEGACY_REPLY_PROMPTS = ["Ответьте «+» в этот чат, и я пришлю ссылку 👇"] as const;
+
+/** Призывы, которыми может кончаться первое сообщение правила с призывом `prompt`. */
+export function replyPromptsOf(prompt: string | null | undefined): string[] {
+  const p = (prompt ?? DEFAULT_REPLY_PROMPT).trim();
+  if (!p) return [];
+  return p === DEFAULT_REPLY_PROMPT ? [p, ...LEGACY_REPLY_PROMPTS] : [p];
+}
 
 /** Первое сообщение с призывом в конце (если его там ещё нет). */
 export function withReplyPrompt(dm: string, prompt: string | null | undefined): string {

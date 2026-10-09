@@ -81,15 +81,7 @@ export const PRICELIST_MODELS = [
 ] as const;
 export const MODEL_KEY = "consultant_model";
 
-/**
- * Sonnet 5 и Haiku 5.5 по умолчанию рассуждают — для чата это задержка, а не
- * качество. У Haiku 5.5 выключение допустимо при effort до high (по
- * умолчанию medium).
- */
-export function modelParams(model: string): Record<string, unknown> {
-  if (/^claude-(sonnet-5|haiku-5)/.test(model)) return { thinking: { type: "disabled" } };
-  return {};
-}
+export { modelParams } from "@/core/ai/pure";
 
 /** Вызов инструмента текстом (BOVI 30.09): модель переписывает ответ сама. */
 /** К последнему запросу без инструментов: поиск окончен, нужен текст покупателю. */

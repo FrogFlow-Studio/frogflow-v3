@@ -119,3 +119,13 @@ export type TokenPrice = { in: number; out: number; cacheWrite?: number; cacheRe
 
 /** Haiku 4.5 — модель консультанта, помощника и умного поиска. */
 export const HAIKU_PRICE: TokenPrice = { in: 1, out: 5, cacheWrite: 2, cacheRead: 0.1 };
+
+/**
+ * Sonnet 5 и Haiku 5.5 по умолчанию рассуждают — для чата это задержка, а не
+ * качество. У Haiku 5.5 выключение допустимо при effort до high (по
+ * умолчанию medium).
+ */
+export function modelParams(model: string): Record<string, unknown> {
+  if (/^claude-(sonnet-5|haiku-5)/.test(model)) return { thinking: { type: "disabled" } };
+  return {};
+}

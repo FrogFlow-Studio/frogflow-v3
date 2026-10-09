@@ -17,8 +17,10 @@ import { refreshRate } from "@/core/consultant/pricelist/rate.server";
 import { refreshPricelistSheet } from "@/core/consultant/pricelist/sheet.server";
 import type { FetchLike } from "@/core/catalog/sheet.server";
 import {
+  buyerWindow,
   FOLLOW_UP_SETTING_KEY,
   FOLLOW_UP_UNTIL_MS,
+  followUpEnabled,
   followUpText,
   isFollowUpCandidate,
   recentWithFollowUp,
@@ -35,6 +37,8 @@ import {
   sendTaskReminders,
   type NotifySeller,
 } from "@/core/consultant/task-reminders";
+import { loadTasks } from "@/core/consultant/tasks";
+import type { ZernioInboxMessage } from "./inbox-types";
 
 /**
  * Фоновые задачи консультанта по прайсу (крон health, раз в 15 минут, как
@@ -96,12 +100,23 @@ export async function runPricelistJobs(
   return out;
 }
 
+type FollowUpRun = {
+  checked: number;
+  sent: number;
+  skipped?: string;
+  manager?: number;
+  /** Окно канала закрыто или не проверить: последнее сообщение покупателя старше 23 ч. */
+  window?: number;
+  /** По покупателю открыта задача продавцу — он ведёт диалог сам. */
+  task?: number;
+};
+
 export async function sendPricelistFollowUps(
   ctx: TenantContext,
   now = new Date(),
   transport: ZernioTransport = liveTransport,
-): Promise<{ checked: number; sent: number; skipped?: string; manager?: number }> {
-  if ((await getSetting(ctx, FOLLOW_UP_SETTING_KEY))?.trim() !== "on")
+): Promise<FollowUpRun> {
+  if (!followUpEnabled(await getSetting(ctx, FOLLOW_UP_SETTING_KEY)))
     return { checked: 0, sent: 0, skipped: "off" };
   if (isOffHours(now, pricelistHours(ctx.tenant), ctx.timezone))
     return { checked: 0, sent: 0, skipped: "off_hours" };
@@ -129,25 +144,53 @@ export async function sendPricelistFollowUps(
     .slice(0, MAX_FOLLOW_UPS_PER_RUN);
   if (!candidates.length) return { checked: rows.length, sent: 0 };
 
+  // Открытая задача — покупатель ждёт продавца. Список не прочитался — не знаем,
+  // кого он ведёт: в этот раз никому не пишем (loadTasks бросает, а не «задач нет»).
+  let openTaskUsers: Set<string>;
+  try {
+    openTaskUsers = new Set((await loadTasks(ctx)).filter((t) => !t.done).map((t) => t.userKey));
+  } catch (e) {
+    console.warn(`[followup:${ctx.tenant.id}] задачи не прочитаны: ${String(e)}`);
+    return { checked: rows.length, sent: 0, skipped: "tasks_unreadable" };
+  }
+
   const { products } = await loadPricelist(ctx);
   let sent = 0;
   let manager = 0;
+  let window = 0;
+  let task = 0;
+  /** Отметка без отправки: этот ответ бота больше не смотрим. */
+  const markOnly = (customer: (typeof candidates)[number], replyAt: string | undefined) =>
+    claimStateSection(ctx, customer, "consultant", (cur) =>
+      (cur.followup_for ?? cur.v2_followup_for) === replyAt
+        ? null
+        : { ...cur, followup_for: replyAt },
+    );
   for (const customer of candidates) {
     const memory = memoryOf(customer.state);
     const text = followUpText(memory, products, buyerLocale(ctx, customer));
-    // Менеджер ответил из приложения после бота (Zernio исходящих не присылает,
-    // паузы нет) — напоминание от бота поверх человека не шлём, диалог отмечаем.
-    // Переписку прочитать не удалось — не знаем, кто в чате: ждём следующего крона.
     if (text) {
-      const seen = await managerInChat(customer, memory, transport, now);
-      if (seen === "unknown") continue;
-      if (seen) {
-        await claimStateSection(ctx, customer, "consultant", (cur) =>
-          (cur.followup_for ?? cur.v2_followup_for) === memory.last_reply_at
-            ? null
-            : { ...cur, followup_for: memory.last_reply_at },
-        );
+      if (openTaskUsers.has(customer.userKey)) {
+        await markOnly(customer, memory.last_reply_at);
+        task++;
+        continue;
+      }
+      // Переписку прочитать не удалось — не знаем, кто в чате и открыто ли окно:
+      // ждём следующего крона.
+      const tail = await readTail(customer, transport);
+      if (!tail) continue;
+      // Менеджер ответил из приложения после бота (Zernio исходящих не присылает,
+      // паузы нет) — напоминание от бота поверх человека не шлём, диалог отмечаем.
+      if (managerInChat(customer, memory, tail, now)) {
+        await markOnly(customer, memory.last_reply_at);
         manager++;
+        continue;
+      }
+      const w = buyerWindow(lastIncomingAt(tail), memory.last_reply_at, now);
+      if (w === "not_silent") continue;
+      if (w !== "open") {
+        await markOnly(customer, memory.last_reply_at);
+        window++;
         continue;
       }
     }
@@ -199,23 +242,46 @@ export async function sendPricelistFollowUps(
     }
     sent++;
   }
-  return { checked: rows.length, sent, ...(manager ? { manager } : {}) };
+  return {
+    checked: rows.length,
+    sent,
+    ...(manager ? { manager } : {}),
+    ...(window ? { window } : {}),
+    ...(task ? { task } : {}),
+  };
 }
 
-/** Хвост переписки в Zernio: есть ли ответ человека новее последнего ответа бота. */
-async function managerInChat(
+/** Хвост переписки в Zernio; не прочитался — null. */
+async function readTail(
   customer: ReturnType<typeof customerFromRow>,
-  memory: FollowUpState,
   transport: ZernioTransport,
-  now: Date,
-): Promise<boolean | "unknown"> {
-  let tail: Awaited<ReturnType<ZernioTransport["tail"]>>;
+): Promise<ZernioInboxMessage[] | null> {
   try {
-    tail = await transport.tail(customer.zernioAccountId!, customer.zernioConversationId!);
+    return await transport.tail(customer.zernioAccountId!, customer.zernioConversationId!);
   } catch (e) {
     console.warn(`[followup] переписка ${customer.userKey} не прочитана: ${String(e)}`);
-    return "unknown";
+    return null;
   }
+}
+
+/** Время последнего входящего покупателя в ленте, мс; нет — null. */
+export function lastIncomingAt(tail: ZernioInboxMessage[]): number | null {
+  let last: number | null = null;
+  for (const m of tail) {
+    if (m.direction !== "incoming") continue;
+    const at = Date.parse(m.createdAt ?? m.sentAt ?? "");
+    if (Number.isFinite(at) && (last === null || at > last)) last = at;
+  }
+  return last;
+}
+
+/** В хвосте переписки есть ответ человека новее последнего ответа бота. */
+function managerInChat(
+  customer: ReturnType<typeof customerFromRow>,
+  memory: FollowUpState,
+  tail: ZernioInboxMessage[],
+  now: Date,
+): boolean {
   const c = (customer.state.consultant ?? {}) as { relayed?: unknown };
   const relayed = Array.isArray(c.relayed) ? c.relayed.map(String) : [];
   return Boolean(

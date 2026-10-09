@@ -65,7 +65,7 @@ import {
 } from "@/core/consultant/pricelist/persona";
 import { clearTasks, loadTasks, setTaskDone } from "@/core/consultant/tasks";
 import { getSetting, setSetting } from "@/core/settings/settings";
-import { FOLLOW_UP_SETTING_KEY } from "@/core/consultant/pricelist/follow-up";
+import { FOLLOW_UP_SETTING_KEY, followUpEnabled } from "@/core/consultant/pricelist/follow-up";
 import { remindersOn, TASK_REMINDERS_KEY } from "@/core/consultant/task-reminders";
 import { DIGEST_SETTING_KEY } from "@/core/consultant/pricelist/quality-digest";
 import { loadConsultantUsage } from "@/core/consultant/runs";
@@ -161,7 +161,7 @@ export async function pricelistOverview(ctx: TenantContext) {
       updatedAt: a.updatedAt,
     })),
     usage,
-    followUp: (await getSetting(ctx, FOLLOW_UP_SETTING_KEY))?.trim() === "on",
+    followUp: followUpEnabled(await getSetting(ctx, FOLLOW_UP_SETTING_KEY)),
     qualityDigest: (await getSetting(ctx, DIGEST_SETTING_KEY))?.trim() === "on",
     taskReminders: remindersOn(await getSetting(ctx, TASK_REMINDERS_KEY)),
   };

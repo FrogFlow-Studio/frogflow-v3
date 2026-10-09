@@ -8,15 +8,41 @@ import { followUpLine } from "../messages";
  * тишина. Живой менеджер через несколько часов напишет одну строку:
  * «Остались вопросы по …?». Бот делает то же, один раз на одну паузу:
  * - разговор был о товаре (в состоянии есть товары последней выдачи);
- * - с ответа бота прошло от 3 до 23 часов: Instagram разрешает писать первым
- *   только 24 часа после сообщения покупателя;
- * - не в нерабочие часы магазина, не на паузе и не после передачи менеджеру.
- * Текст — шаблоном, без модели. Выключено, пока продавец не включил
- * consultant_followup = "on" (та же строка app_settings, что у v1).
+ * - с ответа бота прошло от 3 до 23 часов;
+ * - с последнего сообщения самого покупателя — не больше 23 часов: Instagram
+ *   и WhatsApp дают писать только 24 часа после его сообщения, позже сообщение
+ *   не дойдёт (считаем по ленте Zernio, а не по ответу бота);
+ * - не в нерабочие часы магазина, не на паузе, не после ответа менеджера и не
+ *   пока открыта задача продавцу по этому покупателю.
+ * Текст — шаблоном, без модели. Включено по умолчанию; выключает продавец —
+ * consultant_followup = "off" (та же строка app_settings, что у v1).
  */
 export const FOLLOW_UP_SETTING_KEY = "consultant_followup";
 export const FOLLOW_UP_AFTER_MS = 3 * 60 * 60 * 1000;
 export const FOLLOW_UP_UNTIL_MS = 23 * 60 * 60 * 1000;
+/** Последнее сообщение покупателя не старше этого — иначе окно 24 часа закроется. */
+export const BUYER_WINDOW_MS = 23 * 60 * 60 * 1000;
+
+/** Напоминание включено: всё, кроме явного «off» (BOVI 09.10: строки не было, и оно молчало). */
+export function followUpEnabled(raw: string | null | undefined): boolean {
+  return raw?.trim() !== "off";
+}
+
+/**
+ * Окно канала по ленте переписки: время последнего входящего покупателя.
+ * Нет входящих в хвосте — окно не проверить, не пишем. Покупатель написал
+ * после ответа бота — он не замолчал (бот ещё ответит), не пишем.
+ */
+export function buyerWindow(
+  lastIncomingAt: number | null,
+  lastReplyAt: string | undefined,
+  now: Date,
+): "open" | "closed" | "unknown" | "not_silent" {
+  if (lastIncomingAt === null) return "unknown";
+  const reply = Date.parse(lastReplyAt ?? "");
+  if (Number.isFinite(reply) && lastIncomingAt > reply) return "not_silent";
+  return now.getTime() - lastIncomingAt > BUYER_WINDOW_MS ? "closed" : "open";
+}
 
 export type FollowUpState = {
   recent?: { role: "customer" | "assistant"; text: string }[];
