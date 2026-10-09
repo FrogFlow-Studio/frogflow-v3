@@ -7,6 +7,8 @@ import {
   alertText,
   cronProbe,
   formatDowntime,
+  INBOUND_ACTIVE_MIN,
+  inboundProbe,
   parseAlertStates,
   parsePlatformKey,
   platformAlertText,
@@ -273,5 +275,55 @@ describe("проверки платформы из показаний", () => {
       cronTitles: new Map(),
     });
     expect(probes).toEqual([]);
+  });
+});
+
+describe("сутки без входящих у клиента (BOVI 07.10: трое суток сообщения не доходили)", () => {
+  const now = Date.parse(T(0));
+  const hoursAgo = (h: number) => new Date(now - h * 3_600_000).toISOString();
+
+  it("обычно пишут, а сутки тишина — сбой с длительностью", () => {
+    expect(inboundProbe({ botId: "b", last: hoursAgo(26), weekBefore: 40, now })).toEqual({
+      bot_id: "inbound:b",
+      ok: false,
+      error: `нет входящих ${formatDowntime(26 * 3_600_000)}`,
+    });
+  });
+
+  it("меньше суток, редко пишущий клиент или ни одного входящего — не сбой", () => {
+    expect(inboundProbe({ botId: "b", last: hoursAgo(23), weekBefore: 40, now })?.ok).toBe(true);
+    expect(
+      inboundProbe({ botId: "b", last: hoursAgo(72), weekBefore: INBOUND_ACTIVE_MIN - 1, now })?.ok,
+    ).toBe(true);
+    expect(inboundProbe({ botId: "b", last: null, weekBefore: 0, now })).toBeNull();
+  });
+
+  it("проба и подпись в общем прогоне, текст ведёт в карточку клиента", () => {
+    const { probes, labels } = platformProbes({
+      crons: [],
+      zernioWebhook: null,
+      tenants: [
+        {
+          id: "bovi",
+          name: "BOVI",
+          archived: false,
+          settings: { served_by: "v2", zernio: { accounts: [] } } as never,
+        },
+      ],
+      cronTitles: new Map(),
+      inbound: [{ botId: "bovi", last: hoursAgo(30), weekBefore: 50 }],
+      now,
+    });
+    expect(probes).toContainEqual(expect.objectContaining({ bot_id: "inbound:bovi", ok: false }));
+    expect(parsePlatformKey("inbound:bovi")).toEqual({ kind: "inbound", botId: "bovi" });
+    const o = { labels, base: "https://ff.example", timeZone: "Asia/Almaty" };
+    const down = platformAlertText(
+      { kind: "down", botId: "inbound:bovi", since: T(0), error: "нет входящих 1 д 6 ч" },
+      o,
+    );
+    expect(down).toContain("Клиент «BOVI»: сутки нет входящих сообщений");
+    expect(down).toContain("https://ff.example/operator/clients/bovi");
+    const up = platformAlertText({ kind: "up", botId: "inbound:bovi", since: T(0), at: T(60) }, o);
+    expect(up).toContain("Клиент «BOVI»: входящие снова идут");
   });
 });
