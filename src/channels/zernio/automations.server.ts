@@ -769,6 +769,8 @@ async function sendSecondStep(
     authorId?: string | null;
     secondText: string;
     buttons: AutomationButton[];
+    /** Комментарий не называет товар правила — без быстрой покупки (expressAllowed). */
+    noExpress?: boolean;
   },
   api: AutomationApi,
 ): Promise<boolean> {
@@ -818,6 +820,7 @@ async function sendSecondStep(
       automationId: p.automationId,
       secondText: p.secondText,
       buttons: toJson(buttons),
+      ...(p.noExpress ? { noExpress: true } : {}),
       createdAt: new Date().toISOString(),
     },
   });
@@ -826,7 +829,7 @@ async function sendSecondStep(
 
 export type CommentReceivedPayload = {
   account?: { accountId?: string; id?: string; _id?: string; username?: string };
-  post?: { platformPostId?: string; id?: string };
+  post?: { platformPostId?: string; id?: string; content?: string };
   comment?: {
     id?: string;
     text?: string;
@@ -906,6 +909,11 @@ export async function handleCommentReceived(
       authorId: payload.comment?.author?.id ?? null,
       secondText: matched.secondDmMessage || DEFAULT_SECOND_DM,
       buttons,
+      noExpress: !expressAllowed(
+        text,
+        matched,
+        hasKeywords(matched) ? [] : await expressTexts(ctx, buttons, payload.post?.content),
+      ),
     },
     api,
   );
@@ -979,6 +987,25 @@ export type TwoStepBuyer = {
   express?: (productId: string) => Promise<boolean>;
 };
 
+/**
+ * Тексты, которыми покупатель может назвать товар правила, кроме самого
+ * правила: название товара кнопки «Купить» и подпись поста. Не прочиталось —
+ * пусто: быстрой покупки не будет, уйдёт обычное второе сообщение.
+ */
+async function expressTexts(
+  ctx: TenantContext,
+  buttons: AutomationButton[],
+  caption?: string | null,
+): Promise<string[]> {
+  const id = buyButtonProduct(normalizeDmButtons(buttons as DmButton[]));
+  const out = caption ? [caption] : [];
+  if (!id) return out;
+  const { data, error } = await ctx.db.from("products").select("name").eq("id", id).maybeSingle();
+  if (error) console.warn(`[comment-dm] товар правила не прочитан: ${error.message}`);
+  if (data?.name) out.push(data.name);
+  return out;
+}
+
 /** Товар кнопки «Купить» правила: ровно один PROD:<id> среди кнопок, иначе null. */
 export function buyButtonProduct(buttons: DmButton[]): string | null {
   const ids = new Set(
@@ -1034,6 +1061,7 @@ export async function deliverPendingTwoStepDm(
     secondText?: string;
     buttons?: DmButton[];
     attempts?: number;
+    noExpress?: boolean;
   };
   const text = pl.secondText?.trim() || DEFAULT_SECOND_DM;
   const attempts = typeof pl.attempts === "number" ? pl.attempts : 0;
@@ -1114,7 +1142,7 @@ export async function deliverPendingTwoStepDm(
   // Быстрая покупка: товар «Купить» сразу становится заказом, второе
   // сообщение правила не шлём. Упала посреди — могла уже написать
   // покупателю: второе сообщение вдогонку не шлём, отмечаем как ушедшее.
-  const productId = p.express ? buyButtonProduct(buttons) : null;
+  const productId = p.express && pl.noExpress !== true ? buyButtonProduct(buttons) : null;
   let expressed = false;
   if (productId && p.express) {
     try {
@@ -1507,21 +1535,70 @@ function ruleNamedInTexts(
   return all.find((a) => {
     if (!(a.twoStepDm || Boolean(a.buttons?.length))) return false;
     if (a.isActive === false || a.accountId !== accountId) return false;
-    if ((a.keywords ?? []).some((k) => typeof k === "string" && k.trim() !== "")) return false;
-    const ruleWords = dmWords(
-      [
-        a.name,
-        a.postTitle,
-        a.firstMessage ?? a.dmMessage,
-        a.secondDmMessage,
-        ...(a.buttons ?? []).map((b) => b.title),
-        ...(a.secondDmButtons ?? []).map((b) => b.title),
-      ]
-        .filter((x): x is string => typeof x === "string")
-        .join(" "),
-    );
-    return words.some((w) => ruleWords.some((r) => sameWord(w, r)));
+    if (hasKeywords(a)) return false;
+    return wordsNameRule(words, a);
   });
+}
+
+function hasKeywords(a: Pick<CommentAutomation, "keywords">): boolean {
+  return (a.keywords ?? []).some((k) => typeof k === "string" && k.trim() !== "");
+}
+
+/**
+ * Быстрая покупка (сразу заказ на товар «Купить») — только когда покупатель
+ * правда просил этот товар: правило с кодовыми словами (комментарий их
+ * прошёл) или комментарий называет товар словами правила. Правило «любой
+ * комментарий» иначе оформляло «Палитру» на «Уголок» (Копилка, 09.10, заказ
+ * #45); такому покупателю уходит обычное второе сообщение с кнопкой.
+ */
+export function expressAllowed(
+  commentText: string,
+  rule: Pick<
+    CommentAutomation,
+    | "keywords"
+    | "name"
+    | "postTitle"
+    | "firstMessage"
+    | "dmMessage"
+    | "secondDmMessage"
+    | "buttons"
+    | "secondDmButtons"
+  >,
+  extra: Array<string | null | undefined> = [],
+): boolean {
+  if (hasKeywords(rule)) return true;
+  const words = dmWords(commentText).filter((w) => !GENERIC_DM_WORDS.has(w));
+  return words.length > 0 && wordsNameRule(words, rule, extra);
+}
+
+function wordsNameRule(
+  words: string[],
+  a: Pick<
+    CommentAutomation,
+    | "name"
+    | "postTitle"
+    | "firstMessage"
+    | "dmMessage"
+    | "secondDmMessage"
+    | "buttons"
+    | "secondDmButtons"
+  >,
+  extra: Array<string | null | undefined> = [],
+): boolean {
+  const ruleWords = dmWords(
+    [
+      a.name,
+      a.postTitle,
+      a.firstMessage ?? a.dmMessage,
+      a.secondDmMessage,
+      ...(a.buttons ?? []).map((b) => b.title),
+      ...(a.secondDmButtons ?? []).map((b) => b.title),
+      ...extra,
+    ]
+      .filter((x): x is string => typeof x === "string")
+      .join(" "),
+  );
+  return words.some((w) => ruleWords.some((r) => sameWord(w, r)));
 }
 
 /** Строки второго шага, заведённые по ответу покупателя, а не по комментарию. */
@@ -1854,6 +1931,19 @@ export async function runCommentDmFallback(
                 commentId,
                 username,
                 authorId: comment.from?.id ?? null,
+                noExpress: !expressAllowed(
+                  comment.message ?? "",
+                  automation,
+                  hasKeywords(automation)
+                    ? []
+                    : await expressTexts(
+                        ctx,
+                        automation.secondDmButtons?.length
+                          ? automation.secondDmButtons
+                          : (automation.buttons ?? []),
+                        automation.postTitle,
+                      ),
+                ),
                 secondText: automation.secondDmMessage || DEFAULT_SECOND_DM,
                 buttons: automation.secondDmButtons?.length
                   ? automation.secondDmButtons
@@ -1996,6 +2086,19 @@ export async function runCommentDmFallback(
                 commentId,
                 username,
                 authorId: comment.from?.id ?? null,
+                noExpress: !expressAllowed(
+                  comment.message ?? "",
+                  automation,
+                  hasKeywords(automation)
+                    ? []
+                    : await expressTexts(
+                        ctx,
+                        automation.secondDmButtons?.length
+                          ? automation.secondDmButtons
+                          : (automation.buttons ?? []),
+                        automation.postTitle,
+                      ),
+                ),
                 secondText: automation.secondDmMessage || DEFAULT_SECOND_DM,
                 buttons: automation.secondDmButtons?.length
                   ? automation.secondDmButtons
