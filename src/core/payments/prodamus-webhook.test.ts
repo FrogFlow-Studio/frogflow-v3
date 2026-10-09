@@ -25,8 +25,12 @@ const notifyAdminsHtml = vi.fn(async () => 1);
 let servedBy = "v2";
 let ready = true;
 
+const resolvedIds: string[] = [];
 vi.mock("@/core/tenant/resolve.server", () => ({
-  resolveTenant: async () => ({ id: BOT, settings: { served_by: servedBy }, modules: {} }),
+  resolveTenant: async ({ value }: { value: string }) => {
+    resolvedIds.push(value);
+    return { id: BOT, settings: { served_by: servedBy }, modules: {} };
+  },
   tenantContext: (tenant: unknown) => ({ tenant, appUrl: "https://app.test" }),
 }));
 vi.mock("@/core/payments/payment", () => ({
@@ -76,8 +80,8 @@ function body(over: Record<string, string> = {}) {
   return new URLSearchParams(f).toString();
 }
 
-function call(raw: string, key = "key") {
-  const request = new Request(`https://app.test/api/prodamus/${BOT}`, {
+function call(raw: string, key = "key", botId = BOT) {
+  const request = new Request(`https://app.test/api/prodamus/${botId}`, {
     method: "POST",
     body: raw,
     headers: {
@@ -85,7 +89,7 @@ function call(raw: string, key = "key") {
       sign: prodamusSign(parsePhpForm(raw), key),
     },
   });
-  return post({ request, params: { botId: BOT } });
+  return post({ request, params: { botId } });
 }
 
 beforeEach(() => {
@@ -208,6 +212,19 @@ describe("уведомление Продамуса", () => {
     await call(body({ order_num: ref(999, 1500) }));
     await call(body({ order_num: "42" }));
     expect(markPaidOnline).not.toHaveBeenCalled();
+  });
+
+  it("адрес вставлен с точкой или пробелом в конце — уведомление принимается (Копилка 09.10)", async () => {
+    for (const id of [`${BOT}.`, `${BOT}. `, `${BOT}%20`, `${BOT}/`]) {
+      resolvedIds.length = 0;
+      markPaidOnline.mockClear();
+      const res = await call(body(), "key", id);
+      expect(res.status).toBe(200);
+      expect(resolvedIds).toEqual([BOT]);
+      expect(markPaidOnline).toHaveBeenCalledWith(expect.anything(), 42, 1500, "Продамус", "9001");
+    }
+    expect((await call(body(), "key", `${BOT}x`)).status).toBe(404);
+    expect((await call(body(), "key", "not-a-bot")).status).toBe(404);
   });
 
   it("клиент прежней платформы и выключенный Продамус — не принимаются", async () => {

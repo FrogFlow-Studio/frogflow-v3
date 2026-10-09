@@ -17,9 +17,12 @@ export const Route = createFileRoute("/api/prodamus/$botId")({
   },
 });
 
-async function handle(request: Request, botId: string): Promise<Response> {
+async function handle(request: Request, rawBotId: string): Promise<Response> {
   const preview = previewWebhookResponse();
   if (preview) return preview;
+  // Адрес уведомления продавец вставляет в кабинет Продамуса руками: точка или
+  // пробел в конце (Копилка русоведа 09.10, «…511431.») давали 404 на каждую оплату.
+  const botId = prodamusBotId(rawBotId);
   if (!/^[0-9a-f-]{36}$/i.test(botId)) return new Response("not found", { status: 404 });
   const { resolveTenant, tenantContext } = await import("@/core/tenant/resolve.server");
   const tenant = await resolveTenant({ by: "id", value: botId });
@@ -119,6 +122,17 @@ async function handle(request: Request, botId: string): Promise<Response> {
     }, "prodamus.paid");
   }
   return new Response("success");
+}
+
+/** id клиента из адреса без хвоста из точек, пробелов и слэшей, как вставили в кабинете. */
+export function prodamusBotId(raw: string): string {
+  let id = raw;
+  try {
+    id = decodeURIComponent(raw);
+  } catch {
+    // не адрес — проверка ниже ответит 404
+  }
+  return id.trim().replace(/[.\s/]+$/, "");
 }
 
 /** Уведомление Продамуса в журнал клиента (bot_events, payment): поля без ключей и подписи. */
