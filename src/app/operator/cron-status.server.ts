@@ -59,6 +59,12 @@ export const CRON_JOBS = [
     everyMin: 5,
     title: "Розыгрыши: итоги и сообщения победителям",
   },
+  {
+    job: "observer",
+    schedule: "11,26,41,56 * * * *",
+    everyMin: 15,
+    title: "ИИ-наблюдатель за диалогами",
+  },
   { job: "retention", schedule: "20 3 * * *", everyMin: 1440, title: "Ретеншн журналов" },
   { job: "leads", schedule: "0 6 * * *", everyMin: 1440, title: "Конвейер лидов оператора" },
 ] as const;

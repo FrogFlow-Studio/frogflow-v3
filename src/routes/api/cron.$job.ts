@@ -253,6 +253,21 @@ export const Route = createFileRoute("/api/cron/$job")({
               resume = resumeOf(ordered, skipped);
               break;
             }
+            case "observer": {
+              // ИИ-наблюдатель за диалогами: находки — продавцу и оператору, покупателю ничего.
+              // Включён по клиенту (observer_enabled), по умолчанию — только у первых клиентов.
+              const { runDialogObserver } = await import("@/app/observer/observer.server");
+              await eachWithin(ordered, budget, skipped, async (t) => {
+                try {
+                  const r = await runDialogObserver(t, budget);
+                  if (!("skipped" in r) || r.skipped !== "off") results[t.id] = r;
+                } catch (e) {
+                  results[t.id] = await tenantFailure(t.id, e);
+                }
+              });
+              resume = resumeOf(ordered, skipped);
+              break;
+            }
             case "comment-dm-fallback": {
               // Резервная DM по комментариям Instagram, если родное правило Zernio замолчало.
               const { runCommentDmFallback } = await import("@/channels/zernio/automations.server");

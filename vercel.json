@@ -60,6 +60,10 @@
       "schedule": "*/5 * * * *"
     },
     {
+      "path": "/api/cron/observer",
+      "schedule": "11,26,41,56 * * * *"
+    },
+    {
       "path": "/api/cron/leads",
       "schedule": "0 6 * * *"
     }

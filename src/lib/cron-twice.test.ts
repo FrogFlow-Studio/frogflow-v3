@@ -13,6 +13,8 @@ const TWICE: Record<string, Evidence> = {
   // ensure-webhook
   webhook: { idempotent: "setWebhook с тем же адресом и секретом ничего не меняет, сообщений нет" },
   vipWebhook: { idempotent: "то же: повторная установка вебхука VIP-бота" },
+  // observer
+  observer: { test: ["src/app/observer/observer.server.test.ts"] },
   // broadcast
   broadcast: { test: ["src/core/broadcasts/broadcasts.test.ts"] },
   waBroadcast: { test: ["src/core/broadcasts/broadcasts.test.ts"] }, // тот же processBroadcastBatch, канал whatsapp

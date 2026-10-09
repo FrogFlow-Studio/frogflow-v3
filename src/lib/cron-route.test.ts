@@ -128,6 +128,7 @@ vi.mock("@/channels/telegram/weekly.server", () => ({
   sendDueWeeklyReports: hitList("weekly"),
 }));
 vi.mock("@/app/operator/morning-brief.server", () => ({ runMorningBrief: hitList("morning") }));
+vi.mock("@/app/observer/observer.server", () => ({ runDialogObserver: hit("observer") }));
 vi.mock("@/app/operator/billing.server", () => ({ sweepSubscriptions: async () => ({}) }));
 vi.mock("@/app/operator/renewals.server", () => ({ runRenewals: hitList("renewals") }));
 vi.mock("@/core/catalog/sheet.server", () => ({
@@ -177,6 +178,7 @@ const JOBS: Record<string, string[]> = {
   "course-lives": ["courseLives"],
   "comment-dm-fallback": ["commentDm"],
   "inbox-poll": ["inboxPoll"],
+  observer: ["observer"],
   health: ["zernioSync", "channelGuard", "zernioRetry", "pricelist", "digest", "weekly", "morning"],
   subscriptions: ["catalogSheet", "sheetNotify", "renewals"],
 };
