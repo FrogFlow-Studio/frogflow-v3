@@ -13,10 +13,10 @@ import type { ZernioTransport } from "./api.server";
 const now = new Date("2026-09-25T08:00:00Z"); // 13:00 по Алматы
 const hoursAgo = (h: number) => new Date(now.getTime() - h * 3600_000).toISOString();
 
-function ctxOf(followUp = "on"): TenantContext {
+function ctxOf(followUp: string | null = "on"): TenantContext {
   const db = fakeDb({ unique: { app_settings: [["bot_id", "key"]] } });
   db.tables.app_settings = [
-    { bot_id: "b1", key: "consultant_followup", value: followUp },
+    ...(followUp === null ? [] : [{ bot_id: "b1", key: "consultant_followup", value: followUp }]),
     {
       bot_id: "b1",
       key: "consultant_catalog_json",
@@ -75,7 +75,13 @@ function ctxOf(followUp = "on"): TenantContext {
 }
 
 type Tail = Awaited<ReturnType<ZernioTransport["tail"]>>;
-const transport = (tail: () => Promise<Tail> = async () => []) => {
+/** Покупатель спросил за минуту до ответа бота, бот ответил — тишина. */
+const asked = (h = 4.1) =>
+  [
+    { direction: "incoming", message: "Сколько Zero Twist?", createdAt: hoursAgo(h) },
+    { direction: "outgoing", message: "55 000 ₸.", createdAt: hoursAgo(4) },
+  ] as Tail;
+const transport = (tail: () => Promise<Tail> = async () => asked()) => {
   const send = vi.fn(async () => ({ ok: true as const }));
   return { t: { send, tail: vi.fn(tail) } as unknown as ZernioTransport, send };
 };
@@ -154,13 +160,115 @@ describe("напоминание замолчавшему покупателю",
     expect(consultantOf(ctx, "ig_1").relayed).toBeUndefined();
   });
 
-  it("в хвосте только наши ответы — напоминание уходит", async () => {
+  it("в хвосте только вопрос покупателя и наши ответы — напоминание уходит", async () => {
+    const ctx = ctxOf();
+    const { t, send } = transport(async () => asked());
+    expect(await sendPricelistFollowUps(ctx, now, t)).toMatchObject({ sent: 1 });
+    expect(send).toHaveBeenCalledTimes(1);
+  });
+
+  it("строки настройки нет — напоминание включено (BOVI 09.10: молчало без неё)", async () => {
+    const { t, send } = transport();
+    expect(await sendPricelistFollowUps(ctxOf(null), now, t)).toMatchObject({ sent: 1 });
+    expect(send).toHaveBeenCalledTimes(1);
+  });
+
+  it("покупатель писал больше 23 часов назад — окно Instagram закрывается: не пишем, отмечаем", async () => {
+    // Бот ответил с опозданием: по ответу бота 4 часа, по сообщению покупателя — 23,5.
+    const ctx = ctxOf();
+    const { t, send } = transport(async () => asked(23.5));
+    expect(await sendPricelistFollowUps(ctx, now, t)).toMatchObject({ sent: 0, window: 1 });
+    expect(send).not.toHaveBeenCalled();
+    expect(consultantOf(ctx, "ig_1").followup_for).toBe(hoursAgo(4));
+    // Отмечено — следующий крон переписку уже не читает.
+    const again = transport();
+    expect(await sendPricelistFollowUps(ctx, now, again.t)).toMatchObject({ sent: 0 });
+    expect(again.t.tail).not.toHaveBeenCalled();
+  });
+
+  it("покупатель писал 22 часа назад — окно ещё открыто, напоминание уходит", async () => {
+    const ctx = ctxOf();
+    const { t, send } = transport(async () => asked(22));
+    expect(await sendPricelistFollowUps(ctx, now, t)).toMatchObject({ sent: 1 });
+    expect(send).toHaveBeenCalledTimes(1);
+  });
+
+  it("в ленте нет сообщений покупателя — окно не проверить: не пишем", async () => {
     const ctx = ctxOf();
     const { t, send } = transport(
       async () => [{ direction: "outgoing", message: "55 000 ₸.", createdAt: hoursAgo(4) }] as Tail,
     );
-    expect(await sendPricelistFollowUps(ctx, now, t)).toMatchObject({ sent: 1 });
-    expect(send).toHaveBeenCalledTimes(1);
+    expect(await sendPricelistFollowUps(ctx, now, t)).toMatchObject({ sent: 0, window: 1 });
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it("покупатель написал после ответа бота — он не замолчал: не пишем и не отмечаем", async () => {
+    const ctx = ctxOf();
+    const { t, send } = transport(
+      async () =>
+        [
+          ...asked(),
+          { direction: "incoming", message: "А доставка?", createdAt: hoursAgo(1) },
+        ] as Tail,
+    );
+    expect(await sendPricelistFollowUps(ctx, now, t)).toMatchObject({ sent: 0 });
+    expect(send).not.toHaveBeenCalled();
+    expect(consultantOf(ctx, "ig_1").followup_for).toBeUndefined();
+  });
+
+  it("по покупателю открыта задача продавцу — не пишем; сделанная задача не мешает", async () => {
+    const task = (done: boolean) => ({
+      bot_id: "b1",
+      key: "consultant_tasks_json",
+      value: JSON.stringify([
+        { id: "t1", at: hoursAgo(3.5), userKey: "ig_1", reason: "wholesale", text: "опт", done },
+      ]),
+    });
+    const tables = (c: TenantContext) =>
+      (c.db as unknown as { tables: Record<string, Record<string, unknown>[]> }).tables;
+
+    const open = ctxOf();
+    tables(open).app_settings!.push(task(false));
+    const a = transport();
+    expect(await sendPricelistFollowUps(open, now, a.t)).toMatchObject({ sent: 0, task: 1 });
+    expect(a.send).not.toHaveBeenCalled();
+    expect(consultantOf(open, "ig_1").followup_for).toBe(hoursAgo(4));
+
+    const done = ctxOf();
+    tables(done).app_settings!.push(task(true));
+    const b = transport();
+    expect(await sendPricelistFollowUps(done, now, b.t)).toMatchObject({ sent: 1 });
+  });
+
+  it("задачи не прочитались — никому не пишем", async () => {
+    const ctx = ctxOf();
+    // Чтение строки задач падает, остальные настройки читаются как обычно.
+    type Q = { eq: (k: string, v: unknown) => unknown };
+    const db = ctx.db as unknown as { from: (t: string) => { select: (c?: string) => Q } };
+    const from = db.from.bind(db);
+    db.from = (t: string) => {
+      const q = from(t);
+      if (t !== "app_settings") return q;
+      return {
+        ...q,
+        select: (c?: string) => {
+          const sel = q.select(c);
+          return {
+            ...sel,
+            eq: (k: string, v: unknown) =>
+              k === "key" && v === "consultant_tasks_json"
+                ? { maybeSingle: async () => ({ data: null, error: { message: "boom" } }) }
+                : sel.eq(k, v),
+          };
+        },
+      };
+    };
+    const { t, send } = transport();
+    expect(await sendPricelistFollowUps(ctx, now, t)).toMatchObject({
+      sent: 0,
+      skipped: "tasks_unreadable",
+    });
+    expect(send).not.toHaveBeenCalled();
   });
 
   it("переписку не прочитали — не пишем и не отмечаем: решит следующий крон", async () => {
