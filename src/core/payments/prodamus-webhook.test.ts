@@ -43,6 +43,12 @@ vi.mock("@/core/orders/orders", () => ({
         : null,
 }));
 vi.mock("@/channels/telegram/notify", () => ({ notifyAdminsHtml }));
+const logEvent = vi.fn(async () => {});
+vi.mock("@/app/operator/client-log.server", () => ({ logEvent }));
+const traced = () =>
+  (logEvent.mock.calls as unknown as Array<[string, string, Record<string, unknown>]>).map(
+    ([, kind, p]) => `${kind}:${String(p.outcome)}`,
+  );
 vi.mock("@/app/payments/paid-online.server", () => ({ afterPaidOnline }));
 vi.mock("@/lib/background", () => ({ runInBackground: (task: () => Promise<void>) => task() }));
 vi.mock("@/core/fulfillment/fulfillment", () => ({
@@ -138,6 +144,29 @@ describe("уведомление Продамуса", () => {
     const res = await call(body(), "other");
     expect(res.status).toBe(400);
     expect(markPaidOnline).not.toHaveBeenCalled();
+  });
+
+  it("каждое уведомление — в журнал клиента с исходом, без подписи и ключа", async () => {
+    await call(body(), "other");
+    await call(body({ order_num: "123" }));
+    await call(body({ payment_status: "order_canceled" }));
+    await call(body());
+    expect(traced()).toEqual([
+      "payment:bad_sign",
+      "payment:not_our_order",
+      "payment:not_success",
+      "payment:paid",
+    ]);
+    const payload = (
+      logEvent.mock.calls.at(-1) as unknown as [string, string, Record<string, unknown>]
+    )[2];
+    expect(payload).toMatchObject({
+      provider: "prodamus",
+      order: 42,
+      sum: "1500.00",
+      order_id: "9001",
+    });
+    expect(JSON.stringify(logEvent.mock.calls)).not.toContain("key");
   });
 
   it("сумма не сошлась — событие в журнал и предупреждение продавцу, заказ не подтверждён", async () => {
