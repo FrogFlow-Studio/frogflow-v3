@@ -981,4 +981,21 @@ describe("Comment-to-DM: кодовое слово прямо в Direct (Коп�
     expect(any.inbox).not.toHaveBeenCalled();
     expect(other.inbox).not.toHaveBeenCalled();
   });
+
+  it("правило ответа на историю со словом — тоже срабатывает (обращение #50 Копилки)", async () => {
+    const { ctx, api, inbox } = kwSetup([{ ...palette, trigger: "story_reply" }]);
+    expect(await deliverTwoStepForDmKeyword(ctx, who, "Палитра", api)).toBe(true);
+    expect(inbox).toHaveBeenCalledTimes(1);
+  });
+
+  it("правило без поля keywords не роняет разбор, промах оставляет след с правилами", async () => {
+    const { ctx, db, api, inbox } = kwSetup([{ ...palette, keywords: undefined }, palette]);
+    expect(await deliverTwoStepForDmKeyword(ctx, who, "Здравствуйте", api)).toBe(false);
+    expect(inbox).not.toHaveBeenCalled();
+    const miss = db.tables.zernio_logs!.find((l) => l.event_type === "dm_keyword_miss");
+    expect(miss?.payload).toMatchObject({
+      text: "Здравствуйте",
+      rules: [{ id: "rule1" }, { id: "rule1" }],
+    });
+  });
 });
