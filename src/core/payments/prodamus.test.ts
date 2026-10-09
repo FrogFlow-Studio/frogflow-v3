@@ -12,6 +12,7 @@ import {
   prodamusCardCurrency,
   prodamusOutcome,
   prodamusSign,
+  prodamusSumNote,
   verifyProdamusSign,
 } from "./prodamus";
 
@@ -147,20 +148,23 @@ describe("Продамус", () => {
     expect(verifyProdamusSign(forged, sign, "secret")).toBe(false);
   });
 
-  it("оплачено только при success и совпадении суммы и валюты", () => {
-    const exp = { amount: 1500, currency: "RUB" };
+  it("оплачено по ответу Продамуса: success — да, иначе нет; сумма уходит в журнал пометкой", () => {
+    // Яков 09.10: решает «прошло / не прошло», а не сумма.
     const n = { payment_status: "success", sum: "1500.00", currency: "rub" };
-    expect(prodamusOutcome(n, exp)).toBe("paid");
-    expect(prodamusOutcome({ ...n, payment_status: "order_canceled" }, exp)).toBe("ignore");
-    expect(prodamusOutcome({ ...n, sum: "1.00" }, exp)).toBe("mismatch");
+    expect(prodamusOutcome(n)).toBe("paid");
+    expect(prodamusOutcome({ ...n, sum: "1.00" })).toBe("paid");
+    expect(prodamusOutcome({ ...n, payment_status: "order_canceled" })).toBe("ignore");
+    expect(prodamusOutcome({ sum: "1500.00" })).toBe("ignore");
+    const charge = { amount: 1500, currency: "RUB" };
+    expect(prodamusSumNote(n, charge)).toBeNull();
+    expect(prodamusSumNote({ ...n, sum: "1.00" }, charge)).toBe("списано 1.00 RUB");
   });
 
-  it("форма в тенге, оплата картой РФ: sum в тенге, currency=rub — оплата засчитывается", () => {
+  it("форма в тенге, оплата картой РФ: sum в тенге, currency=rub — пометка «картой RUB»", () => {
     // Копилка русоведа 09.10, платёж 511523: заказ на 150 ₸, списано 41,98 ₽.
-    const exp = { amount: 150, currency: "KZT" };
     const n = { payment_status: "success", sum: "150.00", currency: "rub" };
-    expect(prodamusOutcome(n, exp)).toBe("paid");
-    expect(prodamusOutcome({ ...n, sum: "41.98" }, exp)).toBe("mismatch");
+    expect(prodamusOutcome(n)).toBe("paid");
+    expect(prodamusSumNote(n, { amount: 150, currency: "KZT" })).toBeNull();
     expect(prodamusCardCurrency(n, "KZT")).toBe("RUB");
     expect(prodamusCardCurrency({ ...n, currency: "kzt" }, "KZT")).toBeNull();
     expect(prodamusCardCurrency({}, "KZT")).toBeNull();

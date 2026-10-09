@@ -157,32 +157,27 @@ describe("уведомление Продамуса", () => {
     );
   });
 
-  it("форма в тенге, сумма не та — расхождение записано в тенге, а не в валюте карты", async () => {
+  it("форма в тенге, Продамус списал не ту сумму — заказ оплачен по «success», списанное в журнале", async () => {
     formCfg = { ...CFG, currency: "KZT" };
     const kzt = chargeRef(formCfg, 43, { amount: 1500, currency: "KZT" });
     await call(body({ order_id: "511524", order_num: kzt, sum: "41.98" }));
-    expect(markPaidOnline).not.toHaveBeenCalled();
-    expect(recordUnappliedPayment).toHaveBeenCalledWith(expect.anything(), 43, "payment_mismatch", {
-      amount: 41.98,
-      currency: "KZT",
-      provider: "Продамус",
-      ref: "511524, картой RUB",
-    });
+    expect(recordUnappliedPayment).not.toHaveBeenCalled();
+    expect(markPaidOnline).toHaveBeenCalledWith(
+      expect.anything(),
+      43,
+      1500,
+      "Продамус",
+      "511524, картой RUB, списано 41.98 KZT",
+    );
   });
 
   it("сумму в ссылке подменили — подпись order_id не сходится, заказ не трогается", async () => {
     const forged = ref(43, 259).replace("-25900-", "-100-");
-    await call(body({ order_num: forged, sum: "1.00" }));
-    // Подписанная нами сумма 259 ₽, а пришёл 1 ₽ — расхождение в журнал.
-    await call(body({ order_num: ref(43, 259), sum: "1.00" }));
+    const res = await call(body({ order_num: forged, sum: "1.00" }));
+    expect(res.status).toBe(200);
+    expect(traced()).toEqual(["payment:not_our_order"]);
     expect(markPaidOnline).not.toHaveBeenCalled();
-    expect(recordUnappliedPayment).toHaveBeenCalledOnce();
-    expect(recordUnappliedPayment).toHaveBeenCalledWith(expect.anything(), 43, "payment_mismatch", {
-      amount: 1,
-      currency: "RUB",
-      provider: "Продамус",
-      ref: "9001, 259 RUB",
-    });
+    expect(recordUnappliedPayment).not.toHaveBeenCalled();
   });
 
   it("повтор уведомления — заказ уже оплачен, вторая выдача не запускается", async () => {
@@ -222,17 +217,20 @@ describe("уведомление Продамуса", () => {
     expect(JSON.stringify(logEvent.mock.calls)).not.toContain("key");
   });
 
-  it("сумма не сошлась — событие в журнал и предупреждение продавцу, заказ не подтверждён", async () => {
+  it("сумма другая, но Продамус ответил «прошло» — заказ оплачен, без предупреждения, сумма в журнале", async () => {
     const res = await call(body({ sum: "15.00" }));
     expect(res.status).toBe(200);
-    expect(markPaidOnline).not.toHaveBeenCalled();
-    expect(recordUnappliedPayment).toHaveBeenCalledWith(expect.anything(), 42, "payment_mismatch", {
-      amount: 15,
-      currency: "RUB",
-      provider: "Продамус",
-      ref: "9001",
-    });
-    expect(notifyAdminsHtml).toHaveBeenCalledOnce();
+    expect(markPaidOnline).toHaveBeenCalledWith(
+      expect.anything(),
+      42,
+      1500,
+      "Продамус",
+      "9001, списано 15.00 RUB",
+    );
+    expect(afterPaidOnline).toHaveBeenCalledOnce();
+    expect(recordUnappliedPayment).not.toHaveBeenCalled();
+    expect(notifyAdminsHtml).not.toHaveBeenCalled();
+    expect(traced()).toEqual(["payment:paid"]);
   });
 
   it("оплата по закрытому заказу — событие в журнал и одно уведомление", async () => {
