@@ -21,8 +21,8 @@ import {
   setEmail,
   type Customer,
 } from "@/core/customers/customers";
-import { getProduct } from "@/core/catalog/catalog";
-import { addToCart, clearCart, listCart } from "@/core/cart/cart";
+import { getProduct, type Product } from "@/core/catalog/catalog";
+import { addToCart, clearCart, inCart, listCart } from "@/core/cart/cart";
 import {
   getOrder,
   listActivePaymentMethods,
@@ -839,6 +839,23 @@ async function notifyChatPhone(s: Shop, phone: string): Promise<void> {
   ).catch(() => 0);
 }
 
+/**
+ * «Купить» из автоматизации Instagram: товар сразу в корзину, в ответ — корзина
+ * с «Оформить заказ» первой кнопкой. Уже лежит (повторное нажатие) — корзина
+ * без второго добавления. Варианты, нет в наличии, недоступен — обычная
+ * карточка: там выбор варианта или «Сообщить о поступлении».
+ */
+async function buyFromPost(s: Shop, p: Product): Promise<void> {
+  if (await inCart(s.ctx, s.customer, p.id)) return showCart(s, true);
+  const r = await addToCart(s.ctx, s.customer, p.id, null);
+  if (r === "ok") return showCart(s, true, plain(s.m.added));
+  if (r === "mixed_cart") {
+    await reply(s, s.m.mixedCart, { force: true, buttons: [BTN.cart(s.m), BTN.catalog(s.m)] });
+    return;
+  }
+  await sendProductCard(s, p, true);
+}
+
 /** Продавец вёл диалог руками за последние 30 минут. Не прочитали переписку — считаем, что нет. */
 async function sellerWroteRecently(s: Shop): Promise<boolean> {
   try {
@@ -982,8 +999,11 @@ async function handlePostback(s: Shop, payload: string): Promise<ShopOutcome> {
     }
     case "PROD": {
       const p = a ? await getProduct(s.ctx, a) : null;
-      if (p) await sendProductCard(s, p, true);
-      else await reply(s, s.m.productNotFound);
+      if (!p) await reply(s, s.m.productNotFound);
+      // В Instagram PROD:… приходит только с кнопки «Купить» автоматизации (в
+      // WhatsApp — ещё и строка списка каталога): покупатель уже выбрал товар.
+      else if (s.platform === "instagram" && s.bot.features.cart) await buyFromPost(s, p);
+      else await sendProductCard(s, p, true);
       return "handled";
     }
     case "BUY":

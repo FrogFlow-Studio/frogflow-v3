@@ -64,7 +64,7 @@ export const ru = {
   "instagram.buttons.addProduct": "+ Товар",
   "instagram.buttons.buyTitle": "Купить",
   "instagram.buttons.productHint":
-    "Покупатель нажмёт кнопку — бот пришлёт карточку этого товара с кнопкой «Добавить в корзину».",
+    "Покупатель нажмёт кнопку — бот сразу положит этот товар в корзину и предложит оформить заказ. Товар с вариантами — бот пришлёт карточку для выбора.",
   "instagram.buttons.productConsultant":
     "Кнопки с товаром здесь нет: в переписке отвечает консультант по прайсу. Какой товар показан в публикации, отмечают в разделе «{section}» на странице консультанта.",
   "instagram.buttons.productConsultantLink": "Открыть страницу консультанта",
@@ -203,7 +203,7 @@ export const kk: SectionDict<typeof ru> = {
   "instagram.buttons.addProduct": "+ Тауар",
   "instagram.buttons.buyTitle": "Сатып алу",
   "instagram.buttons.productHint":
-    "Сатып алушы түймені басады — бот осы тауардың карточкасын «Себетке қосу» түймесімен жібереді.",
+    "Сатып алушы түймені басады — бот бұл тауарды бірден себетке салып, тапсырысты рәсімдеуді ұсынады. Нұсқалары бар тауар болса — таңдау үшін карточкасын жібереді.",
   "instagram.buttons.productConsultant":
     "Мұнда тауар түймесі жоқ: хат алмасуда кеңесші прайс бойынша жауап береді. Жарияланымда қай тауар көрсетілгенін кеңесші бетіндегі «{section}» бөлімінде белгілейді.",
   "instagram.buttons.productConsultantLink": "Кеңесші бетін ашу",
@@ -341,7 +341,7 @@ export const en: SectionDict<typeof ru> = {
   "instagram.buttons.addProduct": "+ Product",
   "instagram.buttons.buyTitle": "Buy",
   "instagram.buttons.productHint":
-    "The buyer taps the button and the bot sends this product's card with an «Add to cart» button.",
+    "The buyer taps the button and the bot puts this product straight into the cart and offers to check out. For a product with variants, the bot sends its card to choose one.",
   "instagram.buttons.productConsultant":
     "There is no product button here: the consultant answers from the price list in the chat. Mark which product a post shows in the “{section}” section on the consultant page.",
   "instagram.buttons.productConsultantLink": "Open the consultant page",
@@ -479,7 +479,7 @@ export const uz: SectionDict<typeof ru> = {
   "instagram.buttons.addProduct": "+ Mahsulot",
   "instagram.buttons.buyTitle": "Sotib olish",
   "instagram.buttons.productHint":
-    "Xaridor tugmani bosadi — bot shu mahsulot kartochkasini «Savatga qo‘shish» tugmasi bilan yuboradi.",
+    "Xaridor tugmani bosadi — bot shu mahsulotni darhol savatga soladi va buyurtmani rasmiylashtirishni taklif qiladi. Variantli mahsulot uchun tanlash uchun kartochkasini yuboradi.",
   "instagram.buttons.productConsultant":
     "Bu yerda mahsulot tugmasi yo‘q: yozishmada maslahatchi narxlar ro‘yxati bo‘yicha javob beradi. Nashrda qaysi mahsulot ko‘rsatilganini maslahatchi sahifasidagi «{section}» bo‘limida belgilang.",
   "instagram.buttons.productConsultantLink": "Maslahatchi sahifasini ochish",
