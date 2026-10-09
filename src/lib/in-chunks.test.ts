@@ -96,7 +96,7 @@ const ALLOWED: Record<string, string[]> = {
   "src/core/community/joint.server.ts": ["по одному промокоду на участника акции — не больше трёх"],
   "src/core/marketplace/analytics.server.ts": ["виды событий — четыре значения"],
   "src/core/vip/auto-check.ts": [FEW],
-  "src/core/vip/vip.ts": [FEW, FEW],
+  "src/core/vip/subscription-payment.ts": [FEW, FEW],
 };
 
 describe("длинные .in кусками (Б29)", () => {

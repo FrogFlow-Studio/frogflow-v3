@@ -28,7 +28,7 @@ const ALLOWED: Record<string, string[]> = {
   "src/app/admin/chat.functions.ts": [`${SHOWN} (подбор товара в счёт: поиск, INVOICE_PAGE)`],
   "src/app/operator/ai-topup.server.ts": [`${SHOWN} (открытые счета пополнения ИИ — их единицы)`],
   "src/app/operator/plans.server.ts": [`${SHOWN} (открытые счета клиента)`],
-  "src/app/operator/billing.server.ts": [
+  "src/app/operator/subscription-sweep.server.ts": [
     "проверка существования: нужен лишь факт, что открытый счёт есть",
   ],
   "src/app/operator/client-events.server.ts": [
