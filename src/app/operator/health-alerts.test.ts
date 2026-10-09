@@ -14,13 +14,15 @@ import {
   platformAlertText,
   platformKey,
   platformSummaryText,
+  rateProbe,
   reconnectAlertText,
   stepHealthAlerts,
   zernioWebhookProbe,
   type AlertStates,
   type HealthProbe,
 } from "./health-alerts";
-import { platformProbes } from "./platform-alerts.server";
+import { platformProbes, rateReading, rateTenantIds } from "./platform-alerts.server";
+import { RATE_ALERT_AFTER_HOURS } from "@/core/consultant/pricelist/rate";
 
 const T = (min: number) => new Date(Date.UTC(2026, 8, 27, 3, 0) + min * 60_000).toISOString();
 const bad = (bot_id = "b", error = "вебхук: не установлен"): HealthProbe => ({
@@ -326,6 +328,110 @@ describe("сутки без входящих у клиента (BOVI 07.10: тр
     expect(down).toContain("https://ff.example/operator/clients/bovi");
     const up = platformAlertText({ kind: "up", botId: "inbound:bovi", since: T(0), at: T(60) }, o);
     expect(up).toContain("Клиент «BOVI»: входящие снова идут");
+  });
+});
+
+describe("курс рубля консультанта не обновляется (BOVI 09.10: рубли пропали молча)", () => {
+  const now = Date.parse(T(0));
+  const hoursAgo = (h: number) => new Date(now - h * 3_600_000).toISOString();
+  const bovi = {
+    id: "bovi",
+    name: "BOVI",
+    archived: false,
+    settings: { served_by: "v2", consultant_pricelist: { enabled: true } } as never,
+  };
+
+  it("шесть часов без обновления — сбой с причиной из журнала попытки", () => {
+    expect(RATE_ALERT_AFTER_HOURS).toBe(6);
+    const p = rateProbe({
+      botId: "b",
+      updatedAt: hoursAgo(7),
+      lastError: "Kaspi (finkaz.kz): HTTP 503",
+      alertAfterHours: RATE_ALERT_AFTER_HOURS,
+      now,
+    });
+    expect(p).toEqual({
+      bot_id: "rate:b",
+      ok: false,
+      error: `курс не обновлялся ${formatDowntime(7 * 3_600_000)}; последняя попытка: Kaspi (finkaz.kz): HTTP 503`,
+    });
+  });
+
+  it("моложе шести часов — в порядке; курса нет — сбой", () => {
+    const base = { botId: "b", alertAfterHours: 6, now };
+    expect(rateProbe({ ...base, updatedAt: hoursAgo(5) }).ok).toBe(true);
+    expect(rateProbe({ ...base, updatedAt: null })).toMatchObject({
+      ok: false,
+      error: "курса нет",
+    });
+  });
+
+  it("журнал попытки: неудачная — в причину, удачная или битая — без причины", () => {
+    const rate = {
+      key: "consultant_vtb_buy_rate",
+      value: JSON.stringify({ rate: 4.36, updatedAt: hoursAgo(8) }),
+    };
+    const failed = {
+      key: "consultant_vtb_last_error",
+      value: JSON.stringify({ at: hoursAgo(0), ok: false, attempts: ["finkaz: тайм-аут"] }),
+    };
+    expect(rateReading("b", [rate, failed])).toEqual({
+      botId: "b",
+      updatedAt: hoursAgo(8),
+      lastError: "finkaz: тайм-аут",
+    });
+    expect(
+      rateReading("b", [rate, { key: "consultant_vtb_last_error", value: "{" }]).lastError,
+    ).toBeNull();
+    expect(rateReading("b", [])).toEqual({ botId: "b", updatedAt: null, lastError: null });
+  });
+
+  it("два прогона подряд — одно сообщение оператору со ссылкой на клиента; обновился — «снова обновляется»", () => {
+    const run = (prev: AlertStates, updatedAt: string, at: number) => {
+      const { probes, labels } = platformProbes({
+        crons: [],
+        zernioWebhook: null,
+        tenants: [bovi],
+        cronTitles: new Map(),
+        rates: [{ botId: "bovi", updatedAt, lastError: null }],
+        now: at,
+      });
+      return { ...stepHealthAlerts(prev, probes, new Date(at).toISOString()), labels };
+    };
+    const first = run({}, hoursAgo(7), now);
+    expect(first.events).toEqual([]);
+    const second = run(first.next, hoursAgo(7), now + 15 * 60_000);
+    expect(second.events).toHaveLength(1);
+    const o = { labels: second.labels, base: "https://ff.example", timeZone: "Asia/Almaty" };
+    const down = platformAlertText(second.events[0]!, o);
+    expect(down).toContain("Консультант клиента «BOVI»: курс рубля не обновляется");
+    expect(down).toContain("ориентировочно");
+    expect(down).toContain("https://ff.example/operator/clients/bovi");
+    expect(parsePlatformKey("rate:bovi")).toEqual({ kind: "rate", botId: "bovi" });
+
+    const fresh = new Date(now + 30 * 60_000).toISOString();
+    let state = second.next;
+    state = { ...state, "rate:bovi": { ...state["rate:bovi"]!, notified: true } };
+    const r1 = run(state, fresh, now + 30 * 60_000);
+    const r2 = run(r1.next, fresh, now + 45 * 60_000);
+    expect(r2.events).toHaveLength(1);
+    expect(platformAlertText(r2.events[0]!, o)).toContain("курс рубля снова обновляется");
+  });
+
+  it("проверяются только консультанты по прайсу с курсом не вручную", () => {
+    const t = (id: string, consultant_pricelist: unknown) => ({
+      id,
+      settings: { consultant_pricelist } as never,
+    });
+    expect(
+      rateTenantIds([
+        t("bovi", { enabled: true }),
+        t("vtb", { enabled: true, rate_source: "vtb" }),
+        t("hand", { enabled: true, rate_source: "manual" }),
+        t("off", { enabled: false }),
+        t("none", undefined),
+      ]),
+    ).toEqual(["bovi", "vtb"]);
   });
 });
 

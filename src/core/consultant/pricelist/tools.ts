@@ -249,7 +249,7 @@ export async function executeConsultantTool(
     shopUrl?: string;
     excludeIds?: string[];
     userKey?: string;
-    /** Свежий курс магазина (rate.server getFreshRate); нет — рубли не считаются. */
+    /** Последний курс магазина (rate.server getUsableRate); нет — рубли не считаются. */
     rate?: StoredVtbRate | null;
     /** Поиск по базе знаний продавца. */
     searchKnowledge?: (query: string) => Promise<KnowledgeHit[]>;

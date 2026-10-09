@@ -170,6 +170,7 @@ export function alertSummaryText(
  * а про платформу. Ключ события говорит, о чём оно:
  * `cron:<задача>`, `zernio:webhook`, `account:<bot_id>:<id аккаунта>`,
  * `inbound:<bot_id>` (у клиента перестали приходить сообщения),
+ * `rate:<bot_id>` (курс рубля консультанта не обновляется),
  * `twin:<bot_id>:<канал>:<username>` (у страницы два живых подключения в Zernio).
  */
 export type PlatformSubject =
@@ -177,12 +178,14 @@ export type PlatformSubject =
   | { kind: "zernio_webhook" }
   | { kind: "account"; botId: string; accountId: string }
   | { kind: "inbound"; botId: string }
+  | { kind: "rate"; botId: string }
   | { kind: "twin"; botId: string; platform: string; username: string };
 
 export function platformKey(s: PlatformSubject): string {
   if (s.kind === "cron") return `cron:${s.job}`;
   if (s.kind === "zernio_webhook") return "zernio:webhook";
   if (s.kind === "inbound") return `inbound:${s.botId}`;
+  if (s.kind === "rate") return `rate:${s.botId}`;
   if (s.kind === "twin") return `twin:${s.botId}:${s.platform}:${s.username.toLowerCase()}`;
   return `account:${s.botId}:${s.accountId}`;
 }
@@ -191,6 +194,8 @@ export function parsePlatformKey(key: string): PlatformSubject | null {
   if (key === "zernio:webhook") return { kind: "zernio_webhook" };
   const inbound = /^inbound:(.+)$/.exec(key);
   if (inbound) return { kind: "inbound", botId: inbound[1]! };
+  const rate = /^rate:(.+)$/.exec(key);
+  if (rate) return { kind: "rate", botId: rate[1]! };
   const twin = /^twin:([^:]+):([^:]+):(.+)$/.exec(key);
   if (twin) return { kind: "twin", botId: twin[1]!, platform: twin[2]!, username: twin[3]! };
   const cron = /^cron:(.+)$/.exec(key);
@@ -255,6 +260,31 @@ export function inboundProbe(s: {
   return { bot_id, ok: false, error: `нет входящих ${formatDowntime(quiet)}` };
 }
 
+/**
+ * Курс рубля консультанта по прайсу (обновляется кроном каждые 15 минут).
+ * BOVI 09.10: Kaspi трое суток не отдавал курс, бот держал старый, а потом
+ * молча перестал называть рубли — оператор узнал от покупателей. Теперь
+ * через RATE_ALERT_AFTER_HOURS без обновления — сбой для оператора; курса
+ * нет вовсе — тоже сбой. Курс вручную крон не обновляет — не проверяем.
+ */
+export function rateProbe(s: {
+  botId: string;
+  /** Когда курс обновился (ISO); null — курса нет. */
+  updatedAt: string | null;
+  /** Последняя неудачная попытка обновления — в причину. */
+  lastError?: string | null;
+  alertAfterHours: number;
+  now: number;
+}): HealthProbe {
+  const bot_id = platformKey({ kind: "rate", botId: s.botId });
+  const why = s.lastError ? `; последняя попытка: ${s.lastError}` : "";
+  if (!s.updatedAt) return { bot_id, ok: false, error: `курса нет${why}` };
+  const age = s.now - Date.parse(s.updatedAt);
+  if (!Number.isFinite(age) || age < s.alertAfterHours * 3600_000)
+    return { bot_id, ok: true, error: null };
+  return { bot_id, ok: false, error: `курс не обновлялся ${formatDowntime(age)}${why}` };
+}
+
 /** Вебхук Zernio v2: сбой чтения или запись, которую нужно обновить кнопкой «Привязать». */
 export function zernioWebhookProbe(s: {
   ok: boolean;
@@ -285,7 +315,7 @@ function platformLink(key: string, base: string): string {
       ? [`${base}/operator/crons`, "Открыть кроны"]
       : s?.kind === "zernio_webhook"
         ? [`${base}/operator/settings`, "Открыть настройки платформы"]
-        : s?.kind === "account" || s?.kind === "inbound" || s?.kind === "twin"
+        : s?.kind === "account" || s?.kind === "inbound" || s?.kind === "rate" || s?.kind === "twin"
           ? [`${base}/operator/clients/${s.botId}`, "Открыть клиента в панели"]
           : [`${base}/operator`, "Открыть панель"];
   return `<a href="${escapeHtml(href).replace(/"/g, "&quot;")}">${title}</a>`;
@@ -299,6 +329,8 @@ function platformTitle(e: AlertEvent, label: string): string {
     return down ? "Вебхук Zernio v2 не в порядке" : "Вебхук Zernio v2 снова в порядке";
   if (s?.kind === "inbound")
     return `${label}: ${down ? "сутки нет входящих сообщений" : "входящие снова идут"}`;
+  if (s?.kind === "rate")
+    return `${label}: ${down ? "курс рубля не обновляется" : "курс рубля снова обновляется"}`;
   if (s?.kind === "twin")
     return `${label}: ${down ? "два подключения в Zernio" : "в Zernio снова одно подключение"}`;
   return `${label} ${down ? "отключился" : "снова подключён"}`;
@@ -316,9 +348,11 @@ export function platformAlertText(e: AlertEvent, o: PlatformTextOptions): string
           ? "Бот в этом канале не видит сообщений. Продавцу ушло уведомление, аккаунт нужно подключить заново."
           : s?.kind === "inbound"
             ? "Обычно клиенту пишут каждый день. Проверьте подключение Instagram/WhatsApp в Zernio и напишите в директ клиента с другого аккаунта: так 07.10 у BOVI трое суток терялись сообщения."
-            : s?.kind === "twin"
-              ? "Страницу переподключили, а старое подключение в Zernio не отвязалось. Сообщения могут приходить только на одно из них. Оставьте в Zernio одно подключение и напишите клиенту в директ с другого аккаунта."
-              : null
+            : s?.kind === "rate"
+              ? "Консультант называет рубли по последнему курсу, а когда тот старше суток, — с пометкой «ориентировочно»; без курса — только тенге. Проверьте источник в карточке клиента: «Оплата» → «Курс рубля», или введите курс вручную."
+              : s?.kind === "twin"
+                ? "Страницу переподключили, а старое подключение в Zernio не отвязалось. Сообщения могут приходить только на одно из них. Оставьте в Zernio одно подключение и напишите клиенту в директ с другого аккаунта."
+                : null
       : null;
   if (e.kind === "down")
     return [

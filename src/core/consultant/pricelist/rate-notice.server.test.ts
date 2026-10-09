@@ -23,14 +23,14 @@ function ctxOf(adminLocale?: string) {
   return { ctx, db, queued };
 }
 
-describe("предупреждение «курс рубля устарел»", () => {
+describe("предупреждение «курса рубля нет»", () => {
   it("два сообщения одновременно — предупреждение одно (на каждого продавца по строке очереди)", async () => {
     const { ctx, queued } = ctxOf();
     const now = new Date("2026-10-07T06:00:00Z");
     const won = await Promise.all([noticeStaleRate(ctx, now), noticeStaleRate(ctx, now)]);
     expect(won.filter(Boolean)).toHaveLength(1);
     expect(queued()).toHaveLength(2);
-    expect(JSON.stringify(queued()[0]!.payload)).toContain("Курс рубля для консультанта устарел");
+    expect(JSON.stringify(queued()[0]!.payload)).toContain("Курса рубля для консультанта нет");
   });
 
   it("в тот же день повторно не шлёт, на следующий день — снова", async () => {
@@ -53,6 +53,6 @@ describe("предупреждение «курс рубля устарел»", 
   it("на языке продавца", async () => {
     const { ctx, queued } = ctxOf("kk");
     await noticeStaleRate(ctx, new Date("2026-10-07T06:00:00Z"));
-    expect(JSON.stringify(queued()[0]!.payload)).toContain("рубль бағамы ескірген");
+    expect(JSON.stringify(queued()[0]!.payload)).toContain("рубль бағамы жоқ");
   });
 });

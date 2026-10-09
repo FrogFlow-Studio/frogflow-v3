@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { bankNameFromFinkazUrl, parseFinkazRubQuote, parseFinkazUpdatedAt } from "./finkaz-parse";
-import { isRateFresh, priceRub, RATE_MAX_AGE_HOURS } from "./rate";
+import { isRateFresh, priceRub, RATE_APPROX_AFTER_HOURS } from "./rate";
 
 /**
  * Живой кусок страницы finkaz.kz/kaspi-bank/exchange-rates от 18.09.2026.
@@ -55,17 +55,17 @@ describe("курс банка со страницы finkaz", () => {
   });
 });
 
-describe("устаревший курс не идёт в цену", () => {
+describe("курс старше суток — ориентировочный", () => {
   const now = Date.parse("2026-09-18T12:00:00.000Z");
   const at = (hoursAgo: number) => ({
     rate: 4.45,
     updatedAt: new Date(now - hoursAgo * 36e5).toISOString(),
   });
 
-  it("свежий курс годится, трёхдневный — нет", () => {
+  it("моложе суток — точный, старше — ориентировочный", () => {
     expect(isRateFresh(at(1), now)).toBe(true);
-    expect(isRateFresh(at(RATE_MAX_AGE_HOURS - 1), now)).toBe(true);
-    expect(isRateFresh(at(RATE_MAX_AGE_HOURS + 1), now)).toBe(false);
+    expect(isRateFresh(at(RATE_APPROX_AFTER_HOURS - 1), now)).toBe(true);
+    expect(isRateFresh(at(RATE_APPROX_AFTER_HOURS + 1), now)).toBe(false);
     expect(isRateFresh(null, now)).toBe(false);
   });
 

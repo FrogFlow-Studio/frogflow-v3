@@ -83,6 +83,16 @@ const PRICELIST_HANDOFF: Record<Locale, string> = {
   uz: "Rahmat. Savolingizni menejerga yuboraman, u tez orada siz bilan bog‘lanadi.",
 };
 
+const RUB_APPROX: Record<Locale, string> = {
+  ru: "Цены в рублях ориентировочные.",
+  kk: "Рубльдегі бағалар шамамен берілген.",
+  en: "Ruble prices are approximate.",
+  uz: "Rubldagi narxlar taxminiy.",
+};
+
+/** Покупателю, под ответом с рублями: курс старше суток (pricelist/turn.server toTurn). */
+export const rubApproxNote = (locale: Locale): string => RUB_APPROX[locale];
+
 /** Консультант по прайсу передал вопрос, не написав фразы сам (v1 HANDOFF_TO_MANAGER_REPLY). */
 export const pricelistHandoffReply = (locale: Locale): string => PRICELIST_HANDOFF[locale];
 
@@ -189,10 +199,10 @@ export const questionLabel = (locale: Locale): string => QUESTION[locale];
 export const botAnsweredLabel = (locale: Locale): string => BOT_ANSWERED[locale];
 
 const RATE_STALE: Record<Locale, string> = {
-  ru: "🟡 <b>Курс рубля для консультанта устарел или не получен.</b>\n\nПокупатели просят цены в рублях, но без свежего курса рубли не пересчитываются: консультант называет цены в тенге. Обновите курс в панели: «Прайс консультанта» → «Курс рубля».",
-  kk: "🟡 <b>Кеңесшіге арналған рубль бағамы ескірген немесе алынбаған.</b>\n\nСатып алушылар бағаны рубльмен сұрайды, бірақ жаңа бағамсыз рубль есептелмейді: кеңесші бағаны теңгемен атайды. Бағамды панельде жаңартыңыз: «Кеңесші прайсы» → «Рубль бағамы».",
-  en: "🟡 <b>The ruble rate for the consultant is out of date or missing.</b>\n\nCustomers ask for prices in rubles, but without a fresh rate rubles are not calculated: the consultant quotes prices in tenge. Update the rate in the panel: “Consultant price list” → “Ruble rate”.",
-  uz: "🟡 <b>Maslahatchi uchun rubl kursi eskirgan yoki olinmagan.</b>\n\nXaridorlar narxni rublda so‘rayapti, ammo yangi kurssiz rubl hisoblanmaydi: maslahatchi narxlarni tengeda aytadi. Kursni panelda yangilang: «Maslahatchi narxnomasi» → «Rubl kursi».",
+  ru: "🟡 <b>Курса рубля для консультанта нет.</b>\n\nПокупатели просят цены в рублях, но без курса рубли не пересчитываются: консультант называет цены в тенге. Обновите курс в панели: «Прайс консультанта» → «Курс рубля».",
+  kk: "🟡 <b>Кеңесшіге арналған рубль бағамы жоқ.</b>\n\nСатып алушылар бағаны рубльмен сұрайды, бірақ бағамсыз рубль есептелмейді: кеңесші бағаны теңгемен атайды. Бағамды панельде жаңартыңыз: «Кеңесші прайсы» → «Рубль бағамы».",
+  en: "🟡 <b>There is no ruble rate for the consultant.</b>\n\nCustomers ask for prices in rubles, but without a rate rubles are not calculated: the consultant quotes prices in tenge. Update the rate in the panel: “Consultant price list” → “Ruble rate”.",
+  uz: "🟡 <b>Maslahatchi uchun rubl kursi yo‘q.</b>\n\nXaridorlar narxni rublda so‘rayapti, ammo kurssiz rubl hisoblanmaydi: maslahatchi narxlarni tengeda aytadi. Kursni panelda yangilang: «Maslahatchi narxnomasi» → «Rubl kursi».",
 };
 
 const SHEET_FAIL: Record<Locale, string> = {
@@ -232,5 +242,5 @@ export const sheetFailNotice = (locale: Locale, reason: string): string => {
   return SHEET_FAIL[locale].replace("{why}", why);
 };
 
-/** Продавцу, не чаще раза в сутки: рубли просят, а свежего курса нет (pricelist/rate-notice). */
+/** Продавцу, не чаще раза в сутки: рубли просят, а курса нет (pricelist/rate-notice). */
 export const rateStaleNotice = (locale: Locale): string => RATE_STALE[locale];

@@ -13,7 +13,7 @@ import {
 import type { V2Image } from "./images";
 import type { Locale } from "@/core/i18n/locale";
 import { handoffSummary, sellerLocaleSafe } from "@/core/ai/seller-text";
-import { pricelistHandoffReply } from "../messages";
+import { pricelistHandoffReply, rubApproxNote } from "../messages";
 
 /** Фраза передачи, когда модель ничего не написала сама (v1 HANDOFF_TO_MANAGER_REPLY), по-русски. */
 export const HANDOFF_REPLY = pricelistHandoffReply("ru");
@@ -98,10 +98,15 @@ export async function runPricelistTurn(
 
 /** Решение модели → общий результат консультанта. */
 export function toTurn(
-  d: PricelistDecision,
+  decision: PricelistDecision,
   incoming: string,
   opts: { locale?: Locale; sellerLocale?: Locale } = {},
 ): PricelistTurn {
+  // Рубли по курсу старше суток — покупатель видит, что сумма ориентировочная.
+  const d =
+    decision.rateApprox && decision.reply.includes("₽")
+      ? { ...decision, reply: `${decision.reply}\n\n${rubApproxNote(opts.locale ?? "ru")}` }
+      : decision;
   const patch: Partial<ConsultantState> = { ...d.statePatch };
   const base = { patch, tools: [...d.tools], attachments: d.attachments };
   const handoffText = pricelistHandoffReply(opts.locale ?? "ru");

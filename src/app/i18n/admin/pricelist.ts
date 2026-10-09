@@ -91,7 +91,7 @@ export const ru = {
     "Бот берёт курс отсюда: {source}. Сменить источник можно через поддержку FrogFlow.",
   "pricelist.rate.sourceManual": "Бот берёт курс, введённый вручную.",
   "pricelist.rate.stale":
-    "Курс старше трёх дней — цены в рублях покупателям не называются, пока он не обновится.",
+    "Курс не обновлялся больше суток — консультант называет цены в рублях по нему с пометкой «ориентировочно», пока курс не обновится.",
   "pricelist.rate.none": "Курса ещё нет — цены в рублях покупателям не называются.",
   "pricelist.rate.refresh": "Обновить сейчас",
   "pricelist.rate.manual": "Курс вручную",
@@ -271,7 +271,7 @@ export const kk: SectionDict<typeof ru> = {
     "Бот бағамды осыдан алады: {source}. Көзді FrogFlow қолдауы арқылы ауыстыруға болады.",
   "pricelist.rate.sourceManual": "Бот қолмен енгізілген бағамды алады.",
   "pricelist.rate.stale":
-    "Бағам үш күннен ескі — жаңартылмайынша сатып алушыларға рубльдегі баға айтылмайды.",
+    "Бағам бір тәуліктен астам жаңартылмаған — бағам жаңарғанша кеңесші рубльдегі бағаны соған қарап «шамамен» деген белгімен айтады.",
   "pricelist.rate.none": "Бағам әлі жоқ — сатып алушыларға рубльдегі баға айтылмайды.",
   "pricelist.rate.refresh": "Қазір жаңарту",
   "pricelist.rate.manual": "Бағамды қолмен енгізу",
@@ -452,7 +452,7 @@ export const en: SectionDict<typeof ru> = {
     "The bot takes the rate from: {source}. To change the source, contact FrogFlow support.",
   "pricelist.rate.sourceManual": "The bot uses the rate entered manually.",
   "pricelist.rate.stale":
-    "The rate is older than three days — ruble prices are not quoted to customers until it updates.",
+    "The rate has not updated for over a day — the consultant quotes ruble prices at it, marked “approximate”, until it updates.",
   "pricelist.rate.none": "No rate yet — ruble prices are not quoted to customers.",
   "pricelist.rate.refresh": "Refresh now",
   "pricelist.rate.manual": "Manual rate",
@@ -636,7 +636,7 @@ export const uz: SectionDict<typeof ru> = {
     "Bot kursni shu yerdan oladi: {source}. Manbani FrogFlow yordami orqali almashtirish mumkin.",
   "pricelist.rate.sourceManual": "Bot qo‘lda kiritilgan kursni oladi.",
   "pricelist.rate.stale":
-    "Kurs uch kundan eski — yangilanmaguncha xaridorlarga rubldagi narx aytilmaydi.",
+    "Kurs bir kundan ortiq yangilanmagan — kurs yangilanguncha maslahatchi rubldagi narxlarni shu kurs bo‘yicha «taxminiy» belgisi bilan aytadi.",
   "pricelist.rate.none": "Kurs hali yo‘q — xaridorlarga rubldagi narx aytilmaydi.",
   "pricelist.rate.refresh": "Hozir yangilash",
   "pricelist.rate.manual": "Kursni qo‘lda kiritish",

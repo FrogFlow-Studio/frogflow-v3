@@ -70,7 +70,7 @@ type Opts = {
   storyTags?: PricelistData["storyTags"];
   fetchImage?: (url: string) => Promise<V2Image | null>;
   onToolCall?: (name: string) => void;
-  /** Курс рубля; null — свежего нет (getFreshRate вернул null). */
+  /** Курс рубля; null — курса нет (getUsableRate вернул null). */
   rate?: PricelistData["rate"];
   hours?: PricelistData["hours"];
   persona?: PricelistData["persona"];
@@ -1017,11 +1017,11 @@ describe("надёжность ответа по прайсу (BOVI 07.10)", () 
     expect(turn.handoff!.summary).toContain("not from the catalog");
   });
 
-  it("рубли без свежего курса — честная пометка вместо обещания замены, цены в тенге", async () => {
+  it("рубли без курса — честная пометка вместо обещания замены, цены в тенге", async () => {
     responses.push(reply([{ type: "text", text: "Uchino 50х100 - 9 000 ₸." }]));
     const { d, turn } = await decide("Сколько в рублях?", {}, { rate: null });
     expect(d.rateMissing).toBe(true);
-    expect(lastMessage(0)).toContain("актуального курса сейчас нет");
+    expect(lastMessage(0)).toContain("курса рубля сейчас нет");
     expect(lastMessage(0)).not.toContain("заменятся на рубли автоматически");
     expect(turn.reply).toBe("Uchino 50х100 - 9 000 ₸.");
   });
@@ -1031,6 +1031,37 @@ describe("надёжность ответа по прайсу (BOVI 07.10)", () 
     const { d } = await decide("Сколько в рублях?");
     expect(d.rateMissing).toBe(false);
     expect(lastMessage(0)).toContain("заменятся на рубли автоматически");
+  });
+
+  it("курс старше суток (источник молчит) — рубли по нему и пометка «ориентировочные»", async () => {
+    // BOVI 09.10: курс протух через 72 ч, и бот молча перестал называть рубли.
+    responses.push(reply([{ type: "text", text: "Uchino 50х100 - 9 000 ₸." }]));
+    const old = { rate: 4.2, updatedAt: new Date(DAY.getTime() - 80 * 3600_000).toISOString() };
+    const { d, turn } = await decide("Сколько в рублях?", {}, { rate: old });
+    expect(d.rateMissing).toBe(false);
+    expect(d.rateApprox).toBe(true);
+    expect(lastMessage(0)).toContain("заменятся на рубли автоматически");
+    // Множитель выходных берётся по настоящей дате, поэтому ожидание — тем же расчётом.
+    const rub = priceRub(9000, 4.2).toLocaleString("ru-RU");
+    expect(turn.reply).toBe(`Uchino 50х100 - ${rub} ₽.\n\nЦены в рублях ориентировочные.`);
+    expect(turn.historyReply).toBe("Uchino 50х100 - 9 000 ₸.");
+    const kk = toTurn(d, "Сколько в рублях?", { locale: "kk" });
+    expect(kk.reply).toContain("Рубльдегі бағалар шамамен берілген.");
+  });
+
+  it("курс моложе суток — рубли без пометки", async () => {
+    responses.push(reply([{ type: "text", text: "Uchino 50х100 - 9 000 ₸." }]));
+    const recent = { rate: 4.2, updatedAt: new Date(DAY.getTime() - 20 * 3600_000).toISOString() };
+    const { d, turn } = await decide("Сколько в рублях?", {}, { rate: recent });
+    expect(d.rateApprox).toBeUndefined();
+    expect(turn.reply).toBe(`Uchino 50х100 - ${priceRub(9000, 4.2).toLocaleString("ru-RU")} ₽.`);
+  });
+
+  it("старый курс, но в ответе нет рублей — пометка не нужна", async () => {
+    responses.push(reply([{ type: "text", text: "Какой размер нужен?" }]));
+    const old = { rate: 4.2, updatedAt: new Date(DAY.getTime() - 80 * 3600_000).toISOString() };
+    const { turn } = await decide("Сколько в рублях?", {}, { rate: old });
+    expect(turn.reply).toBe("Какой размер нужен?");
   });
 
   it("рублей не просили — курс не нужен, продавца не тревожим", async () => {
