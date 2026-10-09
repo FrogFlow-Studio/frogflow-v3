@@ -33,6 +33,7 @@ import {
   nicheForVertical,
   parsePlan,
   planKey,
+  planMonthlyPrice,
   type AddonKey,
   type PlanTier,
 } from "@/core/plans/registry";
@@ -360,6 +361,36 @@ export async function setAiQuota(
   await logEvent(botId, "meta", { ai_quota: clean ?? null }, actor);
 }
 
+/**
+ * Условия по договору для клиента на плане: своя цена плана в месяц (null —
+ * снова по тарифу) и «подключение не берётся» (действующий клиент). Модули не
+ * трогает, поэтому доступно и до переезда: цена готова к первому счёту.
+ */
+export async function setContractTerms(
+  botId: string,
+  input: { monthly_price: number | null; waive_connection: boolean },
+  actor: string,
+): Promise<void> {
+  const t = await load(botId);
+  const waived = input.waive_connection && !t.settings.billing?.connection_paid_at;
+  // patchTenantSettings сливает billing с записанным в базе: пишем только свои
+  // ключи. Ключ так не удалить, поэтому «снова по тарифу» — null (directory
+  // читает его как «нет»).
+  await patchTenantSettings(botId, {
+    billing: {
+      monthly_price: input.monthly_price,
+      ...(waived ? { connection_paid_at: new Date().toISOString() } : {}),
+    },
+  });
+  invalidateTenantDirectory();
+  await logEvent(
+    botId,
+    "meta",
+    { monthly_price: input.monthly_price, ...(waived ? { connection_waived: true } : {}) },
+    actor,
+  );
+}
+
 /** Цена надбавки: названная оператором, иначе по тарифу (ADDON_MONTHLY_PRICE). */
 function addonPrice(a: AddonKey, named: number | undefined): number {
   return typeof named === "number" && Number.isFinite(named) && named >= 0
@@ -395,6 +426,7 @@ export function planInvoicePreview(
   return planInvoice(parsed.tier, {
     commission,
     period: period ?? billing.period ?? "month",
+    monthlyPrice: planMonthlyPrice(parsed.tier, billing),
     withConnection: !billing.connection_paid_at,
     // Приглашённый автор: скидка на подключение, пока оно не оплачено.
     connectionDiscount: t.settings.invite

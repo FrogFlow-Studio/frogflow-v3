@@ -18,6 +18,7 @@ describe("выручка платформы", () => {
     expect(monthlyRevenue("flowers.basic", {})).toBe(9_900);
     expect(monthlyRevenue("flowers.pro", { addons: ["whatsapp", "instagram"] })).toBe(29_900);
     expect(monthlyRevenue("flowers.basic", { period: "year" })).toBe(8_250);
+    expect(monthlyRevenue("digital.basic", { monthly_price: 4_950 })).toBe(4_950);
     expect(monthlyRevenue("custom", {})).toBeNull();
     expect(monthlyRevenue(null, {})).toBeNull();
   });
@@ -104,6 +105,7 @@ describe("продления, отток и поступления по тари
     expect(periodPayment("flowers.pro", {})).toBe(19_900);
     expect(periodPayment("flowers.pro", { addons: ["whatsapp"] })).toBe(24_900);
     expect(periodPayment("flowers.basic", { period: "year" })).toBe(99_000);
+    expect(periodPayment("digital.basic", { monthly_price: 4_950, period: "year" })).toBe(49_500);
     expect(periodPayment("custom", {})).toBeNull();
   });
 

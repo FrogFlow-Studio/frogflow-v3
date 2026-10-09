@@ -117,7 +117,10 @@ function PlanPanel({
       <div className="grid gap-4 text-sm md:grid-cols-2">
         <div className="space-y-1">
           <div className="text-lg font-semibold">
-            {TIER_TITLES[current]} · {t("plan.perMonth", { price: n(p.prices.monthly[current]) })}
+            {TIER_TITLES[current]} ·{" "}
+            {t("plan.perMonth", {
+              price: n(p.contractMonthly ?? p.prices.monthly[current]),
+            })}
           </div>
           {p.period === "year" && <div className="text-muted">{t("plan.perYear")}</div>}
           {p.trialUntil && (

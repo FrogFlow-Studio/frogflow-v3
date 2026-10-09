@@ -1,8 +1,8 @@
 import {
   ADDON_MONTHLY_PRICE,
   ANNUAL_BILLED_MONTHS,
-  MONTHLY_PRICE,
   parsePlan,
+  planMonthlyPrice,
   type PlanTier,
 } from "./registry";
 import type { BillingSettings } from "@/core/tenant/types";
@@ -37,7 +37,7 @@ export function monthlyRevenue(plan: string | null, billing: BillingSettings): n
   const p = parsePlan(plan);
   if (p?.kind !== "tier") return null;
   const addons = (billing.addons ?? []).reduce((s, a) => s + (ADDON_MONTHLY_PRICE[a] ?? 0), 0);
-  const monthly = MONTHLY_PRICE[p.tier] + addons;
+  const monthly = planMonthlyPrice(p.tier, billing) + addons;
   return billing.period === "year" ? Math.round((monthly * ANNUAL_BILLED_MONTHS) / 12) : monthly;
 }
 
@@ -137,7 +137,7 @@ export function periodPayment(plan: string | null, billing: BillingSettings): nu
   const p = parsePlan(plan);
   if (p?.kind !== "tier") return null;
   const addons = (billing.addons ?? []).reduce((s, a) => s + (ADDON_MONTHLY_PRICE[a] ?? 0), 0);
-  const monthly = MONTHLY_PRICE[p.tier] + addons;
+  const monthly = planMonthlyPrice(p.tier, billing) + addons;
   return billing.period === "year" ? monthly * ANNUAL_BILLED_MONTHS : monthly;
 }
 

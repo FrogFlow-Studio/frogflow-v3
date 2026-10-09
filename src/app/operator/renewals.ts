@@ -3,7 +3,7 @@
  * отметка «уже слали». Отправка — в renewals.server.ts.
  */
 import { planInvoice } from "@/core/plans/plans";
-import { ADDON_MONTHLY_PRICE, ADDONS, parsePlan } from "@/core/plans/registry";
+import { ADDON_MONTHLY_PRICE, ADDONS, parsePlan, planMonthlyPrice } from "@/core/plans/registry";
 import type { Tenant } from "@/core/tenant/types";
 
 export type RenewalStage = "d7" | "d3" | "d1" | "d0";
@@ -89,6 +89,7 @@ export function renewalPrice(
   const period = billing.period === "year" ? "year" : "month";
   const inv = planInvoice(parsed.tier, {
     period,
+    monthlyPrice: planMonthlyPrice(parsed.tier, billing),
     withConnection: false,
     addons: (billing.addons ?? []).map((a) => ({
       title: ADDONS[a].title,

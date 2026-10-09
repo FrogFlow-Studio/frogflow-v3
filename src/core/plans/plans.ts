@@ -152,6 +152,8 @@ export function planInvoice(
   opts: {
     period: "month" | "year";
     withConnection: boolean;
+    /** Цена плана в месяц по договору (planMonthlyPrice); нет — цена тарифа. */
+    monthlyPrice?: number;
     addons?: Array<{ title: string; monthly: number }>;
     /** Скидка на подключение (приглашённому автору); только вместе с подключением, не больше его цены. */
     connectionDiscount?: { title: string; amount: number };
@@ -160,13 +162,17 @@ export function planInvoice(
   },
 ): { amount: number; lines: InvoiceLine[]; note: string } {
   const months = opts.period === "year" ? ANNUAL_BILLED_MONTHS : 1;
+  const contract =
+    opts.monthlyPrice !== undefined && opts.monthlyPrice !== MONTHLY_PRICE[tier]
+      ? opts.monthlyPrice
+      : null;
   const lines: InvoiceLine[] = [
     {
       title:
-        opts.period === "year"
+        (opts.period === "year"
           ? `План ${TIER_TITLES[tier]} на год (12 мес. по цене ${months})`
-          : `План ${TIER_TITLES[tier]} на месяц`,
-      amount: MONTHLY_PRICE[tier] * months,
+          : `План ${TIER_TITLES[tier]} на месяц`) + (contract !== null ? ", цена по договору" : ""),
+      amount: (contract ?? MONTHLY_PRICE[tier]) * months,
     },
   ];
   for (const a of opts.addons ?? [])
