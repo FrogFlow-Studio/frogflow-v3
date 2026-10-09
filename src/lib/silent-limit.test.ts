@@ -31,10 +31,12 @@ const ALLOWED: Record<string, string[]> = {
   "src/app/operator/billing.server.ts": [
     "проверка существования: нужен лишь факт, что открытый счёт есть",
   ],
-  "src/app/operator/operator.server.ts": [
+  "src/app/operator/client-events.server.ts": [
     `${SHOWN} (события клиента)`,
     `${SHOWN} (события платформы)`,
-    `${SHOWN} (рассылки оператора)`,
+  ],
+  "src/app/operator/owner-broadcasts.server.ts": [`${SHOWN} (рассылки оператора)`],
+  "src/app/operator/owner-messages.server.ts": [
     `${SHOWN} (журнал сообщений владельцу: последние 30)`,
   ],
   "src/channels/zernio/dispatch.server.ts": [
@@ -62,7 +64,7 @@ const ALLOWED: Record<string, string[]> = {
     `${SHOWN} (покупатели в админке, есть поиск)`,
   ],
   "src/core/orders/balance.ts": ["счёт попыток: достаточно RK_ATTEMPTS, дальше всё равно отказ"],
-  "src/core/orders/orders.ts": [`${SHOWN} (последние заказы покупателя)`],
+  "src/core/orders/order-queries.ts": [`${SHOWN} (последние заказы покупателя)`],
   "src/core/pipeline/board.ts": [
     `${SHOWN} (открытые заказы на доске)`,
     `${SHOWN} (закрытые за окно на доске)`,
