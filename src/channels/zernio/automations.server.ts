@@ -1303,6 +1303,73 @@ export async function deliverTwoStepFromDm(
   return deliverPendingTwoStepDm(ctx, p, api, now);
 }
 
+/** Кодовое слово в Direct — короткая реплика, а не рассказ, где слово встретилось. */
+export const DM_KEYWORD_MAX_LEN = 40;
+
+/**
+ * Кодовое слово из рилса написали прямо в Direct («Палитра»), без
+ * комментария: раньше бот открывал обращение и молчал (Копилка русоведа,
+ * 09.10: ~13 человек за 2 часа). Покупатель написал сам — второе сообщение
+ * правила с кнопками можно слать сразу, «+» не нужен. Только правила с
+ * кодовыми словами (правило «на любой комментарий» на любую реплику не
+ * срабатывает). Строка очереди — на переписку и правило в пределах окна
+ * TWO_STEP_FROM_DM_MS: два «Палитра» подряд дают одну строку, а право на
+ * отправку в переписку одно (sendSecondStep) — дубля не будет.
+ */
+export async function deliverTwoStepForDmKeyword(
+  ctx: TenantContext,
+  p: { accountId: string; conversationId: string; username: string; senderId?: string },
+  text: string,
+  api: AutomationApi = liveAutomationApi,
+  now: () => Date = () => new Date(),
+): Promise<boolean> {
+  const t = text.trim();
+  if (!p.username || !t || t.length > DM_KEYWORD_MAX_LEN) return false;
+  const rules = (await listAutomations(ctx, api)).filter(
+    (a) =>
+      (a.twoStepDm || Boolean(a.buttons?.length)) &&
+      a.isActive !== false &&
+      a.accountId === p.accountId &&
+      (a.trigger ?? "comment") === "comment" &&
+      a.keywords.some((k) => k.trim() !== ""),
+  );
+  const rule = rules.find((a) => commentMatchesAutomation(t, a.keywords, a.matchMode));
+  if (!rule) return false;
+  const autoId = automationId(rule);
+  const bucket = Math.floor(now().getTime() / TWO_STEP_FROM_DM_MS);
+  const { error } = await ctx.db.from("zernio_logs").insert({
+    bot_id: ctx.tenant.id,
+    event_id: `${DM_KEY_PREFIX}kw:${p.conversationId}:${autoId}:${bucket}`,
+    event_type: "two_step_dm_pending",
+    status: "pending",
+    error_message: null,
+    created_at: now().toISOString(),
+    payload: {
+      username: p.username,
+      authorId: p.senderId ?? null,
+      accountId: p.accountId,
+      automationId: autoId,
+      secondText: rule.secondDmMessage || DEFAULT_SECOND_DM,
+      buttons: toJson(
+        normalizeDmButtons(
+          (rule.secondDmButtons?.length
+            ? rule.secondDmButtons
+            : rule.buttons?.length
+              ? rule.buttons
+              : defaultButtons(ctx)) as DmButton[],
+        ),
+      ),
+      createdAt: now().toISOString(),
+      via: "dm_keyword",
+    },
+  });
+  if (error && !/duplicate|unique/i.test(error.message)) {
+    console.warn(`[comment-dm] кодовое слово в Direct не записано: ${error.message}`);
+    return false;
+  }
+  return deliverPendingTwoStepDm(ctx, p, api, now);
+}
+
 /** Строки второго шага, заведённые по ответу покупателя, а не по комментарию. */
 const DM_KEY_PREFIX = "two-step-dm:dm:";
 
