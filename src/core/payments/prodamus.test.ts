@@ -42,12 +42,13 @@ describe("Продамус", () => {
     expect(cfg.currency).toBe("KZT");
     expect(prodamusAccepts(cfg, "KZT")).toBe(true);
     expect(prodamusAccepts(cfg, "RUB")).toBe(false);
-    // Курс пересчитывает тенге; у кассы в тенге он не нужен и не действует.
+    // У кассы в тенге курс — тенге за 1 ₽: заказ в рублях выставляется в тенге.
     const kzt = prodamusConfig({ ...s, prodamus_currency: "KZT", prodamus_rate: "5.8" }, true);
-    expect(kzt.ready && kzt.rate).toBe(null);
+    if (!kzt.ready) throw new Error("not ready");
+    expect(prodamusCharge(kzt, 100, "RUB")).toEqual({ amount: 580, currency: "KZT" });
   });
 
-  it("форма на .kz считает только в тенге: валюта кассы KZT, курс не действует", () => {
+  it("форма на .kz считает только в тенге: валюта кассы KZT, заказ в тенге как есть", () => {
     // Копилка Русоведа, 09.10.2026: RUB и курс 5,23 — форма proeducation.kz выставила
     // 1148 ₸ за заказ на 6000 ₸ (параметр currency она не берёт).
     const cfg = prodamusConfig(
@@ -61,9 +62,24 @@ describe("Продамус", () => {
     );
     if (!cfg.ready) throw new Error("not ready");
     expect(cfg.currency).toBe("KZT");
-    expect(cfg.rate).toBe(null);
     expect(prodamusCharge(cfg, 6000, "KZT")).toEqual({ amount: 6000, currency: "KZT" });
-    expect(prodamusAccepts(cfg, "RUB")).toBe(false);
+  });
+
+  it("форма на .kz и заказ в рублях: без курса кнопки нет, с курсом — тенге вверх до целого", () => {
+    // Копилка русоведа 09.10: цена для России 490 ₽, Продамус списывает с карты РФ
+    // 41,98 ₽ за 150 ₸ — курс 3,573 ₸ за 1 ₽, и 1751 ₸ дают те же 490 ₽.
+    const kz = { ...s, prodamus_form_url: "kopilka-rusoveda.proeducation.kz" };
+    const plain = prodamusConfig(kz, true);
+    if (!plain.ready) throw new Error("not ready");
+    expect(prodamusAccepts(plain, "RUB")).toBe(false);
+    expect(prodamusCharge(plain, 490, "RUB")).toBeNull();
+    const cfg = prodamusConfig({ ...kz, prodamus_rate: "3,573" }, true);
+    if (!cfg.ready) throw new Error("not ready");
+    expect(prodamusAccepts(cfg, "RUB")).toBe(true);
+    // 490 × 3,573 = 1750,77 → 1751 ₸: продавец не получает меньше рублёвой цены.
+    expect(prodamusCharge(cfg, 490, "RUB")).toEqual({ amount: 1751, currency: "KZT" });
+    expect(prodamusCharge(cfg, 1500, "KZT")).toEqual({ amount: 1500, currency: "KZT" });
+    expect(prodamusAccepts(cfg, "USD")).toBe(false);
   });
 
   it("касса в рублях, цены в тенге: без курса кнопки нет, с курсом — рубли вверх до целого", () => {

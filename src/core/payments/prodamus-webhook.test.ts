@@ -45,7 +45,9 @@ vi.mock("@/core/orders/orders", () => ({
       ? { id, total: 1500, currency: "RUB", fulfillment_kind: "digital", display_no: 11 }
       : id === 43
         ? { id, total: 1500, currency: "KZT", fulfillment_kind: "digital", display_no: 12 }
-        : null,
+        : id === 44
+          ? { id, total: 490, currency: "RUB", fulfillment_kind: "digital", display_no: 13 }
+          : null,
 }));
 vi.mock("@/channels/telegram/notify", () => ({ notifyAdminsHtml }));
 const logEvent = vi.fn(async () => {});
@@ -139,6 +141,20 @@ describe("уведомление Продамуса", () => {
     );
     expect(afterPaidOnline).toHaveBeenCalledOnce();
     expect(traced()).toEqual(["payment:paid"]);
+  });
+
+  it("заказ в рублях через форму в тенге: 1751 ₸ по ссылке — заказ на 490 ₽ оплачен, в журнале тенге и карта", async () => {
+    formCfg = { ...CFG, currency: "KZT", rate: 3.573 };
+    const kzt = chargeRef(formCfg, 44, { amount: 1751, currency: "KZT" });
+    await call(body({ order_id: "511700", order_num: kzt, sum: "1751.00", currency: "rub" }));
+    expect(recordUnappliedPayment).not.toHaveBeenCalled();
+    expect(markPaidOnline).toHaveBeenCalledWith(
+      expect.anything(),
+      44,
+      490,
+      "Продамус",
+      "511700, 1751 KZT, картой RUB",
+    );
   });
 
   it("форма в тенге, сумма не та — расхождение записано в тенге, а не в валюте карты", async () => {
