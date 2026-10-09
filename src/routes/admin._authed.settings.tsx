@@ -500,7 +500,7 @@ function SettingsPage() {
                 </Card>
               </SettingsSection>
               <SettingsSection id="payment-methods">
-                <PaymentMethods methods={methods} />
+                <PaymentMethods methods={methods} settings={settings} />
               </SettingsSection>
               <SettingsSection id="fulfillment">
                 <FulfillmentCard settings={settings} />

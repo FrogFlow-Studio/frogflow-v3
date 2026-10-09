@@ -14,6 +14,7 @@ import {
 import { addToCart } from "@/core/cart/cart";
 import { formatMoney } from "@/core/money/money";
 import { resolvePrice, strikePrice } from "@/core/pricing/pricing";
+import { allCountryPrices, formatPriceList } from "@/core/pricing/all-prices";
 import { formatRatingSummary } from "@/core/reviews/pure";
 import { loadQuiz } from "@/core/quiz/quiz";
 import { IG_BUTTONS_TEXT_MAX, type DmButton } from "../api.server";
@@ -438,7 +439,9 @@ export async function sendProductCard(s: Shop, p: Product, force: boolean) {
     );
     const min = Math.min(...priced.map((r) => r.money.amount));
     const currency = priced[0]?.money.currency ?? p.currency;
-    text += `\n\n${plain(s.m.priceFrom(formatMoney(min, currency)))}`;
+    // Цены во всех валютах оплаты (core/pricing/all-prices): «от 1500 ₸ / 490 ₽».
+    const all = await allCountryPrices(s.ctx, p, variants);
+    text += `\n\n${plain(s.m.priceFrom(all ? formatPriceList(all) : formatMoney(min, currency)))}`;
     if (!noBuy) {
       if (priced.length <= 2) {
         for (const { v, money } of priced)
@@ -455,9 +458,15 @@ export async function sendProductCard(s: Shop, p: Product, force: boolean) {
       }
     }
   } else {
-    const { price: money, old } = await strikePrice(s.ctx, p, country);
+    // Цены во всех валютах оплаты (core/pricing/all-prices) или одна — по стране покупателя.
+    const prices = (await allCountryPrices(s.ctx, p)) ?? [await strikePrice(s.ctx, p, country)];
     // Директ без разметки: прежняя цена словами, «было … → стало …».
-    text += `\n\n${old != null ? `${formatMoney(old, money.currency)} → ` : ""}${formatMoney(money.amount, money.currency)}`;
+    text += `\n\n${prices
+      .map(
+        ({ price: money, old }) =>
+          `${old != null ? `${formatMoney(old, money.currency)} → ` : ""}${formatMoney(money.amount, money.currency)}`,
+      )
+      .join(" / ")}`;
     if (!noBuy)
       buttons.push({ type: "postback", title: plain(s.m.addToCartBtn), payload: `BUY:${p.id}` });
   }

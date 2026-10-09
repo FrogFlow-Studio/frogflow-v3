@@ -132,6 +132,11 @@ export type DialogState = {
   /** Instagram/WhatsApp: на непонятный ответ про подарок или упаковку уже переспросили один раз. */
   gift_reask?: boolean;
   placing_order?: boolean;
+  /**
+   * Цены во всех валютах (core/pricing/all-prices): страну оплаты в этом
+   * оформлении ещё не выбрали — спросить с суммами перед заказом.
+   */
+  pay_choice_pending?: boolean;
   checkout_fulfillment_type?: "pickup" | "delivery";
   checkout_fulfillment_at?: string;
   checkout_min_fulfillment_date?: string;

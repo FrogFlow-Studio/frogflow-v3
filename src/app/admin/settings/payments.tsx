@@ -15,10 +15,22 @@ import { settingsRoute } from "./route";
 
 type Method = Awaited<ReturnType<typeof settingsFn>>["methods"][number];
 
-export function PaymentMethods({ methods }: { methods: Method[] }) {
+export function PaymentMethods({
+  methods,
+  settings,
+}: {
+  methods: Method[];
+  settings: Record<string, string>;
+}) {
   const router = useRouter();
   const { shop } = settingsRoute.useRouteContext();
   const t = adminT(shop.locale);
+  // Цены во всех валютах оплаты (core/pricing/all-prices): «1500 ₸ / 490 ₽» в карточке.
+  const allPrices = settings.card_all_prices === "true";
+  const toggleAll = useAction(async (v: boolean) => {
+    await saveSettingsFn({ data: { card_all_prices: v ? "true" : "false" } });
+    await router.invalidate();
+  });
   const [editing, setEditing] = useState<Method | "new" | null>(null);
   const save = useAction(async (f: FormData, id: string | null) => {
     await savePaymentMethodFn({
@@ -94,6 +106,19 @@ export function PaymentMethods({ methods }: { methods: Method[] }) {
         )}
       </ul>
       <ErrorBox error={del.error} />
+      <div className="mt-3 flex items-start gap-3 border-t border-line pt-3">
+        <Switch
+          checked={allPrices}
+          disabled={toggleAll.busy}
+          onChange={(v) => void toggleAll.run(v).catch(() => {})}
+          label={t("settings.pay.allPrices")}
+        />
+        <div>
+          <div className="text-sm">{t("settings.pay.allPrices")}</div>
+          <p className="text-xs text-muted">{t("settings.pay.allPricesHint")}</p>
+        </div>
+      </div>
+      <ErrorBox error={toggleAll.error} />
       {editing !== null && (
         <form
           key={cur?.id ?? "new"}

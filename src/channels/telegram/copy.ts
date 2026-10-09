@@ -221,6 +221,8 @@ export type Msg = {
   robokassaHint: string;
   paymentReceived: (no: number) => string;
   chooseCountry: string;
+  /** Шаг оплаты при ценах во всех валютах: у каждой страны сумма корзины. */
+  choosePayCountry: string;
   countrySaved: (name: string) => string;
   paymentNotConfigured: string;
   countryNoLongerAvailable: string;
@@ -693,6 +695,7 @@ const ru: Msg = {
   robokassaHint: "Нажмите кнопку, оплатите картой — после оплаты всё придёт сюда автоматически.",
   paymentReceived: (no) => `✅ Оплата по заказу #${no} получена.`,
   chooseCountry: "🌍 Выберите страну оплаты:",
+  choosePayCountry: "💳 Откуда будете оплачивать? Сумма — в валюте этой страны:",
   countrySaved: (n) => `✅ Страна: ${n}`,
   paymentNotConfigured: "Продавец ещё не настроил способы оплаты. Напишите ему напрямую.",
   countryNoLongerAvailable: "Этот способ оплаты больше недоступен, выберите страну заново.",
@@ -1065,6 +1068,7 @@ const kk: Msg = {
   giftRestIssued: (code, sum) =>
     `🎁 Сертификат тапсырыс сомасынан көп — қалған ${sum} жаңа кодпен сақталды:\n<code>${code}</code>\nОны келесі тапсырыста енгізіңіз.`,
   chooseCountry: "🌍 Төлем елін таңдаңыз:",
+  choosePayCountry: "💳 Қай елден төлейсіз? Сома сол елдің валютасында:",
   useMenu: "Төмендегі мәзірден бөлімді таңдаңыз 👇",
   nativeCartForwarded:
     "Каталогтан жиналған себетіңізді алдым және сатушыға бердім — ол тапсырысты растап, осында жазады.",
@@ -1374,6 +1378,7 @@ const en: Msg = {
   orderPaidByDiscounts: (no) =>
     `🎉 Order #${no} is fully covered by your discounts — files are on the way.`,
   chooseCountry: "🌍 Choose your payment country:",
+  choosePayCountry: "💳 Where will you pay from? The amount is in that country's currency:",
   phonePromptHtml:
     "📞 Share your phone number for order updates — tap the button below or type it.",
   shareContactBtn: "📱 Share number",
@@ -1391,6 +1396,7 @@ const en: Msg = {
 
 const uz: Msg = {
   ...ru,
+  choosePayCountry: "💳 Qaysi davlatdan to‘laysiz? Summa o‘sha davlat valyutasida:",
   payKaspiBtn: "🧾 Kaspi o‘tkazma",
   payByCardBtn: "💳 Karta orqali",
   prodamusCardHint:

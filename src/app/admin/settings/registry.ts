@@ -144,6 +144,8 @@ export const SETTINGS_REGISTRY: readonly SettingsEntry[] = [
     sellsOnly: true,
     theme: "money",
     title: "settings.pay.title",
+    keys: ["card_all_prices"],
+    fields: ["settings.pay.allPrices"],
     ownerOnly: true,
   }),
   E({

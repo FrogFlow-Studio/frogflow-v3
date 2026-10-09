@@ -72,6 +72,21 @@ const errorSettingRead =
     };
   };
 
+/** Копилка с рублями: Россия вторым способом оплаты, цены по странам и «цены во всех валютах». */
+const allPrices = (r: Room): void => {
+  r.db.tables.payment_methods!.push({
+    id: "pm-ru",
+    bot_id: r.db.tables.payment_methods![0]!.bot_id,
+    is_active: true,
+    sort_order: 2,
+    country_code: "RU",
+    country_name: "Россия",
+    currency: "RUB",
+  });
+  for (const p of r.db.tables.products!) p.country_prices = { KZ: 1500, RU: 490 };
+  r.db.tables.app_settings!.push({ key: "card_all_prices", value: "true" });
+};
+
 /** Лимит частоты вызовов модели почти исчерпан: пройдёт один вызов, второй — «limited». */
 const oneAiCallLeft = (r: Room): void => {
   r.db.tables.app_settings!.push({
@@ -472,6 +487,55 @@ export const SCENARIOS: Scenario[] = [
       {
         say: { text: "Оплата на каспи?" },
         expect: { notSays: ["не похоже на адрес"], state: { mode: "idle" } },
+      },
+    ],
+  },
+  // ───── Цены во всех валютах оплаты (Яков 09.10: «1500т / 300р») ─────
+  {
+    id: "all-prices-pay-step-ig-ru",
+    title:
+      "цены во всех валютах — карточка «1500 ₸ / 490 ₽», страну спрашивают на оплате с суммами",
+    origin:
+      "Яков 09.10 16:17: «показывать не одну цену, а 2 — 1500т/300р, а при оплате через Kaspi 1500, через РФ 300р»",
+    channel: "instagram",
+    locale: "ru",
+    full: true,
+    modules: { helpdesk: true, manager_chat: true, multi_currency: true },
+    products: [{ id: P1, name: "Палитра средств выразительности", price: 1700 }],
+    // Покупатель прошлого заказа: страна Казахстан поставилась сама, пока страна была одна.
+    state: { country_code: "KZ", country_name: "Казахстан" },
+    arrange: allPrices,
+    steps: [
+      { say: { button: "CATALOG", title: "📚 Каталог" }, expect: {} },
+      { say: { text: "1" }, expect: { says: ["1500 ₸ / 490 ₽"] } },
+      { say: { button: `BUY:${P1}`, title: "Купить" }, expect: { cart: 1 } },
+      {
+        say: { button: "CHECKOUT", title: "✅ Оформить заказ" },
+        expect: {
+          says: [(c) => c.choosePayCountry, "Казахстан — 1500 ₸", "Россия — 490 ₽"],
+          state: { mode: "awaiting_country", pay_choice_pending: true },
+        },
+      },
+      {
+        say: { text: "2" },
+        expect: { says: ["490 ₽"], notSays: ["1500 ₸"], state: { country_code: "RU" } },
+      },
+    ],
+  },
+  {
+    id: "all-prices-card-tg-ru",
+    title: "цены во всех валютах — карточка в Telegram показывает обе цены, без вопроса о стране",
+    origin: "Яков 09.10 16:17: «1500т/300р»",
+    channel: "telegram",
+    locale: "ru",
+    modules: { multi_currency: true },
+    products: [{ id: P1, name: "Палитра средств выразительности", price: 1700 }],
+    state: { country_code: null, country_name: null },
+    arrange: allPrices,
+    steps: [
+      {
+        say: { button: `prod:${P1}` },
+        expect: { says: ["1500 ₸ / 490 ₽"], notSays: [(c) => c.chooseCountry] },
       },
     ],
   },

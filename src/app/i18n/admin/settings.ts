@@ -62,6 +62,9 @@ export const ru = {
   "settings.pay.qrUpload": "Загрузить",
   "settings.pay.qrRemove": "Убрать",
   "settings.pay.active": "Активен",
+  "settings.pay.allPrices": "Цены во всех валютах оплаты",
+  "settings.pay.allPricesHint":
+    "Карточка товара в Telegram, Instagram и WhatsApp покажет цену в каждой валюте оплаты, например «1500 ₸ / 490 ₽». Страну покупатель выбирает при оплате цифрового заказа и видит сумму в её валюте. Нужен модуль «Мультивалютность» и 2–3 разные валюты оплаты, иначе показывается одна цена.",
   // Telegram
   "settings.tg.title": "Telegram-бот",
   "settings.tg.connected": "Бот @{username} подключён, вебхук установлен.",
@@ -560,6 +563,9 @@ export const kk: SectionDict<typeof ru> = {
   "settings.pay.qrUpload": "Жүктеу",
   "settings.pay.qrRemove": "Алып тастау",
   "settings.pay.active": "Белсенді",
+  "settings.pay.allPrices": "Барлық төлем валюталарындағы бағалар",
+  "settings.pay.allPricesHint":
+    "Telegram, Instagram және WhatsApp-тағы тауар карточкасы бағаны әр төлем валютасында көрсетеді, мысалы «1500 ₸ / 490 ₽». Сатып алушы цифрлық тапсырысты төлегенде елді таңдап, сол елдің валютасындағы соманы көреді. «Көпвалюталық» модулі және 2–3 түрлі төлем валютасы қажет, әйтпесе бір баға көрсетіледі.",
   "settings.tg.title": "Telegram-бот",
   "settings.tg.connected": "@{username} боты қосылды, вебхук орнатылды.",
   "settings.tg.webhookFailed": "Токен қабылданды, бірақ вебхук орнатылмады: {error}",
@@ -1055,6 +1061,9 @@ export const en: SectionDict<typeof ru> = {
   "settings.pay.qrUpload": "Upload",
   "settings.pay.qrRemove": "Remove",
   "settings.pay.active": "Active",
+  "settings.pay.allPrices": "Prices in all payment currencies",
+  "settings.pay.allPricesHint":
+    "The product card in Telegram, Instagram and WhatsApp shows the price in each payment currency, e.g. “1500 ₸ / 490 ₽”. The buyer picks the country when paying for a digital order and sees the amount in its currency. Requires the Multi-currency module and 2–3 different payment currencies; otherwise one price is shown.",
   "settings.tg.title": "Telegram bot",
   "settings.tg.connected": "Bot @{username} connected, webhook set.",
   "settings.tg.webhookFailed": "Token accepted, but the webhook was not set: {error}",
@@ -1548,6 +1557,9 @@ export const uz: SectionDict<typeof ru> = {
   "settings.pay.qrUpload": "Yuklash",
   "settings.pay.qrRemove": "Olib tashlash",
   "settings.pay.active": "Faol",
+  "settings.pay.allPrices": "Barcha to‘lov valyutalaridagi narxlar",
+  "settings.pay.allPricesHint":
+    "Telegram, Instagram va WhatsApp’dagi mahsulot kartochkasi narxni har bir to‘lov valyutasida ko‘rsatadi, masalan «1500 ₸ / 490 ₽». Xaridor raqamli buyurtmani to‘layotganda davlatni tanlaydi va summani o‘sha valyutada ko‘radi. «Ko‘p valyutalilik» moduli va 2–3 xil to‘lov valyutasi kerak, aks holda bitta narx ko‘rsatiladi.",
   "settings.tg.title": "Telegram-bot",
   "settings.tg.connected": "@{username} boti ulandi, vebhuk o‘rnatildi.",
   "settings.tg.webhookFailed": "Token qabul qilindi, lekin vebhuk o‘rnatilmadi: {error}",

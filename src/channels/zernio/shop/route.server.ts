@@ -1,3 +1,4 @@
+import { allPriceCountries } from "@/core/pricing/all-prices";
 import { nonceFromMessage } from "@/core/storefront/code-login";
 import { explainIncoming } from "../reason";
 import { lastPaidOrder, shortLabels } from "@/core/orders/reorder";
@@ -438,14 +439,19 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
           () => "handled" as const,
         );
       const forCheckout = s.customer.state.placing_order === true;
+      // Шаг оплаты при ценах во всех валютах (core/pricing/all-prices): остальное
+      // оформление уже пройдено — сразу к заказу.
+      const payStep = forCheckout && s.customer.state.pay_choice_pending === true;
       await setMode(s, {
         mode: "idle",
         country_code: picked.code,
         country_name: picked.name,
         placing_order: undefined,
+        pay_choice_pending: undefined,
       });
       await reply(s, s.m.countrySaved(picked.name), { force: true });
-      if (forCheckout) await proceedToFulfillmentOrPlace(s, picked.code);
+      if (payStep) await finishCheckout(s, picked.code);
+      else if (forCheckout) await proceedToFulfillmentOrPlace(s, picked.code);
       else await continueAfterCountry(s);
       return "handled";
     }
@@ -1002,6 +1008,8 @@ export async function askCountryFirst(s: Shop, then: string): Promise<boolean> {
     return false;
   }
   if (methods.length === 0) return false;
+  // Цены во всех валютах (core/pricing/all-prices): страну до оплаты не спрашиваем.
+  if (await allPriceCountries(s.ctx)) return false;
   await remember(s, { after_country: then });
   await askCountry(s, false);
   return true;
