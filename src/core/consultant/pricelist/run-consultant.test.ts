@@ -153,27 +153,40 @@ describe("консультант по прайсу в общем пути", () =
     expect(lastState().paused_until).toBeTruthy();
   });
 
-  it("опт — сразу менеджеру заявкой, модель не зовём (v1 intent.ts:97)", async () => {
-    for (const text of ["У вас опт есть?", "Можно оптом закуп сделать?", "Мы дилер из Шымкента"]) {
-      saved.length = 0;
-      const r = await runConsultant(ctxOf(), customer(), text, { platform: "instagram" });
-      expect(r?.handoff).toMatchObject({ kind: "lead", reason: "wholesale" });
-      expect(r?.handoff?.summary).toContain(text);
-      expect(r?.reply).toBe(
-        "Оптовые условия назовёт менеджер. Я передам ему ваш запрос, он скоро свяжется.",
-      );
-      expect(lastState().paused_until).toBeTruthy();
-    }
-    expect(create).not.toHaveBeenCalled();
+  it("опт распознаёт модель, а не код: «для магазина» — заявка с пометкой «опт» и пауза", async () => {
+    // Яков 09.10: опт должен понимать консультант. Слова «опт» в сообщении
+    // нет — регулярка его не поймала бы; модель передаёт с причиной wholesale.
+    rounds.push([
+      { type: "text", text: "Условия опта пришлёт менеджер. Напишите, сколько нужно." },
+      {
+        type: "tool_use",
+        id: "h1",
+        name: "handoff_to_manager",
+        input: { reason: "wholesale", summary: "Магазин в Шымкенте, полотенца для продажи" },
+      },
+    ]);
+    const r = await runConsultant(
+      ctxOf(),
+      customer(),
+      "Здравствуйте, беру полотенца для своего магазина в Шымкенте, какие условия?",
+      { platform: "instagram" },
+    );
+    expect(create).toHaveBeenCalled();
+    expect(r?.handoff).toMatchObject({ kind: "lead", reason: "wholesale" });
+    expect(r?.handoff?.summary).toContain("Магазин в Шымкенте");
+    expect(r?.reply).toBe("Условия опта пришлёт менеджер. Напишите, сколько нужно.");
+    expect(lastState().paused_until).toBeTruthy();
+    const system = (create.mock.calls[0]![0] as { system: { text: string }[] }).system[0]!.text;
+    expect(system).toContain("wholesale — покупают не для себя, а для дела");
   });
 
-  it("«оптимально», «оптика» — не опт, отвечает модель", async () => {
-    rounds.push([{ type: "text", text: "Uchino 50х100 — 9 000 ₸." }]);
-    const r = await runConsultant(ctxOf(), customer(), "Какое полотенце оптимально для бани?", {
+  it("«опт есть?» тоже решает модель: код до неё не перехватывает", async () => {
+    rounds.push([{ type: "text", text: "Условия опта пришлёт менеджер." }]);
+    const r = await runConsultant(ctxOf(), customer(), "У вас опт есть?", {
       platform: "instagram",
     });
-    expect(r?.handoff).toBeNull();
     expect(create).toHaveBeenCalled();
+    expect(r?.reply).toBe("Условия опта пришлёт менеджер.");
   });
 
   it("сброс очищает историю диалога", async () => {

@@ -67,6 +67,7 @@ type Opts = {
   storyProductIds?: string[];
   storyMediaUrl?: string;
   storyCaption?: string;
+  storyTags?: PricelistData["storyTags"];
   fetchImage?: (url: string) => Promise<V2Image | null>;
   onToolCall?: (name: string) => void;
   /** Курс рубля; null — свежего нет (getFreshRate вернул null). */
@@ -87,7 +88,7 @@ function dataOf(o: Opts): PricelistData {
     hours: o.hours ?? { open: 10, close: 21 },
     timezone: "Asia/Almaty",
     ...(o.persona ? { persona: o.persona } : {}),
-    storyTags: [],
+    storyTags: o.storyTags ?? [],
     loadMedia: async () => media,
     mediaUrl: (path) => `https://test.app/api/img/bot/${path}`,
   };
@@ -707,14 +708,47 @@ describe("консультант по прайсу", () => {
     expect(text).not.toContain("Спросите, что из неё понравилось");
   });
 
-  it("рилс без отметки и без подписи — как раньше, вопрос покупателю", async () => {
-    responses.push(reply([{ type: "text", text: "Что из публикации понравилось?" }]));
+  it("рилс без отметки и без подписи — не «что из публикации?», а фото или название и хиты", async () => {
+    // BOVI 25.09–09.10: на «Цена?» к сторис без отметки ИИ спрашивал «что из
+    // публикации?», половина покупателей замолкала.
+    responses.push(reply([{ type: "text", text: "Пришлите скрин или название." }]));
+    await decide(
+      "Цена?",
+      {},
+      {
+        storyProductIds: [],
+        storyMediaUrl: "https://www.instagram.com/reel/Dcaih_PMAZ2/",
+        storyTags: [
+          {
+            id: "s1",
+            story_id: "old",
+            story_url: null,
+            product_id: "T1",
+            product_name: "Uchino полотенце банное",
+            price: 9000,
+            notes: null,
+            created_at: "2026-10-01T00:00:00Z",
+          },
+        ],
+      },
+    );
+    const text = lastMessage(0);
+    expect(text).not.toContain("Спросите, что из неё понравилось");
+    expect(text).toContain("не спрашивайте «что из публикации»");
+    expect(text).toContain("попросите прислать фото (скрин) или название товара");
+    expect(text).toMatch(/Uchino полотенце банное, 50x100 — 9\s000 ₸/);
+  });
+
+  it("сторис без отметки, а отмеченных сторис нет — только просьба о фото или названии", async () => {
+    responses.push(reply([{ type: "text", text: "Пришлите скрин или название." }]));
     await decide(
       "Цена?",
       {},
       { storyProductIds: [], storyMediaUrl: "https://www.instagram.com/reel/Dcaih_PMAZ2/" },
     );
-    expect(lastMessage(0)).toContain("Спросите, что из неё понравилось");
+    const text = lastMessage(0);
+    expect(text).toContain("попросите прислать фото (скрин) или название товара.");
+    expect(text).not.toContain("хиты магазина");
   });
 
   it("фото товара из фотобазы — уходит покупателю вместе с ответом", async () => {

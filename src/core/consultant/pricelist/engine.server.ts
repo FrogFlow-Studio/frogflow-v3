@@ -11,6 +11,7 @@ import {
 } from "../story-tags";
 import { findProducts, type ConsultantProduct } from "./catalog";
 import { loadPricelist } from "./catalog.server";
+import { storyHits } from "./story-hits";
 import { currencyAsked, tengeToRubles, wantsRubles } from "./currency";
 import { brandCountries, catalogBrands, draftFixNote, draftProblems } from "./draft-check";
 import { finalizePricelistText, withModelCategories, writesRubles } from "./finalize";
@@ -261,6 +262,20 @@ export type PricelistDecision = {
   priceBlocked: boolean;
 };
 
+/**
+ * Что делать, если по публикации не понять товар: «что из публикации?»
+ * не спрашивать, а попросить фото или название и показать хиты магазина.
+ */
+export function unknownStoryAdvice(hits: ConsultantProduct[]): string {
+  const ask =
+    "Если не понять, о каком товаре речь, не спрашивайте «что из публикации»: попросите прислать фото (скрин) или название товара";
+  if (hits.length === 0) return `${ask}.`;
+  const lines = hits.map(
+    (p) => `• ${p.name}${p.size ? `, ${p.size}` : ""} — ${p.price_kzt.toLocaleString("ru-RU")} ₸`,
+  );
+  return `${ask} и в том же сообщении предложите хиты магазина с ценами:\n${lines.join("\n")}`;
+}
+
 /** Товары публикации — пометкой для модели. Покупатель её не видит. Цены — в тенге. */
 async function storyNote(
   data: PricelistData,
@@ -285,26 +300,28 @@ async function storyNote(
   }
   if (products.length === 0) {
     // Отметки нет — модель смотрит на саму публикацию. Видео (рилс) и
-    // устаревшая ссылка не скачаются — тогда подпись, если Zernio её прислал,
-    // а без неё — вопрос покупателю.
+    // устаревшая ссылка не скачаются — тогда подпись, если Zernio её прислал.
+    // Не понять, о чём речь, — не «что из публикации?» (покупатель не знает,
+    // что ответить, и уходит), а фото или название и хиты магазина.
     const image = story?.mediaUrl ? await loadImage(story.mediaUrl) : null;
     const caption = storyCaptionText(story?.caption);
     const captionLine = caption ? ` Подпись публикации: «${caption}».` : "";
+    const fallback = unknownStoryAdvice(storyHits(data.storyTags, data.catalog));
     if (image) {
       return {
-        note: `[Покупатель пишет из публикации (сторис или рилс); товары к ней не привязаны.${captionLine} Картинка публикации — ниже: поймите, что на ней, и найдите похожее поиском. Не уверены — спросите, что понравилось.]`,
+        note: `[Покупатель пишет из публикации (сторис или рилс); товары к ней не привязаны.${captionLine} Картинка публикации — ниже: поймите, что на ней, и найдите похожее поиском. ${fallback}]`,
         products,
         image,
       };
     }
     if (caption) {
       return {
-        note: `[Покупатель пишет из публикации (сторис или рилс); товары к ней не привязаны.${captionLine} Поймите по подписи, о каких товарах речь, найдите их поиском и назовите цены. Если по подписи не понять — спросите, что понравилось.]`,
+        note: `[Покупатель пишет из публикации (сторис или рилс); товары к ней не привязаны.${captionLine} Поймите по подписи, о каких товарах речь, найдите их поиском и назовите цены. ${fallback}]`,
         products,
       };
     }
     return {
-      note: "[Покупатель пишет из публикации (сторис или рилс), но товары к ней не привязаны. Спросите, что из неё понравилось.]",
+      note: `[Покупатель пишет из публикации (сторис или рилс), но товары к ней не привязаны, и что на ней — не видно. ${fallback}]`,
       products,
     };
   }
@@ -603,7 +620,10 @@ async function decide(data: PricelistData, input: PricelistInput): Promise<Price
           };
           result = {
             ok: true,
-            note: "Менеджер подключится. Напишите покупателю одну короткую фразу об этом.",
+            note:
+              reason === "wholesale"
+                ? "Передано менеджеру с пометкой «опт». Напишите покупателю одной фразой, что условия пришлёт менеджер; если он не сказал, что и сколько нужно, — попросите написать."
+                : "Менеджер подключится. Напишите покупателю одну короткую фразу об этом.",
           };
         }
       } else {

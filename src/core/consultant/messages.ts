@@ -57,16 +57,6 @@ const CLARIFY: Record<Locale, string> = {
   uz: "Iltimos, aynan nima qiziqtirayotganini ayting — yordam beraman.",
 };
 
-const WHOLESALE: Record<Locale, string> = {
-  ru: "Оптовые условия назовёт менеджер. Я передам ему ваш запрос, он скоро свяжется.",
-  kk: "Көтерме шарттарын менеджер айтады. Сұрауыңызды оған беремін, ол жақын арада хабарласады.",
-  en: "A manager will give you the wholesale terms. I'll pass your request on — they'll contact you soon.",
-  uz: "Ulgurji shartlarni menejer aytadi. So‘rovingizni unga yetkazaman, u tez orada bog‘lanadi.",
-};
-
-/** Оптовый запрос: условия знает только менеджер (v1 WHOLESALE_REPLY). */
-export const wholesaleReply = (locale: Locale): string => WHOLESALE[locale];
-
 /** Цена не из каталога: ответ заменён, вопрос ушёл менеджеру. */
 export const priceUnsureReply = (locale: Locale): string => PRICE_UNSURE[locale];
 /** Заявка записана и передана менеджеру. */
