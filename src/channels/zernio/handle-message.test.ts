@@ -60,6 +60,7 @@ vi.mock("@/core/customers/opt-out", async (orig) => ({
 const twoStepJustDelivered = vi.fn(async () => false);
 const deliverPendingTwoStepDm = vi.fn(async () => false);
 const deliverTwoStepFromDm = vi.fn(async () => false);
+const deliverTwoStepForDmKeyword = vi.fn(async (..._a: unknown[]) => false);
 // Магазин в переписке — отдельный модуль со своими тестами; здесь важно, дошло ли до него.
 vi.mock("./shop.server", () => ({
   handleShopMessage: async (_ctx: unknown, customer: unknown) => ({ outcome: "handled", customer }),
@@ -67,6 +68,7 @@ vi.mock("./shop.server", () => ({
 vi.mock("./automations.server", () => ({
   deliverPendingTwoStepDm: (...a: unknown[]) => deliverPendingTwoStepDm(...(a as [])),
   deliverTwoStepFromDm: (...a: unknown[]) => deliverTwoStepFromDm(...(a as [])),
+  deliverTwoStepForDmKeyword: (...a: unknown[]) => deliverTwoStepForDmKeyword(...a),
   twoStepJustDelivered,
 }));
 
@@ -272,6 +274,15 @@ describe("Comment-to-DM: второй быстрый «+»", () => {
     twoStepJustDelivered.mockResolvedValue(false);
     expect(r.note).not.toBe("второе сообщение по комментарию");
     expect(twoStepJustDelivered).not.toHaveBeenCalled();
+  });
+
+  it("кодовое слово из рилса прямо в Direct — сообщение правила, не обращение (Копилка, 09.10)", async () => {
+    deliverTwoStepForDmKeyword.mockClear();
+    deliverTwoStepForDmKeyword.mockResolvedValueOnce(true);
+    const t = transport as unknown as ZernioTransport;
+    const r = await handleZernioMessage(igCtx, igEvent({ text: "Палитра" }), t);
+    expect(r).toEqual({ status: "processed", note: "кодовое слово в Direct — сообщение правила" });
+    expect(deliverTwoStepForDmKeyword.mock.calls[0]![2]).toBe("Палитра");
   });
 });
 

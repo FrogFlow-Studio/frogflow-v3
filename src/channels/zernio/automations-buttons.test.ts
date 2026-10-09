@@ -7,6 +7,7 @@ import {
   TWO_STEP_MAX_ATTEMPTS,
   deliverPendingTwoStepDm,
   deliverTwoStepFromDm,
+  deliverTwoStepForDmKeyword,
   twoStepJustDelivered,
   handleCommentReceived,
   type AutomationApi,
@@ -917,5 +918,67 @@ describe("Comment-to-DM: одно второе сообщение покупат
     expect(await deliverTwoStepFromDm(ctx, who, api)).toBe(false);
     expect(await deliverPendingTwoStepDm(ctx, who, api)).toBe(true);
     expect(inbox).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("Comment-to-DM: кодовое слово прямо в Direct (Копилка русоведа, 09.10)", () => {
+  const who = { accountId: "acc-1", conversationId: "conv-1", username: "lina" };
+  function kwSetup(rules: Array<Record<string, unknown>>) {
+    const { ctx, db } = setup();
+    const inbox = vi.fn(async () => ({ ok: true }));
+    const api = {
+      list: async () => rules,
+      inbox,
+      tail: vi.fn(async () => []),
+    } as unknown as AutomationApi;
+    return { ctx, db, api, inbox };
+  }
+  const palette = {
+    id: "rule1",
+    name: "Палитра",
+    accountId: "acc-1",
+    keywords: ["Палитра"],
+    dmMessage: "Палитра — 1700 ₸",
+  };
+
+  it("«Палитра» в Direct — сообщение правила с кнопками уходит сразу, без «+»", async () => {
+    const { ctx, db, api, inbox } = kwSetup([palette]);
+    expect(await deliverTwoStepForDmKeyword(ctx, who, "палитра", api)).toBe(true);
+    expect(inbox).toHaveBeenCalledTimes(1);
+    expect(inbox).toHaveBeenCalledWith(
+      "conv-1",
+      "acc-1",
+      "Держите материалы",
+      expect.objectContaining({ buttons: expect.any(Array) }),
+    );
+    expect(secondSteps(db).map((l) => l.status)).toEqual(["processed"]);
+  });
+
+  it("два «Палитра» подряд одновременно — сообщение одно", async () => {
+    const { ctx, api, inbox } = kwSetup([palette]);
+    await Promise.all([
+      deliverTwoStepForDmKeyword(ctx, who, "Палитра", api),
+      deliverTwoStepForDmKeyword(ctx, who, "Палитра", api),
+    ]);
+    expect(inbox).toHaveBeenCalledTimes(1);
+  });
+
+  it("длинный рассказ со словом, правило без слов, чужой аккаунт — не срабатывает", async () => {
+    const long = kwSetup([palette]);
+    expect(
+      await deliverTwoStepForDmKeyword(
+        long.ctx,
+        who,
+        "Палитру купила вчера, а файл так и не пришёл, проверьте пожалуйста",
+        long.api,
+      ),
+    ).toBe(false);
+    const any = kwSetup([{ ...palette, keywords: [] }]);
+    expect(await deliverTwoStepForDmKeyword(any.ctx, who, "Здравствуйте", any.api)).toBe(false);
+    const other = kwSetup([{ ...palette, accountId: "acc-2" }]);
+    expect(await deliverTwoStepForDmKeyword(other.ctx, who, "Палитра", other.api)).toBe(false);
+    expect(long.inbox).not.toHaveBeenCalled();
+    expect(any.inbox).not.toHaveBeenCalled();
+    expect(other.inbox).not.toHaveBeenCalled();
   });
 });

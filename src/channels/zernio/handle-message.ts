@@ -192,6 +192,13 @@ export async function handleZernioMessage(
     }
     if (!toShop && isTwoStepAcknowledgement(m.text) && ack)
       return processed("второе сообщение по комментарию");
+    // Кодовое слово из рилса прямо в Direct («Палитра») — сообщение правила с
+    // кнопками сразу, а не обращение продавцу (Копилка русоведа, 09.10).
+    if (!ack && !toShop && typedOnly && !inStep && m.text?.trim()) {
+      const { deliverTwoStepForDmKeyword } = await import("./automations.server");
+      if (await deliverTwoStepForDmKeyword(ctx, who, m.text))
+        return processed("кодовое слово в Direct — сообщение правила");
+    }
   }
 
   const text = messageAsText(m);
