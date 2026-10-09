@@ -45,10 +45,13 @@ test("поддержка: статус, метка и заметка опера�
   await op.getByRole("link", { name: new RegExp(F.SHOP_NAME) }).click();
   await expect(op.getByText(question, { exact: true })).toBeVisible();
 
-  // Статус: «в работе» (второй проект мог уже поставить — тогда кнопка нажата).
+  // Статус: «в работе». Второй проект ставит его на том же обращении одновременно: оба
+  // видят «не нажата», оба жмут, и второй клик снимает статус. Жмём, пока не встанет.
   const work = op.getByRole("button", { name: "в работе", exact: true });
-  if ((await work.getAttribute("aria-pressed")) !== "true") await work.click();
-  await expect(work).toHaveAttribute("aria-pressed", "true");
+  await expect(async () => {
+    if ((await work.getAttribute("aria-pressed")) !== "true") await work.click();
+    await expect(work).toHaveAttribute("aria-pressed", "true", { timeout: 2000 });
+  }).toPass({ timeout: 15_000 });
 
   // Своя метка: появляется кнопкой и чипом-фильтром.
   await op.getByRole("textbox", { name: "Своя метка", exact: true }).fill(label);
