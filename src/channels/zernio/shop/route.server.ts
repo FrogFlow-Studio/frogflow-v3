@@ -383,6 +383,11 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
     !(await stepAnswerFits(s, mode, text))
   ) {
     if (!mayHint(s)) return "question";
+    // Почта необязательна: сразу после вопроса не адрес — к оплате без почты.
+    if (mode === "awaiting_email" && !text.includes("@")) {
+      await skipEmail(s);
+      return "handled";
+    }
     s.hint = true;
   }
 
@@ -597,6 +602,10 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
     }
     case "awaiting_email": {
       const email = extractEmail(text);
+      // Почта необязательна. Не адрес («Можете на почту», «Оплата на каспи?») —
+      // идём к оплате без почты, а не держим покупателя на шаге (Копилка 09.10).
+      // С «@» — похоже на опечатку в адресе: просим ещё раз.
+      if (!email && !text.includes("@")) return skipEmail(s).then(() => "handled" as const);
       if (!email) return reply(s, s.m.emailHint, { force: true }).then(() => "handled" as const);
       try {
         s.customer = await setEmail(s.ctx, s.customer, email);
@@ -875,6 +884,14 @@ async function buyFromPost(s: Shop, p: Product): Promise<void> {
   await sendProductCard(s, p, true);
 }
 
+/** Шаг «почта» без почты: к стране (если её нет) или сразу к оплате. */
+async function skipEmail(s: Shop): Promise<void> {
+  await remember(s, { email_skipped: true }, { mode: "idle" });
+  const cc = s.customer.state.country_code;
+  if (!cc) await askCountry(s, true);
+  else await finishCheckout(s, cc);
+}
+
 /** Продавец вёл диалог руками за последние 30 минут. Не прочитали переписку — считаем, что нет. */
 async function sellerWroteRecently(s: Shop): Promise<boolean> {
   try {
@@ -1071,10 +1088,7 @@ async function handlePostback(s: Shop, payload: string): Promise<ShopOutcome> {
       return "handled";
     case "EMAIL": {
       if (s.customer.state.mode !== "awaiting_email") return "handled";
-      await remember(s, { email_skipped: true }, { mode: "idle" });
-      const cc = s.customer.state.country_code;
-      if (!cc) await askCountry(s, true);
-      else await finishCheckout(s, cc);
+      await skipEmail(s);
       return "handled";
     }
     case "GIFTWRAP": {

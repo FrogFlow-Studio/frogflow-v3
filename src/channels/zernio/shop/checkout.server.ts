@@ -69,6 +69,20 @@ export async function askCountry(s: Shop, forCheckout: boolean) {
     await reply(s, s.m.paymentNotConfigured);
     return;
   }
+  // Одна страна оплаты — выбирать нечего: ставим молча и идём дальше. Вопрос
+  // «1. Казахстан» гонял покупателей по кругу (Копилка русоведа 09.10).
+  if (methods.length === 1) {
+    const only = methods[0]!;
+    await setMode(s, {
+      mode: "idle",
+      country_code: only.country_code,
+      country_name: only.country_name,
+      placing_order: undefined,
+    });
+    if (forCheckout) await proceedToFulfillmentOrPlace(s, only.country_code);
+    else await reply(s, s.m.countrySaved(only.country_name), { force: true });
+    return;
+  }
   await setMode(s, { mode: "awaiting_country", placing_order: forCheckout ? true : undefined });
   const lines = methods.map((m, i) => `${i + 1}. ${m.country_name}`);
   if (s.platform === "whatsapp" && methods.length <= WA_LIST_MAX_ROWS) {

@@ -117,6 +117,8 @@ export async function stepAnswerFits(s: Shop, mode: string, text: string): Promi
       return matchLocalePick(text) !== null;
     case "awaiting_country": {
       const methods = await listActivePaymentMethods(s.ctx);
+      // Одна страна: шаг ставит её сам, что бы ни ответили.
+      if (methods.length === 1) return true;
       return (
         matchCountry(
           text,
