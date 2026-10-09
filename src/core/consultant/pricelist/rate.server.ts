@@ -4,7 +4,7 @@ import { getSetting, setSetting } from "@/core/settings/settings";
 import { serverFailure } from "@/lib/server-failure";
 import { attemptText, errorAttempt, parseAttempts, type RateAttempt } from "./rate-attempts";
 import { bankNameFromFinkazUrl, parseFinkazRubQuote } from "./finkaz-parse";
-import { isRateFresh, parseStoredRate, type StoredVtbRate } from "./rate";
+import { effectiveRateSource, isRateFresh, parseStoredRate, type StoredVtbRate } from "./rate";
 import {
   parseVtbRateQuote,
   rateSourceKind,
@@ -244,7 +244,7 @@ export async function fetchRate(
   const cfg = ctx.tenant.settings.consultant_pricelist;
   const log = attemptLog();
   const at = new Date(now).toISOString();
-  if (cfg?.rate_source !== "vtb") {
+  if (effectiveRateSource(cfg) !== "vtb") {
     const url = cfg?.rate_url || FINKAZ_KASPI_URL;
     try {
       const { quote, note } = await readFinkaz(url, fetchImpl, now);
@@ -330,7 +330,7 @@ export async function refreshRate(
   fetchImpl: Fetch = fetch,
   now = Date.now(),
 ): Promise<RefreshResult> {
-  if (ctx.tenant.settings.consultant_pricelist?.rate_source === "manual")
+  if (effectiveRateSource(ctx.tenant.settings.consultant_pricelist) === "manual")
     return { ok: true, stored: await getStoredRate(ctx, now), fetched: false, error: "manual" };
   cache.delete(ctx.tenant.id);
   const previous = await getStoredRate(ctx, now);

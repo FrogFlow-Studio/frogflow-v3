@@ -217,7 +217,7 @@ function PricelistOptions({
         <Field label="Курс рубля">
           <select className="input" name="rateSource" defaultValue={o.rateSource}>
             <option value="vtb">ВТБ (через ретранслятор)</option>
-            <option value="finkaz">finkaz.kz</option>
+            <option value="finkaz">Kaspi и др. (finkaz.kz)</option>
             <option value="manual">вручную у продавца</option>
           </select>
         </Field>
