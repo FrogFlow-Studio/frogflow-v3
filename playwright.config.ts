@@ -5,6 +5,10 @@ import { defineConfig, devices } from "@playwright/test";
  * пресет node-server) против подставной базы. Сборка — отдельным шагом:
  * `NITRO_PRESET=node-server npx vite build && npm run e2e`.
  */
+// Один «сегодня» на весь прогон: конфиг читается до запуска сервера с сидом и воркеров, оба
+// наследуют окружение. Иначе даты, посчитанные от «сейчас», расходятся на прогоне через полночь UTC.
+process.env.E2E_RUN_DAY ??= new Date().toISOString().slice(0, 10);
+
 export default defineConfig({
   testDir: "tests/e2e",
   testMatch: "*.spec.ts",
