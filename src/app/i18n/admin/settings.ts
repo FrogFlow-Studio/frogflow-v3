@@ -422,9 +422,12 @@ export const ru = {
   "settings.autoV3.off": "Выключены",
   "settings.svcNotice.title": "Служебные уведомления из Instagram и WhatsApp",
   "settings.svcNotice.intro":
-    "Эти сообщения бот присылает вам в Telegram. Выключите те, которые мешают: покупателям это ничего не меняет, бот работает как раньше. Заказы, чеки, жалобы и вопросы покупателей сюда не входят, они настраиваются в «Уведомлениях».",
+    "Эти сообщения бот присылает вам в Telegram. Выключите те, которые мешают: покупателям это ничего не меняет, бот работает как раньше. Заказы, чеки, жалобы и вопросы покупателей сюда не входят, они настраиваются в «Уведомлениях». Последний переключатель — не уведомление: он решает, отвечает ли бот покупателю на присланный номер.",
   "settings.svcNotice.photo": "Покупатель прислал фото, а заказа, который ждёт оплаты, нет",
   "settings.svcNotice.pause": "Бот на паузе в диалоге: вы ответили покупателю сами",
+  "settings.svcNotice.phone": "Покупатель прислал номер телефона в переписке",
+  "settings.svcNotice.phoneReply":
+    "Бот отвечает на номер «Записал ваш номер» (переписка станет прочитанной, и номер легко пропустить)",
   "settings.payRemind.title": "Напоминание об оплате",
   "settings.payRemind.intro":
     "Если заказ из бота, Instagram или WhatsApp не оплачен, бот один раз напомнит покупателю сумму и реквизиты. В Instagram и WhatsApp — только если покупатель писал магазину в последние сутки.",
@@ -915,9 +918,12 @@ export const kk: SectionDict<typeof ru> = {
   "settings.autoV3.off": "Өшірулі",
   "settings.svcNotice.title": "Instagram және WhatsApp қызметтік хабарламалары",
   "settings.svcNotice.intro":
-    "Бұл хабарламаларды бот Telegram-ға жібереді. Кедергі келтіретіндерін өшіріңіз: сатып алушыларға ештеңе өзгермейді, бот бұрынғыдай жұмыс істейді. Тапсырыстар, чектер, шағымдар мен сатып алушылардың сұрақтары бұған кірмейді, олар «Хабарламалар» бөлімінде бапталады.",
+    "Бұл хабарламаларды бот Telegram-ға жібереді. Кедергі келтіретіндерін өшіріңіз: сатып алушыларға ештеңе өзгермейді, бот бұрынғыдай жұмыс істейді. Тапсырыстар, чектер, шағымдар мен сатып алушылардың сұрақтары бұған кірмейді, олар «Хабарламалар» бөлімінде бапталады. Соңғы ауыстырғыш хабарлама емес: ол бот сатып алушының жіберген нөміріне жауап беретінін шешеді.",
   "settings.svcNotice.photo": "Сатып алушы фото жіберді, бірақ төлем күтіп тұрған тапсырыс жоқ",
   "settings.svcNotice.pause": "Диалогта бот үзілісте: сіз сатып алушыға өзіңіз жауап бердіңіз",
+  "settings.svcNotice.phone": "Сатып алушы хат алмасуда телефон нөмірін жіберді",
+  "settings.svcNotice.phoneReply":
+    "Бот нөмірге «Нөміріңізді жазып алдым» деп жауап береді (хат оқылған болып белгіленеді, нөмірді байқамай қалу оңай)",
   "settings.payRemind.title": "Төлем туралы еске салу",
   "settings.payRemind.intro":
     "Боттағы, Instagram немесе WhatsApp-тағы тапсырыс төленбесе, бот сатып алушыға соманы мен деректемелерді бір рет еске салады. Instagram мен WhatsApp-та — сатып алушы соңғы тәулікте дүкенге жазған болса ғана.",
@@ -1404,9 +1410,12 @@ export const en: SectionDict<typeof ru> = {
   "settings.autoV3.off": "Off",
   "settings.svcNotice.title": "Service notices from Instagram and WhatsApp",
   "settings.svcNotice.intro":
-    "The bot sends these to you in Telegram. Turn off the ones that get in the way: buyers see no difference and the bot works as before. Orders, receipts, complaints and buyer questions are not included; they are set in “Notifications”.",
+    "The bot sends these to you in Telegram. Turn off the ones that get in the way: buyers see no difference and the bot works as before. Orders, receipts, complaints and buyer questions are not included; they are set in “Notifications”. The last switch is not a notice: it decides whether the bot answers a buyer who sends a phone number.",
   "settings.svcNotice.photo": "A buyer sent a photo and no order is waiting for payment",
   "settings.svcNotice.pause": "Bot paused in a dialogue: you replied to the buyer yourself",
+  "settings.svcNotice.phone": "A buyer sent a phone number in the chat",
+  "settings.svcNotice.phoneReply":
+    "The bot replies “Got your number” (the chat becomes read, so the number is easy to miss)",
   "settings.payRemind.title": "Payment reminder",
   "settings.payRemind.intro":
     "If an order from the bot, Instagram or WhatsApp is not paid, the bot reminds the buyer once of the amount and payment details. In Instagram and WhatsApp only if the buyer wrote to the shop within the last day.",
@@ -1899,9 +1908,12 @@ export const uz: SectionDict<typeof ru> = {
   "settings.autoV3.off": "O‘chirilgan",
   "settings.svcNotice.title": "Instagram va WhatsApp xizmat xabarlari",
   "settings.svcNotice.intro":
-    "Bu xabarlarni bot sizga Telegram’da yuboradi. Xalaqit berayotganlarini o‘chiring: xaridorlar uchun hech narsa o‘zgarmaydi, bot avvalgidek ishlaydi. Buyurtmalar, cheklar, shikoyatlar va xaridorlar savollari bunga kirmaydi, ular «Xabarnomalar»da sozlanadi.",
+    "Bu xabarlarni bot sizga Telegram’da yuboradi. Xalaqit berayotganlarini o‘chiring: xaridorlar uchun hech narsa o‘zgarmaydi, bot avvalgidek ishlaydi. Buyurtmalar, cheklar, shikoyatlar va xaridorlar savollari bunga kirmaydi, ular «Xabarnomalar»da sozlanadi. Oxirgi kalit xabarnoma emas: u bot xaridor yuborgan raqamga javob berish-bermasligini hal qiladi.",
   "settings.svcNotice.photo": "Xaridor rasm yubordi, lekin to‘lov kutayotgan buyurtma yo‘q",
   "settings.svcNotice.pause": "Suhbatda bot pauzada: siz xaridorga o‘zingiz javob berdingiz",
+  "settings.svcNotice.phone": "Xaridor yozishmada telefon raqamini yubordi",
+  "settings.svcNotice.phoneReply":
+    "Bot raqamga «Raqamingizni yozib oldim» deb javob beradi (yozishma o‘qilgan bo‘ladi va raqamni o‘tkazib yuborish oson)",
   "settings.payRemind.title": "To‘lov haqida eslatma",
   "settings.payRemind.intro":
     "Botdagi, Instagram yoki WhatsApp’dagi buyurtma to‘lanmasa, bot xaridorga summa va rekvizitlarni bir marta eslatadi. Instagram va WhatsApp’da — faqat xaridor so‘nggi sutkada do‘konga yozgan bo‘lsa.",

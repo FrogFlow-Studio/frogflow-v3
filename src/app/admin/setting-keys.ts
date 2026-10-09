@@ -30,6 +30,8 @@ export const SETTING_KEYS = [
   "auto_messages_v3",
   "notify_photo_not_receipt",
   "notify_bot_pause",
+  "notify_chat_phone",
+  "chat_phone_reply",
   "receipt_ocr_usage",
   "consultant_enabled",
   "consultant_profile",
