@@ -528,7 +528,7 @@ export async function runConsultant(
     platform: string;
     dryRun?: boolean;
     /** Ответ на сторис/рилс — консультант узнаёт товар по тегу продавца. */
-    story?: { storyId: string | null; mediaUrl: string | null };
+    story?: { storyId: string | null; mediaUrl: string | null; caption?: string | null };
     /** Фото покупателя: ссылки (директ) или уже скачанные (Telegram) — консультант по прайсу. */
     imageUrls?: string[];
     images?: import("./pricelist/images").V2Image[];
@@ -580,7 +580,7 @@ export async function runConsultant(
   if (!pricelist && opts.story && (opts.story.storyId || opts.story.mediaUrl)) {
     const { findStoryTag, listStoryTags, storyContextLine } = await import("./story-tags");
     const tag = findStoryTag(await listStoryTags(ctx), opts.story.storyId, opts.story.mediaUrl);
-    incoming = `${storyContextLine(tag, opts.story.storyId)}\n\n${incoming}`;
+    incoming = `${storyContextLine(tag, opts.story.storyId, opts.story.caption)}\n\n${incoming}`;
   }
 
   const live = Boolean(customer) && !opts.dryRun;

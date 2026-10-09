@@ -2,7 +2,13 @@ import type Anthropic from "@anthropic-ai/sdk";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { getSettings } from "@/core/settings/settings";
 import { hasToolMarkup, stripToolMarkup } from "../prompt";
-import { findStoryTag, listStoryTags, storyProductsOf, type StoryTag } from "../story-tags";
+import {
+  findStoryTag,
+  listStoryTags,
+  storyCaptionText,
+  storyProductsOf,
+  type StoryTag,
+} from "../story-tags";
 import { findProducts, type ConsultantProduct } from "./catalog";
 import { loadPricelist } from "./catalog.server";
 import { currencyAsked, tengeToRubles, wantsRubles } from "./currency";
@@ -210,7 +216,7 @@ export type PricelistInput = {
   text: string;
   state: PricelistState;
   call: ModelCall;
-  story?: { storyId: string | null; mediaUrl: string | null };
+  story?: { storyId: string | null; mediaUrl: string | null; caption?: string | null };
   /** Эталонный набор: товары публикации заданы сценарием, а не отметкой. */
   storyProductIds?: string[];
   /** Фото покупателя: ссылки из директа (скачиваются здесь) или уже скачанные (Telegram). */
@@ -275,13 +281,22 @@ async function storyNote(
   }
   if (products.length === 0) {
     // Отметки нет — модель смотрит на саму публикацию. Видео (рилс) и
-    // устаревшая ссылка не скачаются — тогда вопрос покупателю.
+    // устаревшая ссылка не скачаются — тогда подпись, если Zernio её прислал,
+    // а без неё — вопрос покупателю.
     const image = story?.mediaUrl ? await loadImage(story.mediaUrl) : null;
+    const caption = storyCaptionText(story?.caption);
+    const captionLine = caption ? ` Подпись публикации: «${caption}».` : "";
     if (image) {
       return {
-        note: "[Покупатель пишет из публикации (сторис или рилс); товары к ней не привязаны. Картинка публикации — ниже: поймите, что на ней, и найдите похожее поиском. Не уверены — спросите, что понравилось.]",
+        note: `[Покупатель пишет из публикации (сторис или рилс); товары к ней не привязаны.${captionLine} Картинка публикации — ниже: поймите, что на ней, и найдите похожее поиском. Не уверены — спросите, что понравилось.]`,
         products,
         image,
+      };
+    }
+    if (caption) {
+      return {
+        note: `[Покупатель пишет из публикации (сторис или рилс); товары к ней не привязаны.${captionLine} Поймите по подписи, о каких товарах речь, найдите их поиском и назовите цены. Если по подписи не понять — спросите, что понравилось.]`,
+        products,
       };
     }
     return {

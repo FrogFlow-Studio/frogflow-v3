@@ -22,14 +22,29 @@ import { isStickerOnly, nonTextKind, NON_TEXT_WINDOW_MS, VOICE_WRITE_TEXT } from
 /** Сколько живёт запомненная публикация: секунды на вопрос с запасом, но не час. */
 export const PENDING_STORY_MS = 3 * 60_000;
 
-export type PendingStory = { id: string | null; url: string | null; at: string };
-export type ConsultantStory = { storyId: string | null; mediaUrl: string | null };
+export type PendingStory = {
+  id: string | null;
+  url: string | null;
+  caption?: string | null;
+  at: string;
+};
+export type ConsultantStory = {
+  storyId: string | null;
+  mediaUrl: string | null;
+  /** Подпись публикации (рилс, пост), если Zernio её прислал. */
+  caption?: string | null;
+};
 
 function pendingOf(customer: Customer): PendingStory | null {
   const c = customer.state.consultant as { pending_story?: unknown } | undefined;
   const p = c?.pending_story as Partial<PendingStory> | undefined;
   if (!p || typeof p !== "object" || typeof p.at !== "string") return null;
-  return { id: p.id ?? null, url: p.url ?? null, at: p.at };
+  return {
+    id: p.id ?? null,
+    url: p.url ?? null,
+    caption: typeof p.caption === "string" ? p.caption : null,
+    at: p.at,
+  };
 }
 
 /** Только стикер или гифка из стикеров, без текста — консультанту отвечать не на что. */
@@ -74,13 +89,22 @@ export async function beforeConsultant(
     return { done: true, note: "голосовое — попросили написать текстом", customer: claimed };
   }
 
-  const own: ConsultantStory = { storyId: m.storyId, mediaUrl: m.storyMediaUrl };
+  const own: ConsultantStory = {
+    storyId: m.storyId,
+    mediaUrl: m.storyMediaUrl,
+    caption: m.storyCaption,
+  };
   const hasOwn = Boolean(own.storyId || own.mediaUrl);
   // Публикация без слов и без своих фото — отвечать нечего, но запомнить нужно.
   if (hasOwn && bare && opts.customerPhotos === 0) {
     const saved = await updateStateSection(ctx, customer, "consultant", (cur) => ({
       ...cur,
-      pending_story: { id: own.storyId, url: own.mediaUrl, at: new Date(now).toISOString() },
+      pending_story: {
+        id: own.storyId,
+        url: own.mediaUrl,
+        caption: own.caption ?? null,
+        at: new Date(now).toISOString(),
+      },
     }));
     return { done: true, note: "публикация запомнена до вопроса", customer: saved };
   }
@@ -98,6 +122,6 @@ export async function beforeConsultant(
   return {
     done: false,
     customer: cleared,
-    story: fresh ? { storyId: pending.id, mediaUrl: pending.url } : own,
+    story: fresh ? { storyId: pending.id, mediaUrl: pending.url, caption: pending.caption } : own,
   };
 }

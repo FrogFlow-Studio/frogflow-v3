@@ -332,6 +332,7 @@ function directRoom(o: RoomOptions): Room {
       mediaWithoutUrl: false,
       storyId: null,
       storyMediaUrl: null,
+      storyCaption: null,
       outgoing: false,
       ...m,
     }) as ParsedZernioMessage;

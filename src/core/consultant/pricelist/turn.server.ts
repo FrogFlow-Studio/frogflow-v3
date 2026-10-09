@@ -45,7 +45,7 @@ export async function runPricelistTurn(
     callModel: (
       params: Anthropic.MessageCreateParamsNonStreaming,
     ) => Promise<Anthropic.Message | "limited" | "late">;
-    story?: { storyId: string | null; mediaUrl: string | null };
+    story?: { storyId: string | null; mediaUrl: string | null; caption?: string | null };
     imageUrls?: string[];
     images?: V2Image[];
     /** Язык покупателя — для готовых фраз (передача менеджеру). */
