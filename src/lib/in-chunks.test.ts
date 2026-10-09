@@ -57,9 +57,9 @@ const ALLOWED: Record<string, string[]> = {
     "получатели служебных сообщений: владелец и менеджеры магазина, не больше 21",
   ],
   "src/app/operator/ai-topup.server.ts": ["счета пополнения одного клиента — единицы"],
+  "src/app/operator/client-list.server.ts": ["один клиент: `extras([botId])`; без списка — все"],
   "src/app/operator/health-alerts.server.ts": [FIXED, FIXED],
   "src/app/operator/invites.server.ts": ["два магазина: приглашённый и пригласивший"],
-  "src/app/operator/operator.server.ts": ["один клиент: `extras([botId])`; без списка — все"],
   "src/app/operator/two-factor.server.ts": [FIXED, FIXED],
   "src/app/storefront/buyer-orders.server.ts": [`${PAGE} (страница заказов покупателя)`],
   "src/channels/zernio/automations.server.ts": [
@@ -80,7 +80,8 @@ const ALLOWED: Record<string, string[]> = {
   "src/core/notifications/feed.ts": [FIXED],
   "src/core/orders/admin.ts": ["заказы с недоплатой: UNDERPAID_LIST_MAX"],
   "src/core/orders/balance.ts": [FEW, FEW],
-  "src/core/orders/orders.ts": [FEW, FIXED],
+  "src/core/orders/payment-proof.ts": [FEW],
+  "src/core/orders/reject-order.ts": [FIXED],
   "src/core/orders/physical-admin.ts": [FEW, FEW],
   "src/core/receipts/verify.server.ts": [FEW, FEW],
   "src/core/retention/retention.ts": Array<string>(11).fill(
