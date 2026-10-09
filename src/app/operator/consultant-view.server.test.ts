@@ -66,9 +66,9 @@ describe("вид консультанта у оператора", () => {
     const v = (await consultantOperatorView(BOT, NOW))!;
     expect(v.model).toMatchObject({
       stored: "claude-sonnet-5-2026",
-      effective: "claude-haiku-4-5",
+      effective: "claude-sonnet-5",
       unknown: true,
-      platform: "claude-haiku-4-5",
+      platform: "claude-sonnet-5",
     });
     expect(v.model.options).toContain("claude-sonnet-5");
     expect(v.lastError).toEqual({
@@ -116,7 +116,7 @@ describe("выбор модели оператором", () => {
     await setConsultantModel(BOT, "claude-sonnet-5");
     await setConsultantModel(BOT, "");
     const v = (await consultantOperatorView(BOT, NOW))!;
-    expect(v.model).toMatchObject({ stored: "", effective: "claude-haiku-4-5", unknown: false });
+    expect(v.model).toMatchObject({ stored: "", effective: "claude-sonnet-5", unknown: false });
   });
 
   it("чего нет в проверенном списке — не пишется", async () => {
