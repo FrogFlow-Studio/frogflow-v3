@@ -3,6 +3,8 @@ import { setEnvForTests } from "@/config/env";
 import {
   DM_BUTTON_TITLE_MAX,
   buttonTitle,
+  capButtonText,
+  IG_BUTTONS_TEXT_MAX,
   downloadAttachment,
   normalizeDmButtons,
   listConversationMessages,
@@ -234,5 +236,41 @@ describe("refreshAttachmentUrl — свежая ссылка на вложени
       vi.fn(async () => Response.json({ url: "javascript:alert(1)" })),
     );
     expect(await refreshAttachmentUrl("c", "m", 0, "a")).toBeNull();
+  });
+});
+
+describe("Instagram: текст с кнопками не длиннее 640 знаков (Копилка русоведа 09.10)", () => {
+  it("длинный текст с кнопками уходит обрезанным, а не отклоняется целиком", async () => {
+    setEnvForTests({ ZERNIO_API_KEY: "k" });
+    const fetchMock = vi.fn(async () => Response.json({ ok: true }));
+    vi.stubGlobal("fetch", fetchMock);
+    const long = "Палитра средств выразительности. ".repeat(40);
+    const r = await sendInboxMessage("conv-1", "acc-1", long, {
+      platform: "instagram",
+      buttons: [{ type: "postback", title: "В корзину", payload: "BUY:1" }],
+    });
+    expect(r.ok).toBe(true);
+    const body = JSON.parse(
+      String((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body),
+    );
+    expect(body.message.length).toBeLessThanOrEqual(IG_BUTTONS_TEXT_MAX);
+    expect(body.message.endsWith("…")).toBe(true);
+    expect(body.buttons).toHaveLength(1);
+  });
+
+  it("без кнопок и в WhatsApp текст не трогаем; эмодзи на обрезе не рвётся", async () => {
+    setEnvForTests({ ZERNIO_API_KEY: "k" });
+    const fetchMock = vi.fn(async () => Response.json({ ok: true }));
+    vi.stubGlobal("fetch", fetchMock);
+    const long = "а".repeat(900);
+    await sendInboxMessage("conv-1", "acc-1", long, { platform: "instagram" });
+    await sendInboxMessage("conv-1", "acc-1", long, {
+      platform: "whatsapp",
+      buttons: [{ type: "postback", title: "Ок", payload: "OK" }],
+    });
+    for (const call of fetchMock.mock.calls as unknown as Array<[string, RequestInit]>)
+      expect(JSON.parse(String(call[1].body)).message).toBe(long);
+    const emoji = `${"а".repeat(IG_BUTTONS_TEXT_MAX - 2)}🎁🎁`;
+    expect(capButtonText(emoji)).toBe(`${"а".repeat(IG_BUTTONS_TEXT_MAX - 2)}…`);
   });
 });

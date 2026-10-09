@@ -16,7 +16,7 @@ import { formatMoney } from "@/core/money/money";
 import { resolvePrice, strikePrice } from "@/core/pricing/pricing";
 import { formatRatingSummary } from "@/core/reviews/pure";
 import { loadQuiz } from "@/core/quiz/quiz";
-import { type DmButton } from "../api.server";
+import { IG_BUTTONS_TEXT_MAX, type DmButton } from "../api.server";
 import { type ZernioPlatform } from "../platform";
 import {
   rowSubtitle,
@@ -33,7 +33,6 @@ import {
 import { serverFailure } from "@/lib/server-failure";
 import {
   BTN,
-  IG_BUTTONS_TEXT_MAX,
   LIST_TTL_MS,
   PAGE,
   type Shop,

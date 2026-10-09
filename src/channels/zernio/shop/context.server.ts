@@ -213,9 +213,6 @@ export function fingerprint(text: string): string {
  * переписки v1), неотправленный ответ последним не считается. `force` —
  * покупатель сам повторно вызвал то же меню.
  */
-/** Instagram: сколько знаков текста принимает сообщение с кнопками. */
-export const IG_BUTTONS_TEXT_MAX = 640;
-
 export async function reply(
   s: Shop,
   html: string,
@@ -229,13 +226,6 @@ export async function reply(
   } = {},
 ): Promise<boolean> {
   let text = plain(html).slice(0, 2000);
-  // С кнопками Instagram берёт не больше 640 знаков текста: длиннее — отказ, и
-  // покупатель не получал ничего (карточка товара с длинным описанием, Копилка
-  // русоведа 09.10). Лучше обрезанный текст с кнопками, чем молчание.
-  if (s.platform === "instagram" && opts.buttons?.length && text.length > IG_BUTTONS_TEXT_MAX) {
-    console.warn(`[zernio-shop] текст с кнопками длиннее 640, обрезан для ${s.customer.userKey}`);
-    text = `${text.slice(0, IG_BUTTONS_TEXT_MAX - 1).trimEnd()}…`;
-  }
   const mem = memory(s.customer);
   const mark = fingerprint(text);
   const fresh =
