@@ -33,7 +33,7 @@ function open(
       product_material_files: [],
     },
   );
-  db.tables.bot_users = [{ user_key: "ig_1", platform: "instagram", telegram_id: -1, state: {} }];
+  db.tables.bot_users = [{ user_key: "ig_1", platform: "whatsapp", telegram_id: -1, state: {} }];
   const ctx = {
     ...base,
     tenant: { ...base.tenant, status: "active", vertical: "digital" },
@@ -49,7 +49,7 @@ function open(
   } as unknown as ZernioTransport;
   const customer = {
     userKey: "ig_1",
-    platform: "instagram",
+    platform: "whatsapp",
     telegramId: -1,
     state: { locale: opts.locale ?? "ru", mode: "idle" },
   } as unknown as Customer;
@@ -59,7 +59,7 @@ function open(
     {
       conversationId: "conv-1",
       accountId: "acc-1",
-      platform: "instagram",
+      platform: "whatsapp",
       text: "",
       postbackPayload: `PROD:${SET}`,
       nativeOrder: null,

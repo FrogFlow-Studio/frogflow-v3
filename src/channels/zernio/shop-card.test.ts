@@ -14,7 +14,7 @@ const P = "33333333-3333-3333-3333-333333333333";
 
 function shopFor(product: Record<string, unknown>, modules: Record<string, boolean>) {
   const db = fakeDb();
-  db.tables.bot_users = [{ user_key: "ig_1", platform: "instagram", telegram_id: -1, state: {} }];
+  db.tables.bot_users = [{ user_key: "ig_1", platform: "whatsapp", telegram_id: -1, state: {} }];
   db.tables.products = [
     {
       id: P,
@@ -48,10 +48,11 @@ function shopFor(product: Record<string, unknown>, modules: Record<string, boole
   } as unknown as ZernioTransport;
   const customer = {
     userKey: "ig_1",
-    platform: "instagram",
+    platform: "whatsapp",
     telegramId: -1,
     state: { locale: "ru", mode: "idle" },
   } as unknown as Customer;
+  // Через WhatsApp: в Instagram PROD:… — кнопка «Купить», товар сразу идёт в корзину.
   const open = () =>
     handleShopMessage(
       ctx,
@@ -59,7 +60,7 @@ function shopFor(product: Record<string, unknown>, modules: Record<string, boole
       {
         conversationId: "conv-1",
         accountId: "acc-1",
-        platform: "instagram",
+        platform: "whatsapp",
         text: "",
         postbackPayload: `PROD:${P}`,
         nativeOrder: null,

@@ -136,6 +136,21 @@ export async function addToCart(
   return e ? "error" : "ok";
 }
 
+/** Этот товар (любой вариант) уже лежит в корзине покупателя. */
+export async function inCart(
+  ctx: TenantContext,
+  customer: Customer,
+  productId: string,
+): Promise<boolean> {
+  const { count, error } = await ctx.db
+    .from("cart_items")
+    .select("id", { count: "exact", head: true })
+    .eq("telegram_id", customer.telegramId)
+    .eq("product_id", productId);
+  if (error) throw serverFailure(`Корзина: ${error.message}`);
+  return (count ?? 0) > 0;
+}
+
 export async function listCart(ctx: TenantContext, customer: Customer): Promise<CartItem[]> {
   const { data, error } = await ctx.db
     .from("cart_items")
