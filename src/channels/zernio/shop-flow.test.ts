@@ -8,6 +8,7 @@ import {
   isCancel,
   isLocalePickEcho,
   isPaymentComplaint,
+  isPayTrouble,
   LOCALE_PICK_ECHO_MS,
   matchCountry,
   matchDeliveryLangChoice,
@@ -550,5 +551,32 @@ describe("телефон не коды товаров (Б2)", () => {
   it("одиночный номер и вопрос остаются как были", () => {
     expect(classifyIncoming("018")).toEqual({ kind: "product_number", number: "18" });
     expect(classifyIncoming("сколько стоит?").kind).toBe("question");
+  });
+});
+
+describe("isPayTrouble: покупатель не из Казахстана или без Kaspi", () => {
+  it("страна, «нет каспи» — вопрос продавцу (Копилка, 09.10, заказ #62)", () => {
+    for (const t of [
+      "Я из Беларуси",
+      "я живу в Узбекистане",
+      "Мы из РБ",
+      "У меня белорусская карта",
+      "Я не из Казахстана",
+      "Каспи нет",
+      "А без Kaspi можно?",
+      "Я из России",
+    ])
+      expect(isPayTrouble(t), t).toBe(true);
+  });
+
+  it("обычные реплики на шаге оплаты — не повод звать продавца", () => {
+    for (const t of [
+      "Оплатила",
+      "Чек отправила",
+      "Спасибо",
+      "Из Алматы",
+      "в английском варианте есть?",
+    ])
+      expect(isPayTrouble(t), t).toBe(false);
   });
 });
