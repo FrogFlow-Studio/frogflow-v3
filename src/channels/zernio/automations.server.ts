@@ -16,6 +16,8 @@ import {
   DEFAULT_REPLY_PROMPT,
   DEFAULT_SECOND_DM,
   DM_LIMIT_PLAIN,
+  LEGACY_REPLY_PROMPTS,
+  replyPromptsOf,
   STALE_PENDING_MS,
   annotateCommentStatus,
   buildAutomationBody,
@@ -327,6 +329,7 @@ export async function listAutomations(
   const [all, meta] = await Promise.all([api.list(z.profile_id), getAutomationsMeta(ctx)]);
   const own = all.filter((a) => ownsZernioAccount(ctx, a.accountId));
   await upgradeLegacyButtons(ctx, own, meta, api);
+  await upgradeReplyPrompt(ctx, own, meta, api);
   return own.map((a) => {
     const m = meta[automationId(a)];
     if (!m) return { ...a, firstMessage: a.dmMessage };
@@ -395,6 +398,55 @@ async function upgradeLegacyButtons(
     } catch (e) {
       console.warn(
         `[comment-dm] ${ctx.tenant.id}: правило ${id} не приведено к двум шагам: ${e instanceof Error ? e.message : e}`,
+      );
+    }
+  }
+}
+
+/**
+ * Призыв по умолчанию сменился (LEGACY_REPLY_PROMPTS → DEFAULT_REPLY_PROMPT):
+ * правило, чьё первое сообщение кончается прежним призывом по умолчанию,
+ * получает новый при чтении, без пересохранения продавцом. Текст продавца
+ * не трогаем — меняется только наш хвост. Сначала Zernio, потом мета: упала
+ * мета — при следующем чтении текст уже с новым призывом, дописываем только
+ * мету. Время замены — строка `comment_rule.prompt_upgraded` в журнале: от
+ * неё меряем долю ответивших до и после. Только клиенты v2.
+ */
+async function upgradeReplyPrompt(
+  ctx: TenantContext,
+  rules: CommentAutomation[],
+  meta: Record<string, AutomationMeta>,
+  api: AutomationApi,
+): Promise<void> {
+  if (!servedByV2(ctx.tenant)) return;
+  const legacy: readonly string[] = LEGACY_REPLY_PROMPTS;
+  for (const a of rules) {
+    const id = automationId(a);
+    const m = meta[id];
+    if (!id || a.trigger === "story_reply" || !m?.twoStepDm) continue;
+    const old = m.replyPrompt?.trim() ?? "";
+    if (!legacy.includes(old)) continue;
+    const dm = a.dmMessage ?? "";
+    const base = stripReplyPrompt(dm, old);
+    const next = withReplyPrompt(base, DEFAULT_REPLY_PROMPT);
+    const textHasOld = base !== dm;
+    // Продавец убрал призыв из текста сам — не возвращаем; текст уже с новым — дописываем мету.
+    if (!textHasOld && stripReplyPrompt(dm, DEFAULT_REPLY_PROMPT) === dm) continue;
+    if (next.length > DM_LIMIT_PLAIN) continue;
+    try {
+      if (textHasOld) await api.update(id, { dmMessage: next });
+      const nextMeta: AutomationMeta = { ...m, replyPrompt: DEFAULT_REPLY_PROMPT };
+      await setAutomationMeta(ctx, id, nextMeta);
+      meta[id] = nextMeta;
+      if (textHasOld) a.dmMessage = next;
+      await upsertLog(ctx, `prompt-upgrade:${id}`, {
+        event_type: "comment_rule.prompt_upgraded",
+        status: "processed",
+        payload: { automationId: id, from: old, to: DEFAULT_REPLY_PROMPT, textChanged: textHasOld },
+      });
+    } catch (e) {
+      console.warn(
+        `[comment-dm] ${ctx.tenant.id}: правилу ${id} не обновлён призыв: ${e instanceof Error ? e.message : e}`,
       );
     }
   }
@@ -1266,10 +1318,10 @@ function ruleOfFirstDm(text: string, rules: CommentAutomation[]): CommentAutomat
     ),
   );
   if (exact) return exact;
-  const byPrompt = rules.filter((a) => {
-    const prompt = squash(a.replyPrompt ?? DEFAULT_REPLY_PROMPT);
-    return prompt !== "" && t.endsWith(prompt);
-  });
+  // Призыв по умолчанию узнаём и в прежнем виде: первое сообщение могло уйти до замены.
+  const byPrompt = rules.filter((a) =>
+    replyPromptsOf(a.replyPrompt).some((p) => t.endsWith(squash(p))),
+  );
   return byPrompt.length === 1 ? byPrompt[0]! : null;
 }
 
