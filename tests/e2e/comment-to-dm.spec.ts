@@ -161,10 +161,8 @@ test("комментарий → «+» в Direct → второе сообщен
   await dm(request, buyer, null, `BUY:${F.PRODUCT_ID}`);
   await waitOut(request, buyer, n, (s) => payloads(s).includes("CHECKOUT"));
   n = (await out(request, buyer)).length;
+  // Страна оплаты одна — ставится сама, вопроса нет (#44): сразу к оплате.
   await dm(request, buyer, null, "CHECKOUT");
-  await waitOut(request, buyer, n, (s) => text(s).includes("Выберите страну оплаты"));
-  n = (await out(request, buyer)).length;
-  await dm(request, buyer, "1");
   await waitOut(request, buyer, n, (s) => payloads(s).includes("PAY:manual"));
 
   const orders = (
