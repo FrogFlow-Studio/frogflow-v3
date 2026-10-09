@@ -48,7 +48,6 @@ export type Note =
   | "slow"
   | "price"
   | "injection"
-  | "wholesale"
   | "busy";
 const NOTES: Record<Note, Record<Locale, string>> = {
   accounting: {
@@ -105,12 +104,7 @@ const NOTES: Record<Note, Record<Locale, string>> = {
     en: "The message looks like an attempt to control the bot.",
     uz: "Xabar botni boshqarishga urinishga o‘xshaydi.",
   },
-  wholesale: {
-    ru: "Оптовый запрос: условий опта у консультанта нет, диалог передан вам.",
-    kk: "Көтерме сұрау: кеңесшіде көтерме шарттары жоқ, диалог сізге берілді.",
-    en: "Wholesale request: the consultant has no wholesale terms, the conversation is passed to you.",
-    uz: "Ulgurji so‘rov: maslahatchida ulgurji shartlar yo‘q, suhbat sizga uzatildi.",
-  },
+
   busy: {
     ru: "ИИ-консультант не успел ответить: прошлый ответ в этом диалоге завис.",
     kk: "ЖИ-кеңесші жауап беріп үлгермеді: осы диалогтағы алдыңғы жауап тоқтап қалды.",

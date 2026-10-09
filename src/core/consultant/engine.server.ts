@@ -17,7 +17,6 @@ import {
   priceUnsureReply,
   resetReply,
   unavailableReply,
-  wholesaleReply,
 } from "./messages";
 import { getSettings, trySetSetting, updateSettingAtomic } from "@/core/settings/settings";
 import { resolvePrice } from "@/core/pricing/pricing";
@@ -605,23 +604,6 @@ export async function runConsultant(
       handoff: null,
       usage: { inputTokens: 0, outputTokens: 0, usd: 0 },
     };
-  }
-  // Опт — сразу менеджеру: оптовых условий у консультанта нет (v1 intent.ts, handle-message.ts:858).
-  if (pricelist) {
-    const { matchWholesaleIntent } = await import("./pricelist/wholesale");
-    if (matchWholesaleIntent(incoming)) {
-      if (customer && !opts.dryRun)
-        await saveState(ctx, customer, { paused_until: pausedUntilIso(pauseHours(ctx.tenant)) });
-      return {
-        reply: wholesaleReply(bLocale),
-        handoff: {
-          kind: "lead",
-          reason: "wholesale",
-          summary: handoffSummary(await sellerLocaleSafe(ctx), "wholesale", incoming),
-        },
-        usage: { inputTokens: 0, outputTokens: 0, usd: 0 },
-      };
-    }
   }
   // Попытка взломать подсказку — менеджеру, модель её не видит (v1 BOVI).
   if (pricelist) {
