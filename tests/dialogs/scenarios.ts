@@ -1196,6 +1196,34 @@ export const SCENARIOS: Scenario[] = [
     ["instagram", "whatsapp"],
   ),
   {
+    id: "pricelist-tool-markup-never-sent-ig-ru",
+    title: "модель написала вызов поиска текстом — покупателю не разметка, а передача менеджеру",
+    origin:
+      'BOVI 30.09: покупатель из ЯНАО получил «<invoke name="search_products">…» вместо ответа',
+    channel: "instagram",
+    locale: "ru",
+    full: true,
+    vertical: "consultant",
+    modules: { shop: true },
+    pricelist: {
+      catalog: PL_CATALOG,
+      rounds: [
+        said(
+          '<invoke name="search_products">\n<parameter name="query">Kleen Crystal</parameter>\n</invoke>',
+        ),
+        said(
+          '<invoke name="search_products">\n<parameter name="query">Kleen Crystal</parameter>\n</invoke>',
+        ),
+      ],
+    },
+    steps: [
+      {
+        say: { text: "Есть такой коврик?" },
+        expect: { says: [pricelistHandoffReply("ru")], notSays: [/invoke|parameter/], count: 1 },
+      },
+    ],
+  },
+  {
     id: "pricelist-send-failed-handoff-ig-ru",
     title:
       "передача менеджеру, а фраза покупателю не ушла — продавцу карточка, пауза при менеджере",

@@ -480,6 +480,63 @@ describe("консультант по прайсу", () => {
     expect(turn.tools).toContain("fix:final_without_tools");
   });
 
+  it("вызов поиска текстом — модель переписывает, покупателю разметка не уходит (BOVI 30.09)", async () => {
+    const leak =
+      '<invoke name="search_products">\n<parameter name="query">Uchino</parameter>\n</invoke>';
+    responses.push(
+      reply([{ type: "text", text: leak }]),
+      reply([{ type: "text", text: "Uchino 50х100 — 9 000 ₸." }]),
+    );
+    const { turn } = await decide("Есть полотенца?");
+    expect(requests).toHaveLength(2);
+    expect(lastMessage(1)).toContain("Вызов инструмента написан текстом");
+    expect(turn.reply).toBe("Uchino 50х100 - 9 000 ₸.");
+    expect(turn.tools).toContain("fix:tool_markup");
+  });
+
+  it("последний ход без инструментов снова «зовёт» поиск текстом — менеджеру, без разметки", async () => {
+    const search = (id: string) =>
+      reply([{ type: "tool_use", id, name: "search_products", input: { query: "Kleen" } }]);
+    responses.push(search("s1"), search("s2"), search("s3"), search("s4"));
+    responses.push(
+      reply([
+        {
+          type: "text",
+          text: '<invoke name="search_products">\n<parameter name="query">Kleen Crystal</parameter>\n</invoke>',
+        },
+      ]),
+    );
+    const { d, turn } = await decide("[Клиент прислал фото или картинку]");
+    expect(requests[4]!.tool_choice).toEqual({ type: "none" });
+    expect(turn.reply).not.toMatch(/invoke|parameter|</);
+    expect(d.handoff?.reason).toBe("no_answer");
+    expect(turn.handoff).toBeTruthy();
+    expect(turn.tools).toContain("fix:tool_markup_stripped");
+  });
+
+  it("бюджет в рублях — потолок поиска пересчитан по курсу, а не принят за тенге (BOVI 04.10)", async () => {
+    const towels: ConsultantProduct[] = [
+      { ...catalog[0]!, id: "A", name: "Uchino полотенце A", price_kzt: 9000 },
+      { ...catalog[0]!, id: "B", name: "Uchino полотенце B", price_kzt: 30000 },
+    ];
+    responses.push(
+      reply([
+        {
+          type: "tool_use",
+          id: "b1",
+          name: "search_products",
+          input: { category: "Полотенца", max_price_rub: 7000 },
+        },
+      ]),
+      reply([{ type: "text", text: "В бюджет входят оба полотенца Uchino: 9 000 ₸ и 30 000 ₸." }]),
+    );
+    await decide("Полотенца до 7 тыс рублей", {}, { catalog: towels });
+    // 7 000 ₽ × 4,2 × 0,95 (будни) ≈ 27 930 ₸: B за 30 000 ₸ не входит, A входит.
+    const result = JSON.stringify(requests[1]!.messages.at(-1));
+    expect(result).toContain("Uchino полотенце A");
+    expect(result).not.toContain("Uchino полотенце B");
+  });
+
   it("семейный комплект — поиск отдаёт комплекты с двумя пододеяльниками", async () => {
     const family = {
       id: "F1",

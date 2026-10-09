@@ -25,6 +25,14 @@ describe("tengeToRubles", () => {
     expect(tengeToRubles("всего 79 000 тенге", rate)).toBe(`всего ${rub(79000)}`);
   });
 
+  it("диапазон со знаком у второй суммы — в рублях обе (BOVI 04.10)", () => {
+    expect(tengeToRubles("от 242 000 до 262 000 ₸", rate)).toBe(
+      `от ${rub(242000)} до ${rub(262000)}`,
+    );
+    expect(tengeToRubles("45 000–52 000 ₸", rate)).toBe(`${rub(45000)}–${rub(52000)}`);
+    expect(tengeToRubles("70х140 - 15 000 ₸", rate)).toBe(`70х140 - ${rub(15000)}`);
+  });
+
   it("размеры и другие числа не трогает; без курса текст прежний", () => {
     expect(tengeToRubles("50х100, 2 шт", rate)).toBe("50х100, 2 шт");
     expect(tengeToRubles("85 000 ₸", null)).toBe("85 000 ₸");

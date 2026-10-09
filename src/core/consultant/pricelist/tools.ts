@@ -14,7 +14,7 @@ import {
   type ProductHardness,
   type ProductSearchQuery,
 } from "./catalog";
-import { priceRub, type StoredVtbRate } from "./rate";
+import { priceRub, rubToKzt, type StoredVtbRate } from "./rate";
 import { DEFAULT_SHOP_URL } from "./catalog.server";
 
 export type ConsultantCountry = "KZ" | "RU";
@@ -61,6 +61,11 @@ export const CONSULTANT_TOOLS = [
           type: "number",
           description:
             "Only cards at or below this KZT price. Use when the customer names a budget, and ALWAYS pass category too when they named one — a bare price sweep returns every category and will hand you a pillow when they asked about blankets. The result carries cheapest_ignoring_price_limit: the cheapest card in the same scope with the price cap removed. When the list comes back empty or off-target, say plainly that nothing fits the budget and name that cheapest card instead of padding the answer.",
+        },
+        max_price_rub: {
+          type: "number",
+          description:
+            "The customer's budget in RUBLES, exactly as they said it: they wrote ₽/руб, or they are from Russia and named a bare number («до 80 тыс»). The code converts it to tenge at the shop rate — never convert it yourself and never pass the same number as max_price_kzt. Do not repeat the budget amount in your reply.",
         },
         exclude_ids: {
           type: "array",
@@ -177,6 +182,22 @@ export const CONSULTANT_TOOLS = [
  */
 const BROAD_SUMMARY_FROM = 3;
 
+/**
+ * Потолок цены в тенге: бюджет в рублях пересчитывает код по курсу магазина,
+ * рублёвый важнее тенгового (модель могла продублировать число в оба поля).
+ * Курса нет — рублёвый бюджет не отбирает ничего: лучше без отбора, чем
+ * «до 80 000 ₸» вместо 80 000 ₽.
+ */
+export function budgetKzt(input: Record<string, unknown>, rate: number | null): number | undefined {
+  const rub = input.max_price_rub;
+  if (typeof rub === "number" && rub > 0) {
+    const kzt = rate ? rubToKzt(rub, rate) : 0;
+    return kzt > 0 ? kzt : undefined;
+  }
+  const kzt = input.max_price_kzt;
+  return typeof kzt === "number" && kzt > 0 ? kzt : undefined;
+}
+
 /** Сколько размеров и расцветок показывать в сводке: выбор, а не перечень. */
 const SUMMARY_FACET_LIMIT = 6;
 
@@ -248,10 +269,7 @@ export async function executeConsultantTool(
       size: typeof input.size === "string" ? input.size : undefined,
       color: typeof input.color === "string" ? input.color : undefined,
       hardness: readHardness(input.hardness),
-      max_price_kzt:
-        typeof input.max_price_kzt === "number" && input.max_price_kzt > 0
-          ? input.max_price_kzt
-          : undefined,
+      max_price_kzt: budgetKzt(input, rate),
     };
     const fromTool = Array.isArray(input.exclude_ids)
       ? input.exclude_ids.filter((id): id is string => typeof id === "string")
