@@ -42,6 +42,7 @@ async function handle(request: Request, rawBotId: string): Promise<Response> {
     prodamusOutcome,
     parseChargeRef,
     prodamusCardCurrency,
+    prodamusSumNote,
   } = await import("@/core/payments/prodamus");
   let n: Record<string, unknown>;
   try {
@@ -79,7 +80,7 @@ async function handle(request: Request, rawBotId: string): Promise<Response> {
     total: Number(order.total),
     fulfillment_kind: order.fulfillment_kind,
   });
-  const outcome = prodamusOutcome(n, charge);
+  const outcome = prodamusOutcome(n);
   if (outcome === "ignore") {
     await trace("not_success", { order: orderId });
     return new Response("success");
@@ -89,26 +90,25 @@ async function handle(request: Request, rawBotId: string): Promise<Response> {
   // Карта в другой валюте (карта РФ в форме в тенге): сумма — в валюте формы,
   // валюта карты — пометкой, чтобы продавец видел, откуда платёж.
   const card = prodamusCardCurrency(n, charge.currency);
-  const ref = `${String(n.order_id ?? "")}${converted ? `, ${charge.amount} ${charge.currency}` : ""}${card ? `, картой ${card}` : ""}`;
+  // Списано не столько, сколько выставили (курс, округление, поправленная ссылка):
+  // оплату засчитываем по ответу Продамуса, а списанное пишем в журнал заказа.
+  const sumNote = prodamusSumNote(n, charge);
+  const ref = [
+    String(n.order_id ?? ""),
+    converted ? `${charge.amount} ${charge.currency}` : null,
+    card ? `картой ${card}` : null,
+    sumNote,
+  ]
+    .filter(Boolean)
+    .join(", ");
 
   const unapplied = { currency: order.currency, provider: "Продамус", ref };
-  if (outcome === "mismatch") {
-    await trace("mismatch", { order: orderId, expected: charge.amount });
-    // Деньги пришли не на ту сумму или в той валюте: пишем то, что списал Продамус.
-    const { reportUnappliedPayment } = await import("@/app/payments/unapplied-payment.server");
-    await reportUnappliedPayment(ctx, order, "payment_mismatch", {
-      ...unapplied,
-      // sum Продамус шлёт в валюте формы, currency — валюта карты.
-      currency: charge.currency,
-      amount: Number(String(n.sum ?? "0").replace(",", ".")) || 0,
-    });
-    return new Response("success");
-  }
 
   const { markPaidOnline } = await import("@/core/payments/payment");
   const r = await markPaidOnline(ctx, orderId, expected, "Продамус", ref);
   await trace(r.ok ? (r.alreadyDone ? "already_done" : "paid") : "order_not_found", {
     order: orderId,
+    ...(sumNote ? { expected: charge.amount } : {}),
     ...(r.closed ? { closed: r.status } : {}),
   });
   if (r.closed) {

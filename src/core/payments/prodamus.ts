@@ -287,24 +287,30 @@ export function buildProdamusLink(
   return `${cfg.formUrl}/?${phpQuery({ ...data, signature })}`;
 }
 
-export type ProdamusOutcome = "paid" | "mismatch" | "ignore";
+export type ProdamusOutcome = "paid" | "ignore";
 
 /**
- * Что значит уведомление для заказа: оплата только при `success`, и сумма
- * должна совпасть с выставленной (ссылку покупатель может поправить руками).
- * `sum` Продамус шлёт в валюте формы, а `currency` — валюта карты: форма в
- * тенге, оплаченная картой РФ, приходит как sum=150.00, currency=rub
- * (Копилка русоведа 09.10, платёж 511523 — покупатель списал 41,98 ₽).
- * Поэтому валюта на решение не влияет; её видно в журнале заказа.
+ * Что значит уведомление для заказа: решает ответ Продамуса — `success`
+ * значит «оплата прошла» (Яков 09.10). Сумму не сверяем: `sum` Продамус шлёт
+ * в валюте формы, а `currency` — валюта карты (форма в тенге, карта РФ:
+ * sum=150.00, currency=rub, списано 41,98 ₽), и расхождение по курсу или
+ * округлению не должно держать оплаченный заказ. Наш ли это заказ, уже
+ * проверила подпись order_num; что списано — видно в журнале заказа
+ * (prodamusSumNote).
  */
-export function prodamusOutcome(
+export function prodamusOutcome(n: Record<string, unknown>): ProdamusOutcome {
+  return String(n.payment_status ?? "") === "success" ? "paid" : "ignore";
+}
+
+/** Пометка для журнала, если Продамус списал не ту сумму, что выставили: «списано 1.00 KZT»; иначе null. */
+export function prodamusSumNote(
   n: Record<string, unknown>,
-  expected: { amount: number; currency: string },
-): ProdamusOutcome {
-  if (String(n.payment_status ?? "") !== "success") return "ignore";
-  const sum = Number(String(n.sum ?? "").replace(",", "."));
-  if (!Number.isFinite(sum) || Math.abs(sum - expected.amount) > 0.005) return "mismatch";
-  return "paid";
+  charge: { amount: number; currency: string },
+): string | null {
+  const raw = String(n.sum ?? "").trim();
+  const sum = Number(raw.replace(",", "."));
+  if (raw && Number.isFinite(sum) && Math.abs(sum - charge.amount) <= 0.005) return null;
+  return `списано ${raw || "?"} ${charge.currency}`;
 }
 
 /** Валюта карты, если она не валюта формы (оплата картой РФ в форме в тенге); иначе null. */
