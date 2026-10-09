@@ -56,6 +56,9 @@ const ALLOWED: Record<string, string[]> = {
   "src/app/admin/onboarding.server.ts": [
     "получатели служебных сообщений: владелец и менеджеры магазина, не больше 21",
   ],
+  "src/app/observer/observer-view.server.ts": [
+    "ключи наблюдателя: три фиксированных и журнал за сегодня и вчера по поясам клиентов",
+  ],
   "src/app/operator/ai-topup.server.ts": ["счета пополнения одного клиента — единицы"],
   "src/app/operator/client-list.server.ts": ["один клиент: `extras([botId])`; без списка — все"],
   "src/app/operator/health-alerts.server.ts": [FIXED, FIXED],
