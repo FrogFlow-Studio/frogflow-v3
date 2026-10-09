@@ -184,10 +184,12 @@ test("Настройки бота: работа, часы, образ и про�
   await expect(log.getByText(F.CONS_ANSWER)).toHaveCount(2);
   // Второй вопрос ушёл модели вместе с первым: консультант помнит, о чём шла речь.
   type Asked = { messages?: { role: string; content: unknown }[] };
+  // Заглушка общая для параллельных воркеров: ищем свой запрос по метке первого вопроса.
   const asked = (await (await request.get(`${F.STUB}/__e2e/anthropic`)).json()) as Asked[];
-  const last = JSON.stringify(asked.at(-1)?.messages ?? []);
-  expect(last).toContain(first);
-  expect(last).toContain("А в сером?");
+  const mine = asked
+    .map((a) => JSON.stringify(a.messages ?? []))
+    .filter((m) => m.includes("А в сером?"));
+  expect(mine.some((m) => m.includes(first))).toBe(true);
 
   await page.getByRole("button", { name: "Начать заново", exact: true }).click();
   await expect(log.getByText(F.CONS_ANSWER)).toHaveCount(0);
