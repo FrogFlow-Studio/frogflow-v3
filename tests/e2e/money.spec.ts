@@ -1,7 +1,7 @@
 import { createHash, createHmac } from "node:crypto";
 import { expect, test, type APIRequestContext, type TestInfo } from "@playwright/test";
 import * as F from "./fixtures.ts";
-import { watch } from "./helpers.ts";
+import { hydrated, watch } from "./helpers.ts";
 
 /**
  * Денежный путь целиком на собранном приложении: покупатель оформляет заказ
@@ -195,6 +195,7 @@ test("покупатель платит чеком, продавец подтв�
   await page.getByRole("button", { name: "Войти", exact: true }).click();
   await expect(page).toHaveURL(/\/admin$/);
   await page.goto(`/admin/orders/${id}`);
+  await hydrated(page, "button");
   await page.getByRole("button", { name: "✅ Подтвердить и выдать" }).click();
   await expect(page.getByText(`Заказ #${no} выдан: 1 поз.`)).toBeVisible();
 

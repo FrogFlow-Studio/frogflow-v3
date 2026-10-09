@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
 import * as F from "./fixtures.ts";
+import { waitForHydrationOnLoad } from "./helpers.ts";
 
 /**
  * Покупка на витрине сайта без мессенджера: каталог → корзина → «Оформить на
@@ -34,6 +35,7 @@ async function watch(page: Page): Promise<{ errors: string[]; robokassa: string[
       robokassa.push(r.request().url());
     return r.abort();
   });
+  waitForHydrationOnLoad(page);
   return { errors, robokassa };
 }
 
