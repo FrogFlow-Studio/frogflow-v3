@@ -359,12 +359,12 @@ export const ru = {
   "settings.prodamus.intro":
     "Для продавца из России (самозанятый, ИП, ООО) со своим аккаунтом Продамуса. В кабинете Продамуса скопируйте адрес платёжной формы и секретный ключ, а адрес для уведомлений об оплате укажите этот:",
   "settings.prodamus.enabled": "Принимать оплату картой РФ и через СБП",
-  "settings.prodamus.formUrl": "Адрес платёжной формы (…payform.ru)",
+  "settings.prodamus.formUrl": "Адрес платёжной формы (…payform.ru или …proeducation.kz)",
   "settings.prodamus.secretKey": "Секретный ключ",
   "settings.prodamus.currency": "Валюта кассы",
   "settings.prodamus.rate": "Курс: сколько тенге за 1 единицу валюты кассы",
   "settings.prodamus.currencyHint":
-    "Заказ в валюте кассы оплачивается как есть. Если цены в тенге, а касса в рублях, укажите курс: сумма в тенге делится на него и округляется вверх до целого рубля, покупатель видит сумму в рублях. Без курса у заказов в тенге кнопки Продамуса нет. Курс не обновляется сам — меняйте его здесь.",
+    "Заказ в валюте кассы оплачивается как есть. Если цены в тенге, а касса в рублях, укажите курс: сумма в тенге делится на него и округляется вверх до целого рубля, покупатель видит сумму в рублях. Без курса у заказов в тенге кнопки Продамуса нет. Курс не обновляется сам — меняйте его здесь. Форма с адресом на .kz считает только в тенге: для неё валюта кассы всегда тенге, курс не действует.",
   "settings.stripe.title": "Иностранная карта: Stripe",
   "settings.stripe.intro":
     "В кабинете Stripe (Developers → Webhooks) добавьте вебхук с событиями checkout.session.completed и checkout.session.async_payment_succeeded на адрес:",
@@ -422,9 +422,12 @@ export const ru = {
   "settings.autoV3.off": "Выключены",
   "settings.svcNotice.title": "Служебные уведомления из Instagram и WhatsApp",
   "settings.svcNotice.intro":
-    "Эти сообщения бот присылает вам в Telegram. Выключите те, которые мешают: покупателям это ничего не меняет, бот работает как раньше. Заказы, чеки, жалобы и вопросы покупателей сюда не входят, они настраиваются в «Уведомлениях».",
+    "Эти сообщения бот присылает вам в Telegram. Выключите те, которые мешают: покупателям это ничего не меняет, бот работает как раньше. Заказы, чеки, жалобы и вопросы покупателей сюда не входят, они настраиваются в «Уведомлениях». Последний переключатель — не уведомление: он решает, отвечает ли бот покупателю на присланный номер.",
   "settings.svcNotice.photo": "Покупатель прислал фото, а заказа, который ждёт оплаты, нет",
   "settings.svcNotice.pause": "Бот на паузе в диалоге: вы ответили покупателю сами",
+  "settings.svcNotice.phone": "Покупатель прислал номер телефона в переписке",
+  "settings.svcNotice.phoneReply":
+    "Бот отвечает на номер «Записал ваш номер» (переписка станет прочитанной, и номер легко пропустить)",
   "settings.payRemind.title": "Напоминание об оплате",
   "settings.payRemind.intro":
     "Если заказ из бота, Instagram или WhatsApp не оплачен, бот один раз напомнит покупателю сумму и реквизиты. В Instagram и WhatsApp — только если покупатель писал магазину в последние сутки.",
@@ -854,12 +857,12 @@ export const kk: SectionDict<typeof ru> = {
   "settings.prodamus.intro":
     "Ресейлік сатушыға (өзін-өзі жұмыспен қамтыған, ЖК, ЖШС) өз Продамус аккаунтымен. Продамус кабинетінен төлем формасының мекенжайы мен құпия кілтті көшіріңіз, ал төлем хабарламаларының мекенжайы ретінде мынаны көрсетіңіз:",
   "settings.prodamus.enabled": "РФ картасымен және СБП арқылы төлем қабылдау",
-  "settings.prodamus.formUrl": "Төлем формасының мекенжайы (…payform.ru)",
+  "settings.prodamus.formUrl": "Төлем формасының мекенжайы (…payform.ru немесе …proeducation.kz)",
   "settings.prodamus.secretKey": "Құпия кілт",
   "settings.prodamus.currency": "Касса валютасы",
   "settings.prodamus.rate": "Бағам: касса валютасының 1 бірлігі неше теңге",
   "settings.prodamus.currencyHint":
-    "Касса валютасындағы тапсырыс сол күйінде төленеді. Бағалар теңгеде, ал касса рубльде болса, бағамды көрсетіңіз: теңгедегі сома оған бөлініп, бүтін рубльге дейін жоғары дөңгелектенеді, сатып алушы соманы рубльмен көреді. Бағамсыз теңгедегі тапсырыстарда Продамус түймесі жоқ. Бағам өздігінен жаңармайды — оны осы жерде өзгертіңіз.",
+    "Касса валютасындағы тапсырыс сол күйінде төленеді. Бағалар теңгеде, ал касса рубльде болса, бағамды көрсетіңіз: теңгедегі сома оған бөлініп, бүтін рубльге дейін жоғары дөңгелектенеді, сатып алушы соманы рубльмен көреді. Бағамсыз теңгедегі тапсырыстарда Продамус түймесі жоқ. Бағам өздігінен жаңармайды — оны осы жерде өзгертіңіз. Мекенжайы .kz болатын форма тек теңгемен есептейді: ол үшін касса валютасы әрқашан теңге, бағам қолданылмайды.",
   "settings.stripe.title": "Шетелдік карта: Stripe",
   "settings.stripe.intro":
     "Stripe кабинетінде (Developers → Webhooks) checkout.session.completed және checkout.session.async_payment_succeeded оқиғалары бар вебхук қосыңыз, мекенжайы:",
@@ -915,9 +918,12 @@ export const kk: SectionDict<typeof ru> = {
   "settings.autoV3.off": "Өшірулі",
   "settings.svcNotice.title": "Instagram және WhatsApp қызметтік хабарламалары",
   "settings.svcNotice.intro":
-    "Бұл хабарламаларды бот Telegram-ға жібереді. Кедергі келтіретіндерін өшіріңіз: сатып алушыларға ештеңе өзгермейді, бот бұрынғыдай жұмыс істейді. Тапсырыстар, чектер, шағымдар мен сатып алушылардың сұрақтары бұған кірмейді, олар «Хабарламалар» бөлімінде бапталады.",
+    "Бұл хабарламаларды бот Telegram-ға жібереді. Кедергі келтіретіндерін өшіріңіз: сатып алушыларға ештеңе өзгермейді, бот бұрынғыдай жұмыс істейді. Тапсырыстар, чектер, шағымдар мен сатып алушылардың сұрақтары бұған кірмейді, олар «Хабарламалар» бөлімінде бапталады. Соңғы ауыстырғыш хабарлама емес: ол бот сатып алушының жіберген нөміріне жауап беретінін шешеді.",
   "settings.svcNotice.photo": "Сатып алушы фото жіберді, бірақ төлем күтіп тұрған тапсырыс жоқ",
   "settings.svcNotice.pause": "Диалогта бот үзілісте: сіз сатып алушыға өзіңіз жауап бердіңіз",
+  "settings.svcNotice.phone": "Сатып алушы хат алмасуда телефон нөмірін жіберді",
+  "settings.svcNotice.phoneReply":
+    "Бот нөмірге «Нөміріңізді жазып алдым» деп жауап береді (хат оқылған болып белгіленеді, нөмірді байқамай қалу оңай)",
   "settings.payRemind.title": "Төлем туралы еске салу",
   "settings.payRemind.intro":
     "Боттағы, Instagram немесе WhatsApp-тағы тапсырыс төленбесе, бот сатып алушыға соманы мен деректемелерді бір рет еске салады. Instagram мен WhatsApp-та — сатып алушы соңғы тәулікте дүкенге жазған болса ғана.",
@@ -1343,12 +1349,12 @@ export const en: SectionDict<typeof ru> = {
   "settings.prodamus.intro":
     "For a seller from Russia (self-employed, sole proprietor, LLC) with their own Prodamus account. Copy the payment form address and the secret key from the Prodamus dashboard, and set the payment notification URL there to:",
   "settings.prodamus.enabled": "Accept Russian cards and SBP",
-  "settings.prodamus.formUrl": "Payment form address (…payform.ru)",
+  "settings.prodamus.formUrl": "Payment form address (…payform.ru or …proeducation.kz)",
   "settings.prodamus.secretKey": "Secret key",
   "settings.prodamus.currency": "Checkout currency",
   "settings.prodamus.rate": "Rate: tenge per 1 unit of the checkout currency",
   "settings.prodamus.currencyHint":
-    "Orders in the checkout currency are paid as is. If prices are in tenge and the checkout is in rubles, set the rate: the tenge amount is divided by it and rounded up to a whole ruble, and the buyer sees the ruble amount. Without a rate, orders in tenge get no Prodamus button. The rate does not update itself — change it here.",
+    "Orders in the checkout currency are paid as is. If prices are in tenge and the checkout is in rubles, set the rate: the tenge amount is divided by it and rounded up to a whole ruble, and the buyer sees the ruble amount. Without a rate, orders in tenge get no Prodamus button. The rate does not update itself — change it here. A form on a .kz address charges only in tenge: for it the checkout currency is always tenge and the rate does not apply.",
   "settings.stripe.title": "Foreign cards: Stripe",
   "settings.stripe.intro":
     "In your Stripe dashboard (Developers → Webhooks) add a webhook with the checkout.session.completed and checkout.session.async_payment_succeeded events pointing to:",
@@ -1404,9 +1410,12 @@ export const en: SectionDict<typeof ru> = {
   "settings.autoV3.off": "Off",
   "settings.svcNotice.title": "Service notices from Instagram and WhatsApp",
   "settings.svcNotice.intro":
-    "The bot sends these to you in Telegram. Turn off the ones that get in the way: buyers see no difference and the bot works as before. Orders, receipts, complaints and buyer questions are not included; they are set in “Notifications”.",
+    "The bot sends these to you in Telegram. Turn off the ones that get in the way: buyers see no difference and the bot works as before. Orders, receipts, complaints and buyer questions are not included; they are set in “Notifications”. The last switch is not a notice: it decides whether the bot answers a buyer who sends a phone number.",
   "settings.svcNotice.photo": "A buyer sent a photo and no order is waiting for payment",
   "settings.svcNotice.pause": "Bot paused in a dialogue: you replied to the buyer yourself",
+  "settings.svcNotice.phone": "A buyer sent a phone number in the chat",
+  "settings.svcNotice.phoneReply":
+    "The bot replies “Got your number” (the chat becomes read, so the number is easy to miss)",
   "settings.payRemind.title": "Payment reminder",
   "settings.payRemind.intro":
     "If an order from the bot, Instagram or WhatsApp is not paid, the bot reminds the buyer once of the amount and payment details. In Instagram and WhatsApp only if the buyer wrote to the shop within the last day.",
@@ -1838,12 +1847,12 @@ export const uz: SectionDict<typeof ru> = {
   "settings.prodamus.intro":
     "Oʻz Prodamus akkaunti boʻlgan Rossiyalik sotuvchi uchun (oʻzini oʻzi band qilgan, YaTT, MChJ). Prodamus kabinetidan toʻlov formasi manzili va maxfiy kalitni nusxalang, toʻlov xabarnomalari manzili sifatida esa buni koʻrsating:",
   "settings.prodamus.enabled": "Rossiya kartasi va SBP orqali toʻlov qabul qilish",
-  "settings.prodamus.formUrl": "Toʻlov formasi manzili (…payform.ru)",
+  "settings.prodamus.formUrl": "Toʻlov formasi manzili (…payform.ru yoki …proeducation.kz)",
   "settings.prodamus.secretKey": "Maxfiy kalit",
   "settings.prodamus.currency": "Kassa valyutasi",
   "settings.prodamus.rate": "Kurs: kassa valyutasining 1 birligi necha tenge",
   "settings.prodamus.currencyHint":
-    "Kassa valyutasidagi buyurtma oʻz holicha toʻlanadi. Narxlar tengeda, kassa esa rublda boʻlsa, kursni koʻrsating: tengedagi summa unga boʻlinadi va butun rublgacha yuqoriga yaxlitlanadi, xaridor summani rublda koʻradi. Kurssiz tengedagi buyurtmalarda Prodamus tugmasi yoʻq. Kurs oʻzi yangilanmaydi — uni shu yerda oʻzgartiring.",
+    "Kassa valyutasidagi buyurtma oʻz holicha toʻlanadi. Narxlar tengeda, kassa esa rublda boʻlsa, kursni koʻrsating: tengedagi summa unga boʻlinadi va butun rublgacha yuqoriga yaxlitlanadi, xaridor summani rublda koʻradi. Kurssiz tengedagi buyurtmalarda Prodamus tugmasi yoʻq. Kurs oʻzi yangilanmaydi — uni shu yerda oʻzgartiring. Manzili .kz boʻlgan forma faqat tengeda hisoblaydi: u uchun kassa valyutasi doim tenge, kurs qoʻllanmaydi.",
   "settings.stripe.title": "Xorijiy karta: Stripe",
   "settings.stripe.intro":
     "Stripe kabinetida (Developers → Webhooks) checkout.session.completed va checkout.session.async_payment_succeeded hodisalari bilan vebhuk qoʻshing, manzil:",
@@ -1899,9 +1908,12 @@ export const uz: SectionDict<typeof ru> = {
   "settings.autoV3.off": "O‘chirilgan",
   "settings.svcNotice.title": "Instagram va WhatsApp xizmat xabarlari",
   "settings.svcNotice.intro":
-    "Bu xabarlarni bot sizga Telegram’da yuboradi. Xalaqit berayotganlarini o‘chiring: xaridorlar uchun hech narsa o‘zgarmaydi, bot avvalgidek ishlaydi. Buyurtmalar, cheklar, shikoyatlar va xaridorlar savollari bunga kirmaydi, ular «Xabarnomalar»da sozlanadi.",
+    "Bu xabarlarni bot sizga Telegram’da yuboradi. Xalaqit berayotganlarini o‘chiring: xaridorlar uchun hech narsa o‘zgarmaydi, bot avvalgidek ishlaydi. Buyurtmalar, cheklar, shikoyatlar va xaridorlar savollari bunga kirmaydi, ular «Xabarnomalar»da sozlanadi. Oxirgi kalit xabarnoma emas: u bot xaridor yuborgan raqamga javob berish-bermasligini hal qiladi.",
   "settings.svcNotice.photo": "Xaridor rasm yubordi, lekin to‘lov kutayotgan buyurtma yo‘q",
   "settings.svcNotice.pause": "Suhbatda bot pauzada: siz xaridorga o‘zingiz javob berdingiz",
+  "settings.svcNotice.phone": "Xaridor yozishmada telefon raqamini yubordi",
+  "settings.svcNotice.phoneReply":
+    "Bot raqamga «Raqamingizni yozib oldim» deb javob beradi (yozishma o‘qilgan bo‘ladi va raqamni o‘tkazib yuborish oson)",
   "settings.payRemind.title": "To‘lov haqida eslatma",
   "settings.payRemind.intro":
     "Botdagi, Instagram yoki WhatsApp’dagi buyurtma to‘lanmasa, bot xaridorga summa va rekvizitlarni bir marta eslatadi. Instagram va WhatsApp’da — faqat xaridor so‘nggi sutkada do‘konga yozgan bo‘lsa.",

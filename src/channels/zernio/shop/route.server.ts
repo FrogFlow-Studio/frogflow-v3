@@ -9,6 +9,10 @@ import {
   TEXT_ONLY,
 } from "../nontext";
 import { sellerWroteWithin } from "../manager-guard";
+import { SELLER_PHONE } from "../phone-notice";
+import { noteOrderContact } from "@/core/orders/chat-contact";
+import { CHAT_PHONE_REPLY_KEY, serviceNoticeEnabled } from "@/core/notify/service-notices";
+import { getSetting } from "@/core/settings/settings";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import {
   setContactPhone,
@@ -642,12 +646,19 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
   const kind = classifyIncoming(text);
   switch (kind.kind) {
     case "phone": {
-      // Номер — не коды товаров. Записали как контакт; ответ один раз и не поверх живой переписки продавца.
+      // Номер — не коды товаров. Записали как контакт и в свежий заказ, продавцу —
+      // уведомление. Покупателю по умолчанию не отвечаем: ответ бота делает диалог
+      // прочитанным, и продавец номер пропускает (жалоба продавца 08.10).
       const phone = normalizePhone(kind.digits);
       if (!phone) return "question";
       const saved = await noteChatPhone(s.ctx, s.customer, phone);
       s.customer = saved.customer;
-      if (saved.fresh && !(await sellerWroteRecently(s)))
+      if (!saved.fresh) return "handled";
+      await notifyChatPhone(s, phone);
+      if (
+        (await getSetting(s.ctx, CHAT_PHONE_REPLY_KEY)) === "true" &&
+        !(await sellerWroteRecently(s))
+      )
         await reply(s, s.m.phoneNoted, { force: true });
       return "handled";
     }
@@ -743,7 +754,6 @@ async function handleNonText(s: Shop, msg: ParsedZernioMessage): Promise<ShopOut
       ? `@${s.customer.username}`
       : s.customer.firstName || s.customer.userKey;
     const urls = msg.attachments.map((a) => a.url).filter((u): u is string => Boolean(u));
-    const { serviceNoticeEnabled } = await import("@/core/notify/service-notices");
     if (await serviceNoticeEnabled(s.ctx, "photoNotReceipt"))
       await notifyAdminsHtml(
         s.ctx,
@@ -803,6 +813,30 @@ async function reorderFrom(s: Shop, order: OrderWithItems) {
     true,
     [plain(s.m.reorderDone(report.added)), missing].filter(Boolean).join("\n"),
   );
+}
+
+/**
+ * Номер из переписки: в последний заказ за неделю (если там пусто) и продавцу в
+ * Telegram. Сбой записи в заказ не мешает уведомлению — номер уже в состоянии.
+ */
+async function notifyChatPhone(s: Shop, phone: string): Promise<void> {
+  const order = await noteOrderContact(s.ctx, s.customer, phone).catch((e: unknown) => {
+    console.error(`[zernio:${s.ctx.tenant.id}] номер в заказ: ${String(e)}`);
+    return null;
+  });
+  if (!(await serviceNoticeEnabled(s.ctx, "chatPhone"))) return;
+  const { sellerLocale } = await import("@/core/catalog/low-stock");
+  const locale = await sellerLocale(s.ctx).catch(
+    () => s.ctx.tenant.settings.default_locale ?? "ru",
+  );
+  const who = s.customer.username
+    ? `@${s.customer.username}`
+    : s.customer.firstName || s.customer.userKey;
+  await notifyAdminsHtml(
+    s.ctx,
+    SELLER_PHONE[locale](escapeHtml(who), PLATFORM_LABEL[s.platform], escapeHtml(phone), order),
+    { kind: "question" },
+  ).catch(() => 0);
 }
 
 /** Продавец вёл диалог руками за последние 30 минут. Не прочитали переписку — считаем, что нет. */
