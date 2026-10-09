@@ -156,3 +156,105 @@ describe("сверка после переподключения аккаунт�
     expect(db.tables.bots![0]!.settings).toEqual(before);
   });
 });
+
+describe("переподключение — оператору сразу и один раз (BOVI 07.10)", () => {
+  type Acc = { id: string; username?: string };
+
+  /** Zernio отдаёт аккаунты профиля, Telegram оператора принимает сообщения. */
+  function live(accounts: Acc[]) {
+    const sent: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string, init?: RequestInit) => {
+        if (url.includes("/sendMessage")) {
+          sent.push(String((JSON.parse(String(init?.body)) as { text: string }).text));
+          return Response.json({ ok: true, result: {} });
+        }
+        return Response.json({
+          accounts: accounts.map((a) => ({
+            _id: a.id,
+            platform: "instagram",
+            username: a.username,
+            profileId: "prof-1",
+          })),
+        });
+      }),
+    );
+    return sent;
+  }
+
+  async function bovi(servedBy = "v2"): Promise<Tenant> {
+    const { encryptSecret } = await import("@/core/secrets/vault");
+    const { env } = await import("@/config/env");
+    db.tables.operator_settings = [
+      {
+        key: "operator_alert_bot_token",
+        value: encryptSecret("123456:" + "A".repeat(35), env().SECRETS_KEY),
+      },
+      { key: "operator_alert_chat_id", value: "777" },
+    ];
+    const settings = {
+      served_by: servedBy,
+      slug: "bovi",
+      zernio: {
+        profile_id: "prof-1",
+        account_ids: ["6aa53be5"],
+        accounts: [{ id: "6aa53be5", platform: "instagram", username: "bovi.kz" }],
+        synced_at: ago(30),
+      },
+    };
+    db.tables.bots = [{ id: "bovi", settings: structuredClone(settings) }];
+    return { id: "bovi", name: "BOVI", settings } as unknown as Tenant;
+  }
+
+  it("сверка увидела новый id той же страницы: id привязан, оператору одно сообщение", async () => {
+    setEnvForTests({ ZERNIO_API_KEY: "sk" });
+    const tenant = await bovi();
+    const sent = live([{ id: "6ac62be9", username: "bovi.kz" }]);
+    const { syncAccounts } = await import("./connect.server");
+    await syncAccounts(tenant);
+    expect(saved().zernio.account_ids).toEqual(["6aa53be5", "6ac62be9"]);
+    expect(sent).toHaveLength(1);
+    expect(sent[0]).toContain("Instagram @bovi.kz клиента «BOVI» переподключён в Zernio");
+    expect(sent[0]).toContain("Новый id 6ac62be9");
+    expect(sent[0]).toContain("Прежнего подключения в Zernio больше нет.");
+  });
+
+  it("крон и кнопка с одним снимком одновременно — сообщение одно, запись есть", async () => {
+    setEnvForTests({ ZERNIO_API_KEY: "sk" });
+    const tenant = await bovi();
+    const sent = live([{ id: "6ac62be9", username: "bovi.kz" }]);
+    const { syncAccounts } = await import("./connect.server");
+    await Promise.all([syncAccounts(tenant), syncAccounts(tenant)]);
+    expect(sent).toHaveLength(1);
+    expect(saved().zernio.account_ids).toEqual(["6aa53be5", "6ac62be9"]);
+  });
+
+  it("событие с новым id (магазин найден по профилю) — тоже сразу оператору", async () => {
+    setEnvForTests({ ZERNIO_API_KEY: "sk" });
+    const tenant = await bovi();
+    const sent = live([
+      { id: "6aa53be5", username: "bovi.kz" },
+      { id: "6ac62be9", username: "bovi.kz" },
+    ]);
+    const { resyncAfterReconnect } = await import("./connect.server");
+    expect(await resyncAfterReconnect(tenant, NOW)).toBe(true);
+    expect(sent).toHaveLength(1);
+    expect(sent[0]).toContain("Прежнее подключение в Zernio тоже живо");
+  });
+
+  it("второй аккаунт без переподключения и клиент v1 — оператору не пишем", async () => {
+    setEnvForTests({ ZERNIO_API_KEY: "sk" });
+    const { syncAccounts } = await import("./connect.server");
+    let sent = live([
+      { id: "6aa53be5", username: "bovi.kz" },
+      { id: "wa-2", username: "other" },
+    ]);
+    await syncAccounts(await bovi());
+    expect(sent).toEqual([]);
+    sent = live([{ id: "6ac62be9", username: "bovi.kz" }]);
+    await syncAccounts(await bovi("v1"));
+    expect(sent).toEqual([]);
+    expect(saved().zernio.account_ids).toEqual(["6aa53be5", "6ac62be9"]);
+  });
+});

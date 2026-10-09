@@ -3,10 +3,19 @@ import {
   cronProbe,
   inboundProbe,
   platformKey,
+  rateProbe,
   zernioWebhookProbe,
   type HealthProbe,
 } from "./health-alerts";
 import { serverFailure } from "@/lib/server-failure";
+import { pricelistMode } from "@/core/consultant/pricelist/mode";
+import {
+  effectiveRateSource,
+  parseStoredRate,
+  RATE_ALERT_AFTER_HOURS,
+} from "@/core/consultant/pricelist/rate";
+import { VTB_LAST_ERROR_KEY, VTB_RATE_KEY } from "@/core/consultant/pricelist/rate.server";
+import { zernioTwins } from "@/core/tenant/zernio-accounts";
 
 /**
  * Проверки платформы для оповещений оператору (крон health, раз в 15
@@ -23,6 +32,8 @@ export type PlatformReadings = {
   cronTitles: Map<string, string>;
   /** Входящие Zernio по клиентам v2 с аккаунтами (inboundReadings). */
   inbound?: Array<{ botId: string; last: string | null; weekBefore: number }>;
+  /** Курс рубля консультантов по прайсу (rateReadings). */
+  rates?: RateReading[];
   now?: number;
 };
 
@@ -50,6 +61,28 @@ export function platformProbes(r: PlatformReadings): {
       const who = a.username ? `@${a.username}` : a.name || a.id;
       labels.set(key, `${PLATFORM_NAME[a.platform] ?? a.platform} ${who} клиента «${t.name}»`);
     }
+    // Два живых подключения одной страницы — сбой; одно — проба «в порядке»,
+    // чтобы после сообщения о сбое пришло и «снова одно подключение».
+    const accounts = t.settings.zernio?.accounts ?? [];
+    const twins = zernioTwins(accounts);
+    const handles = new Map<string, { platform: string; username: string }>();
+    for (const a of accounts)
+      if (a.id && !a.expired && a.username?.trim())
+        handles.set(`${a.platform}:${a.username.trim().toLowerCase()}`, {
+          platform: a.platform,
+          username: a.username.trim(),
+        });
+    for (const h of handles.values()) {
+      const key = platformKey({ kind: "twin", botId: t.id, ...h });
+      const twin = twins.find(
+        (w) => w.platform === h.platform && w.username.toLowerCase() === h.username.toLowerCase(),
+      );
+      probes.push({ bot_id: key, ok: !twin, error: twin ? `id ${twin.ids.join(", ")}` : null });
+      labels.set(
+        key,
+        `${PLATFORM_NAME[h.platform] ?? h.platform} @${h.username} клиента «${t.name}»`,
+      );
+    }
   }
   const names = new Map(r.tenants.map((t) => [t.id, t.name]));
   for (const i of r.inbound ?? []) {
@@ -58,7 +91,81 @@ export function platformProbes(r: PlatformReadings): {
     probes.push(p);
     labels.set(p.bot_id, `Клиент «${names.get(i.botId) ?? i.botId}»`);
   }
+  for (const r0 of r.rates ?? []) {
+    const p = rateProbe({
+      ...r0,
+      alertAfterHours: RATE_ALERT_AFTER_HOURS,
+      now: r.now ?? Date.now(),
+    });
+    probes.push(p);
+    labels.set(p.bot_id, `Консультант клиента «${names.get(r0.botId) ?? r0.botId}»`);
+  }
   return { probes, labels };
+}
+
+export type RateReading = { botId: string; updatedAt: string | null; lastError: string | null };
+
+/** Строки app_settings клиента → когда обновился курс и чем кончилась последняя попытка. */
+export function rateReading(
+  botId: string,
+  rows: Array<{ key: string; value: string | null }>,
+): RateReading {
+  const raw = rows.find((x) => x.key === VTB_RATE_KEY)?.value;
+  const rate = parseStoredRate(raw);
+  let lastError: string | null = null;
+  try {
+    const log = JSON.parse(rows.find((x) => x.key === VTB_LAST_ERROR_KEY)?.value ?? "") as {
+      ok?: boolean;
+      attempts?: unknown;
+    };
+    if (log && log.ok === false && Array.isArray(log.attempts) && log.attempts.length)
+      lastError = log.attempts.map(String).join("; ");
+  } catch {
+    // журнала нет или он битый — причина просто не указывается
+  }
+  return { botId, updatedAt: rate?.updatedAt ?? null, lastError };
+}
+
+/** Чей курс проверять: консультант по прайсу включён и курс не вручную (его крон не обновляет). */
+export function rateTenantIds(tenants: readonly Pick<Tenant, "id" | "settings">[]): string[] {
+  return tenants
+    .filter(
+      (t) => pricelistMode(t) && effectiveRateSource(t.settings.consultant_pricelist) !== "manual",
+    )
+    .map((t) => t.id);
+}
+
+/**
+ * Курс рубля у клиентов v2 с консультантом по прайсу, кроме курса вручную
+ * (его крон не обновляет). serviceDb: крон по всем клиентам. Сбой чтения —
+ * исключение: «не прочитали» не равно «курса нет».
+ */
+export async function rateReadings(
+  tenants: readonly Pick<Tenant, "id" | "settings">[],
+): Promise<RateReading[]> {
+  const ids = rateTenantIds(tenants);
+  const { serviceDb } = await import("@/core/db/client.server");
+  const db = serviceDb();
+  const out: RateReading[] = [];
+  for (let i = 0; i < ids.length; i += 200) {
+    const chunk = ids.slice(i, i + 200);
+    // Две строки на клиента, кусок — не больше 400 строк: в предел ответа влезает.
+    const { data, error } = await db
+      .from("app_settings")
+      .select("bot_id, key, value")
+      .in("bot_id", chunk)
+      .in("key", [VTB_RATE_KEY, VTB_LAST_ERROR_KEY]);
+    if (error) throw serverFailure(`app_settings: ${error.message}`);
+    const rows = (data ?? []) as Array<{ bot_id: string; key: string; value: string | null }>;
+    for (const id of chunk)
+      out.push(
+        rateReading(
+          id,
+          rows.filter((x) => x.bot_id === id),
+        ),
+      );
+  }
+  return out;
 }
 
 /** Исходящие у Zernio — другие события: message.received — всегда входящее. */
@@ -141,12 +248,17 @@ export async function runPlatformAlerts(): Promise<unknown> {
       console.warn("[platform-alerts] входящие не прочитаны", e instanceof Error ? e.message : e);
       return [];
     });
+    const rates = await rateReadings(tenants).catch((e: unknown) => {
+      console.warn("[platform-alerts] курс не прочитан", e instanceof Error ? e.message : e);
+      return [];
+    });
     const { probes, labels } = platformProbes({
       crons: await listCronStatus(),
       zernioWebhook,
       tenants,
       cronTitles: new Map(CRON_JOBS.map((j) => [j.job, j.title])),
       inbound,
+      rates,
       now,
     });
     const { processPlatformAlerts } = await import("./health-alerts.server");

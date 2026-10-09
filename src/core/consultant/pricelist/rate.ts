@@ -93,16 +93,21 @@ export type StoredVtbRate = {
 };
 
 /**
- * Сколько курс годится для расчёта цены.
- *
- * Компромисс между двумя потерями. Совсем старый курс — это неправильная
- * цена в рублях у покупателя, и заметят её не скоро. Слишком строгий срок —
- * это бот, который на выходных перестаёт называть цены россиянам из-за
- * сломавшегося на час источника, и потерянные продажи. Трое суток: за это
- * время курс уходит на проценты, а не в разы, и продавец успевает увидеть
- * предупреждение в панели (оно загорается уже через два часа).
+ * Сколько курс считается точным. Курс обновляется кроном раз в 15 минут;
+ * старше суток — источник сломан, и рубли покупателю идут по последнему
+ * известному курсу с пометкой «ориентировочно» (toTurn). Совсем без рублей
+ * бот не остаётся, пока есть хоть какой-то курс: 09.10 BOVI трое суток
+ * держал курс, а на четвёртые молча перестал называть рубли россиянам
+ * (прежний предел — 72 ч).
  */
-export const RATE_MAX_AGE_HOURS = 72;
+export const RATE_APPROX_AFTER_HOURS = 24;
+
+/**
+ * Через сколько часов без обновления курса — сигнал оператору (крон health,
+ * platform-alerts): курс должен обновляться каждые 15 минут, и шесть часов
+ * тишины — уже поломка источника, а не заминка.
+ */
+export const RATE_ALERT_AFTER_HOURS = 6;
 
 /**
  * Источник курса магазина. Не выбран — Kaspi через finkaz.kz: так курс брал
@@ -116,10 +121,17 @@ export function effectiveRateSource(
   return cfg?.rate_source ?? "finkaz";
 }
 
-export function isRateFresh(rate: StoredVtbRate | null, now: number = Date.now()): boolean {
-  if (!rate?.rate) return false;
+/** Возраст курса в часах; нет курса или битая дата — null. */
+export function rateAgeHours(rate: StoredVtbRate | null, now: number = Date.now()): number | null {
+  if (!rate?.rate) return null;
   const ageHours = (now - Date.parse(rate.updatedAt)) / 36e5;
-  return Number.isFinite(ageHours) && ageHours <= RATE_MAX_AGE_HOURS;
+  return Number.isFinite(ageHours) ? ageHours : null;
+}
+
+/** Курс точный (моложе суток). Старше — рубли идут с пометкой «ориентировочно». */
+export function isRateFresh(rate: StoredVtbRate | null, now: number = Date.now()): boolean {
+  const age = rateAgeHours(rate, now);
+  return age !== null && age <= RATE_APPROX_AFTER_HOURS;
 }
 
 /** Курс из строки app_settings; испорченное или пустое — null. */
