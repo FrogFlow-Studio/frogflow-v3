@@ -30,7 +30,8 @@ export type Channel = "telegram" | "instagram" | "whatsapp";
 /** Что покупатель делает в диалоге. */
 export type Input =
   | { text: string }
-  | { button: string }
+  /** Нажатие кнопки: `button` — payload, `title` — подпись (Instagram присылает её текстом). */
+  | { button: string; title?: string }
   | { voice: true }
   | { sticker: true }
   | { photo: true }
@@ -80,6 +81,8 @@ export interface Product {
   price?: number;
   /** Ключевые слова карточки («кпп, план»). */
   keywords?: string;
+  /** Описание карточки. */
+  description?: string;
 }
 
 /** Что видно после реплики: ответы бота, кнопки, корзина, состояние. */
@@ -143,7 +146,7 @@ const productRow = (p: Product, i: number) => ({
   bot_id: BOT,
   name: p.name,
   keywords: p.keywords ?? null,
-  description: "",
+  description: p.description ?? "",
   price: p.price ?? 1000,
   currency: "KZT",
   country_prices: {},
@@ -338,7 +341,7 @@ function directRoom(o: RoomOptions): Room {
       return { text: i.late, sentAt: new Date(Date.now() - i.minutes * 60_000).toISOString() };
     if ("burst" in i) return {};
     if ("stuck" in i) return { text: i.stuck };
-    if ("button" in i) return { text: i.button, postbackPayload: i.button };
+    if ("button" in i) return { text: i.title ?? i.button, postbackPayload: i.button };
     if ("sellerTrack" in i) return {};
     const kind = "voice" in i ? "audio" : "sticker" in i ? "sticker" : "image";
     return { attachments: [{ type: kind, url: `https://cdn.test/${kind}`, index: 0 }] as never };
