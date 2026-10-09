@@ -121,15 +121,17 @@ function Landing() {
       <main>
         {/* Первый экран */}
         <section className="bg-[radial-gradient(70%_90%_at_85%_40%,#0f1d09_0%,transparent_60%)]">
-          <div className="mx-auto grid w-full max-w-6xl items-center gap-12 px-4 pt-12 pb-16 md:grid-cols-[1.12fr_0.88fr] md:pt-16 md:pb-20">
+          <div className="mx-auto grid w-full max-w-[1440px] items-center gap-12 px-4 xl:gap-20 xl:px-8 pt-12 pb-16 md:grid-cols-[1.12fr_0.88fr] md:pt-16 md:pb-20">
             <div className="min-w-0">
               <p className="text-xs font-semibold tracking-[0.3em] text-accent uppercase">
                 {t("hero.kicker")}
               </p>
-              <h1 className="mt-4 font-display text-[38px] leading-[1.02] font-bold text-balance md:text-[64px]">
+              <h1 className="mt-4 font-display text-[38px] leading-[1.02] font-bold text-balance md:text-[64px] xl:text-[78px]">
                 {titleHead} {titleTail && <span className="text-accent">{titleTail}</span>}
               </h1>
-              <p className="mt-6 max-w-xl text-lg text-muted">{t("hero.lead")}</p>
+              <p className="mt-6 max-w-xl text-lg xl:max-w-2xl xl:text-xl text-muted">
+                {t("hero.lead")}
+              </p>
               <ul className="mt-6 flex flex-wrap gap-2 text-sm">
                 {["Telegram", "WhatsApp", "Instagram", t("hero.storefront")].map((c) => (
                   <li
@@ -168,7 +170,7 @@ function Landing() {
 
         {CLIENTS.length > 0 && (
           <section className="border-y border-line bg-surface">
-            <div className="mx-auto w-full max-w-6xl px-4 py-9">
+            <div className="mx-auto w-full max-w-[1440px] px-4 xl:px-8 py-9">
               <p className="text-sm text-muted">{t("clients.title")}</p>
               <ul className="mt-5 grid gap-x-8 gap-y-7 sm:grid-cols-2 lg:grid-cols-4">
                 {CLIENTS.map((c) => {
@@ -226,7 +228,7 @@ function Landing() {
 
         {REVIEWS.length > 0 && (
           <section className="border-y border-line bg-surface">
-            <div className="mx-auto w-full max-w-6xl px-4 py-16">
+            <div className="mx-auto w-full max-w-[1440px] px-4 xl:px-8 py-16">
               <SectionTitle>{t("reviews.title")}</SectionTitle>
               <div className="mt-8 grid gap-4 md:grid-cols-3">
                 {REVIEWS.map((r) => (
@@ -329,7 +331,7 @@ function ChatDemo({ t }: { t: LandingT }) {
   ];
 
   return (
-    <div className="mx-auto w-full max-w-[380px] rounded-[34px] border border-line bg-surface p-3 shadow-[0_40px_100px_-40px_rgb(125_196_55/0.35)]">
+    <div className="mx-auto w-full max-w-[380px] md:mr-0 xl:max-w-[440px] rounded-[34px] border border-line bg-surface p-3 shadow-[0_40px_100px_-40px_rgb(125_196_55/0.35)]">
       <div className="flex items-center gap-2.5 px-2 pt-1.5 pb-3">
         <FrogMark className="w-9 rounded-full" />
         <div className="min-w-0">
@@ -429,7 +431,7 @@ function PaymentWays({ t }: { t: LandingT }) {
     );
   };
   return (
-    <section id="pay" className="mx-auto w-full max-w-6xl scroll-mt-20 px-4 py-20">
+    <section id="pay" className="mx-auto w-full max-w-[1440px] scroll-mt-20 px-4 xl:px-8 py-20">
       <SectionTitle>{t("pay.title")}</SectionTitle>
       <p className="mt-3 max-w-2xl text-muted">{t("pay.sub")}</p>
       <div className="mt-9 grid items-end gap-5 md:grid-cols-2">
@@ -464,7 +466,7 @@ function ReceiptChecks({ t }: { t: LandingT }) {
   );
   return (
     <section id="check" className="scroll-mt-20 border-y border-line bg-surface">
-      <div className="mx-auto w-full max-w-6xl px-4 py-20">
+      <div className="mx-auto w-full max-w-[1440px] px-4 xl:px-8 py-20">
         <SectionTitle>{t("check.title")}</SectionTitle>
         <p className="mt-3 max-w-2xl text-muted">{t("check.sub")}</p>
         <div className="mt-10 grid items-start gap-10 md:grid-cols-[340px_1fr] md:gap-14">
@@ -545,7 +547,7 @@ function Scenarios({ t, locale }: { t: LandingT; locale: Locale }) {
   const [niche, setNiche] = useState<Niche>("dig");
   const k = (s: string) => t(`scen.${niche}.${s}` as LandingKey);
   return (
-    <section className="mx-auto w-full max-w-6xl px-4 py-20">
+    <section className="mx-auto w-full max-w-[1440px] px-4 xl:px-8 py-20">
       <SectionTitle>{t("scen.title")}</SectionTitle>
       <p className="mt-3 text-muted">{t("scen.sub")}</p>
       <div role="tablist" className="mt-7 flex flex-wrap gap-2">

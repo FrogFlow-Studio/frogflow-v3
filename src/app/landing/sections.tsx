@@ -107,7 +107,7 @@ export function Header({
     `px-2 py-1.5 font-medium ${l === locale ? "bg-accent/15 text-fg" : "text-muted hover:text-fg"}`;
   return (
     <header className="sticky top-0 z-20 border-b border-line bg-bg/90 backdrop-blur">
-      <div className="mx-auto flex w-full max-w-6xl items-center gap-6 px-4 py-3">
+      <div className="mx-auto flex w-full max-w-[1440px] items-center gap-6 px-4 xl:px-8 py-3">
         <Link
           to="/"
           search={langSearch(locale)}
@@ -178,7 +178,7 @@ export function Header({
 export function Steps({ t }: { t: LandingT }) {
   return (
     <section id="how" className="scroll-mt-20 border-y border-line bg-surface">
-      <div className="mx-auto w-full max-w-6xl px-4 py-16">
+      <div className="mx-auto w-full max-w-[1440px] px-4 xl:px-8 py-16">
         <SectionTitle>{t("steps.title")}</SectionTitle>
         <ol className="mt-9 grid gap-0.5 overflow-hidden rounded-3xl bg-line md:grid-cols-3">
           {([1, 2, 3] as const).map((n) => (
@@ -325,7 +325,7 @@ export function Pricing({
   const [picked, setNiche] = useState<PricingNiche>("dig");
   const niche = fixed ?? picked;
   return (
-    <section id="pricing" className="mx-auto w-full max-w-6xl scroll-mt-20 px-4 py-16">
+    <section id="pricing" className="mx-auto w-full max-w-[1440px] scroll-mt-20 px-4 xl:px-8 py-16">
       <SectionTitle>{t("pricing.title")}</SectionTitle>
       <p className="mt-2 max-w-2xl text-muted">
         {t("pricing.sub", { days: TRIAL_DAYS, tier: TIER_TITLES[TRIAL_TIER] })}
@@ -455,7 +455,7 @@ export function FinalCta({ t, signup, page }: { t: LandingT; signup: boolean; pa
     },
   ].filter((c): c is { label: string; value: string; href: string; color: string } => !!c);
   return (
-    <section className="mx-auto w-full max-w-6xl px-4">
+    <section className="mx-auto w-full max-w-[1440px] px-4 xl:px-8">
       <div
         className={`grid items-center gap-8 rounded-[30px] border border-line bg-[radial-gradient(120%_140%_at_0%_0%,var(--night-moss,var(--surface))_0%,var(--bg)_62%)] px-6 py-10 md:px-12 ${
           contacts.length > 0 ? "md:grid-cols-[auto_1.2fr_1fr]" : "md:grid-cols-[auto_1fr]"
@@ -548,7 +548,7 @@ export function Footer({ t, locale, article }: { t: LandingT; locale: Locale; ar
   const anchorBase = article ? "/" : "";
   return (
     <footer className="mt-16 border-t border-line">
-      <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-6 text-sm text-muted">
+      <div className="mx-auto flex w-full max-w-[1440px] flex-wrap items-center justify-between gap-3 px-4 xl:px-8 py-6 text-sm text-muted">
         <span className="flex items-center gap-2.5">
           <FrogMark className="w-9 rounded-lg" />
           <span>
