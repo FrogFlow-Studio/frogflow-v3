@@ -47,6 +47,8 @@ describe("адрес маршрута из имени файла", () => {
     const child = "src/routes/admin._authed.chat.tsx";
     expect(isLayout(layout, [layout, child])).toBe(true);
     expect(isLayout(child, [layout, child])).toBe(false);
+    const hook = "src/routes/api/telegram.$botId.ts";
+    expect(isLayout(hook, [hook, "src/routes/api/telegram.$botId.vip.ts"])).toBe(false);
   });
 });
 
@@ -78,6 +80,20 @@ describe("какие e2e гонять", () => {
     const s = select(["src/app/admin/chat.functions.ts"], p);
     expect(s.mode).toBe("some");
     if (s.mode === "some") expect(s.specs).toEqual([...SMOKE, "tests/e2e/chat.spec.ts"].sort());
+  });
+
+  it("до раскладки только через import() серверной функции — не все e2e", () => {
+    const q = project(
+      {
+        "src/routes/s.$slug.tsx": 'import { load } from "@/app/shop.functions";',
+        "src/routes/s.$slug.cart.tsx": "",
+        "src/app/shop.functions.ts": 'const { send } = await import("@/channels/tg");',
+        "src/channels/tg.ts": "",
+      },
+      { ...specs, "tests/e2e/shop.spec.ts": 'await page.goto("/s/x/cart");' },
+    );
+    expect(select(["src/channels/tg.ts"], q).mode).toBe("some");
+    expect(select(["src/app/shop.functions.ts"], q).mode).toBe("all");
   });
 
   it("раскладка и общие файлы — все e2e", () => {

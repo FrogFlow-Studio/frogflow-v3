@@ -76,6 +76,9 @@ export function routePattern(file: string): RegExp {
 
 /** Файл-раскладка: у него есть дочерние маршруты (`admin._authed.tsx` → `admin._authed.*`). */
 export function isLayout(route: string, routes: string[]): boolean {
+  // Серверные маршруты (src/routes/api) ничего не вкладывают: /api/telegram/$botId
+  // и /api/telegram/$botId/vip — два обработчика, а не раскладка всех страниц.
+  if (route.startsWith("src/routes/api/")) return false;
   const stem = route.replace(/\.tsx?$/, "");
   return routes.some((r) => r !== route && r.startsWith(stem + "."));
 }
@@ -97,14 +100,19 @@ export function resolveImport(
   return options.find((f) => /\.tsx?$/.test(f) && exists(f)) ?? null;
 }
 
-/** Кто кого импортирует, наоборот: модуль → его импортёры. */
+/**
+ * Кто кого импортирует, наоборот: модуль → его импортёры. `staticOnly` —
+ * без `import()`: так подгружают код внутри серверной функции, а не рисуют.
+ */
 export function reverseImports(
   sources: Map<string, string>,
   exists: (f: string) => boolean,
+  staticOnly = false,
 ): Map<string, Set<string>> {
   const rev = new Map<string, Set<string>>();
   for (const [file, text] of sources) {
     for (const m of text.matchAll(IMPORT)) {
+      if (staticOnly && !m[1]) continue;
       const target = resolveImport(file, m[1] ?? m[2] ?? "", exists);
       if (!target) continue;
       if (!rev.has(target)) rev.set(target, new Set());
@@ -148,6 +156,7 @@ export function select(changed: string[], p: Project): Selection {
   let code = false;
   const routes = [...p.sources.keys()].filter((f) => f.startsWith("src/routes/"));
   let rev: Map<string, Set<string>> | null = null;
+  let revStatic: Map<string, Set<string>> | null = null;
 
   for (const f of files) {
     if (/^tests\/e2e\/.*\.spec\.ts$/.test(f)) {
@@ -180,8 +189,12 @@ export function select(changed: string[], p: Project): Selection {
       }
       return { mode: "all", reason: `${f} тянут ${reached.size} маршрутов` };
     }
+    // Раскладка рисует модуль только по статическим импортам; через import() в
+    // серверной функции (Telegram из витрины) страницы его не показывают.
+    revStatic ??= reverseImports(p.sources, p.exists, true);
+    const drawn = routesReaching(f, revStatic);
     for (const r of reached) {
-      if (isLayout(r, routes)) return { mode: "all", reason: `раскладка ${r}` };
+      if (isLayout(r, routes) && drawn.has(r)) return { mode: "all", reason: `раскладка ${r}` };
       const re = routePattern(r);
       for (const [spec, text] of p.specs) if (re.test(text)) picked.add(spec);
     }
