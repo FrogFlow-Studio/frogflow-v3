@@ -5,7 +5,7 @@ import type { Customer } from "@/core/customers/customers";
 import { claimStateSection } from "@/core/customers/customers";
 import { utcToZonedLocal, zonedDayToUtc } from "@/core/export/csv";
 import type { SellerPause } from "@/core/instagram/direct-bot-settings";
-import { isShopStartWord } from "@/core/instagram/comment-rules";
+import { DEFAULT_REPLY_PROMPT, isShopStartWord } from "@/core/instagram/comment-rules";
 import { escapeHtml } from "@/channels/telegram/copy";
 import { PLATFORM_LABEL } from "./platform";
 import { lastPersonMessageAt } from "./manager-guard";
@@ -118,6 +118,8 @@ export async function handleSellerOutgoing(
   now = Date.now(),
 ): Promise<boolean> {
   if (m.sentVia !== null && m.sentVia !== "human") return false;
+  if (m.fromScenario) return false;
+  if (await isAutomationText(ctx, m.text)) return false;
   const ours = lastBotReply ? [lastBotReply] : [];
   const sentAt = m.sentAt ? Date.parse(m.sentAt) : now;
   const at = Number.isFinite(sentAt) ? sentAt : now;
@@ -160,7 +162,15 @@ export async function sellerPauseActive(
     try {
       const tail = await transport.tail(m.accountId, m.conversationId);
       const ours = typeof direct.last_reply === "string" ? [direct.last_reply] : [];
-      const fromTail = lastPersonMessageAt(tail, ours);
+      const prompts = await automationPrompts(ctx);
+      const people = tail.filter((t) => !endsWithPrompt(t.message, prompts));
+      // Хвост покрывает отметку из памяти — верим хвосту: отметку могло
+      // поставить сообщение автоответа, которое теперь узнаём (Копилка, 09.10).
+      const oldest = Math.min(
+        ...tail.map((t) => Date.parse(t.createdAt ?? "")).filter((x) => Number.isFinite(x)),
+      );
+      if (last !== null && Number.isFinite(oldest) && last >= oldest) last = null;
+      const fromTail = lastPersonMessageAt(people, ours);
       if (fromTail !== null && (last === null || fromTail > last)) last = fromTail;
     } catch (e) {
       console.warn(`[zernio] переписка не прочитана для паузы ${customer.userKey}: ${String(e)}`);
@@ -171,4 +181,35 @@ export async function sellerPauseActive(
   if (endsAt <= now) return { paused: false, customer };
   const next = await noteSellerReply(ctx, customer, last, endsAt, PLATFORM_LABEL[m.platform]);
   return { paused: true, customer: next };
+}
+
+/**
+ * Призывы ответить из правил автоответа (мета правил в базе) и призыв по
+ * умолчанию. Первое сообщение автоответа на комментарий кончается призывом;
+ * Zernio шлёт его сам, и в переписке оно похоже на реплику продавца.
+ */
+async function automationPrompts(ctx: TenantContext): Promise<string[]> {
+  const { getAutomationsMeta } = await import("./automations.server");
+  let meta: Awaited<ReturnType<typeof getAutomationsMeta>> = {};
+  try {
+    meta = await getAutomationsMeta(ctx);
+  } catch {
+    // Мету не прочитали — остаётся призыв по умолчанию.
+  }
+  const prompts = Object.values(meta)
+    .map((x) => (x.replyPrompt ?? "").trim())
+    .filter(Boolean);
+  return [...new Set([DEFAULT_REPLY_PROMPT, ...prompts])];
+}
+
+const fold = (s: string) => s.replace(/\s+/g, " ").trim().toLowerCase();
+
+function endsWithPrompt(text: string | null | undefined, prompts: string[]): boolean {
+  const t = fold(text ?? "");
+  return t !== "" && prompts.some((p) => t.endsWith(fold(p)));
+}
+
+async function isAutomationText(ctx: TenantContext, text: string | null | undefined) {
+  if (!text?.trim()) return false;
+  return endsWithPrompt(text, await automationPrompts(ctx));
 }

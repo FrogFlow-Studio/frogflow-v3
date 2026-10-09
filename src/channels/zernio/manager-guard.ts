@@ -83,8 +83,25 @@ export function findManagerMessage(
 export function isPersonMessage(m: ZernioInboxMessage, ourReplies: string[] = []): boolean {
   if (m.direction !== "outgoing") return false;
   if (m.sentVia !== null && m.sentVia !== "human") return false;
+  if (sentByZernioScenario(m)) return false;
   const text = (m.message ?? "").trim();
   return !(text && ourReplies.map(foldReply).includes(foldReply(text)));
+}
+
+/**
+ * Сообщение ушло сценарием Zernio: автоответ на комментарий, цепочка,
+ * рассылка. Это не продавец руками — паузу бота оно не ставит (Копилка
+ * 09.10: первое сообщение автоответа «Палитра» ставило паузу, и бот молчал
+ * на телефон и «Мне можно на ватсап» посреди оформления).
+ */
+export function sentByZernioScenario(m: {
+  automationId?: string | null;
+  workflowId?: string | null;
+  sequenceId?: string | null;
+  broadcastId?: string | null;
+  executionId?: string | null;
+}): boolean {
+  return Boolean(m.automationId || m.workflowId || m.sequenceId || m.broadcastId || m.executionId);
 }
 
 /** Время последнего сообщения человека в хвосте переписки, мс; null — не писал. */
