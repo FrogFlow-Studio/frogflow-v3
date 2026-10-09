@@ -190,6 +190,9 @@ jobs:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       # Сборка начинается с tsc по всему проекту: нужна куча больше 2 ГБ.
       NODE_OPTIONS: --max-old-space-size=6144
+      # Вне Vercel Nitro сам не выбирает пресет vercel и собирает node-server в
+      # .output: на проде тогда пусто и 404 на всё (выкладка 09.10.2026 6:37).
+      NITRO_PRESET: vercel
     steps:
       - name: Токен Vercel задан
         run: |
@@ -204,4 +207,10 @@ jobs:
       - run: npm ci
       - run: npx --yes vercel@59.23.2 pull --yes --environment=production --token="$VERCEL_TOKEN"
       - run: npx --yes vercel@59.23.2 build --prod --token="$VERCEL_TOKEN"
+      - name: В сборке есть серверная функция
+        run: |
+          if ! ls -d .vercel/output/functions/*.func >/dev/null 2>&1; then
+            echo "::error::в .vercel/output нет функций: выкладывать нечего"; ls -R .vercel/output | head -50; exit 1
+          fi
+          node scripts/check-vercel-output.mjs
       - run: npx --yes vercel@59.23.2 deploy --prebuilt --prod --token="$VERCEL_TOKEN"
