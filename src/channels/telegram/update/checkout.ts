@@ -33,8 +33,29 @@ import { isoToDisplay } from "@/core/fulfillment/pure";
 import { type Bot, mainMenu, send } from "./bot";
 import { notifyReferral } from "./orders";
 
-export async function askCountry(b: Bot, forCheckout: boolean) {
+/**
+ * Страна оплаты одна — спрашивать нечего: записываем её молча. Вопрос с
+ * единственной кнопкой «Казахстан» покупатель из России читал как «вам сюда
+ * нельзя» (Копилка Русоведа, 09.10), хотя карта РФ / СБП в заказе есть.
+ */
+export async function soleCountry(b: Bot): Promise<string | null> {
   const methods = await listActivePaymentMethods(b.ctx);
+  const only = methods.length === 1 ? methods[0]! : null;
+  if (!only) return null;
+  b.customer = await setState(b.ctx, b.customer, {
+    ...b.customer.state,
+    country_code: only.country_code,
+    country_name: only.country_name,
+  });
+  return only.country_code;
+}
+
+export async function askCountry(b: Bot, forCheckout: boolean): Promise<void> {
+  const methods = await listActivePaymentMethods(b.ctx);
+  if (methods.length === 1 && forCheckout && !b.customer.state.country_code) {
+    const code = await soleCountry(b);
+    if (code) return finishCheckout(b, code);
+  }
   if (methods.length === 0) {
     await send(b, b.m.paymentNotConfigured);
     return;

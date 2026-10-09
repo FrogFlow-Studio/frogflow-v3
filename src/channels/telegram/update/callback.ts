@@ -24,7 +24,7 @@ import { sellsNowOrShop } from "@/core/tenant/sells.server";
 import { type Bot, DEFAULT_PAUSED, localeOf, send } from "./bot";
 import { showCart } from "./cart";
 import { quizAsk, sendProductCard, showCategories, showSearch } from "./catalog";
-import { askCountry, finishCheckout, startCheckout } from "./checkout";
+import { askCountry, finishCheckout, soleCountry, startCheckout } from "./checkout";
 import { deliverInLanguage, reorderFrom } from "./orders";
 import { showBalancePayment } from "./payments";
 import { adminDecision, adminOrderButton } from "./seller";
@@ -156,7 +156,8 @@ export async function handleCallback(
     await send(b, b.m.countrySaved(escapeHtml(method.country_name)));
     return forCheckout ? finishCheckout(b, method.country_code) : undefined;
   }
-  if (NAV_NEEDS_COUNTRY.test(data) && !customer.state.country_code) return askCountry(b, false);
+  if (NAV_NEEDS_COUNTRY.test(data) && !customer.state.country_code && !(await soleCountry(b)))
+    return askCountry(b, false);
 
   if (data.startsWith("cat:")) {
     const [, id = "root", off = "0"] = data.split(":");

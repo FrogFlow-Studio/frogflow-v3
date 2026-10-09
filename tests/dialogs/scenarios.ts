@@ -1408,4 +1408,45 @@ export const SCENARIOS: Scenario[] = [
       },
     ],
   },
+  // ───── Одна страна оплаты: не спрашивать (тестер из России, Копилка Русоведа, 09.10) ─────
+  {
+    id: "sole-country-tg-ru",
+    title: "страна оплаты одна — бот не спрашивает её, каталог открывается сразу",
+    origin:
+      "скрин Якова 09.10: покупателю из России бот показал «Выберите страну оплаты» с одной кнопкой «Казахстан»",
+    channel: "telegram",
+    locale: "ru",
+    products: PRODUCTS,
+    state: { country_code: undefined },
+    steps: [
+      {
+        say: { button: "cat:root" },
+        expect: {
+          notSays: [(c) => c.chooseCountry],
+          state: { country_code: "KZ", country_name: "Казахстан" },
+        },
+      },
+    ],
+  },
+  {
+    id: "two-countries-tg-ru",
+    title: "стран оплаты две — бот спрашивает, какая",
+    origin: "ожидание к sole-country-tg-ru",
+    channel: "telegram",
+    locale: "ru",
+    products: PRODUCTS,
+    state: { country_code: undefined },
+    arrange: (r) => {
+      r.db.tables.payment_methods!.push({
+        id: "pm2",
+        bot_id: r.db.tables.payment_methods![0]!.bot_id,
+        is_active: true,
+        sort_order: 2,
+        country_code: "UZ",
+        country_name: "Узбекистан",
+        currency: "UZS",
+      });
+    },
+    steps: [{ say: { button: "cat:root" }, expect: { says: [(c) => c.chooseCountry] } }],
+  },
 ];
