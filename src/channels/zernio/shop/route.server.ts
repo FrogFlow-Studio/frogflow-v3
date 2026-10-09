@@ -87,6 +87,7 @@ import {
   inDialog,
   localeOf,
   mayHint,
+  LIST_TTL_MS,
   memory,
   remember,
   reply,
@@ -684,8 +685,26 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
       // Разговор закрыт — не начинать его заново приветствием.
       return "handled";
     case "question":
-      return "question";
+      return (await listWordsHint(s)) ? "handled" : "question";
   }
+}
+
+/**
+ * Последним бот прислал список «напишите номер», а в ответ — слова: один раз
+ * подсказываем про номер (мог попасть сюда случайно). Следующая такая
+ * реплика уходит продавцу как обычно; новый список — новая подсказка.
+ */
+async function listWordsHint(s: Shop): Promise<boolean> {
+  const mem = memory(s.customer);
+  const list = mem.list;
+  if (!list || mem.hinted || !s.bot.features.catalog) return false;
+  const listAt = Date.parse(list.at);
+  const replyAt = Date.parse(String(mem.last_reply_at ?? ""));
+  if (!(Date.now() - listAt < LIST_TTL_MS)) return false;
+  // Список — последнее, что прислал бот (его отметка ставится перед отправкой).
+  if (!Number.isFinite(replyAt) || replyAt - listAt > 60_000) return false;
+  s.hint = true;
+  return reply(s, s.m.listNumberHint, { force: true });
 }
 
 /**

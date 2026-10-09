@@ -403,6 +403,31 @@ export const SCENARIOS: Scenario[] = [
       },
     ],
   },
+  // ───── Ответ словами на список «напишите номер» ─────
+  {
+    id: "list-words-hint-once-ig-ru",
+    title:
+      "после списка написал словами, а не номером — одна подсказка про номер, дальше реплика продавцу",
+    origin:
+      "Копилка русоведа 09.10 14:51: на «Напишите номер раздела» — «Классный руководитель и руссовед», бот промолчал",
+    channel: "instagram",
+    locale: "ru",
+    full: true,
+    modules: { helpdesk: true, manager_chat: true },
+    products: PRODUCTS,
+    steps: [
+      { say: { text: "каталог" }, expect: { says: ["018. Прописи"] } },
+      {
+        say: { text: "Классный руководитель и руссовед" },
+        expect: { count: 1, says: ["напишите номер из списка"] },
+      },
+      {
+        say: { text: "Классный руководитель и руссовед" },
+        expect: { notSays: ["напишите номер из списка"] },
+      },
+      { say: { text: "1" }, expect: { says: ["018. Прописи"] } },
+    ],
+  },
   // ───── Продавец вмешался (Б3) ─────
   {
     id: "seller-typed-silence-ig-ru",
