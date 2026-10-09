@@ -195,8 +195,12 @@ jobs:
             echo "::error::нет секрета VERCEL_TOKEN"; exit 1
           fi
       - uses: actions/checkout@v4
+      # Без .git: иначе CLI передаёт автора коммита, Vercel ставит такую
+      # сборку в «Blocked», а CLI ждёт её без конца (09.10.2026, 7:11).
+      - run: rm -rf .git
       - name: Сборка на Vercel
         id: vercel
+        timeout-minutes: 8
         run: |
           url=$(npx --yes vercel@59.23.2 deploy --prod --skip-domain --yes --token="$VERCEL_TOKEN")
           echo "собрано: $url"
