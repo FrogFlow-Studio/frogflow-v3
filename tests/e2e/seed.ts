@@ -58,6 +58,7 @@ import { seedShop22RKinds } from "./seed/shop22-r-kinds.ts";
 import { seedShop22RStart } from "./seed/shop22-r-start.ts";
 import { seedShop22RWeek } from "./seed/shop22-r-week.ts";
 import { seedShop19VCollections } from "./seed/shop19-v-collections.ts";
+import { seedShop19ALaunch } from "./seed/shop19-a-launch.ts";
 import { seedShop20RWalk } from "./seed/shop20-r-walk.ts";
 import { seedShop21ZhHome } from "./seed/shop21-zh-home.ts";
 import { seedShop20Sh } from "./seed/shop20-sh.ts";
@@ -130,6 +131,7 @@ export function seedDb(): StubDb {
   seedShop19VCollections(db, now);
   seedShop20Sh(db, now);
   seedShop22LCollections(db, now);
+  seedShop19ALaunch(db, now);
   seedShop20RWalk(db, now);
   seedShop21ZhHome(db, now);
   seedShop19ANotify(db, now);

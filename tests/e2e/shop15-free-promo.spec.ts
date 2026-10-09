@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import * as F from "./fixtures.ts";
-import { watch } from "./helpers.ts";
+import { addToCart, watch } from "./helpers.ts";
 
 /**
  * Порог бесплатной доставки 10 000, корзина 10 500: пока промокод не введён, форма
@@ -12,7 +12,7 @@ test("сайт: с промокодом подсказка не обещает �
   const errors = await watch(page);
   const shop = `/s/${F.FREE15_SHOP_SLUG}`;
   await page.goto(`${shop}/p/${F.FREE15_CAKE_ID}`);
-  await page.getByRole("button", { name: "🛒 В корзину", exact: true }).click();
+  await addToCart(page);
   await page.goto(`${shop}/checkout`);
   await page.getByRole("radio", { name: "Доставка", exact: true }).check();
 
