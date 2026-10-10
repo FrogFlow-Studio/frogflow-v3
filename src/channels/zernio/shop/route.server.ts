@@ -228,6 +228,8 @@ async function handleLoginCode(s: Shop, nonce: string): Promise<ShopOutcome> {
 }
 
 /** «Не проходит российская карта»: оплата уже не удалась — ссылку не повторяем. */
+/** «А ссылка где?», «пришлите ссылку», «where is the link». */
+const LINK_QUESTION = /ссылк|сілтеме|havola|\blink\b/i;
 const PAY_FAILED = /не\s*(смог|могу|получ|проход|прош|выход|принима)|ошибк|отклон|отказ/i;
 
 async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
@@ -651,6 +653,16 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
         await reply(s, s.m.receiptHowTo, { force: true });
         return "handled";
       }
+      // «А ссылка где?» после кнопки оплаты: та же ссылка текстом, а не «пришлите
+      // чек» (заказ #98 Копилки, 10.10). Ссылку Kaspi не повторяем: это новый счёт.
+      const link = s.customer.state.pay_link;
+      if (
+        mode === "awaiting_payment" &&
+        LINK_QUESTION.test(text) &&
+        (link === "pdm" || link === "rk") &&
+        (await choosePayment(s, link, { asText: true })) !== undefined
+      )
+        return "handled";
       // «Не смогла оплатить», «я из России, можно по номеру»: не «пришлите
       // чек» (заказ #46 Копилки, 09.10) — реквизиты для России, если они
       // заведены, иначе честно: вопрос у продавца, он напишет здесь.
@@ -683,7 +695,14 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
         if (mayHint(s)) {
           s.hint = strict(s);
           // Способ оплаты ещё не выбран — чек просить рано (заказ #76, 10.10).
-          await reply(s, mode === "choose_pay" ? s.m.choosePayHint : s.m.sendReceiptPrompt);
+          await reply(
+            s,
+            mode === "choose_pay"
+              ? s.m.choosePayHint
+              : mode === "awaiting_payment"
+                ? s.m.payLinkAboveHint
+                : s.m.sendReceiptPrompt,
+          );
         }
         return "question";
       }

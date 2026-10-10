@@ -204,6 +204,8 @@ export type Msg = {
   choosePayMethodNamed: (labels: string[]) => string;
   /** Непонятная реплика, пока способ оплаты не выбран: не «пришлите чек». */
   choosePayHint: string;
+  payLinkAboveHint: string;
+  payLinkAsText: (url: string) => string;
   /** Оплата — акцепт оферты; ссылки на опубликованные документы. */
   payConsent: (offer: string | null, privacy: string | null) => string;
   payViaRobokassaBtn: string;
@@ -415,6 +417,8 @@ const ru: Msg = {
     `Выберите способ оплаты и нажмите кнопку ниже: ${l.map((x) => `«${x}»`).join(" или ")}.`,
   choosePayHint:
     "Выберите способ оплаты кнопкой в сообщении выше. Если есть вопрос — напишите, продавец ответит здесь.",
+  payLinkAboveHint: "Оплата — по кнопке в сообщении выше; после оплаты заказ подтвердится сам.",
+  payLinkAsText: (url) => `🔗 Ссылка на оплату — откройте её и оплатите:\n${url}`,
   payKaspiBtn: "🧾 Перевод Kaspi",
   payLinkBtn: (kaspi) => (kaspi ? "💳 Оплатить в Kaspi" : "💳 Открыть оплату"),
   payTroubleHandoff:
@@ -838,6 +842,9 @@ const kk: Msg = {
     `Төлем тәсілін таңдап, төмендегі батырманы басыңыз: ${l.map((x) => `«${x}»`).join(" немесе ")}.`,
   choosePayHint:
     "Жоғарыдағы хабарламадағы батырма арқылы төлем тәсілін таңдаңыз. Сұрағыңыз болса — жазыңыз, сатушы осында жауап береді.",
+  payLinkAboveHint:
+    "Төлем — жоғарыдағы хабарламадағы батырма арқылы; төлегеннен кейін тапсырыс өзі расталады.",
+  payLinkAsText: (url) => `🔗 Төлем сілтемесі — ашып, төлеңіз:\n${url}`,
   payKaspiBtn: "🧾 Kaspi аударым",
   payLinkBtn: (kaspi) => (kaspi ? "💳 Kaspi арқылы төлеу" : "💳 Төлемді ашу"),
   payTroubleHandoff:
@@ -1148,6 +1155,9 @@ const en: Msg = {
     `Choose how to pay and tap a button below: ${l.map((x) => `“${x}”`).join(" or ")}.`,
   choosePayHint:
     "Pick a payment method with a button in the message above. If you have a question, write it here and the seller will reply.",
+  payLinkAboveHint:
+    "Pay with the button in the message above; the order is confirmed automatically after payment.",
+  payLinkAsText: (url) => `🔗 Payment link — open it and pay:\n${url}`,
   payKaspiBtn: "🧾 Kaspi transfer",
   payLinkBtn: (kaspi) => (kaspi ? "💳 Pay with Kaspi" : "💳 Open payment"),
   payTroubleHandoff:
@@ -1485,6 +1495,9 @@ const uz: Msg = {
     `To‘lov usulini tanlang va pastdagi tugmani bosing: ${l.map((x) => `«${x}»`).join(" yoki ")}.`,
   choosePayHint:
     "Yuqoridagi xabardagi tugma orqali to‘lov usulini tanlang. Savolingiz bo‘lsa, yozing, sotuvchi shu yerda javob beradi.",
+  payLinkAboveHint:
+    "To‘lov — yuqoridagi xabardagi tugma orqali; to‘lovdan so‘ng buyurtma avtomatik tasdiqlanadi.",
+  payLinkAsText: (url) => `🔗 To‘lov havolasi — oching va to‘lang:\n${url}`,
   choosePayCountry: "💳 Qaysi davlatdan to‘laysiz? Summa o‘sha davlat valyutasida:",
   payKaspiBtn: "🧾 Kaspi o‘tkazma",
   payLinkBtn: (kaspi) => (kaspi ? "💳 Kaspi orqali to‘lash" : "💳 To‘lovni ochish"),
