@@ -18,6 +18,7 @@ import type { TenantContext } from "@/core/tenant/resolve.server";
 import { invalidatePricelist } from "@/core/consultant/pricelist/catalog.server";
 import { SCENARIOS, type Says } from "./scenarios";
 import { BURST } from "@/core/consultant/burst";
+import { liveAutomationApi } from "@/channels/zernio/automations.server";
 
 /** Золотые диалоги (Б14): прогон сценариев из scenarios.ts на настоящем коде каналов. */
 
@@ -142,7 +143,11 @@ beforeEach(() => {
   consultantStub.reply = undefined;
   modelRounds.list = [];
 });
-afterEach(() => setEnvForTests(undefined));
+const realAutomationApi = { ...liveAutomationApi };
+afterEach(() => {
+  setEnvForTests(undefined);
+  Object.assign(liveAutomationApi, realAutomationApi);
+});
 
 describe("набор золотых диалогов", () => {
   it("не меньше 25 сценариев; все три канала и языки ru, kk, uz; id не повторяются", () => {
@@ -189,6 +194,13 @@ describe("золотые диалоги", () => {
           { key: "consultant_enabled", value: "true" },
           { key: "consultant_catalog_json", value: JSON.stringify(s.pricelist.catalog) },
         );
+      if (s.automations) {
+        // Правила Zernio из сценария; сообщение правила «уходит» без сети.
+        const rules = s.automations;
+        liveAutomationApi.list = async () => rules as never;
+        liveAutomationApi.inbox = (async () => ({ ok: true })) as never;
+        liveAutomationApi.tail = async () => [];
+      }
       s.arrange?.(r);
       const c = COPY[s.locale];
       const has = (all: string, x: Says) =>
