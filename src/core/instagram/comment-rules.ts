@@ -35,6 +35,41 @@ export function commentMatchesAutomation(
   });
 }
 
+/** Подпись поста для сравнения: регистр, пробелы и переносы, хвостовое «…» не важны. */
+function captionKey(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/ё/g, "е")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/(?:…|\.\.\.)$/, "")
+    .trim();
+}
+
+/**
+ * Под своим ли постом комментарий. Правило с id поста — строгое равенство.
+ * Без id, но с подписью поста (postTitle: так у Zernio приходят правила
+ * «Палитра» Копилки и «день хлеба» AATeach) — сравниваем подпись правила с
+ * подписью поста комментария: одна начинается с другой (Zernio хранит подпись
+ * обрезанной). Под чужими рилсами «нужно»/«хочу» иначе оформляли не тот товар
+ * (10.10: Копилка #96, #108; AATeach #1361, #1371). Подписи поста в событии
+ * нет (реклама, пост не подтянулся) — "unknown": решает вызывающий. Правило
+ * без поста и без подписи — на все посты.
+ */
+export function commentOnRulePost(
+  rule: { platformPostId?: string | null; postId?: string | null; postTitle?: string | null },
+  commentPostId: string | null | undefined,
+  commentCaption: string | null | undefined,
+): boolean | "unknown" {
+  const target = String(rule.platformPostId || rule.postId || "").trim();
+  if (target) return Boolean(commentPostId) && target === String(commentPostId).trim();
+  const title = captionKey(rule.postTitle ?? "");
+  if (!title) return true;
+  const caption = captionKey(commentCaption ?? "");
+  if (!caption) return "unknown";
+  return caption.startsWith(title) || title.startsWith(caption);
+}
+
 /**
  * Не пытаемся раньше этого возраста — даём Zernio шанс сработать первым.
  * Штатный ответ у Zernio уходит в пределах минуты; без паузы каждый новый

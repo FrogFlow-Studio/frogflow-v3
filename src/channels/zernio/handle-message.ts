@@ -155,6 +155,15 @@ export async function handleZernioMessage(
       await import("./automations.server");
     const { isTwoStepAcknowledgement, isShopStartWord } =
       await import("@/core/instagram/comment-rules");
+    // Заказ сразу — только на явное согласие: ответ на призыв «+»/«да»/«хочу»
+    // набранным текстом. Вопрос («в Беларусь высылаете?»), «❤️», фото — обычное
+    // второе сообщение с «Купить»: заказ появится по нажатию, а сам вопрос идёт
+    // дальше обычным путём (Копилка 10.10, ложные заказы #115, #121).
+    const consent =
+      Boolean(m.text?.trim()) &&
+      !m.postbackPayload &&
+      m.attachments.length === 0 &&
+      isTwoStepAcknowledgement(m.text);
     const who: TwoStepBuyer = {
       accountId: m.accountId,
       conversationId: m.conversationId,
@@ -164,7 +173,7 @@ export async function handleZernioMessage(
       // оплаты, без корзины (Копилка русоведа, 09.10). Магазин решает сам,
       // включена ли она; false — уходит обычное второе сообщение.
       express: async (productId) => {
-        if (!ctx.tenant.modules.dm_shop || !(await sells())) return false;
+        if (!consent || !ctx.tenant.modules.dm_shop || !(await sells())) return false;
         const { expressFromAutomation } = await import("./shop.server");
         return expressFromAutomation(
           ctx,
