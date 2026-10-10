@@ -273,6 +273,8 @@ export async function runOrderAction(
       }
       let sender = telegramMaterialSender(api(ctx), order.telegram_id, m);
       let channelNotes: string[] = [];
+      // Счёт ссылкой: копия файлов в диалог не подтвердилась — ссылка на страницу заказа в «выдан».
+      let copyFailedPage: () => string | null = () => null;
       let opts: DeliverOptions = {
         lang: buyerLocale,
         ask: telegramLanguageAsker(api(ctx), order.telegram_id, m),
@@ -288,7 +290,9 @@ export async function runOrderAction(
         if (await isInvoiceLink(ctx, order.id)) {
           // Счёт ссылкой: выдача на страницу заказа, в диалог — копия.
           const { invoiceLinkSender } = await import("@/channels/web/order.server");
-          sender = await invoiceLinkSender(ctx, order);
+          const inv = await invoiceLinkSender(ctx, order);
+          sender = inv.send;
+          copyFailedPage = inv.copyFailedPage;
         } else {
           const { zernioDeliverySender, zernioTargetForOrder } =
             await import("@/channels/zernio/outbound.server");
@@ -317,10 +321,12 @@ export async function runOrderAction(
       if (r.failed === 0) {
         const { deliveredMessage } = await import("@/core/delivery/note.server");
         // Покупателю с сайта материалы уже ушли письмом — второе письмо не шлём.
+        const page = copyFailedPage();
+        const delivered = await deliveredMessage(ctx, order.platform, m.orderDelivered(no));
         await notifyCustomer(
           ctx,
           order,
-          await deliveredMessage(ctx, order.platform, m.orderDelivered(no)),
+          page ? `${delivered}\n\n${m.deliveryOrderPage} ${page}` : delivered,
           { email: false },
         );
         if (r.pointsEarned > 0)

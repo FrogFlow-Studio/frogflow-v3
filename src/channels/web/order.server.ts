@@ -37,22 +37,61 @@ async function notifySeller(ctx: TenantContext, order: OrderWithItems, opts: Not
  * как у заказа с сайта, а в диалог — копия, если получится. Закрытое окно
  * 24 часа или сбой Zernio не делают оплаченный заказ «не выдан»: деньги
  * списаны, файлы ждут покупателя по его ссылке.
+ *
+ * Сбой копии не глотается молча (заказ #82 Копилки, 10.10: Zernio не ответил,
+ * покупательница получила «выдан» без файлов, продавец ничего не узнал):
+ * продавцу — предупреждение со ссылкой, а `copyFailedPage()` отдаёт ссылку на
+ * страницу заказа для сообщения «выдан». Само сообщение с файлами не
+ * повторяем — при тайм-ауте оно могло дойти.
  */
 export async function invoiceLinkSender(
   ctx: TenantContext,
-  order: { user_key: string | null; telegram_id: number; platform: string },
-): Promise<MaterialSender> {
-  const { zernioSenderFor, zernioTargetForOrder } =
+  order: {
+    id: number;
+    display_no: number | null;
+    order_no: number;
+    customer_email: string | null;
+    user_key: string | null;
+    telegram_id: number;
+    platform: string;
+  },
+): Promise<{ send: MaterialSender; copyFailedPage: () => string | null }> {
+  const { zernioDeliverySender, zernioTargetForOrder } =
     await import("@/channels/zernio/outbound.server");
   const target = await zernioTargetForOrder(ctx, order).catch(() => null);
-  const copy = target ? zernioSenderFor(target) : null;
-  return async (item, materials) => {
-    if (copy)
-      await copy(item, materials).catch((e) =>
-        console.warn(`[web] копия материалов в диалог: ${String(e)}`),
-      );
+  const copy = target ? await zernioDeliverySender(ctx, target, order).catch(() => null) : null;
+  let failed = false;
+  const send: MaterialSender = async (item, materials) => {
+    if (!copy) return "sent";
+    const r = await copy.send(item, materials).catch((e) => {
+      console.warn(`[web] копия материалов в диалог: ${String(e)}`);
+      return "failed" as const;
+    });
+    if (r === "failed" && !failed) {
+      failed = true;
+      await warnSellerCopyFailed(ctx, order, target!.platform, copy.pageUrl);
+    }
     return "sent";
   };
+  return { send, copyFailedPage: () => (failed ? (copy?.pageUrl ?? null) : null) };
+}
+
+async function warnSellerCopyFailed(
+  ctx: TenantContext,
+  order: { id: number; display_no: number | null; order_no: number },
+  platform: string,
+  pageUrl: string | null,
+) {
+  const no = order.display_no ?? order.order_no;
+  const channel = platform === "whatsapp" ? "WhatsApp" : "Instagram";
+  const { notifyAdminsHtml } = await import("@/channels/telegram/notify");
+  const { escapeHtml } = await import("@/channels/telegram/copy");
+  await notifyAdminsHtml(
+    ctx,
+    `⚠️ Заказ #${no} оплачен и выдан, но сообщение с файлами в ${channel} не подтвердилось: покупатель мог их не получить. ` +
+      `В сообщение «выдан» добавлена ссылка на страницу заказа с файлами; если покупатель напишет, что файлов нет, отправьте её ещё раз:\n${escapeHtml(pageUrl ?? "")}`,
+    { orderId: order.id, kind: "delivery_failure" },
+  ).catch(() => 0);
 }
 
 /** Выдать и сообщить продавцу о сбое выдачи; true — всё выдано. */
@@ -60,7 +99,7 @@ async function deliverAndReport(ctx: TenantContext, order: OrderWithItems): Prom
   const r =
     order.platform === "web"
       ? await deliverWebOrder(ctx, order.id)
-      : await deliverOrder(ctx, order.id, await invoiceLinkSender(ctx, order), {
+      : await deliverOrder(ctx, order.id, (await invoiceLinkSender(ctx, order)).send, {
           lang: ctx.tenant.settings.default_locale ?? "ru",
           allWhenAmbiguous: true,
         });

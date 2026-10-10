@@ -205,6 +205,8 @@ export type Msg = {
   /** Непонятная реплика, пока способ оплаты не выбран: не «пришлите чек». */
   choosePayHint: string;
   payLinkAboveHint: string;
+  /** Instagram/WhatsApp: просьба прислать чек — без «нажмите кнопку ниже», под ней кнопок нет (заказ #93 Копилки). */
+  dmReceiptPrompt: string;
   payLinkAsText: (url: string) => string;
   /** Оплата — акцепт оферты; ссылки на опубликованные документы. */
   payConsent: (offer: string | null, privacy: string | null) => string;
@@ -418,6 +420,7 @@ const ru: Msg = {
   choosePayHint:
     "Выберите способ оплаты кнопкой в сообщении выше. Если есть вопрос — напишите, продавец ответит здесь.",
   payLinkAboveHint: "Оплата — по кнопке в сообщении выше; после оплаты заказ подтвердится сам.",
+  dmReceiptPrompt: "Пришлите, пожалуйста, сюда фото или скриншот чека об оплате (можно PDF).",
   payLinkAsText: (url) => `🔗 Ссылка на оплату — откройте её и оплатите:\n${url}`,
   payKaspiBtn: "🧾 Перевод Kaspi",
   payLinkBtn: (kaspi) => (kaspi ? "💳 Оплатить в Kaspi" : "💳 Открыть оплату"),
@@ -844,6 +847,7 @@ const kk: Msg = {
     "Жоғарыдағы хабарламадағы батырма арқылы төлем тәсілін таңдаңыз. Сұрағыңыз болса — жазыңыз, сатушы осында жауап береді.",
   payLinkAboveHint:
     "Төлем — жоғарыдағы хабарламадағы батырма арқылы; төлегеннен кейін тапсырыс өзі расталады.",
+  dmReceiptPrompt: "Төлем чегінің фотосын немесе скриншотын осында жіберіңізші (PDF те болады).",
   payLinkAsText: (url) => `🔗 Төлем сілтемесі — ашып, төлеңіз:\n${url}`,
   payKaspiBtn: "🧾 Kaspi аударым",
   payLinkBtn: (kaspi) => (kaspi ? "💳 Kaspi арқылы төлеу" : "💳 Төлемді ашу"),
@@ -1157,6 +1161,8 @@ const en: Msg = {
     "Pick a payment method with a button in the message above. If you have a question, write it here and the seller will reply.",
   payLinkAboveHint:
     "Pay with the button in the message above; the order is confirmed automatically after payment.",
+  dmReceiptPrompt:
+    "Please send a photo or screenshot of your payment receipt here (a PDF works too).",
   payLinkAsText: (url) => `🔗 Payment link — open it and pay:\n${url}`,
   payKaspiBtn: "🧾 Kaspi transfer",
   payLinkBtn: (kaspi) => (kaspi ? "💳 Pay with Kaspi" : "💳 Open payment"),
@@ -1497,6 +1503,8 @@ const uz: Msg = {
     "Yuqoridagi xabardagi tugma orqali to‘lov usulini tanlang. Savolingiz bo‘lsa, yozing, sotuvchi shu yerda javob beradi.",
   payLinkAboveHint:
     "To‘lov — yuqoridagi xabardagi tugma orqali; to‘lovdan so‘ng buyurtma avtomatik tasdiqlanadi.",
+  dmReceiptPrompt:
+    "Iltimos, to‘lov chekining rasmi yoki skrinshotini shu yerga yuboring (PDF ham bo‘ladi).",
   payLinkAsText: (url) => `🔗 To‘lov havolasi — oching va to‘lang:\n${url}`,
   choosePayCountry: "💳 Qaysi davlatdan to‘laysiz? Summa o‘sha davlat valyutasida:",
   payKaspiBtn: "🧾 Kaspi o‘tkazma",
