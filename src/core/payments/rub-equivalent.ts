@@ -1,5 +1,6 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { manualCountryPrice } from "@/core/money/money";
+import { inChunks } from "@/lib/in-chunks";
 import type { ProdamusConfig } from "./prodamus";
 
 /**
@@ -24,12 +25,13 @@ export async function rubEquivalent(
     .eq("order_id", order.id);
   if (error || !items?.length) return byRate;
   const ids = [...new Set(items.map((i) => i.product_id).filter((x): x is string => !!x))];
-  if (ids.length === 0 || ids.length > 200) return byRate;
-  const { data: products, error: pErr } = await ctx.db
-    .from("products")
-    .select("id, country_prices")
-    .in("id", ids);
-  if (pErr || !products) return byRate;
+  if (ids.length === 0) return byRate;
+  const products = await inChunks(
+    ids,
+    (chunk) => ctx.db.from("products").select("id, country_prices").in("id", chunk),
+    "Товары заказа",
+  ).catch(() => null);
+  if (!products) return byRate;
   const ru = new Map(products.map((p) => [p.id, manualCountryPrice(p.country_prices, "RU")]));
   let rub = 0;
   let kzt = 0;
