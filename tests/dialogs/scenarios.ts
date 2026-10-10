@@ -37,6 +37,16 @@ const PL_CATALOG: PricelistItem[] = [
   },
 ];
 const said = (text: string) => [{ type: "text", text }];
+/** Позиция прайса BOVI, которую покупатель называет «полотенце для головы» или «чалма». */
+const PL_HAIR_TOWEL: PricelistItem = {
+  id: "H1",
+  name: "Uchino Полотенце для волос Beauty Hair Strech Towel",
+  category: "Полотенца",
+  size: "38x80",
+  colors: ["серый"],
+  price_kzt: 25000,
+  stock: true,
+};
 
 /** Чтение настройки `key` падает исключением (обрыв в клиенте базы). */
 const failSettingRead =
@@ -217,6 +227,13 @@ export interface Expect {
    * реплики — каждая ровно один раз: ни потерянных, ни задвоенных.
    */
   history?: string[];
+  /**
+   * Консультант по прайсу: сколько картинок модель получила в каждом своём
+   * вызове на эту реплику (по порядку вызовов).
+   */
+  modelImages?: number[];
+  /** Консультант по прайсу: это было в сообщении, которое видела модель (с пометками). */
+  modelSees?: Says[];
 }
 
 export interface Scenario {
@@ -1998,6 +2015,125 @@ export const SCENARIOS: Scenario[] = [
     }),
     ["instagram", "whatsapp"],
   ),
+  // ───── Консультант BOVI: срез 10.10 (lenakzm, tolkin8) ─────
+  {
+    id: "pricelist-partial-words-ig-ru",
+    title:
+      "«полотенце чалма для волос»: слова «чалма» в прайсе нет — поиск отдаёт полотенце для волос, а не «нет»",
+    origin:
+      "BOVI 09.10 22:28, lenakzm: поиск требовал все слова, модель сказала «нет», хотя Uchino для волос за 25 000 ₸ был в прайсе",
+    channel: "instagram",
+    locale: "ru",
+    full: true,
+    vertical: "consultant",
+    modules: { shop: true },
+    pricelist: {
+      catalog: [...PL_CATALOG, PL_HAIR_TOWEL],
+      rounds: [
+        [
+          {
+            type: "tool_use",
+            id: "s1",
+            name: "search_products",
+            input: { query: "полотенце чалма для волос" },
+          },
+        ],
+        said("Есть Uchino полотенце для волос 38х80, серое — 25 000 ₸."),
+      ],
+    },
+    steps: [
+      {
+        say: { text: "Есть полотенце для головы, которое влагу впитывает?" },
+        expect: {
+          count: 1,
+          says: ["25 000"],
+          notSays: [pricelistHandoffReply("ru")],
+          sellerNotices: 0,
+          // Выдача поиска, которую видела модель: позиция и какие слова не совпали.
+          modelSees: ["Beauty Hair Strech Towel", "partial_match", "чалма"],
+        },
+      },
+    ],
+  },
+  {
+    id: "pricelist-photo-burst-ig-ru",
+    title: "три фото одним касанием и подпись — один ответ, модель видит все три фото",
+    origin:
+      "BOVI 10.10 07:35, tolkin8: на три вложения ушло три ответа, каждый с «Здравствуйте»; lenakzm 09.10 22:34 — «Таких нет?» и два фото",
+    channel: "instagram",
+    locale: "ru",
+    full: true,
+    vertical: "consultant",
+    modules: { shop: true },
+    pricelist: {
+      catalog: PL_CATALOG,
+      rounds: [said("Похоже на Uchino. Для чего нужно полотенце: для рук или банное?")],
+    },
+    steps: [
+      {
+        say: { photos: 3, caption: "Таких нет?" },
+        expect: {
+          count: 1,
+          modelImages: [3],
+          modelSees: ["Таких нет?"],
+          history: ["Таких нет?"],
+        },
+      },
+    ],
+  },
+  {
+    id: "pricelist-greet-once-ig-ru",
+    title: "«Здравствуйте» — только в первом ответе разговора, дальше сразу к делу",
+    origin: "BOVI 10.10, tolkin8 и lenakzm: по четыре «Здравствуйте» за пару минут",
+    channel: "instagram",
+    locale: "ru",
+    full: true,
+    vertical: "consultant",
+    modules: { shop: true },
+    pricelist: {
+      catalog: PL_CATALOG,
+      rounds: [
+        said("Здравствуйте. Что подсказать?"),
+        said("Здравствуйте. Есть Uchino, для чего нужно полотенце?"),
+      ],
+    },
+    steps: [
+      { say: { text: "Здравствуйте" }, expect: { says: ["Здравствуйте"] } },
+      {
+        say: { text: "Есть полотенца?" },
+        expect: {
+          says: ["Есть Uchino"],
+          notSays: ["Здравствуйте"],
+          modelSees: ["не здоровайтесь снова"],
+        },
+      },
+    ],
+  },
+  {
+    id: "pricelist-invisible-attachment-ig-ru",
+    title: "вложение без ссылки — модель знает, что его не видно, и не выдаёт догадку за факт",
+    origin:
+      "BOVI 10.10 07:35, tolkin8: на «[вложение без ссылки]» бот назвал одеяла Traumina из хитов как факт",
+    channel: "instagram",
+    locale: "ru",
+    full: true,
+    vertical: "consultant",
+    modules: { shop: true },
+    pricelist: {
+      catalog: PL_CATALOG,
+      rounds: [said("Не вижу вложение. Пришлите, пожалуйста, скрин или название товара.")],
+    },
+    steps: [
+      {
+        say: { attachmentNoUrl: true },
+        expect: {
+          count: 1,
+          says: ["скрин"],
+          modelSees: ["его не видно", "Не угадывайте товар"],
+        },
+      },
+    ],
+  },
   // ───── «Карта РФ / СБП» в Instagram: бот молчал (заказ #15 Копилки Русоведа, 09.10) ─────
   {
     id: "prodamus-link-rub-ig-ru",

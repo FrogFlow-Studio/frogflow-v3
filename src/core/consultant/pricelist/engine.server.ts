@@ -1,6 +1,7 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { getSettings } from "@/core/settings/settings";
+import { startsNewDialog } from "../budget";
 import { hasToolMarkup, stripToolMarkup } from "../prompt";
 import {
   findStoryTag,
@@ -140,7 +141,34 @@ export type PricelistState = {
   media_sent?: string[];
   v2_media_sent?: string[];
   last_product_ids?: string[];
+  /** Когда бот ответил последний раз (общее состояние консультанта). */
+  last_reply_at?: string;
 };
+
+/**
+ * Бот уже отвечал в этом разговоре (тот же диалог, что считает план, — без
+ * перерыва больше суток). BOVI 10.10: tolkin8 и lenakzm получили по четыре
+ * «Здравствуйте» за пару минут — правило «только в первом сообщении» в
+ * промпте модель не держала, потому что все примеры начинаются с приветствия.
+ */
+export function alreadyGreeted(state: PricelistState, now = Date.now()): boolean {
+  const replied = (state.recent ?? []).some((t) => t.role === "assistant" && t.text.trim());
+  return replied && !startsNewDialog(state.last_reply_at, now);
+}
+
+export const ALREADY_GREETED_NOTE =
+  "[Вы уже отвечали покупателю в этом разговоре: не здоровайтесь снова, сразу к делу.]";
+
+/**
+ * Вложение без ссылки: Zernio прислал «фото/публикацию», а картинки нет.
+ * BOVI 10.10, tolkin8: на такое вложение бот назвал одеяла Traumina из
+ * последних хитов как факт — покупатель мог переслать что угодно.
+ */
+/** Так вложение без ссылки приходит текстом (channels/zernio/message messageAsText). */
+const INVISIBLE_ATTACHMENT_TEXT = "[вложение без ссылки]";
+
+export const INVISIBLE_ATTACHMENT_NOTE =
+  "[Покупатель прислал вложение (фото или публикацию), но его не видно. Не угадывайте товар и не называйте его как факт: если по разговору есть догадка, спросите, о нём ли речь («Это … ? Если нет — пришлите скрин или название»), иначе попросите скрин или название.]";
 
 /** Что консультанту нужно знать о магазине на один ход. */
 export type PricelistData = {
@@ -418,6 +446,9 @@ async function decide(data: PricelistData, input: PricelistInput): Promise<Price
   const notes: string[] = [];
   const profileNote = formatProfile(knownProfile);
   if (profileNote) notes.push(profileNote);
+  const greeted = alreadyGreeted(state, (input.now ?? new Date()).getTime());
+  if (greeted) notes.push(ALREADY_GREETED_NOTE);
+  if (text.includes(INVISIBLE_ATTACHMENT_TEXT)) notes.push(INVISIBLE_ATTACHMENT_NOTE);
   const story = await storyNote(data, input, loadImage);
   if (story.note) notes.push(story.note);
   const article = text.trim()
@@ -679,7 +710,7 @@ async function decide(data: PricelistData, input: PricelistInput): Promise<Price
       lastText = "";
     }
   }
-  const tengeText = finalizePricelistText(lastText, catalog);
+  const tengeText = finalizePricelistText(lastText, catalog, { greeted });
   const reply = rubles ? tengeToRubles(tengeText, rate) : tengeText;
 
   // В состояние — только выбор покупателя (рубли, тенге), не вывод из профиля.

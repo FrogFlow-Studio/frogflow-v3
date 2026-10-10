@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import {
   claimStateSection,
+  getCustomer,
   updateStateSection,
   type Customer,
   type DialogState,
@@ -49,6 +50,15 @@ export const BURST = {
   waitMs: 55_000,
   /** Как часто ожидающий перечитывает состояние. Тесты ставят единицы мс. */
   pollMs: 1_500,
+  /**
+   * Сколько ход ждёт после взятия аренды, прежде чем собрать очередь (BOVI
+   * 10.10, tolkin8): три фото одним касанием — три вебхука Zernio с разницей в
+   * доли секунды. Первый брал ход сразу и отвечал на одно фото, остальные —
+   * следующими ходами: три ответа подряд, каждый с «Здравствуйте». Ждёт
+   * только ход с фото (engine.server): пауза короче, чем покупатель ждёт
+   * ответа, и в аренду (50 с) укладывается.
+   */
+  settleMs: 2_500,
 };
 
 /**
@@ -61,14 +71,24 @@ export const STALE_INCOMING_MS = 15 * 60_000;
 /** Не больше стольких сообщений в очереди диалога: состояние остаётся маленьким. */
 const INBOX_MAX = 20;
 const INBOX_TEXT = 500;
+/** Ссылок на фото у одного сообщения в очереди (как MAX_IMAGES_PER_TURN). */
+const INBOX_IMAGES = 3;
+/** Длиннее ссылку не храним: обрезанная ссылка не скачается, а состояние раздуется. */
+const INBOX_IMAGE_URL = 2_000;
 
 export type InboxItem = {
   id: string;
   text: string;
   at: string;
   /**
-   * Сообщение с фото или публикацией: картинки живут только в памяти своей
-   * функции, поэтому его отвечает только она (чужой ход его не берёт).
+   * Ссылки на фото покупателя (директ). Фото по ссылке скачивает тот ход,
+   * который заберёт сообщение, — поэтому пачку фото отвечает один ход.
+   */
+  images?: string[];
+  /**
+   * Сообщение, которое может ответить только своя функция: публикация
+   * (пометка сторис собирается в ней) или уже скачанные фото Telegram —
+   * они живут только в её памяти. Чужой ход его не берёт.
    */
   own?: true;
 };
@@ -162,13 +182,17 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 export async function joinTurn(
   ctx: TenantContext,
   customer: Customer,
-  msg: { id?: string | null; text: string; own?: boolean },
+  msg: { id?: string | null; text: string; own?: boolean; images?: string[] },
 ): Promise<JoinedTurn> {
   const turnId = randomUUID();
+  const images = (msg.images ?? [])
+    .filter((u) => u.length <= INBOX_IMAGE_URL)
+    .slice(0, INBOX_IMAGES);
   const item: InboxItem = {
     id: msg.id || turnId,
     text: msg.text.slice(0, INBOX_TEXT),
     at: new Date().toISOString(),
+    ...(images.length ? { images } : {}),
     ...(msg.own ? { own: true as const } : {}),
   };
   const lead = (c: Customer): JoinedTurn => {
@@ -212,6 +236,28 @@ export async function joinTurn(
   }
   // Не дождались: сообщение пока в очереди, закрывает его вызывающий (releaseUnanswered).
   return { lead: false, why: "busy", ownId: item.id };
+}
+
+/**
+ * Ход взят — подождать BURST.settleMs и собрать очередь заново: сообщения и
+ * фото, пришедшие следом за первым, уходят в этот же ход, а не в следующий.
+ * Аренда за это время ушла (не должно быть: она втрое дольше) — ход как был.
+ */
+export async function settleTurn(
+  ctx: TenantContext,
+  turn: Extract<JoinedTurn, { lead: true }>,
+): Promise<Extract<JoinedTurn, { lead: true }>> {
+  if (BURST.settleMs <= 0) return turn;
+  await sleep(BURST.settleMs);
+  const fresh = await getCustomer(ctx, turn.customer.userKey);
+  if (!fresh) return turn;
+  const raw = (fresh.state as DialogState).consultant;
+  const cur =
+    raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
+  if (leaseOf(cur)?.id !== turn.turnId) return turn;
+  const items = takeable(inboxOf(cur), turn.ownId);
+  if (!items.some((i) => i.id === turn.ownId)) return turn;
+  return { ...turn, customer: fresh, items };
 }
 
 /**

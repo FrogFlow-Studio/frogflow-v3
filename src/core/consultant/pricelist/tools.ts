@@ -7,6 +7,7 @@
 import {
   enrichProductColors,
   extractHardness,
+  findPartialProducts,
   findProducts,
   priceFloorInScope,
   relatedVariants,
@@ -35,7 +36,7 @@ export const CONSULTANT_TOOLS = [
   {
     name: "search_products",
     description:
-      "Search the live catalog by free text, category, size, firmness or color. Use before answering any stock or price question. Empty list means nothing matched — do not invent items and do not offer a different category instead. The result reports total_matches: when it is larger than the number of returned cards, say the total out loud and offer to narrow the choice. A broad request (only a brand or a category, no size and no color) comes back as a summary with ask_size_and_color: then do NOT list items — confirm in one or two lines that they are in stock, say what the brand is known for, and ask which size and color the customer needs.",
+      "Search the live catalog by free text, category, size, firmness or color. Use before answering any stock or price question. Empty list means nothing matched — do not invent items and do not offer a different category instead. Before telling the buyer an item is missing, search again in other words (how the shop would name it: purpose, material, kind, Latin brand); a partial_match result lists the words that did not match. The result reports total_matches: when it is larger than the number of returned cards, say the total out loud and offer to narrow the choice. A broad request (only a brand or a category, no size and no color) comes back as a summary with ask_size_and_color: then do NOT list items — confirm in one or two lines that they are in stock, say what the brand is known for, and ask which size and color the customer needs.",
     input_schema: {
       type: "object",
       properties: {
@@ -181,6 +182,13 @@ export const CONSULTANT_TOOLS = [
  * вопрос, а дальше начинается то, что продавец называет «грузить клиента».
  */
 const BROAD_SUMMARY_FROM = 3;
+
+/**
+ * Пометка к частичной выдаче. Покупатель называет вещь своими словами
+ * («полотенце для головы»), а в прайсе она записана иначе («для волос»).
+ */
+const PARTIAL_NOTE =
+  "No item matched all words. partial_match shows which words matched and which are absent from the catalog. This is not a «no»: think what the buyer means and how the shop would name it (purpose, material, kind — e.g. «for the head» may be «for hair»), and search again with those words before saying the item is missing. Cards here, if any, match only some words: offer one only if it really fits, and say so plainly. When partial_match.total is larger than the cards (none returned), search again more precisely.";
 
 /**
  * Потолок цены в тенге: бюджет в рублях пересчитывает код по курсу магазина,
@@ -343,6 +351,35 @@ export async function executeConsultantTool(
         // Карточки модель не видит, но знать о них должна проверка ответа:
         // иначе названная вилка цен читается как выдуманное число.
         products: matched.slice(0, 60),
+        handoff: false,
+      };
+    }
+
+    // По всем словам ничего — не «нет»: где совпала часть слов и каких слов в
+    // каталоге нет вовсе. Решает модель (catalog.findPartialProducts).
+    const partial =
+      enriched.length === 0
+        ? findPartialProducts(
+            q,
+            catalog.filter((p) => !exclude.has(p.id)),
+          )
+        : null;
+    if (partial) {
+      const cards = partial.shown.map((p) => enrichProductColors(p, catalog));
+      return {
+        result: {
+          products: cards.map((p) => presentCard(p, ctx.country, rate)),
+          returned: cards.length,
+          total_matches: 0,
+          partial_match: {
+            matched_words: partial.matchedWords,
+            missing_words: partial.missingWords,
+            words_not_in_catalog: partial.wordsNotInCatalog,
+            total: partial.total,
+          },
+          note: PARTIAL_NOTE,
+        },
+        products: cards,
         handoff: false,
       };
     }

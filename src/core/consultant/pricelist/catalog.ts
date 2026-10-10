@@ -472,17 +472,86 @@ export function extractNegatedWords(text: string): Set<string> {
  * Используется подбором: совпадения с любым значением достаточно.
  */
 export function searchTokenAlternatives(text: string): string[][] {
+  return searchWordGroups(text).map((g) => g.alts);
+}
+
+/** Слова запроса, как их написал покупатель, — каждое со всеми значениями. */
+function searchWordGroups(text: string): Array<{ word: string; alts: string[] }> {
   // Варианты берём от ИСХОДНОГО слова, а не от свёрнутого: tokenizeQuery уже
   // выбрала одно значение из нескольких, и спросить у неё про остальные
   // нельзя — «португальские» к этому моменту стали просто «graccioza».
   const kept = new Set(searchTokens(text));
-  const out: string[][] = [];
+  const out: Array<{ word: string; alts: string[] }> = [];
   for (const raw of foldText(text).split(" ")) {
     if (raw.length <= 1) continue;
     if (!kept.has(expandToken(raw))) continue;
-    out.push(expandTokenAll(raw));
+    out.push({ word: raw, alts: expandTokenAll(raw) });
   }
   return out;
+}
+
+/** Сколько позиций частичного совпадения отдаётся карточками. Больше — только число. */
+export const PARTIAL_CARDS_MAX = 12;
+
+export type PartialMatch = {
+  /** Позиции, где совпало больше всего слов (не больше PARTIAL_CARDS_MAX; больше — пусто). */
+  shown: ConsultantProduct[];
+  /** Сколько таких позиций всего. */
+  total: number;
+  matchedWords: string[];
+  missingWords: string[];
+  /** Слова, которых нет ни в одной позиции каталога: их надо сказать иначе. */
+  wordsNotInCatalog: string[];
+};
+
+/**
+ * Ни одна позиция не подошла по всем словам — где совпала бо́льшая часть.
+ *
+ * BOVI 09.10, lenakzm: «полотенце для головы» и «полотенце чалма для волос»
+ * вернули пусто — слов «голов» и «чалм» в названиях нет, — и модель сказала
+ * «нет», хотя полотенце для волос Uchino за 25 000 ₸ лежало в прайсе. Поиск
+ * синонимов не угадает всех слов покупателя; здесь выдача честно говорит,
+ * какие слова совпали, а каких в каталоге нет вовсе, и подходит ли товар —
+ * решает модель, а не список слов в коде.
+ */
+export function findPartialProducts(
+  q: ProductSearchQuery,
+  rows: ConsultantProduct[],
+): PartialMatch | null {
+  if (!q.query) return null;
+  const groups = searchWordGroups(q.query);
+  if (groups.length < 2) return null;
+  const pool = sellableProducts(rows);
+  const rest = { ...q, query: undefined };
+  const negated = extractNegatedWords(q.query);
+  const hayOf = (p: ConsultantProduct) =>
+    haystackOf([p.name, p.category, p.size, p.colors.join(" ")]);
+  const scored: Array<{ p: ConsultantProduct; hits: boolean[] }> = [];
+  const seen = groups.map(() => false);
+  for (const p of pool) {
+    const hay = hayOf(p);
+    const hits = groups.map((g) => g.alts.some((a) => hay.includes(a)));
+    hits.forEach((h, i) => (seen[i] = seen[i] || h));
+    if (!hits.some(Boolean)) continue;
+    if ([...negated].some((n) => hay.includes(n))) continue;
+    if (!matches(p, rest)) continue;
+    scored.push({ p, hits });
+  }
+  if (scored.length === 0) return null;
+  const score = (h: boolean[]) => h.filter(Boolean).length;
+  const best = Math.max(...scored.map((x) => score(x.hits)));
+  const top = scored.filter((x) => score(x.hits) === best);
+  // Совпавшие слова — у лучших позиций; разные позиции могут совпасть разными.
+  const matched = groups.filter((_, i) => top.some((x) => x.hits[i])).map((g) => g.word);
+  const products = top.map((x) => x.p);
+  return {
+    shown:
+      products.length <= PARTIAL_CARDS_MAX ? diversifyProducts(products, PARTIAL_CARDS_MAX) : [],
+    total: products.length,
+    matchedWords: matched,
+    missingWords: groups.map((g) => g.word).filter((w) => !matched.includes(w)),
+    wordsNotInCatalog: groups.filter((_, i) => !seen[i]).map((g) => g.word),
+  };
 }
 
 export function searchTokens(text: string): string[] {

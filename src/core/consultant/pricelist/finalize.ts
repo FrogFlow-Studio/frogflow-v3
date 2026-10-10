@@ -142,7 +142,26 @@ export function stripLeadingAcknowledgement(text: string): string {
   return out === text ? text : out.charAt(0).toUpperCase() + out.slice(1);
 }
 
-export function finalizePricelistText(raw: string, catalog: ConsultantProduct[]): string {
+/** Приветствие в начале ответа: «Здравствуйте.», «Добрый день!», «Сәлеметсіз бе,». */
+const LEADING_GREETING_RE =
+  /^\s*(?:здравствуйте|здраствуйте|добрый\s+(?:день|вечер)|доброе\s+утро|приветствую|сәлеметсіз\s+бе|салеметсиз\s+бе|assalomu\s+alaykum|hello)(?:\s*[,.!…:—–-])+\s*/i;
+
+/**
+ * Повторное «Здравствуйте» посреди разговора — срезать (страховка к пометке
+ * для модели, engine.server ALREADY_GREETED_NOTE). Ничего не осталось —
+ * ответ как был.
+ */
+export function stripRepeatGreeting(text: string): string {
+  const next = text.replace(LEADING_GREETING_RE, "");
+  if (next === text || !next.trim()) return text;
+  return next.charAt(0).toUpperCase() + next.slice(1);
+}
+
+export function finalizePricelistText(
+  raw: string,
+  catalog: ConsultantProduct[],
+  opts: { greeted?: boolean } = {},
+): string {
   let text = cleanScriptHallucinations(raw ?? "");
   text = cleanInstructionEcho(text);
   // Снятый матрас — вырезать; ничего не осталось — честный отказ.
@@ -151,6 +170,7 @@ export function finalizePricelistText(raw: string, catalog: ConsultantProduct[])
   // «В каталоге не указан состав» — покупателю не объясняют устройство базы.
   text = cleanCatalogExcuses(text);
   text = fixBrandSpelling(text, brandVocabulary(catalog));
+  if (opts.greeted) text = stripRepeatGreeting(text);
   text = stripLeadingAcknowledgement(text);
   return humanizePunctuation(stripExclamationsAndEmoji(stripMarkdownFormatting(text))).trim();
 }
