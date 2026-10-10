@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { BILLING_ADDONS } from "@/core/tenant/types";
+import { BILLING_ADDONS, BILLING_PERIODS } from "@/core/tenant/types";
 import { TIER_TITLES, TRIAL_TIER } from "@/core/plans/registry";
 
 /**
@@ -46,7 +46,7 @@ export const setPlanFn = createServerFn({ method: "POST" })
       .object({
         botId,
         tier: z.enum(["basic", "pro", "business", "custom"]),
-        period: z.enum(["month", "year"]),
+        period: z.enum(BILLING_PERIODS),
         addons: z.array(addonKey).max(2),
       })
       .parse(d),
@@ -115,7 +115,7 @@ const addonPrices = z
 
 export const planInvoicePreviewFn = createServerFn({ method: "POST" })
   .validator((d: unknown) =>
-    z.object({ botId, period: z.enum(["month", "year"]), addonPrices }).parse(d),
+    z.object({ botId, period: z.enum(BILLING_PERIODS), addonPrices }).parse(d),
   )
   .handler(async ({ data }) => {
     await guard();
@@ -127,7 +127,7 @@ export const planInvoicePreviewFn = createServerFn({ method: "POST" })
 
 export const createPlanInvoiceFn = createServerFn({ method: "POST" })
   .validator((d: unknown) =>
-    z.object({ botId, period: z.enum(["month", "year"]), addonPrices }).parse(d),
+    z.object({ botId, period: z.enum(BILLING_PERIODS), addonPrices }).parse(d),
   )
   .handler(async ({ data }) => {
     await guard();

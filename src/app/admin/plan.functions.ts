@@ -3,6 +3,7 @@ import { z } from "zod";
 import { serverFailure } from "@/lib/server-failure";
 import { UserError } from "@/core/i18n/user-error";
 import { subscriptionView, trialBanner } from "./admin-shared";
+import { BILLING_PERIODS } from "@/core/tenant/types";
 
 /**
  * Админка продавца: тариф магазина, история оплат и комиссия.
@@ -131,10 +132,17 @@ export const requestPlanFn = createServerFn({ method: "POST" })
   });
 
 /** «Оплатить»: счёт на сумму плана со ссылкой и QR Kaspi Pay (или реквизитами). */
-export const payPlanFn = createServerFn({ method: "POST" }).handler(async () => {
-  const ctx = await adminOwner();
-  const { ownerPayInvoice } = await import("@/app/operator/plans.server");
-  const { qrSvg } = await import("@/core/billing/pay/kaspi-link");
-  const r = await ownerPayInvoice(ctx.tenant.id, await actor());
-  return { ...r, qr: r.payUrl ? qrSvg(r.payUrl) : null };
-});
+export const payPlanFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({ period: z.enum(BILLING_PERIODS).optional() })
+      .optional()
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await adminOwner();
+    const { ownerPayInvoice } = await import("@/app/operator/plans.server");
+    const { qrSvg } = await import("@/core/billing/pay/kaspi-link");
+    const r = await ownerPayInvoice(ctx.tenant.id, await actor(), data?.period);
+    return { ...r, qr: r.payUrl ? qrSvg(r.payUrl) : null };
+  });

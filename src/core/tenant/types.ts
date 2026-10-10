@@ -255,6 +255,10 @@ export type TenantSettings = {
 export const BILLING_ADDONS = ["whatsapp", "instagram", "vip", "ai_pack"] as const;
 export type BillingAddon = (typeof BILLING_ADDONS)[number];
 
+/** Периоды оплаты подписки; месяцы и цена — core/plans/registry PERIOD_MONTHS. */
+export const BILLING_PERIODS = ["month", "quarter", "year"] as const;
+export type BillingPeriod = (typeof BILLING_PERIODS)[number];
+
 export type BillingSettings = {
   /** Ключ плана (`flowers.pro`) или `custom`; в `bots.subscription_plan` — только уровень. */
   plan?: string;
@@ -264,8 +268,8 @@ export type BillingSettings = {
   grandfathered?: ModuleKey[];
   /** Индивидуальные месячные лимиты вместо лимитов плана; null — без лимита. */
   ai_quota?: { ai_dialogs?: number | null; receipt_checks?: number | null };
-  /** Оплата раз в месяц или раз в год (10 месяцев за 12). */
-  period?: "month" | "year";
+  /** Оплата раз в месяц, раз в 3 месяца или раз в год (10 месяцев за 12). */
+  period?: BillingPeriod;
   /**
    * Цена плана в месяц по договору, ₸ (без надбавок каналов): вместо цены
    * тарифа в счетах, продлении и выручке. Нет — цена тарифа (MONTHLY_PRICE).

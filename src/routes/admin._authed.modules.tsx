@@ -6,6 +6,7 @@ import { subscriptionLine } from "@/app/admin/subscription-banner";
 import { moduleOffered } from "@/app/admin/module-offer";
 import { adminT, intlLocale, type AdminT } from "@/app/i18n/admin";
 import type { Locale } from "@/core/i18n/locale";
+import { BILLING_PERIODS, type BillingPeriod } from "@/core/tenant/types";
 import { moduleDescKey, moduleGroupKey, moduleTitleKey } from "@/app/i18n/admin/catalog";
 import { Badge, Card, ErrorBox, PageTitle, useAction } from "@/app/ui";
 import { MODULE_KEYS, moduleDef, type ModuleKey } from "@/core/modules/registry";
@@ -92,7 +93,8 @@ function PlanPanel({
     await router.invalidate();
   });
   const [invoice, setInvoice] = useState<PayInvoice | null>(null);
-  const pay = useAction(async () => setInvoice(await payPlanFn()));
+  const [payPeriod, setPayPeriod] = useState<BillingPeriod>(p.period);
+  const pay = useAction(async () => setInvoice(await payPlanFn({ data: { period: payPeriod } })));
   const n = (x: number) => x.toLocaleString(locale);
   const usageLine = (used: number, limit: number | null | undefined) =>
     limit === null || limit === undefined
@@ -132,6 +134,7 @@ function PlanPanel({
             })}
           </div>
           {p.period === "year" && <div className="text-muted">{t("plan.perYear")}</div>}
+          {p.period === "quarter" && <div className="text-muted">{t("plan.perQuarter")}</div>}
           {p.trialUntil && (
             <div className="text-muted">
               {t("plan.trial", {
@@ -180,6 +183,20 @@ function PlanPanel({
         <Link to="/admin/billing" className="btn-secondary text-xs">
           {t("billing.open")}
         </Link>
+        <label className="flex items-center gap-2 text-xs">
+          <span className="text-muted">{t("plan.payFor")}</span>
+          <select
+            className="input py-1 text-xs"
+            value={payPeriod}
+            onChange={(e) => setPayPeriod(e.target.value as BillingPeriod)}
+          >
+            {BILLING_PERIODS.map((x) => (
+              <option key={x} value={x}>
+                {t(`plan.period.${x}`)}
+              </option>
+            ))}
+          </select>
+        </label>
         <button
           className="btn-primary text-xs"
           disabled={pay.busy}
@@ -188,6 +205,7 @@ function PlanPanel({
           {t("plan.pay")}
         </button>
       </div>
+      <p className="mt-2 text-xs text-muted">{t("plan.freeConnection")}</p>
       {invoice && <PayBox inv={invoice} t={t} n={n} />}
       <ErrorBox error={pay.error} />
       {(higher.length > 0 || addons.length > 0) && (

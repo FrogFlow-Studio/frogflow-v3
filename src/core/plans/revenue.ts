@@ -1,6 +1,7 @@
 import {
   ADDON_MONTHLY_PRICE,
-  ANNUAL_BILLED_MONTHS,
+  PERIOD_BILLED_MONTHS,
+  PERIOD_MONTHS,
   parsePlan,
   planMonthlyPrice,
   type PlanTier,
@@ -38,7 +39,8 @@ export function monthlyRevenue(plan: string | null, billing: BillingSettings): n
   if (p?.kind !== "tier") return null;
   const addons = (billing.addons ?? []).reduce((s, a) => s + (ADDON_MONTHLY_PRICE[a] ?? 0), 0);
   const monthly = planMonthlyPrice(p.tier, billing) + addons;
-  return billing.period === "year" ? Math.round((monthly * ANNUAL_BILLED_MONTHS) / 12) : monthly;
+  const period = billing.period ?? "month";
+  return Math.round((monthly * PERIOD_BILLED_MONTHS[period]) / PERIOD_MONTHS[period]);
 }
 
 export function revenueState(c: RevenueClient, today: string): RevenueState {
@@ -132,13 +134,13 @@ export function cashByMonth(
   return [...acc.values()];
 }
 
-/** Сколько клиент платит за один оплаченный период: месяц или год (за 10 месяцев цены); null — плана с ценой нет. */
+/** Сколько клиент платит за один оплаченный период: месяц, 3 месяца или год (за 10 месяцев цены); null — плана с ценой нет. */
 export function periodPayment(plan: string | null, billing: BillingSettings): number | null {
   const p = parsePlan(plan);
   if (p?.kind !== "tier") return null;
   const addons = (billing.addons ?? []).reduce((s, a) => s + (ADDON_MONTHLY_PRICE[a] ?? 0), 0);
   const monthly = planMonthlyPrice(p.tier, billing) + addons;
-  return billing.period === "year" ? monthly * ANNUAL_BILLED_MONTHS : monthly;
+  return monthly * PERIOD_BILLED_MONTHS[billing.period ?? "month"];
 }
 
 const DAY_MS = 86_400_000;

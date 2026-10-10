@@ -44,7 +44,7 @@ describe("калькулятор тарифа (Б31)", () => {
             expect(q.perMonth).toBe(
               annual ? Math.round((monthly * ANNUAL_BILLED_MONTHS) / 12) : monthly,
             );
-            expect(q.connection).toBe(CONNECTION_PRICE[tier]);
+            expect(q.connection).toBe(annual ? 0 : CONNECTION_PRICE[tier]);
           });
 
   it("только Telegram: Basic без доплат, он же рекомендован", () => {
