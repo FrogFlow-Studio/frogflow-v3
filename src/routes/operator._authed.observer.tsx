@@ -23,6 +23,7 @@ const SENT: Record<string, string> = {
   held: "не слали (час)",
   failed: "не ушло",
   system: "оператору",
+  settled: "не слали: заказ оплачен",
 };
 
 /**

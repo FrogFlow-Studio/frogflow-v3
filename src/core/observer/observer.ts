@@ -13,7 +13,7 @@ import { parsePlan } from "@/core/plans/registry";
  */
 
 /** Версия промпта: пишется в журнал каждой находки, чтобы сравнивать точность версий. */
-export const OBSERVER_PROMPT_VERSION = "2026-10-10.1";
+export const OBSERVER_PROMPT_VERSION = "2026-10-10.2";
 export const OBSERVER_MODEL = "claude-sonnet-5";
 /** Цена Sonnet 5 за миллион токенов, $ (как у консультанта, core/consultant/engine.server). */
 export const OBSERVER_PRICE = { in: 2, out: 10 };
@@ -190,6 +190,38 @@ export function pickDialogs(
 const SENDER: Record<string, string> = { customer: "Покупатель", bot: "Бот", manager: "Продавец" };
 const clip = (s: string, n: number) => (s.length > n ? `${s.slice(0, n)}…` : s);
 
+/** Статусы заказа словами для модели: «delivered» она читала как «отправлен», а не «оплачен» (#102, 10.10). */
+const STATUS_RU: Record<string, string> = {
+  awaiting_payment: "ждёт оплаты",
+  awaiting_confirmation: "ждёт проверки чека",
+  paid: "оплачен",
+  delivering: "оплачен, выдаётся",
+  delivered: "оплачен и выдан",
+  accepted: "оплачен, принят",
+  in_production: "оплачен, в работе",
+  ready: "оплачен, готов",
+  cancelled: "отменён",
+  rejected: "отклонён",
+  expired: "не оплачен, истёк",
+};
+/** Заказ ещё ждёт денег или проверки чека. */
+const AWAITING = new Set(["awaiting_payment", "awaiting_confirmation"]);
+const CLOSED = new Set(["cancelled", "rejected", "expired"]);
+
+/**
+ * «Оплата зависла» без зависшего заказа — ложная тревога: у покупателя есть
+ * заказы, и ни один не ждёт оплаты, хотя бы один оплачен (заказ #102 Копилки:
+ * Продамус подтвердил в 12:35, наблюдатель в 12:41 просил «подтвердить вручную»).
+ * Без заказов вовсе сигнал оставляем: «Оплатила» может быть про оплату вне бота.
+ */
+export function paymentSettled(d: Pick<ObservedDialog, "orders">): boolean {
+  return (
+    d.orders.length > 0 &&
+    !d.orders.some((o) => AWAITING.has(o.status)) &&
+    d.orders.some((o) => !CLOSED.has(o.status))
+  );
+}
+
 export function dialogBlock(d: ObservedDialog, timezone: string): string {
   const time = (iso: string) =>
     new Date(iso).toLocaleString("ru", {
@@ -202,7 +234,10 @@ export function dialogBlock(d: ObservedDialog, timezone: string): string {
   const head = `<dialog id="${d.telegramId}" who="${d.who.replace(/"/g, "'")}">`;
   const orders = d.orders.length
     ? `Заказы покупателя за 3 дня: ${d.orders
-        .map((o) => `№${o.no} ${o.status} ${o.total} ${o.currency} (${time(o.at)})`)
+        .map(
+          (o) =>
+            `№${o.no} ${STATUS_RU[o.status] ?? o.status} ${o.total} ${o.currency} (${time(o.at)})`,
+        )
         .join("; ")}`
     : "Заказов за 3 дня нет.";
   const wait =
@@ -302,6 +337,8 @@ export function observerSystemPrompt(p: { shop: string; sellerLocale: Locale }):
 - wholesale — опт, много штук, для школы/организации, сотрудничество;
 - upset — покупатель раздражён, растерян, жалуется, грозит уйти;
 - bug — похоже на сбой платформы: кнопка не сработала, бот замолчал на шаге, пустой или технический текст, ошибка, цена расходится между сообщениями.
+
+Сообщения бота с файлами и подтверждения оплаты в переписке могут быть не видны — об оплате суди по статусу заказа: «оплачен» или «выдан» значит, деньги пришли, и payment_stuck по этому заказу не сообщай.
 
 Строки, помеченные «*», — новые с прошлой проверки. Сообщай только о том, что видно в новых строках или в отметке «ответа нет». Старое, о чём уже можно было сообщить раньше, не повторяй.
 
@@ -426,25 +463,25 @@ const SELLER_WORDS: Record<Locale, { title: string; reply: string; open: string;
     title: "Проверьте диалог",
     reply: "Можно ответить",
     open: "Открыть диалог",
-    note: "Подсказка ИИ-наблюдателя: покупателю ничего не отправлено. Если вы уже ответили в Instagram — пропустите.",
+    note: "Подсказка ИИ-наблюдателя. Если вы уже ответили покупателю — пропустите.",
   },
   kk: {
     title: "Диалогты тексеріңіз",
     reply: "Былай жауап беруге болады",
     open: "Диалогты ашу",
-    note: "ИИ-бақылаушының кеңесі: сатып алушыға ештеңе жіберілген жоқ. Instagram-да жауап берген болсаңыз — өткізіп жіберіңіз.",
+    note: "ИИ-бақылаушының кеңесі. Сатып алушыға жауап берген болсаңыз — өткізіп жіберіңіз.",
   },
   en: {
     title: "Check this conversation",
     reply: "Suggested reply",
     open: "Open conversation",
-    note: "AI observer hint: nothing was sent to the buyer. If you've already replied in Instagram, skip this.",
+    note: "AI observer hint. If you've already replied to the buyer, skip this.",
   },
   uz: {
     title: "Suhbatni tekshiring",
     reply: "Shunday javob berish mumkin",
     open: "Suhbatni ochish",
-    note: "AI kuzatuvchi maslahati: xaridorga hech narsa yuborilmadi. Instagram’da javob bergan bo‘lsangiz — o‘tkazib yuboring.",
+    note: "AI kuzatuvchi maslahati. Xaridorga javob bergan bo‘lsangiz — o‘tkazib yuboring.",
   },
 };
 

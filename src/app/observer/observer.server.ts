@@ -39,6 +39,7 @@ import {
   type ObserverRunSummary,
   type ObserverState,
   suspicion,
+  paymentSettled,
 } from "@/core/observer/observer";
 import { serverFailure } from "@/lib/server-failure";
 import { previewReadonly } from "@/lib/preview";
@@ -70,7 +71,7 @@ export type LogEntry = {
   summary: string;
   reply: string;
   /** seller — ушло продавцу; held — по диалогу уже писали в этот час; failed — не ушло. */
-  sent: "seller" | "held" | "failed" | "system";
+  sent: "seller" | "held" | "failed" | "system" | "settled";
   ver: string;
 };
 
@@ -169,6 +170,33 @@ function whoOf(
   return `${PLATFORM[c?.platform ?? "telegram"] ?? "Telegram"} · ${name}`;
 }
 
+/** Заказы покупателя за 3 дня — для модели и для свежей проверки перед «оплата зависла». */
+async function recentOrders(
+  ctx: TenantContext,
+  tid: number,
+  now: number,
+): Promise<ObservedDialog["orders"]> {
+  const since = new Date(now - 3 * 86_400_000).toISOString();
+  const rows = await pageAll(
+    (a, b) =>
+      ctx.db
+        .from("orders")
+        .select("id, order_no, display_no, status, total, currency, created_at")
+        .eq("telegram_id", tid)
+        .gte("created_at", since)
+        .order("id")
+        .range(a, b),
+    "наблюдатель: заказы покупателя",
+  );
+  return rows.map((o) => ({
+    no: Number(o.display_no ?? o.order_no),
+    status: o.status,
+    total: Number(o.total),
+    currency: o.currency,
+    at: o.created_at,
+  }));
+}
+
 async function loadDialog(
   ctx: TenantContext,
   tid: number,
@@ -195,18 +223,7 @@ async function loadDialog(
     }))
     .reverse();
   if (!lines.length) return null;
-  const since = new Date(now - 3 * 86_400_000).toISOString();
-  const orders = await pageAll(
-    (a, b) =>
-      ctx.db
-        .from("orders")
-        .select("id, order_no, display_no, status, total, currency, created_at")
-        .eq("telegram_id", tid)
-        .gte("created_at", since)
-        .order("id")
-        .range(a, b),
-    "наблюдатель: заказы покупателя",
-  );
+  const orders = await recentOrders(ctx, tid, now);
   const { getCustomerByTelegramId } = await import("@/core/customers/customers");
   const c = await getCustomerByTelegramId(ctx, tid).catch(() => null);
   const last = lines[lines.length - 1]!;
@@ -221,13 +238,7 @@ async function loadDialog(
     telegramId: tid,
     who: whoOf(c, tid),
     lines,
-    orders: orders.map((o) => ({
-      no: Number(o.display_no ?? o.order_no),
-      status: o.status,
-      total: Number(o.total),
-      currency: o.currency,
-      at: o.created_at,
-    })),
+    orders,
     ...(waiting != null ? { waitingMin: waiting } : {}),
   };
 }
@@ -429,6 +440,15 @@ async function runLeased(
       reply: f.reply,
       ver: OBSERVER_PROMPT_VERSION,
     };
+    // «Оплата зависла», а заказ уже оплачен — молчим (статус читаем заново: оплата могла прийти, пока думала модель).
+    if (f.kind === "payment_stuck") {
+      const d = byId.get(f.telegramId);
+      const fresh = d ? await recentOrders(ctx, f.telegramId, now) : [];
+      if (d && paymentSettled({ orders: fresh })) {
+        log.push({ ...base, sent: "settled" });
+        continue;
+      }
+    }
     if (f.audience === "system") {
       log.push({ ...base, sent: "system" });
       continue;
@@ -462,7 +482,8 @@ async function runLeased(
       console.error(`[observer:${ctx.tenant.id}] продавцу: ${e instanceof Error ? e.message : e}`);
     }
   }
-  const bugs = findings.filter((f) => f.audience !== "seller");
+  const settled = new Set(log.filter((l) => l.sent === "settled").map((l) => l.tid));
+  const bugs = findings.filter((f) => f.audience !== "seller" && !settled.has(f.telegramId));
   if (bugs.length)
     await alertOperator(
       operatorBugText(
