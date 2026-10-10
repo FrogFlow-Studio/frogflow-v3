@@ -2,7 +2,6 @@ import { randomUUID } from "node:crypto";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import {
   claimStateSection,
-  getCustomer,
   updateStateSection,
   type Customer,
   type DialogState,
