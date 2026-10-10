@@ -508,9 +508,15 @@ export async function finishCheckout(b: Bot, countryCode: string) {
       pending_order_id: order.id,
       pending_display_no: no,
     });
+    const { rubEquivalent, withRub } = await import("@/core/payments/rub-equivalent");
+    // «1700 ₸ / 470 ₽»: покупатели из России принимали 1700 за рубли (Копилка, 10.10).
+    const rub =
+      prodamus.ready && prodamusAnyCardLine(b.m, prodamus.currency)
+        ? await rubEquivalent(b.ctx, prodamus, { id: order.id, due, currency: order.currency })
+        : null;
     await send(
       b,
-      `${b.m.manualTitleNew(no)}\n\n${b.m.amountToPay(formatMoney(due, order.currency))}${await consentLine(b)}\n\n${b.m.choosePayMethod}${prodamus.ready && prodamusAnyCardLine(b.m, prodamus.currency) ? `\n\n${prodamusAnyCardLine(b.m, prodamus.currency)}` : ""}`,
+      `${b.m.manualTitleNew(no)}\n\n${b.m.amountToPay(withRub(formatMoney(due, order.currency), rub))}${await consentLine(b)}\n\n${b.m.choosePayMethod}${prodamus.ready && prodamusAnyCardLine(b.m, prodamus.currency) ? `\n\n${prodamusAnyCardLine(b.m, prodamus.currency)}` : ""}`,
       {
         reply_markup: {
           inline_keyboard: [
