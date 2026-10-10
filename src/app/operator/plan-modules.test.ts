@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { asPlanned } from "../../../tests/planned-module";
 import { MODULE_KEYS } from "@/core/modules/registry";
 import { planModules } from "@/core/plans/plans";
 import { tenantFromRow, type TenantRow } from "@/core/tenant/directory";
@@ -89,10 +90,12 @@ describe("оператор и модули клиента на плане", () =
   });
 
   it("модуль «в разработке» не включается и сверх плана", async () => {
-    await expect(toggleModuleOnPlan(current(), "kaspi_pay", true, "op")).rejects.toThrow(
-      /не реализован/,
-    );
-    expect(current().modules.kaspi_pay).toBe(false);
+    await asPlanned("kaspi_pay", async () => {
+      await expect(toggleModuleOnPlan(current(), "kaspi_pay", true, "op")).rejects.toThrow(
+        /не реализован/,
+      );
+      expect(current().modules.kaspi_pay).toBe(false);
+    });
   });
 });
 

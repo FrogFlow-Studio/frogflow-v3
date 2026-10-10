@@ -88,6 +88,7 @@ import { Route as ApiAdminSwRouteImport } from './routes/api/admin/sw'
 import { Route as ApiAdminUploadRouteImport } from './routes/api/admin/upload'
 import { Route as ApiApipayWebhookRouteImport } from './routes/api/apipay.webhook'
 import { Route as ApiCronJobRouteImport } from './routes/api/cron.$job'
+import { Route as ApiKaspiBotIdRouteImport } from './routes/api/kaspi.$botId'
 import { Route as ApiNowpaymentsBotIdRouteImport } from './routes/api/nowpayments.$botId'
 import { Route as ApiOperatorBotsRouteImport } from './routes/api/operator/bots'
 import { Route as ApiProdamusBotIdRouteImport } from './routes/api/prodamus.$botId'
@@ -553,6 +554,11 @@ const ApiCronJobRoute = ApiCronJobRouteImport.update({
   path: '/api/cron/$job',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiKaspiBotIdRoute = ApiKaspiBotIdRouteImport.update({
+  id: '/api/kaspi/$botId',
+  path: '/api/kaspi/$botId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiNowpaymentsBotIdRoute = ApiNowpaymentsBotIdRouteImport.update({
   id: '/api/nowpayments/$botId',
   path: '/api/nowpayments/$botId',
@@ -996,6 +1002,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/upload': typeof ApiAdminUploadRoute
   '/api/apipay/webhook': typeof ApiApipayWebhookRoute
   '/api/cron/$job': typeof ApiCronJobRoute
+  '/api/kaspi/$botId': typeof ApiKaspiBotIdRoute
   '/api/nowpayments/$botId': typeof ApiNowpaymentsBotIdRoute
   '/api/operator/bots': typeof ApiOperatorBotsRoute
   '/api/prodamus/$botId': typeof ApiProdamusBotIdRoute
@@ -1143,6 +1150,7 @@ export interface FileRoutesByTo {
   '/api/admin/upload': typeof ApiAdminUploadRoute
   '/api/apipay/webhook': typeof ApiApipayWebhookRoute
   '/api/cron/$job': typeof ApiCronJobRoute
+  '/api/kaspi/$botId': typeof ApiKaspiBotIdRoute
   '/api/nowpayments/$botId': typeof ApiNowpaymentsBotIdRoute
   '/api/operator/bots': typeof ApiOperatorBotsRoute
   '/api/prodamus/$botId': typeof ApiProdamusBotIdRoute
@@ -1293,6 +1301,7 @@ export interface FileRoutesById {
   '/api/admin/upload': typeof ApiAdminUploadRoute
   '/api/apipay/webhook': typeof ApiApipayWebhookRoute
   '/api/cron/$job': typeof ApiCronJobRoute
+  '/api/kaspi/$botId': typeof ApiKaspiBotIdRoute
   '/api/nowpayments/$botId': typeof ApiNowpaymentsBotIdRoute
   '/api/operator/bots': typeof ApiOperatorBotsRoute
   '/api/prodamus/$botId': typeof ApiProdamusBotIdRoute
@@ -1444,6 +1453,7 @@ export interface FileRouteTypes {
     | '/api/admin/upload'
     | '/api/apipay/webhook'
     | '/api/cron/$job'
+    | '/api/kaspi/$botId'
     | '/api/nowpayments/$botId'
     | '/api/operator/bots'
     | '/api/prodamus/$botId'
@@ -1591,6 +1601,7 @@ export interface FileRouteTypes {
     | '/api/admin/upload'
     | '/api/apipay/webhook'
     | '/api/cron/$job'
+    | '/api/kaspi/$botId'
     | '/api/nowpayments/$botId'
     | '/api/operator/bots'
     | '/api/prodamus/$botId'
@@ -1740,6 +1751,7 @@ export interface FileRouteTypes {
     | '/api/admin/upload'
     | '/api/apipay/webhook'
     | '/api/cron/$job'
+    | '/api/kaspi/$botId'
     | '/api/nowpayments/$botId'
     | '/api/operator/bots'
     | '/api/prodamus/$botId'
@@ -1837,6 +1849,7 @@ export interface RootRouteChildren {
   ApiAdminUploadRoute: typeof ApiAdminUploadRoute
   ApiApipayWebhookRoute: typeof ApiApipayWebhookRoute
   ApiCronJobRoute: typeof ApiCronJobRoute
+  ApiKaspiBotIdRoute: typeof ApiKaspiBotIdRoute
   ApiNowpaymentsBotIdRoute: typeof ApiNowpaymentsBotIdRoute
   ApiOperatorBotsRoute: typeof ApiOperatorBotsRoute
   ApiProdamusBotIdRoute: typeof ApiProdamusBotIdRoute
@@ -2411,6 +2424,13 @@ declare module '@tanstack/react-router' {
       path: '/api/cron/$job'
       fullPath: '/api/cron/$job'
       preLoaderRoute: typeof ApiCronJobRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/kaspi/$botId': {
+      id: '/api/kaspi/$botId'
+      path: '/api/kaspi/$botId'
+      fullPath: '/api/kaspi/$botId'
+      preLoaderRoute: typeof ApiKaspiBotIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/nowpayments/$botId': {
@@ -3217,6 +3237,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminUploadRoute: ApiAdminUploadRoute,
   ApiApipayWebhookRoute: ApiApipayWebhookRoute,
   ApiCronJobRoute: ApiCronJobRoute,
+  ApiKaspiBotIdRoute: ApiKaspiBotIdRoute,
   ApiNowpaymentsBotIdRoute: ApiNowpaymentsBotIdRoute,
   ApiOperatorBotsRoute: ApiOperatorBotsRoute,
   ApiProdamusBotIdRoute: ApiProdamusBotIdRoute,

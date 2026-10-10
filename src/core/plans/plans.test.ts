@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { asPlanned } from "../../../tests/planned-module";
 import { MODULE_KEYS, moduleDef } from "@/core/modules/registry";
 import {
   addonModules,
@@ -570,8 +571,10 @@ describe("купленное сверх плана не пропадает пр�
       }
   });
 
-  it("модуль «в разработке» в сохранённые не попадает", () => {
-    expect(keptModules(null, undefined, on("kaspi_pay"))).toEqual([]);
+  it("модуль «в разработке» в сохранённые не попадает", async () => {
+    await asPlanned("kaspi_pay", () =>
+      expect(keptModules(null, undefined, on("kaspi_pay"))).toEqual([]),
+    );
   });
 });
 

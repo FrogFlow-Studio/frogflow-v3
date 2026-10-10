@@ -80,6 +80,10 @@ export const SETTING_KEYS = [
   "prodamus_secret_key",
   "prodamus_currency",
   "prodamus_rate",
+  "kaspi_apipay_enabled",
+  "kaspi_apipay_api_key",
+  "kaspi_apipay_webhook_secret",
+  "kaspi_apipay_test_mode",
   "card_all_prices",
 ] as const;
 
@@ -106,7 +110,7 @@ export const WRITABLE_SETTING_KEYS = SETTING_KEYS.filter((k) => !PLATFORM_ONLY.h
   ...SettingKey[],
 ];
 
-/** Пароли Robokassa, ключи NOWPayments, Stripe и Продамуса видит только владелец: менеджеру и просмотру они ни к чему. */
+/** Пароли Robokassa, ключи NOWPayments, Stripe, Продамуса и ApiPay видит только владелец: менеджеру и просмотру они ни к чему. */
 const OWNER_ONLY_READ = [
   "robokassa_pass1",
   "robokassa_pass2",
@@ -117,6 +121,8 @@ const OWNER_ONLY_READ = [
   "stripe_secret_key",
   "stripe_webhook_secret",
   "prodamus_secret_key",
+  "kaspi_apipay_api_key",
+  "kaspi_apipay_webhook_secret",
 ] as const;
 
 /**
@@ -146,6 +152,10 @@ export const PAYMENT_SETTING_KEYS: ReadonlySet<string> = new Set([
   "prodamus_secret_key",
   "prodamus_currency",
   "prodamus_rate",
+  "kaspi_apipay_enabled",
+  "kaspi_apipay_api_key",
+  "kaspi_apipay_webhook_secret",
+  "kaspi_apipay_test_mode",
   "stars_rate",
   "card_all_prices",
 ]);

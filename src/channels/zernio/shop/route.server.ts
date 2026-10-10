@@ -1209,7 +1209,7 @@ async function handlePostback(s: Shop, payload: string): Promise<ShopOutcome> {
       return "handled";
     }
     case "PAY":
-      await choosePayment(s, a === "rk" || a === "pdm" ? a : "manual");
+      await choosePayment(s, a === "kaspi" || a === "rk" || a === "pdm" ? a : "manual");
       return "handled";
     default:
       // Чужой postback (например, из comment-автоматизации Zernio) — не наш.

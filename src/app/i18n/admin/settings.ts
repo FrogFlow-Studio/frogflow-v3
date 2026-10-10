@@ -378,6 +378,14 @@ export const ru = {
   "settings.stripe.enabled": "Принимать оплату иностранной картой и PayPal",
   "settings.stripe.secretKey": "Секретный ключ (sk_…)",
   "settings.stripe.webhookSecret": "Секрет вебхука (whsec_…)",
+  "settings.kaspi.title": "Kaspi: ApiPay",
+  "settings.kaspi.intro":
+    "Кнопка «Оплатить в Kaspi» в боте, Instagram и WhatsApp: покупатель платит в приложении Kaspi, деньги идут на ваш Kaspi Pay, заказ подтверждается и выдаётся сам. Нужна ваша организация в ApiPay с подключённым кассиром. В кабинете ApiPay (Настройки → API-ключи) укажите адрес вебхука:",
+  "settings.kaspi.enabled": "Принимать оплату через Kaspi",
+  "settings.kaspi.apiKey": "Ключ API (X-API-Key)",
+  "settings.kaspi.webhookSecret": "Секрет вебхука",
+  "settings.kaspi.testMode":
+    "Тестовый режим (песочница ApiPay: ссылки ненастоящие, тестовые оплаты засчитываются)",
   "settings.rk.introResult": "В личном кабинете Robokassa укажите Result URL",
   "settings.rk.introSuccess": ", Success URL",
   "settings.rk.introFail": ", Fail URL",
@@ -883,6 +891,14 @@ export const kk: SectionDict<typeof ru> = {
   "settings.stripe.enabled": "Шетелдік картамен және PayPal арқылы төлем қабылдау",
   "settings.stripe.secretKey": "Құпия кілт (sk_…)",
   "settings.stripe.webhookSecret": "Вебхук құпиясы (whsec_…)",
+  "settings.kaspi.title": "Kaspi: ApiPay",
+  "settings.kaspi.intro":
+    "Ботта, Instagram мен WhatsApp-та «Kaspi арқылы төлеу» батырмасы: сатып алушы Kaspi қосымшасында төлейді, ақша сіздің Kaspi Pay-ға түседі, тапсырыс өзі расталып, беріледі. ApiPay-де кассирі қосылған ұйымыңыз қажет. ApiPay кабинетінде (Баптаулар → API кілттері) вебхук мекенжайын көрсетіңіз:",
+  "settings.kaspi.enabled": "Kaspi арқылы төлем қабылдау",
+  "settings.kaspi.apiKey": "API кілті (X-API-Key)",
+  "settings.kaspi.webhookSecret": "Вебхук құпиясы",
+  "settings.kaspi.testMode":
+    "Тест режимі (ApiPay құмсалғышы: сілтемелер жалған, тест төлемдері есептеледі)",
   "settings.rk.introResult": "Robokassa жеке кабинетінде Result URL көрсетіңіз:",
   "settings.rk.introSuccess": ", Success URL",
   "settings.rk.introFail": ", Fail URL",
@@ -1382,6 +1398,13 @@ export const en: SectionDict<typeof ru> = {
   "settings.stripe.enabled": "Accept foreign cards and PayPal",
   "settings.stripe.secretKey": "Secret key (sk_…)",
   "settings.stripe.webhookSecret": "Webhook signing secret (whsec_…)",
+  "settings.kaspi.title": "Kaspi: ApiPay",
+  "settings.kaspi.intro":
+    "A “Pay with Kaspi” button in the bot, Instagram and WhatsApp: the buyer pays in the Kaspi app, the money goes to your Kaspi Pay, and the order is confirmed and delivered automatically. You need your own ApiPay organization with a connected cashier. In the ApiPay dashboard (Settings → API keys) set the webhook URL to:",
+  "settings.kaspi.enabled": "Accept Kaspi payments",
+  "settings.kaspi.apiKey": "API key (X-API-Key)",
+  "settings.kaspi.webhookSecret": "Webhook secret",
+  "settings.kaspi.testMode": "Test mode (ApiPay sandbox: links are not real, test payments count)",
   "settings.rk.introResult": "In your Robokassa account set Result URL",
   "settings.rk.introSuccess": ", Success URL",
   "settings.rk.introFail": ", Fail URL",
@@ -1887,6 +1910,14 @@ export const uz: SectionDict<typeof ru> = {
   "settings.stripe.enabled": "Xorijiy karta va PayPal orqali toʻlov qabul qilish",
   "settings.stripe.secretKey": "Maxfiy kalit (sk_…)",
   "settings.stripe.webhookSecret": "Vebhuk siri (whsec_…)",
+  "settings.kaspi.title": "Kaspi: ApiPay",
+  "settings.kaspi.intro":
+    "Bot, Instagram va WhatsApp’da «Kaspi orqali toʻlash» tugmasi: xaridor Kaspi ilovasida toʻlaydi, pul sizning Kaspi Pay’ga tushadi, buyurtma oʻzi tasdiqlanadi va beriladi. ApiPay’da kassiri ulangan tashkilotingiz kerak. ApiPay kabinetida (Sozlamalar → API kalitlari) vebhuk manzilini koʻrsating:",
+  "settings.kaspi.enabled": "Kaspi orqali toʻlov qabul qilish",
+  "settings.kaspi.apiKey": "API kaliti (X-API-Key)",
+  "settings.kaspi.webhookSecret": "Vebhuk siri",
+  "settings.kaspi.testMode":
+    "Test rejimi (ApiPay qumdoni: havolalar haqiqiy emas, test toʻlovlari hisobga olinadi)",
   "settings.rk.introResult": "Robokassa shaxsiy kabinetida Result URL ko‘rsating:",
   "settings.rk.introSuccess": ", Success URL",
   "settings.rk.introFail": ", Fail URL",

@@ -105,6 +105,7 @@ describe("API: ответ не кешируется без явной полит
     "telegram.$botId.vip.ts",
     "apipay.webhook.ts",
     "nowpayments.$botId.ts",
+    "kaspi.$botId.ts",
     "stripe.$botId.ts",
     "client-error.ts",
     "zernio/webhook.ts",

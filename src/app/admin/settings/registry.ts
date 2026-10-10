@@ -271,6 +271,21 @@ export const SETTINGS_REGISTRY: readonly SettingsEntry[] = [
       "prodamus_rate",
     ],
   }),
+  E({
+    id: "kaspi",
+    sellsOnly: true,
+    theme: "payment",
+    title: "settings.kaspi.title",
+    module: "kaspi_pay",
+    ownerOnly: true,
+    wide: true,
+    keys: [
+      "kaspi_apipay_enabled",
+      "kaspi_apipay_api_key",
+      "kaspi_apipay_webhook_secret",
+      "kaspi_apipay_test_mode",
+    ],
+  }),
   E({ id: "telegram", theme: "channels", title: "settings.tg.title" }),
   E({
     id: "channel-wizard",

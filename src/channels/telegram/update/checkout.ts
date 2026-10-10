@@ -499,7 +499,9 @@ export async function finishCheckout(b: Bot, countryCode: string) {
   const stripe = await stripeFor(b.ctx);
   const { prodamusFor } = await import("@/core/payments/payment");
   const prodamus = await prodamusFor(b.ctx, order.currency);
-  if (rk.ready || stars || crypto.ready || stripe.ready || prodamus.ready) {
+  const { kaspiApipayFor } = await import("@/core/payments/payment");
+  const kaspi = await kaspiApipayFor(b.ctx, order.currency);
+  if (rk.ready || stars || crypto.ready || stripe.ready || prodamus.ready || kaspi.ready) {
     b.customer = await setState(b.ctx, b.customer, {
       ...rest,
       mode: "choose_pay",
@@ -512,6 +514,9 @@ export async function finishCheckout(b: Bot, countryCode: string) {
       {
         reply_markup: {
           inline_keyboard: [
+            ...(kaspi.ready
+              ? [[{ text: b.m.payViaKaspiApipayBtn, callback_data: `pay:kaspi:${order.id}` }]]
+              : []),
             ...(rk.ready
               ? [[{ text: b.m.payViaRobokassaBtn, callback_data: `pay:rk:${order.id}` }]]
               : []),

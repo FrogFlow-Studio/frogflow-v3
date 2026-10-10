@@ -26,6 +26,7 @@ import { closedRules, describeClosed, hasClosedDays } from "@/core/fulfillment/c
 import { freeSlotsOnDate } from "@/core/fulfillment/capacity";
 import { isoToDisplay } from "@/core/fulfillment/pure";
 import {
+  kaspiApipayFor,
   prodamusFor,
   prodamusOrderUrl,
   robokassaFor,
@@ -670,7 +671,8 @@ export async function finishCheckout(s: Shop, countryCode: string) {
   const due = result.amountDue;
   const rk = await robokassaFor(s.ctx, order.currency);
   const pdm = await prodamusFor(s.ctx, order.currency);
-  if (rk.ready || pdm.ready) {
+  const kaspi = await kaspiApipayFor(s.ctx, order.currency);
+  if (rk.ready || pdm.ready || kaspi.ready) {
     s.customer = await setState(s.ctx, s.customer, {
       ...rest,
       mode: "choose_pay",
@@ -719,7 +721,17 @@ async function sendPayChoice(
 ) {
   const rk = await robokassaFor(s.ctx, p.currency);
   const pdm = await prodamusFor(s.ctx, p.currency);
-  const buttons = [
+  const kaspi = await kaspiApipayFor(s.ctx, p.currency);
+  const online = [
+    ...(kaspi.ready
+      ? [
+          {
+            type: "postback" as const,
+            title: plain(s.m.payViaKaspiApipayBtn),
+            payload: "PAY:kaspi",
+          },
+        ]
+      : []),
     ...(rk.ready
       ? [{ type: "postback" as const, title: plain(s.m.payViaRobokassaBtn), payload: "PAY:rk" }]
       : []),
@@ -732,6 +744,10 @@ async function sendPayChoice(
           },
         ]
       : []),
+  ];
+  // Instagram показывает не больше трёх кнопок: перевод по реквизитам остаётся всегда.
+  const buttons = [
+    ...online.slice(0, 2),
     {
       type: "postback" as const,
       title: plain(manualPayBtn(s.m, p.instructions)),
@@ -877,7 +893,7 @@ async function sendPayLink(s: Shop, text: string, title: string, url: string) {
   });
 }
 
-export async function choosePayment(s: Shop, kind: "rk" | "pdm" | "manual") {
+export async function choosePayment(s: Shop, kind: "kaspi" | "rk" | "pdm" | "manual") {
   const orderId = Number(s.customer.state.pending_order_id);
   const order = orderId ? await getOrder(s.ctx, orderId) : null;
   if (!order || order.telegram_id !== s.customer.telegramId || order.status !== "awaiting_payment")
@@ -907,6 +923,33 @@ export async function choosePayment(s: Shop, kind: "rk" | "pdm" | "manual") {
       `${plain(s.m.manualTitleNew(no))}\n\n${plain(s.m.amountToPay(formatMoney(due, order.currency)))}\n\n${plain(s.m.robokassaHint)}`,
       plain(s.m.payViaRobokassaBtn),
       url,
+    );
+    return;
+  }
+  if (kind === "kaspi") {
+    const cfg = await kaspiApipayFor(s.ctx, order.currency);
+    if (!cfg.ready) return;
+    const { createKaspiLink } = await import("@/core/payments/kaspi-apipay");
+    const link = await createKaspiLink(cfg, {
+      orderId: order.id,
+      amount: due,
+      description: `Заказ #${no}`,
+    });
+    if (!link.ok) {
+      console.error(`[kaspi:${s.ctx.tenant.id}] ссылка по заказу ${order.id}: ${link.error}`);
+      await reply(s, plain(s.m.kaspiApipayUnavailable), { force: true });
+      return;
+    }
+    await setMode(s, {
+      mode: "awaiting_payment",
+      pending_order_id: order.id,
+      pending_display_no: no,
+    });
+    await sendPayLink(
+      s,
+      `${plain(s.m.manualTitleNew(no))}\n\n${plain(s.m.amountToPay(formatMoney(due, order.currency)))}\n\n${plain(s.m.kaspiApipayHint)}`,
+      plain(s.m.payViaKaspiApipayBtn),
+      link.url,
     );
     return;
   }

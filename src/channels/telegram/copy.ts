@@ -211,6 +211,9 @@ export type Msg = {
   payViaStripeBtn: string;
   stripeHint: string;
   stripeUnavailable: string;
+  payViaKaspiApipayBtn: string;
+  kaspiApipayHint: string;
+  kaspiApipayUnavailable: string;
   /** Продамус: карта российского банка или СБП. */
   payViaProdamusBtn: string;
   prodamusHint: string;
@@ -707,6 +710,10 @@ const ru: Msg = {
   stripeHint:
     "Откройте ссылку и оплатите картой любой страны. Заказ подтвердится сам сразу после оплаты.",
   stripeUnavailable: "Оплата иностранной картой сейчас недоступна — выберите другой способ.",
+  payViaKaspiApipayBtn: "📱 Оплатить в Kaspi",
+  kaspiApipayHint:
+    "Откройте ссылку и нажмите «Оплатить в Kaspi» — сумма уже подставлена. Заказ подтвердится сам сразу после оплаты.",
+  kaspiApipayUnavailable: "Оплата через Kaspi сейчас недоступна — выберите другой способ.",
   payViaProdamusBtn: "🇷🇺 Карта РФ / СБП",
   prodamusHint:
     "Откройте ссылку и оплатите картой российского банка или через СБП. Форма попросит номер телефона: укажите свой, на него придёт чек. Заказ подтвердится сам сразу после оплаты.",
@@ -811,6 +818,10 @@ const ru: Msg = {
 
 const kk: Msg = {
   ...ru,
+  payViaKaspiApipayBtn: "📱 Kaspi-де төлеу",
+  kaspiApipayHint:
+    "Сілтемені ашып, төлемді Kaspi-де растаңыз — сома дайын тұр. Тапсырыс төлемнен кейін бірден өзі расталады.",
+  kaspiApipayUnavailable: "Kaspi арқылы төлем қазір қолжетімсіз — басқа тәсілді таңдаңыз.",
   choosePayMethodNamed: (l) =>
     `Төлем тәсілін таңдап, төмендегі батырманы басыңыз: ${l.map((x) => `«${x}»`).join(" немесе ")}.`,
   payKaspiBtn: "🧾 Kaspi аударым",
@@ -1111,6 +1122,10 @@ const kk: Msg = {
 
 const en: Msg = {
   ...ru,
+  payViaKaspiApipayBtn: "📱 Pay with Kaspi",
+  kaspiApipayHint:
+    "Open the link and confirm the payment in Kaspi — the amount is already filled in. The order is confirmed automatically right after payment.",
+  kaspiApipayUnavailable: "Kaspi payment is unavailable right now — please choose another method.",
   choosePayMethodNamed: (l) =>
     `Choose how to pay and tap a button below: ${l.map((x) => `“${x}”`).join(" or ")}.`,
   payKaspiBtn: "🧾 Kaspi transfer",
@@ -1438,6 +1453,10 @@ const en: Msg = {
 
 const uz: Msg = {
   ...ru,
+  payViaKaspiApipayBtn: "📱 Kaspi orqali toʻlash",
+  kaspiApipayHint:
+    "Havolani oching va toʻlovni Kaspi’da tasdiqlang — summa allaqachon qoʻyilgan. Buyurtma toʻlovdan soʻng darhol oʻzi tasdiqlanadi.",
+  kaspiApipayUnavailable: "Kaspi orqali toʻlov hozir mavjud emas — boshqa usulni tanlang.",
   choosePayMethodNamed: (l) =>
     `To‘lov usulini tanlang va pastdagi tugmani bosing: ${l.map((x) => `«${x}»`).join(" yoki ")}.`,
   choosePayCountry: "💳 Qaysi davlatdan to‘laysiz? Summa o‘sha davlat valyutasida:",
