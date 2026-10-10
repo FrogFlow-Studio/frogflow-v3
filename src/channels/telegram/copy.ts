@@ -234,6 +234,8 @@ export type Msg = {
   payTroubleHandoff: string;
   /** Продамус с кассой не в рублях (форма KZ): карта любого банка, без «РФ / СБП». */
   payByCardBtn: string;
+  /** Под выбором оплаты, касса Продамуса не в рублях: карта РФ тоже подходит. */
+  cardAnyCountryLine: string;
   prodamusCardHint: string;
   robokassaHint: string;
   paymentReceived: (no: number) => string;
@@ -419,7 +421,9 @@ const ru: Msg = {
     "Передал ваш вопрос продавцу: он напишет вам здесь, как удобнее оплатить. Заказ сохранён.",
   payLinkHint:
     "Нажмите кнопку ниже. Если не открывается — скопируйте ссылку и откройте её в браузере или в приложении Kaspi.",
-  payByCardBtn: "💳 Картой онлайн",
+  payByCardBtn: "💳 Картой ₸ / ₽",
+  cardAnyCountryLine:
+    "💳 Картой можно платить из любой страны, в том числе картой РФ: банк спишет рубли по своему курсу.",
   prodamusCardHint:
     "Откройте ссылку и оплатите банковской картой. Форма попросит номер телефона: укажите свой, на него придёт чек. Заказ подтвердится сам сразу после оплаты.",
   payBalanceBtn: (no) => `💳 Оплатить остаток #${no}`,
@@ -840,7 +844,9 @@ const kk: Msg = {
     "Сұрағыңызды сатушыға жібердім: ол осында қалай төлеген ыңғайлы екенін жазады. Тапсырыс сақталды.",
   payLinkHint:
     "Төмендегі батырманы басыңыз. Ашылмаса — сілтемені көшіріп, браузерде немесе Kaspi қосымшасында ашыңыз.",
-  payByCardBtn: "💳 Картамен онлайн",
+  payByCardBtn: "💳 Картамен ₸ / ₽",
+  cardAnyCountryLine:
+    "💳 Кез келген елдің картасымен, соның ішінде РФ картасымен төлеуге болады: банк рубльді өз бағамымен шешеді.",
   prodamusCardHint:
     "Сілтемені ашып, банк картасымен төлеңіз. Форма телефон нөмірін сұрайды: өз нөміріңізді жазыңыз, чек соған келеді. Тапсырыс төлемнен кейін бірден өзі расталады.",
   payViaProdamusBtn: "🇷🇺 РФ картасы / СБП",
@@ -1148,7 +1154,9 @@ const en: Msg = {
     "I passed your question to the seller: they will write here about the best way to pay. Your order is saved.",
   payLinkHint:
     "Tap the button below. If it does not open, copy the link and open it in your browser or the Kaspi app.",
-  payByCardBtn: "💳 Card payment",
+  payByCardBtn: "💳 Card ₸ / ₽",
+  cardAnyCountryLine:
+    "💳 You can pay with a card from any country, including a Russian card: your bank charges rubles at its own rate.",
   prodamusCardHint:
     "Open the link and pay by bank card. The form will ask for a phone number: enter yours, the receipt goes there. The order is confirmed automatically right after payment.",
   phoneNoted: "Got your number 👍",
@@ -1486,7 +1494,9 @@ const uz: Msg = {
     "Chekni qanday yuborish: Kaspi yoki bank ilovasida shu to‘lovni oching va skrinshot oling. Keyin shu chatda xabar maydoni yonidagi rasm 🖼 yoki qisqich 📎 belgisini bosing va skrinshotni galereyadan tanlang.",
   payLinkHint:
     "Quyidagi tugmani bosing. Ochilmasa — havolani nusxalab, brauzerda yoki Kaspi ilovasida oching.",
-  payByCardBtn: "💳 Karta orqali",
+  payByCardBtn: "💳 Karta ₸ / ₽",
+  cardAnyCountryLine:
+    "💳 Istalgan davlat kartasi, jumladan Rossiya kartasi bilan to‘lash mumkin: bank rublni o‘z kursi bo‘yicha yechadi.",
   prodamusCardHint:
     "Havolani oching va bank kartasi bilan to‘lang. Forma telefon raqamini so‘raydi: o‘z raqamingizni kiriting, chek unga keladi. Buyurtma to‘lovdan so‘ng darhol avtomatik tasdiqlanadi.",
   payViaProdamusBtn: "🇷🇺 RF kartasi / SBP",
@@ -1930,6 +1940,11 @@ export function normalizePhone(raw: string): string | null {
 }
 
 /** Кнопка и подсказка Продамуса: форма в рублях — «Карта РФ / СБП», иначе (KZ) — просто картой. */
+/** Строка «карта любой страны, в том числе РФ» — только для кассы не в рублях (форма *.kz). */
+export function prodamusAnyCardLine(m: Msg, kassaCurrency: string | null | undefined): string {
+  return (kassaCurrency ?? "").toUpperCase() === "RUB" ? "" : m.cardAnyCountryLine;
+}
+
 export function prodamusCopy(
   m: Msg,
   kassaCurrency: string | null | undefined,
