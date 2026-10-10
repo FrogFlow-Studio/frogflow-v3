@@ -1973,6 +1973,41 @@ export const SCENARIOS: Scenario[] = [
     ],
   },
   {
+    id: "prodamus-link-question-ig-ru",
+    title:
+      "после «Картой РФ» кнопка ссылки называется иначе, чем способ оплаты; «А ссылка где?» — ссылка текстом, не «пришлите чек»",
+    origin:
+      "заказ #98 Копилки Русоведа 10.10 11:35: после «💳 Картой РФ» пришла кнопка с тем же названием, покупательница спросила «А ссылка где?», бот попросил чек",
+    channel: "instagram",
+    locale: "ru",
+    modules: { prodamus: true },
+    state: { mode: "choose_pay", pending_order_id: 15, pending_display_no: 15 },
+    arrange: prodamusOrder,
+    steps: [
+      {
+        say: { button: "PAY:pdm" },
+        expect: {
+          count: 1,
+          buttons: [COPY.ru.payLinkBtn(false)],
+          state: { mode: "awaiting_payment" },
+        },
+      },
+      {
+        say: { text: "А ссылка где?" },
+        expect: {
+          count: 1,
+          says: ["https://kopilka.proeducation.kz/?do=pay"],
+          notSays: ["чек"],
+          state: { mode: "awaiting_payment" },
+        },
+      },
+      {
+        say: { text: "." },
+        expect: { count: 1, says: [(c) => c.payLinkAboveHint], notSays: ["Пришлите"] },
+      },
+    ],
+  },
+  {
     id: "prodamus-link-ig-ru",
     title:
       "касса в тенге — «💳 Картой РФ» (форма *.kz берёт только карты РФ); ссылка кнопкой, текст не длиннее предела Meta",
@@ -1989,7 +2024,7 @@ export const SCENARIOS: Scenario[] = [
           count: 1,
           // Форма *.kz принимает только карты РФ (скрин формы Копилки, 10.10).
           says: [(c) => c.prodamusCardHint, "150 ₸", "российского банка"],
-          buttons: [COPY.ru.payByCardBtn],
+          buttons: [COPY.ru.payLinkBtn(false)],
           state: { mode: "awaiting_payment", pending_order_id: 15 },
         },
       },
@@ -2062,7 +2097,7 @@ export const SCENARIOS: Scenario[] = [
         expect: {
           count: 1,
           says: [(c) => c.prodamusRubViaKztHint],
-          buttons: [COPY.ru.payByCardBtn],
+          buttons: [COPY.ru.payLinkBtn(false)],
           notSays: [(c) => c.payTroubleHandoff, (c) => c.sendReceiptPrompt],
           state: { mode: "awaiting_payment" },
         },

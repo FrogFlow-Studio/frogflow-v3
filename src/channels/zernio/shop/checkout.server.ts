@@ -912,7 +912,12 @@ export function payLinkOf(instructions: string | null): string | null {
  * знаков текста, а подписанная ссылка Продамуса длиннее (~700). Текст со
  * ссылкой и кнопкой не уходил вовсе: заказ #15 Копилки Русоведа, 09.10.
  */
-async function sendPayLink(s: Shop, text: string, title: string, url: string) {
+async function sendPayLink(s: Shop, text: string, title: string, url: string, asText = false) {
+  // «А ссылка где?»: та же ссылка текстом, без кнопки (заказ #98 Копилки, 10.10).
+  if (asText) {
+    await reply(s, plain(s.m.payLinkAsText(url)), { force: true });
+    return;
+  }
   await reply(s, text, {
     force: true,
     buttons: [{ type: "url", title, url }],
@@ -928,7 +933,7 @@ async function sendPayLink(s: Shop, text: string, title: string, url: string) {
 export async function choosePayment(
   s: Shop,
   kind: "kaspi" | "rk" | "pdm" | "manual",
-  opts: { ruCard?: boolean } = {},
+  opts: { ruCard?: boolean; asText?: boolean } = {},
 ): Promise<boolean | undefined> {
   const orderId = Number(s.customer.state.pending_order_id);
   const order = orderId ? await getOrder(s.ctx, orderId) : null;
@@ -953,14 +958,16 @@ export async function choosePayment(
       mode: "awaiting_payment",
       pending_order_id: order.id,
       pending_display_no: no,
+      pay_link: "rk",
     });
     await sendPayLink(
       s,
       `${plain(s.m.manualTitleNew(no))}\n\n${plain(s.m.amountToPay(formatMoney(due, order.currency)))}\n\n${plain(s.m.robokassaHint)}`,
       plain(s.m.payViaRobokassaBtn),
       url,
+      opts.asText,
     );
-    return;
+    return true;
   }
   if (kind === "kaspi") {
     const cfg = await kaspiApipayFor(s.ctx, order.currency);
@@ -980,6 +987,8 @@ export async function choosePayment(
       mode: "awaiting_payment",
       pending_order_id: order.id,
       pending_display_no: no,
+      // Ссылку Kaspi текстом не повторяем: новая ссылка — новый счёт.
+      pay_link: undefined,
     });
     await sendPayLink(
       s,
@@ -1018,12 +1027,16 @@ export async function choosePayment(
       mode: "awaiting_payment",
       pending_order_id: order.id,
       pending_display_no: no,
+      pay_link: "pdm",
     });
+    // Кнопка ссылки — не тем же словом, что способ оплаты: «💳 Картой РФ» дважды
+    // приняли за ту же кнопку и спросили «А ссылка где?» (заказ #98 Копилки, 10.10).
     await sendPayLink(
       s,
       `${plain(s.m.manualTitleNew(no))}\n\n${plain(s.m.amountToPay(sum))}\n\n${plain(hint)}`,
-      plain(copy.btn),
+      plain(s.m.payLinkBtn(false)),
       url,
+      opts.asText,
     );
     return true;
   }
