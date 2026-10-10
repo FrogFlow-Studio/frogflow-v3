@@ -289,7 +289,7 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
       return "handled";
     }
     if (orderId) {
-      await reply(s, s.m.sendReceiptPrompt);
+      await reply(s, s.m.dmReceiptPrompt);
       return "handled";
     }
     return text ? route(s, { ...msg, attachments: [] }) : handleNonText(s, msg);
@@ -701,7 +701,7 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
               ? s.m.choosePayHint
               : mode === "awaiting_payment"
                 ? s.m.payLinkAboveHint
-                : s.m.sendReceiptPrompt,
+                : s.m.dmReceiptPrompt,
           );
         }
         return "question";

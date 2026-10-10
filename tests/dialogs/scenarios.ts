@@ -2071,12 +2071,12 @@ export const SCENARIOS: Scenario[] = [
         expect: {
           count: 1,
           says: [(c) => c.payTroubleHandoff],
-          notSays: [(c) => c.sendReceiptPrompt],
+          notSays: [(c) => c.dmReceiptPrompt],
         },
       },
       {
         say: { text: "Я из России, у меня карта не проходит" },
-        expect: { says: [(c) => c.payTroubleHandoff], notSays: [(c) => c.sendReceiptPrompt] },
+        expect: { says: [(c) => c.payTroubleHandoff], notSays: [(c) => c.dmReceiptPrompt] },
       },
     ],
   },
@@ -2098,7 +2098,7 @@ export const SCENARIOS: Scenario[] = [
           count: 1,
           says: [(c) => c.prodamusRubViaKztHint],
           buttons: [COPY.ru.payLinkBtn(false)],
-          notSays: [(c) => c.payTroubleHandoff, (c) => c.sendReceiptPrompt],
+          notSays: [(c) => c.payTroubleHandoff, (c) => c.dmReceiptPrompt],
           state: { mode: "awaiting_payment" },
         },
       },
@@ -2128,12 +2128,12 @@ export const SCENARIOS: Scenario[] = [
         expect: {
           count: 1,
           says: [(c) => c.payTroubleHandoff],
-          notSays: [(c) => c.sendReceiptPrompt],
+          notSays: [(c) => c.dmReceiptPrompt],
         },
       },
       {
         say: { text: "А из Узбекистана можно оплатить? Каспи у меня нет" },
-        expect: { says: [(c) => c.payTroubleHandoff], notSays: [(c) => c.sendReceiptPrompt] },
+        expect: { says: [(c) => c.payTroubleHandoff], notSays: [(c) => c.dmReceiptPrompt] },
       },
     ],
   },
@@ -2153,11 +2153,38 @@ export const SCENARIOS: Scenario[] = [
         expect: {
           count: 1,
           says: [(c) => c.payTroubleHandoff],
-          notSays: [(c) => c.sendReceiptPrompt],
+          notSays: [(c) => c.dmReceiptPrompt],
         },
       },
       { say: { text: "Спасибо ❤️" }, expect: { silent: true } },
       { say: { text: "Хорошо, жду" }, expect: { silent: true } },
+    ],
+  },
+  {
+    id: "paid-kaspi-no-menu-buttons-ig-ru",
+    title:
+      "«Оплатила на каспи» — просьба прислать чек без «нажмите кнопку ниже»: кнопок под ней нет",
+    origin:
+      "заказ #93 Копилки Русоведа 10.10 (Ахтамберова, «Перевод Kaspi»): «Оплатила на каспи 1700» → «…нажмите любую кнопку ниже», а кнопок в Instagram нет",
+    channel: "instagram",
+    locale: "ru",
+    full: true,
+    products: [{ id: P1, name: "Палитра средств выразительности" }],
+    state: {},
+    steps: [
+      {
+        say: { button: `PROD:${P1}`, title: "Купить" },
+        expect: { says: ["К оплате"], state: { mode: "awaiting_proof" } },
+      },
+      {
+        say: { text: "Оплатила на каспи 1700" },
+        expect: {
+          count: 1,
+          says: [(c) => c.dmReceiptPrompt],
+          notSays: ["кнопку ниже"],
+          state: { mode: "awaiting_proof" },
+        },
+      },
     ],
   },
   {
@@ -2177,14 +2204,14 @@ export const SCENARIOS: Scenario[] = [
       },
       {
         say: { text: "Я оплатила" },
-        expect: { count: 1, says: [(c) => c.sendReceiptPrompt] },
+        expect: { count: 1, says: [(c) => c.dmReceiptPrompt] },
       },
       {
         say: { text: "Не знаю как" },
         expect: {
           count: 1,
           says: [(c) => c.receiptHowTo],
-          notSays: [(c) => c.sendReceiptPrompt],
+          notSays: [(c) => c.dmReceiptPrompt],
           state: { mode: "awaiting_proof" },
         },
       },
@@ -2210,7 +2237,7 @@ export const SCENARIOS: Scenario[] = [
         expect: {
           count: 1,
           says: [(c) => c.payTroubleHandoff],
-          notSays: [(c) => c.sendReceiptPrompt],
+          notSays: [(c) => c.dmReceiptPrompt],
         },
       },
     ],
@@ -2242,7 +2269,7 @@ export const SCENARIOS: Scenario[] = [
         expect: {
           count: 1,
           says: [(c) => c.choosePayHint],
-          notSays: [(c) => c.sendReceiptPrompt],
+          notSays: [(c) => c.dmReceiptPrompt],
         },
       },
     ],
@@ -2262,7 +2289,7 @@ export const SCENARIOS: Scenario[] = [
         expect: {
           count: 1,
           says: [(c) => c.prodamusRubViaKztHint],
-          notSays: [(c) => c.payTroubleHandoff, (c) => c.sendReceiptPrompt],
+          notSays: [(c) => c.payTroubleHandoff, (c) => c.dmReceiptPrompt],
         },
       },
     ],

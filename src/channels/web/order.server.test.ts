@@ -32,10 +32,11 @@ vi.mock("@/core/orders/orders", async (orig) => ({
 }));
 vi.mock("@/channels/zernio/outbound.server", () => ({
   zernioTargetForOrder: async () => zernioTarget,
-  zernioSenderFor:
-    () =>
-    (...a: unknown[]) =>
-      zernioCopy(...a),
+  zernioDeliverySender: async () => ({
+    send: (...a: unknown[]) => zernioCopy(...a),
+    notes: [],
+    pageUrl: "https://shop.example/o/9?t=sig",
+  }),
 }));
 vi.mock("@/core/storefront/web-order", () => ({
   deliverWebOrder: (...a: unknown[]) => deliver(...a),
@@ -183,20 +184,50 @@ describe("чек с сайта", () => {
     const { invoiceLinkSender } = await import("./order.server");
     const { ctx } = setup();
     zernioCopy.mockRejectedValue(new Error("24h window closed"));
-    const send = await invoiceLinkSender(ctx, {
+    const order = {
+      id: 9,
+      display_no: 82,
+      order_no: 82,
+      customer_email: null,
       user_key: "ig_1",
       telegram_id: -7,
       platform: "instagram",
-    });
+    };
+    const { send } = await invoiceLinkSender(ctx, order);
     expect(await send({ name_snapshot: "Прописи" } as never, [])).toBe("sent");
     zernioTarget = null;
-    const noDialog = await invoiceLinkSender(ctx, {
+    const noDialog = await invoiceLinkSender(ctx, order);
+    expect(await noDialog.send({ name_snapshot: "Прописи" } as never, [])).toBe("sent");
+    expect(noDialog.copyFailedPage()).toBeNull();
+    zernioTarget = { conversationId: "c", accountId: "a", platform: "instagram" };
+  });
+
+  it("счёт ссылкой: копия в Instagram не ушла — продавцу предупреждение один раз, в «выдан» ссылка на страницу (заказ #82)", async () => {
+    const { invoiceLinkSender } = await import("./order.server");
+    const { ctx } = setup();
+    const order = {
+      id: 9,
+      display_no: 82,
+      order_no: 82,
+      customer_email: null,
       user_key: "ig_1",
       telegram_id: -7,
       platform: "instagram",
-    });
-    expect(await noDialog({ name_snapshot: "Прописи" } as never, [])).toBe("sent");
-    zernioTarget = { conversationId: "c", accountId: "a", platform: "instagram" };
+    };
+    zernioCopy.mockResolvedValue("sent");
+    const ok = await invoiceLinkSender(ctx, order);
+    expect(await ok.send({ name_snapshot: "Палитра" } as never, [])).toBe("sent");
+    expect(ok.copyFailedPage()).toBeNull();
+    expect(notifyAdmins).not.toHaveBeenCalled();
+
+    zernioCopy.mockResolvedValue("failed");
+    const bad = await invoiceLinkSender(ctx, order);
+    expect(await bad.send({ name_snapshot: "Палитра" } as never, [])).toBe("sent");
+    expect(await bad.send({ name_snapshot: "Тропы" } as never, [])).toBe("sent");
+    expect(bad.copyFailedPage()).toBe("https://shop.example/o/9?t=sig");
+    expect(notifyAdmins).toHaveBeenCalledTimes(1);
+    expect(notifyAdmins.mock.calls[0]![1]).toContain("Заказ #82");
+    expect(notifyAdmins.mock.calls[0]![1]).toContain("https://shop.example/o/9?t=sig");
   });
 
   it("не чек — можно загрузить другой, заказ снова ждёт оплаты, продавца не дёргаем", async () => {
