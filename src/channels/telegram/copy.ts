@@ -421,11 +421,11 @@ const ru: Msg = {
     "Передал ваш вопрос продавцу: он напишет вам здесь, как удобнее оплатить. Заказ сохранён.",
   payLinkHint:
     "Нажмите кнопку ниже. Если не открывается — скопируйте ссылку и откройте её в браузере или в приложении Kaspi.",
-  payByCardBtn: "💳 Картой ₸ / ₽",
+  payByCardBtn: "💳 Картой РФ",
   cardAnyCountryLine:
-    "💳 Картой можно платить из любой страны, в том числе картой РФ: банк спишет рубли по своему курсу.",
+    "💳 «Картой РФ» — только карты российских банков: сумма в тенге спишется в рублях по курсу банка. Карту Казахстана или другой страны форма не примет — выберите другой способ оплаты.",
   prodamusCardHint:
-    "Откройте ссылку и оплатите банковской картой. Форма попросит номер телефона: укажите свой, на него придёт чек. Заказ подтвердится сам сразу после оплаты.",
+    "Откройте ссылку и оплатите картой российского банка или Быстрым платежом. Форма покажет сумму в тенге, а банк спишет её в рублях. Форма попросит номер телефона: укажите свой, на него придёт чек. Заказ подтвердится сам сразу после оплаты.",
   payBalanceBtn: (no) => `💳 Оплатить остаток #${no}`,
   balanceTitle: (no, sum) => `💳 <b>Остаток по заказу #${no}</b>\n\n💰 К оплате: <b>${sum}</b>`,
   balanceNoDetails: "Реквизиты для оплаты уточните у продавца.",
@@ -844,11 +844,11 @@ const kk: Msg = {
     "Сұрағыңызды сатушыға жібердім: ол осында қалай төлеген ыңғайлы екенін жазады. Тапсырыс сақталды.",
   payLinkHint:
     "Төмендегі батырманы басыңыз. Ашылмаса — сілтемені көшіріп, браузерде немесе Kaspi қосымшасында ашыңыз.",
-  payByCardBtn: "💳 Картамен ₸ / ₽",
+  payByCardBtn: "💳 РФ картасымен",
   cardAnyCountryLine:
-    "💳 Кез келген елдің картасымен, соның ішінде РФ картасымен төлеуге болады: банк рубльді өз бағамымен шешеді.",
+    "💳 «РФ картасымен» — тек Ресей банктерінің карталары: теңгедегі сома банк бағамы бойынша рубльмен шешіледі. Қазақстан немесе басқа ел картасын форма қабылдамайды — басқа төлем тәсілін таңдаңыз.",
   prodamusCardHint:
-    "Сілтемені ашып, банк картасымен төлеңіз. Форма телефон нөмірін сұрайды: өз нөміріңізді жазыңыз, чек соған келеді. Тапсырыс төлемнен кейін бірден өзі расталады.",
+    "Сілтемені ашып, Ресей банкінің картасымен немесе Жылдам төлеммен төлеңіз. Форма соманы теңгемен көрсетеді, ал банк оны рубльмен шешеді. Форма телефон нөмірін сұрайды: өз нөміріңізді жазыңыз, чек соған келеді. Тапсырыс төлемнен кейін бірден өзі расталады.",
   payViaProdamusBtn: "🇷🇺 РФ картасы / СБП",
   prodamusHint:
     "Сілтемені ашып, Ресей банкінің картасымен немесе СБП арқылы төлеңіз. Форма телефон нөмірін сұрайды: өз нөміріңізді жазыңыз, чек соған келеді. Тапсырыс төлемнен кейін бірден өзі расталады.",
@@ -1154,11 +1154,11 @@ const en: Msg = {
     "I passed your question to the seller: they will write here about the best way to pay. Your order is saved.",
   payLinkHint:
     "Tap the button below. If it does not open, copy the link and open it in your browser or the Kaspi app.",
-  payByCardBtn: "💳 Card ₸ / ₽",
+  payByCardBtn: "💳 Russian card",
   cardAnyCountryLine:
-    "💳 You can pay with a card from any country, including a Russian card: your bank charges rubles at its own rate.",
+    "💳 «Russian card» accepts Russian bank cards only: the tenge amount is charged in rubles at your bank's rate. Cards from Kazakhstan or other countries won't work there — please choose another payment method.",
   prodamusCardHint:
-    "Open the link and pay by bank card. The form will ask for a phone number: enter yours, the receipt goes there. The order is confirmed automatically right after payment.",
+    "Open the link and pay with a Russian bank card or Fast Payment. The form shows the amount in tenge; your bank charges it in rubles. The form will ask for a phone number: enter yours, the receipt goes there. The order is confirmed automatically right after payment.",
   phoneNoted: "Got your number 👍",
   loginCodeMsg: (code, minutes) =>
     `🔐 Your website login code: <b>${code}</b>\nValid for ${minutes} minutes, works once. Do not share it with anyone.`,
@@ -1494,11 +1494,11 @@ const uz: Msg = {
     "Chekni qanday yuborish: Kaspi yoki bank ilovasida shu to‘lovni oching va skrinshot oling. Keyin shu chatda xabar maydoni yonidagi rasm 🖼 yoki qisqich 📎 belgisini bosing va skrinshotni galereyadan tanlang.",
   payLinkHint:
     "Quyidagi tugmani bosing. Ochilmasa — havolani nusxalab, brauzerda yoki Kaspi ilovasida oching.",
-  payByCardBtn: "💳 Karta ₸ / ₽",
+  payByCardBtn: "💳 RF kartasi",
   cardAnyCountryLine:
-    "💳 Istalgan davlat kartasi, jumladan Rossiya kartasi bilan to‘lash mumkin: bank rublni o‘z kursi bo‘yicha yechadi.",
+    "💳 «RF kartasi» — faqat Rossiya banklari kartalari: tengedagi summa bank kursi bo‘yicha rublda yechiladi. Qozog‘iston yoki boshqa davlat kartasini forma qabul qilmaydi — boshqa to‘lov usulini tanlang.",
   prodamusCardHint:
-    "Havolani oching va bank kartasi bilan to‘lang. Forma telefon raqamini so‘raydi: o‘z raqamingizni kiriting, chek unga keladi. Buyurtma to‘lovdan so‘ng darhol avtomatik tasdiqlanadi.",
+    "Havolani oching va Rossiya banki kartasi yoki Tezkor to‘lov bilan to‘lang. Forma summani tengeda ko‘rsatadi, bank esa uni rublda yechadi. Forma telefon raqamini so‘raydi: o‘z raqamingizni kiriting, chek unga keladi. Buyurtma to‘lovdan so‘ng darhol avtomatik tasdiqlanadi.",
   payViaProdamusBtn: "🇷🇺 RF kartasi / SBP",
   prodamusHint:
     "Havolani oching va Rossiya banki kartasi yoki SBP orqali to‘lang. Forma telefon raqamini so‘raydi: o‘z raqamingizni kiriting, chek unga keladi. Buyurtma to‘lovdan so‘ng darhol o‘zi tasdiqlanadi.",

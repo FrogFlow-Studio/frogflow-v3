@@ -1775,7 +1775,7 @@ export const SCENARIOS: Scenario[] = [
   {
     id: "prodamus-link-ig-ru",
     title:
-      "касса в тенге — «💳 Картой онлайн», без «Карта РФ / СБП»; ссылка кнопкой, текст не длиннее предела Meta",
+      "касса в тенге — «💳 Картой РФ» (форма *.kz берёт только карты РФ); ссылка кнопкой, текст не длиннее предела Meta",
     origin: "заказ #15 Копилки Русоведа, скрин Кристины 09.10: после кнопки бот ничего не прислал",
     channel: "instagram",
     locale: "ru",
@@ -1787,8 +1787,8 @@ export const SCENARIOS: Scenario[] = [
         say: { button: "PAY:pdm" },
         expect: {
           count: 1,
-          says: [(c) => c.prodamusCardHint, "150 ₸"],
-          notSays: ["российского банка"],
+          // Форма *.kz принимает только карты РФ (скрин формы Копилки, 10.10).
+          says: [(c) => c.prodamusCardHint, "150 ₸", "российского банка"],
           buttons: [COPY.ru.payByCardBtn],
           state: { mode: "awaiting_payment", pending_order_id: 15 },
         },

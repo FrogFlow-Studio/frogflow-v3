@@ -764,7 +764,7 @@ async function sendPayChoice(
       payload: "PAY:manual",
     },
   ];
-  // Покупатель из России не узнаёт в «Картой» свою карту (Копилка, 10.10).
+  // Форма Продамуса *.kz принимает только карты РФ (скрин формы Копилки, 10.10): говорим это прямо.
   const anyCard =
     pdm.ready && buttons.some((b) => b.payload === "PAY:pdm")
       ? `\n\n${plain(prodamusAnyCardLine(s.m, pdm.currency))}`.trimEnd()
