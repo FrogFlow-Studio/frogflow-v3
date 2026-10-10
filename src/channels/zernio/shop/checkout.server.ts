@@ -893,7 +893,16 @@ async function sendPayLink(s: Shop, text: string, title: string, url: string) {
   });
 }
 
-export async function choosePayment(s: Shop, kind: "kaspi" | "rk" | "pdm" | "manual") {
+/**
+ * `ruCard` — покупатель написал «из России», «рублями» на шаге оплаты: та же
+ * ссылка Продамуса с пояснением, что карта РФ подходит (Копилка, #73, 10.10).
+ * Возвращает true, когда ссылку Продамуса отправили.
+ */
+export async function choosePayment(
+  s: Shop,
+  kind: "kaspi" | "rk" | "pdm" | "manual",
+  opts: { ruCard?: boolean } = {},
+): Promise<boolean | undefined> {
   const orderId = Number(s.customer.state.pending_order_id);
   const order = orderId ? await getOrder(s.ctx, orderId) : null;
   if (!order || order.telegram_id !== s.customer.telegramId || order.status !== "awaiting_payment")
@@ -968,6 +977,10 @@ export async function choosePayment(s: Shop, kind: "kaspi" | "rk" | "pdm" | "man
     if (!link) return;
     const sum = prodamusSum(s.m, link, due, order.currency);
     const url = link.url;
+    const copy = prodamusCopy(s.m, link.currency, order.currency);
+    // Форма в тенге, покупатель из России: карта РФ подходит, банк спишет рубли.
+    const hint =
+      opts.ruCard && link.currency.toUpperCase() !== "RUB" ? s.m.prodamusRubViaKztHint : copy.hint;
     await setMode(s, {
       mode: "awaiting_payment",
       pending_order_id: order.id,
@@ -975,11 +988,11 @@ export async function choosePayment(s: Shop, kind: "kaspi" | "rk" | "pdm" | "man
     });
     await sendPayLink(
       s,
-      `${plain(s.m.manualTitleNew(no))}\n\n${plain(s.m.amountToPay(sum))}\n\n${plain(prodamusCopy(s.m, link.currency, order.currency).hint)}`,
-      plain(prodamusCopy(s.m, link.currency, order.currency).btn),
+      `${plain(s.m.manualTitleNew(no))}\n\n${plain(s.m.amountToPay(sum))}\n\n${plain(hint)}`,
+      plain(copy.btn),
       url,
     );
-    return;
+    return true;
   }
   const method =
     (await listActivePaymentMethods(s.ctx)).find((x) => x.country_code === order.country_code) ??
