@@ -4,10 +4,14 @@
  * (app/operator/plans.server.ts), здесь только правила.
  */
 import { MODULE_KEYS, moduleDef, type ModuleKey } from "@/core/modules/registry";
-import type { BillingSettings } from "@/core/tenant/types";
+import type { BillingPeriod, BillingSettings } from "@/core/tenant/types";
 import {
   ADDONS,
-  ANNUAL_BILLED_MONTHS,
+  CONNECTION_FREE_FROM_MONTHS,
+  PERIOD_BILLED_MONTHS,
+  PERIOD_MONTHS,
+  connectionFree,
+  periodTitle,
   BASE_MODULES,
   CONNECTION_PRICE,
   COURSES_FROM_TIER,
@@ -177,14 +181,15 @@ export function overLimit(used: number, limit: number | null | undefined): boole
 export type InvoiceLine = { title: string; amount: number };
 
 /**
- * Счёт по плану: подписка за месяц или год (10 месяцев вместо 12) плюс
- * подключение, если оно ещё не оплачено. Надбавки за каналы — отдельными
- * строками по цене, которую назвал оператор.
+ * Счёт по плану: подписка за месяц, 3 месяца или год (10 месяцев вместо 12)
+ * плюс подключение, если оно ещё не оплачено. При оплате от 3 месяцев
+ * подключение бесплатно — строкой с нулём, чтобы это было видно в счёте.
+ * Надбавки — отдельными строками по цене, которую назвал оператор.
  */
 export function planInvoice(
   tier: PlanTier,
   opts: {
-    period: "month" | "year";
+    period: BillingPeriod;
     withConnection: boolean;
     /** Цена плана в месяц по договору (planMonthlyPrice); нет — цена тарифа. */
     monthlyPrice?: number;
@@ -195,7 +200,8 @@ export function planInvoice(
     commission?: InvoiceLine[];
   },
 ): { amount: number; lines: InvoiceLine[]; note: string } {
-  const months = opts.period === "year" ? ANNUAL_BILLED_MONTHS : 1;
+  const months = PERIOD_BILLED_MONTHS[opts.period];
+  const freeConnection = opts.withConnection && connectionFree(opts.period);
   const contract =
     opts.monthlyPrice !== undefined && opts.monthlyPrice !== MONTHLY_PRICE[tier]
       ? opts.monthlyPrice
@@ -203,17 +209,21 @@ export function planInvoice(
   const lines: InvoiceLine[] = [
     {
       title:
-        (opts.period === "year"
-          ? `План ${TIER_TITLES[tier]} на год (12 мес. по цене ${months})`
-          : `План ${TIER_TITLES[tier]} на месяц`) + (contract !== null ? ", цена по договору" : ""),
+        `План ${TIER_TITLES[tier]} ${periodTitle(opts.period)}` +
+        (contract !== null ? ", цена по договору" : ""),
       amount: (contract ?? MONTHLY_PRICE[tier]) * months,
     },
   ];
   for (const a of opts.addons ?? [])
     if (a.monthly > 0) lines.push({ title: `${a.title} сверх плана`, amount: a.monthly * months });
-  if (opts.withConnection)
+  if (freeConnection)
+    lines.push({
+      title: `Подключение ${TIER_TITLES[tier]}: бесплатно при оплате от ${CONNECTION_FREE_FROM_MONTHS} месяцев`,
+      amount: 0,
+    });
+  else if (opts.withConnection)
     lines.push({ title: `Подключение ${TIER_TITLES[tier]}`, amount: CONNECTION_PRICE[tier] });
-  const off = opts.withConnection ? opts.connectionDiscount : undefined;
+  const off = opts.withConnection && !freeConnection ? opts.connectionDiscount : undefined;
   if (off && off.amount > 0)
     lines.push({ title: off.title, amount: -Math.min(off.amount, CONNECTION_PRICE[tier]) });
   for (const c of opts.commission ?? []) if (c.amount > 0) lines.push(c);
@@ -238,16 +248,16 @@ const addDays = (iso: string, n: number) => {
 
 /**
  * Оплаченный период: продолжает текущую подписку без разрыва, а если она
- * уже истекла — начинается сегодня. Конец — через месяц или 12 месяцев.
+ * уже истекла — начинается сегодня. Конец — через 1, 3 или 12 месяцев.
  */
 export function nextPeriod(
   expiresAt: string | null,
-  period: "month" | "year",
+  period: BillingPeriod,
   today: string,
 ): { start: string; end: string } {
   const exp = expiresAt ? expiresAt.slice(0, 10) : null;
   const start = exp && exp >= today ? addDays(exp, 1) : today;
-  return { start, end: addDays(addMonths(start, period === "year" ? 12 : 1), -1) };
+  return { start, end: addDays(addMonths(start, PERIOD_MONTHS[period]), -1) };
 }
 
 /**

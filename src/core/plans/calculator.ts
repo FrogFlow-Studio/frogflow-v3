@@ -5,6 +5,7 @@ import {
   ANNUAL_BILLED_MONTHS,
   CHANNEL_ADDONS,
   CONNECTION_PRICE,
+  connectionFree,
   MONTHLY_PRICE,
   PLAN_TIERS,
   type PlanNiche,
@@ -16,8 +17,8 @@ import {
  * Telegram входит в любой тариф; WhatsApp и Instagram входят в тариф, если
  * его план ниши включает модуль канала, иначе доплата `ADDON_MONTHLY_PRICE`
  * за канал. Годовая оплата — `ANNUAL_BILLED_MONTHS` месяцев из 12 на всю
- * месячную сумму (тариф и каналы). Подключение — разово, от годовой оплаты
- * не зависит. Рекомендуется самый дешёвый по месячной сумме тариф; при равенстве
+ * месячную сумму (тариф и каналы). Подключение — разово, при годовой оплате
+ * (как и при любой от 3 месяцев) бесплатно. Рекомендуется самый дешёвый по месячной сумме тариф; при равенстве
  * — младший.
  */
 export type ChannelAddon = (typeof CHANNEL_ADDONS)[number];
@@ -65,7 +66,8 @@ export function quoteTier(
     perMonth: annual ? Math.round(yearTotal / 12) : monthly,
     yearTotal,
     yearSaving: monthly * 12 - yearTotal,
-    connection: CONNECTION_PRICE[tier],
+    // Годовая оплата — от 3 месяцев, подключение бесплатно (connectionFree).
+    connection: connectionFree(annual ? "year" : "month") ? 0 : CONNECTION_PRICE[tier],
   };
 }
 

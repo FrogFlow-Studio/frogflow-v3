@@ -12,7 +12,7 @@ import type {
   TenantLookup,
   TenantSettings,
 } from "./types";
-import { BILLING_ADDONS, type BillingAddon } from "./types";
+import { BILLING_ADDONS, BILLING_PERIODS, type BillingAddon, type BillingPeriod } from "./types";
 import { isLocale } from "@/core/i18n/locale";
 import { parseWizardMap } from "./wizard-entry";
 import { effectiveModules } from "@/core/plans/plans";
@@ -402,7 +402,10 @@ function billingFromJson(json: unknown): BillingSettings | undefined {
     ai_quota: q
       ? { ai_dialogs: quota(q.ai_dialogs), receipt_checks: quota(q.receipt_checks) }
       : undefined,
-    period: b.period === "year" ? "year" : b.period === "month" ? "month" : undefined,
+    period:
+      typeof b.period === "string" && (BILLING_PERIODS as readonly string[]).includes(b.period)
+        ? (b.period as BillingPeriod)
+        : undefined,
     monthly_price:
       typeof b.monthly_price === "number" && Number.isFinite(b.monthly_price) && b.monthly_price > 0
         ? b.monthly_price

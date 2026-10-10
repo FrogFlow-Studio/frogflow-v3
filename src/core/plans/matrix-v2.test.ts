@@ -4,13 +4,17 @@ import {
   availableAddons,
   billableAddons,
   effectiveModules,
+  nextPeriod,
+  planInvoice,
   planLimits,
   planModules,
 } from "./plans";
+import { monthlyRevenue, periodPayment } from "./revenue";
 import {
   ADDONS,
   ADDON_KEYS,
   ADDON_MONTHLY_PRICE,
+  CONNECTION_PRICE,
   MONTHLY_PRICE,
   PLAN_NICHES,
   PLAN_TIERS,
@@ -131,5 +135,44 @@ describe("надбавки", () => {
     expect(billableAddons("digital", "pro", ["instagram", "whatsapp", "vip"])).toEqual([
       "whatsapp",
     ]);
+  });
+});
+
+describe("оплата за 3 месяца: подключение бесплатно", () => {
+  it("счёт за 3 месяца — три месяца цены и подключение 0 строкой", () => {
+    const inv = planInvoice("pro", { period: "quarter", withConnection: true });
+    expect(inv.amount).toBe(MONTHLY_PRICE.pro * 3);
+    expect(inv.lines.find((l) => l.title.startsWith("Подключение"))?.amount).toBe(0);
+    expect(inv.note).toMatch(/бесплатно при оплате от 3 месяцев/);
+  });
+
+  it("за год подключение тоже бесплатно, помесячно — платно", () => {
+    expect(planInvoice("basic", { period: "year", withConnection: true }).amount).toBe(
+      MONTHLY_PRICE.basic * 10,
+    );
+    expect(planInvoice("basic", { period: "month", withConnection: true }).amount).toBe(
+      MONTHLY_PRICE.basic + CONNECTION_PRICE.basic,
+    );
+  });
+
+  it("скидка на подключение при бесплатном подключении не вычитается", () => {
+    const inv = planInvoice("pro", {
+      period: "quarter",
+      withConnection: true,
+      connectionDiscount: { title: "Скидка", amount: 5000 },
+    });
+    expect(inv.amount).toBe(MONTHLY_PRICE.pro * 3);
+  });
+
+  it("период 3 месяца продлевает подписку на 3 месяца", () => {
+    expect(nextPeriod(null, "quarter", "2026-10-10")).toEqual({
+      start: "2026-10-10",
+      end: "2027-01-09",
+    });
+  });
+
+  it("выручка в месяц при оплате за 3 месяца — цена месяца", () => {
+    expect(monthlyRevenue("digital.pro", { period: "quarter" })).toBe(MONTHLY_PRICE.pro);
+    expect(periodPayment("digital.pro", { period: "quarter" })).toBe(MONTHLY_PRICE.pro * 3);
   });
 });

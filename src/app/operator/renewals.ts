@@ -4,7 +4,7 @@
  */
 import { billableAddons, planInvoice } from "@/core/plans/plans";
 import { ADDON_MONTHLY_PRICE, ADDONS, parsePlan, planMonthlyPrice } from "@/core/plans/registry";
-import type { Tenant } from "@/core/tenant/types";
+import type { BillingPeriod, Tenant } from "@/core/tenant/types";
 
 export type RenewalStage = "d7" | "d3" | "d1" | "d0";
 
@@ -82,11 +82,11 @@ export function renewalSummary(rows: RenewalRow[], withinDays: number) {
  */
 export function renewalPrice(
   t: Pick<Tenant, "plan" | "settings">,
-): { amount: number; period: "month" | "year" } | null {
+): { amount: number; period: BillingPeriod } | null {
   const parsed = parsePlan(t.plan);
   if (parsed?.kind !== "tier") return null;
   const billing = t.settings.billing ?? {};
-  const period = billing.period === "year" ? "year" : "month";
+  const period = billing.period ?? "month";
   const inv = planInvoice(parsed.tier, {
     period,
     monthlyPrice: planMonthlyPrice(parsed.tier, billing),

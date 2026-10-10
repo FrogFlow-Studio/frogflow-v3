@@ -27,6 +27,7 @@ import {
 import { moduleDef } from "@/core/modules/registry";
 import { Badge, Card, ErrorBox, Field, useAction } from "@/app/ui";
 import type { C } from "./types";
+import type { BillingPeriod } from "@/core/tenant/types";
 
 type PlanView = Awaited<ReturnType<typeof planFn>>;
 
@@ -49,7 +50,7 @@ export function PlanCard({ c, onDone }: { c: C; onDone: () => Promise<void> }) {
   const [tier, setTier] = useState<PlanTier | "custom">(
     parsed?.kind === "tier" ? parsed.tier : parsed?.kind === "custom" ? "custom" : "basic",
   );
-  const [period, setPeriod] = useState<"month" | "year">("month");
+  const [period, setPeriod] = useState<BillingPeriod>("month");
   const [addons, setAddons] = useState<AddonKey[]>([]);
   const [prices, setPrices] = useState<Partial<Record<AddonKey, number>>>({});
   useEffect(() => {
@@ -198,12 +199,13 @@ export function PlanCard({ c, onDone }: { c: C; onDone: () => Promise<void> }) {
                 className="input"
                 value={period}
                 onChange={(e) => {
-                  setPeriod(e.target.value as "month" | "year");
+                  setPeriod(e.target.value as BillingPeriod);
                   setShown(null);
                 }}
               >
                 <option value="month">помесячно</option>
-                <option value="year">за год (12 мес. по цене 10)</option>
+                <option value="quarter">за 3 месяца, подключение бесплатно</option>
+                <option value="year">за год (12 мес. по цене 10), подключение бесплатно</option>
               </select>
             </Field>
           </div>

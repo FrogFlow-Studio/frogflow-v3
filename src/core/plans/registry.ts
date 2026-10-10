@@ -1,6 +1,6 @@
 import type { ModuleKey } from "@/core/modules/registry";
 import type { VerticalKey } from "@/core/verticals/registry";
-import type { BillingAddon } from "@/core/tenant/types";
+import type { BillingAddon, BillingPeriod } from "@/core/tenant/types";
 
 /**
  * Тарифы платформы: подключение один раз и дальше подписка на план. План —
@@ -96,6 +96,30 @@ export const COMMISSION_DEFAULT_START = "2027-01-01";
 
 /** Годовая оплата: два месяца в подарок. */
 export const ANNUAL_BILLED_MONTHS = 10;
+/** Сколько месяцев покрывает оплаченный период. */
+export const PERIOD_MONTHS: Record<BillingPeriod, number> = { month: 1, quarter: 3, year: 12 };
+/** За сколько месяцев платится период: год — за 10. */
+export const PERIOD_BILLED_MONTHS: Record<BillingPeriod, number> = {
+  month: 1,
+  quarter: 3,
+  year: ANNUAL_BILLED_MONTHS,
+};
+/**
+ * Подключение бесплатно при оплате сразу от стольких месяцев (решение Якова
+ * 10.10.2026): за 3 месяца и за год подключение в счёт не входит.
+ */
+export const CONNECTION_FREE_FROM_MONTHS = 3;
+export function connectionFree(period: BillingPeriod): boolean {
+  return PERIOD_MONTHS[period] >= CONNECTION_FREE_FROM_MONTHS;
+}
+/** Название периода в счёте. */
+export function periodTitle(period: BillingPeriod): string {
+  return period === "year"
+    ? `на год (12 мес. по цене ${ANNUAL_BILLED_MONTHS})`
+    : period === "quarter"
+      ? "на 3 месяца"
+      : "на месяц";
+}
 export const TRIAL_DAYS = 7;
 /** Продление пробного периода оператором за один раз, дней. */
 export const TRIAL_EXTEND_MAX_DAYS = 30;

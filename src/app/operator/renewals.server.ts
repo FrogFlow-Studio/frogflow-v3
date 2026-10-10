@@ -94,7 +94,7 @@ export function renewalText(
   stage: RenewalStage,
   p: {
     dateLabel: string;
-    price: { amount: number; period: "month" | "year" } | null;
+    price: { amount: number; period: import("@/core/tenant/types").BillingPeriod } | null;
     payUrl: string | null;
   },
 ): string {

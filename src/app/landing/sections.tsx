@@ -275,7 +275,9 @@ function TariffCalculator({
           </div>
         )}
         <div className="text-sm text-muted tabular-nums">
-          {t("calc.setup", { price: formatTenge(best.connection) })}
+          {best.connection === 0
+            ? t("calc.setupFree")
+            : t("calc.setup", { price: formatTenge(best.connection) })}
         </div>
         {best.included.length > 0 && (
           <div className="text-sm text-muted">

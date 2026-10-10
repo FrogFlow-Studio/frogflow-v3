@@ -51,7 +51,7 @@ import {
   patchTenantSettings,
   tenantDirectory,
 } from "@/core/tenant/resolve.server";
-import type { BillingSettings, Tenant } from "@/core/tenant/types";
+import type { BillingPeriod, BillingSettings, Tenant } from "@/core/tenant/types";
 import { INVITE_DISCOUNT_PERCENT, connectionDiscount } from "@/core/invites/invites";
 import { logEvent } from "./operator.server";
 import { serverFailure } from "@/lib/server-failure";
@@ -173,7 +173,7 @@ export async function getPlanView(botId: string): Promise<PlanView> {
  */
 export async function setPlan(
   botId: string,
-  input: { tier: PlanTier | "custom"; period: "month" | "year"; addons: AddonKey[] },
+  input: { tier: PlanTier | "custom"; period: BillingPeriod; addons: AddonKey[] },
   actor: string,
 ): Promise<void> {
   const t = await loadWritable(botId);
@@ -406,7 +406,7 @@ function addonPrice(a: AddonKey, named: number | undefined): number {
 export async function planInvoiceQuote(
   t: Tenant,
   addonPrices: Partial<Record<AddonKey, number>>,
-  period?: "month" | "year",
+  period?: BillingPeriod,
 ) {
   const { commissionBilling } = await import("@/core/commission/invoice.server");
   const c = await commissionBilling(t);
@@ -417,7 +417,7 @@ export async function planInvoiceQuote(
 export function planInvoicePreview(
   t: Pick<Tenant, "plan" | "settings">,
   addonPrices: Partial<Record<AddonKey, number>>,
-  period?: "month" | "year",
+  period?: BillingPeriod,
   /** Строки комиссии платформы (core/commission/invoice): считает вызывающий, база здесь не читается. */
   commission: InvoiceLine[] = [],
 ) {
@@ -451,7 +451,7 @@ export function planInvoicePreview(
  */
 export async function createPlanInvoice(
   botId: string,
-  input: { period: "month" | "year"; addonPrices: Partial<Record<AddonKey, number>> },
+  input: { period: BillingPeriod; addonPrices: Partial<Record<AddonKey, number>> },
   actor: string,
 ) {
   const t = await loadWritable(botId);
@@ -498,11 +498,13 @@ export async function createPlanInvoice(
  * Кнопка «Оплатить» у владельца: открытый счёт, если он уже есть (владелец
  * мог нажать дважды или оператор выставил свой), иначе новый счёт по плану
  * на период клиента по базовым ценам каналов. Счёт уходит и в бота — туда
- * владелец присылает чек.
+ * владелец присылает чек. Владелец выбрал другой период (3 месяца или год —
+ * подключение бесплатно) — новый счёт на этот период, открытый не берём.
  */
 export async function ownerPayInvoice(
   botId: string,
   actor: string,
+  period?: BillingPeriod,
 ): Promise<{
   invoiceId: string;
   amount: number;
@@ -513,6 +515,9 @@ export async function ownerPayInvoice(
   reused: boolean;
 }> {
   const billing = await import("./billing.server");
+  const t = await load(botId);
+  const current = t.settings.billing?.period ?? "month";
+  const want = period ?? current;
   const { data: sent, error: sentErr } = await serviceDb()
     .from("subscription_invoices")
     .select("id, amount, currency, note, requisites_snapshot")
@@ -524,7 +529,7 @@ export async function ownerPayInvoice(
   // Открытое пополнение ИИ-баланса — не счёт за тариф.
   const { openSubscriptionInvoices } = await import("./ai-topup.server");
   const [open] = await openSubscriptionInvoices(botId, sent ?? []);
-  if (open) {
+  if (open && want === current) {
     const { normalizeKaspiLink } = await import("@/core/billing/pay/kaspi-link");
     const payUrl =
       open.currency === "KZT" ? normalizeKaspiLink(await billing.getKaspiPayLink()) : null;
@@ -538,12 +543,7 @@ export async function ownerPayInvoice(
       reused: true,
     };
   }
-  const t = await load(botId);
-  const r = await createPlanInvoice(
-    botId,
-    { period: t.settings.billing?.period ?? "month", addonPrices: {} },
-    actor,
-  );
+  const r = await createPlanInvoice(botId, { period: want, addonPrices: {} }, actor);
   return {
     invoiceId: r.invoice.id,
     amount: r.invoice.amount,
