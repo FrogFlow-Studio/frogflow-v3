@@ -59,6 +59,7 @@ import {
   isCancel,
   isPaymentComplaint,
   isPayTrouble,
+  isReceiptHowQuestion,
   matchCountry,
   matchDeliveryLangChoice,
   matchLoyaltyPointsChoice,
@@ -224,6 +225,9 @@ async function handleLoginCode(s: Shop, nonce: string): Promise<ShopOutcome> {
   await reply(s, plain(text), { force: true });
   return "handled";
 }
+
+/** «Не проходит российская карта»: оплата уже не удалась — ссылку не повторяем. */
+const PAY_FAILED = /не\s*(смог|могу|получ|проход|прош|выход|принима)|ошибк|отклон|отказ/i;
 
 async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
   const text = msg.text;
@@ -640,17 +644,35 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
     case "choose_pay":
     case "awaiting_payment": {
       if (isPaymentComplaint(text)) return "question";
+      // «Не знаю как», «как отправить чек»: объяснить, как приложить скриншот,
+      // а не молчать (строгий режим) и не повторять «пришлите чек» (#72, 10.10).
+      if (mode === "awaiting_proof" && isReceiptHowQuestion(text)) {
+        await reply(s, s.m.receiptHowTo, { force: true });
+        return "handled";
+      }
       // «Не смогла оплатить», «я из России, можно по номеру»: не «пришлите
       // чек» (заказ #46 Копилки, 09.10) — реквизиты для России, если они
       // заведены, иначе честно: вопрос у продавца, он напишет здесь.
       if (isPayTrouble(text)) {
-        s.handoff = true;
         const ru = /росси|рубл|сбп|рф/i.test(text)
           ? await paymentMethodFor(s.ctx, "RU").catch(() => null)
           : null;
-        if (ru?.instructions && ru.country_code !== s.customer.state.country_code)
+        if (ru?.instructions && ru.country_code !== s.customer.state.country_code) {
+          s.handoff = true;
           await reply(s, `${ru.instructions}\n\n${plain(s.m.afterProofManual)}`, { force: true });
-        else await reply(s, s.m.payTroubleHandoff, { force: true });
+          return "question";
+        }
+        // Реквизитов РФ нет, а Продамус есть: его форма принимает карты РФ —
+        // сразу ссылка, а не «передал продавцу» (Копилка, заказ #73, 10.10).
+        // Не прошла карта — это к продавцу, ссылку не повторяем.
+        if (
+          /росси|рубл|рф/i.test(text) &&
+          !PAY_FAILED.test(text) &&
+          (await choosePayment(s, "pdm", { ruCard: true }))
+        )
+          return "handled";
+        s.handoff = true;
+        await reply(s, s.m.payTroubleHandoff, { force: true });
         return "question";
       }
       const rm = parseRemoveCommand(text);

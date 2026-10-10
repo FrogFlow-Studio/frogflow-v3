@@ -1789,8 +1789,40 @@ export const SCENARIOS: Scenario[] = [
         },
       },
       {
-        say: { text: "Я из России, можно перевести по номеру?" },
+        say: { text: "Я из России, у меня карта не проходит" },
         expect: { says: [(c) => c.payTroubleHandoff], notSays: [(c) => c.sendReceiptPrompt] },
+      },
+    ],
+  },
+  {
+    id: "rubles-get-card-link-ig-ru",
+    title:
+      "«Российскими рублями» при Продамусе без реквизитов РФ — сразу ссылка картой, не продавцу",
+    origin:
+      "заказ #73 Копилки русоведа 10.10 (rayana.775): «Российскими рублями» → «Передал продавцу»; Яков: реквизитов РФ нет, форма Продамуса принимает карты РФ",
+    channel: "instagram",
+    locale: "ru",
+    modules: { prodamus: true },
+    state: { mode: "choose_pay", pending_order_id: 15, pending_display_no: 15 },
+    arrange: prodamusOrder,
+    steps: [
+      {
+        say: { text: "Российскими рублями" },
+        expect: {
+          count: 1,
+          says: [(c) => c.prodamusRubViaKztHint],
+          buttons: ["💳 Картой онлайн"],
+          notSays: [(c) => c.payTroubleHandoff, (c) => c.sendReceiptPrompt],
+          state: { mode: "awaiting_payment" },
+        },
+      },
+      {
+        say: { text: "Я из России, можно оплатить?" },
+        expect: {
+          count: 1,
+          says: [(c) => c.prodamusRubViaKztHint],
+          notSays: [(c) => c.payTroubleHandoff],
+        },
       },
     ],
   },
@@ -1831,7 +1863,7 @@ export const SCENARIOS: Scenario[] = [
     arrange: prodamusOrder,
     steps: [
       {
-        say: { text: "Рублями сколько стоит? Я с Дагестана" },
+        say: { text: "Не могу оплатить российской картой" },
         expect: {
           count: 1,
           says: [(c) => c.payTroubleHandoff],
@@ -1840,6 +1872,40 @@ export const SCENARIOS: Scenario[] = [
       },
       { say: { text: "Спасибо ❤️" }, expect: { silent: true } },
       { say: { text: "Хорошо, жду" }, expect: { silent: true } },
+    ],
+  },
+  {
+    id: "receipt-how-to-after-paid-ig-ru",
+    title: "«Не знаю как» после «пришлите чек» — бот объясняет, как приложить скриншот",
+    origin:
+      "заказ #72 Копилки русоведа 10.10 (_tatyana_tarasenko1820): «Я оплатила» → «Пришлите чек», «Не знаю как» → бот молчит",
+    channel: "instagram",
+    locale: "ru",
+    full: true,
+    products: [{ id: P1, name: "Палитра средств выразительности" }],
+    state: {},
+    steps: [
+      {
+        say: { button: `PROD:${P1}`, title: "Купить" },
+        expect: { says: ["К оплате"], state: { mode: "awaiting_proof" } },
+      },
+      {
+        say: { text: "Я оплатила" },
+        expect: { count: 1, says: [(c) => c.sendReceiptPrompt] },
+      },
+      {
+        say: { text: "Не знаю как" },
+        expect: {
+          count: 1,
+          says: [(c) => c.receiptHowTo],
+          notSays: [(c) => c.sendReceiptPrompt],
+          state: { mode: "awaiting_proof" },
+        },
+      },
+      {
+        say: { text: "А куда скинуть чек?" },
+        expect: { count: 1, says: [(c) => c.receiptHowTo] },
+      },
     ],
   },
   {

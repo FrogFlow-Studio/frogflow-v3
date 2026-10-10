@@ -9,6 +9,7 @@ import {
   isLocalePickEcho,
   isPaymentComplaint,
   isPayTrouble,
+  isReceiptHowQuestion,
   LOCALE_PICK_ECHO_MS,
   matchCountry,
   matchDeliveryLangChoice,
@@ -578,5 +579,35 @@ describe("isPayTrouble: покупатель не из Казахстана ил
       "в английском варианте есть?",
     ])
       expect(isPayTrouble(t), t).toBe(false);
+  });
+});
+
+describe("isReceiptHowQuestion: как прислать чек (заказ #72 Копилки, 10.10)", () => {
+  it("узнаёт вопрос о том, как приложить чек", () => {
+    for (const t of [
+      "Не знаю как",
+      "не знаю как)",
+      "Я не понимаю как",
+      "Как отправить чек?",
+      "А куда скинуть чек?",
+      "как вам отправить скрин",
+      "Как его отправить?",
+      "не получается отправить фото",
+      "How do I send the receipt?",
+      "Чекті қалай жіберемін?",
+      "Chekni qanday yuboraman?",
+    ])
+      expect(isReceiptHowQuestion(t), t).toBe(true);
+  });
+  it("не путает с другими вопросами", () => {
+    for (const t of [
+      "Я оплатила",
+      "Как оплатить?",
+      "Куда отправить деньги?",
+      "не знаю как оплатить",
+      "Как отправить материал на почту?",
+      "Спасибо",
+    ])
+      expect(isReceiptHowQuestion(t), t).toBe(false);
   });
 });
