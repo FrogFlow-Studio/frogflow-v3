@@ -31,8 +31,8 @@ export const observerLogKey = (date: string) => `observer_log:${date}`;
 
 /** Копилка Русоведа — первый клиент наблюдателя; остальным включает оператор. */
 export const OBSERVER_DEFAULT_ON: readonly string[] = ["4f9562e2-3bf4-4cba-8a58-794637511431"];
-/** ≈ 4 000 ₸ в месяц на клиента — в пределах цены Business (сетка тарифов 10.10.2026). */
-export const OBSERVER_DAILY_USD = 0.25;
+/** ≈ 4 700 ₸ в месяц на клиента — в пределах цены Business (сетка тарифов 10.10.2026). */
+export const OBSERVER_DAILY_USD = 0.3;
 export const OBSERVER_LEASE_MS = 5 * 60_000;
 /** Не больше одного сигнала продавцу по диалогу за час. */
 export const SIGNAL_EVERY_MS = 60 * 60_000;
@@ -45,8 +45,8 @@ export const MAX_LOOKBACK_MS = 3 * 60 * 60_000;
 /** Хвост окна: реплики последних секунд ещё могут дописываться, их возьмёт следующий прогон. */
 export const WINDOW_LAG_MS = 30_000;
 export const MAX_DIALOGS_PER_RUN = 30;
-export const DIALOGS_PER_CALL = 5;
-export const HISTORY_PER_DIALOG = 30;
+export const DIALOGS_PER_CALL = 8;
+export const HISTORY_PER_DIALOG = 16;
 
 export function parseEnabled(raw: string | null | undefined, botId: string): boolean {
   if (raw === "true") return true;
@@ -73,6 +73,8 @@ export function parseCap(raw: string | null | undefined): number {
 export type ObserverRunSummary = {
   at: string;
   dialogs: number;
+  /** Из них отсеяны правилами как обычный ход покупки — к модели не ходили. */
+  calm?: number;
   findings: number;
   sent: number;
   usd: number;
@@ -212,11 +214,45 @@ export function dialogBlock(d: ObservedDialog, timezone: string): string {
       (l) =>
         `${l.fresh ? "* " : "  "}[${time(l.at)}] ${SENDER[l.sender] ?? l.sender}: ${clip(
           l.text.replace(/\s+/g, " "),
-          600,
+          300,
         )}`,
     )
     .join("\n");
   return `${head}\n${orders}${wait}\n${lines}\n</dialog>`;
+}
+
+// ── Дешёвый отсев до модели ────────────────────────────────────────────
+
+/** Слова покупателя, после которых диалог стоит показать модели: страна, валюта, оплата, опт, жалоба, вопрос. */
+const CUSTOMER_FLAG =
+  /росси|беларус|белорус|кыргыз|киргиз|узбек|рубл|₽|руб\.|тенге|каспи|kaspi|халык|halyk|перевод|карт|оплат|оплачен|чек|опт|школ|сотрудн|скидк|не работ|не приход|не пришл|не могу|не получ|не открыв|не вижу|ошибк|почему|когда|сколько|цен[аыу]|стоит|верните|возврат|обман|ужас|долго|\?/i;
+/** Бот передал продавцу или написал похожее на техническую ошибку. */
+const BOT_FLAG = /продавц|менеджер|передал|передаю|undefined|null|\[object|ошибк|error|не понял/i;
+/** Сколько реплика покупателя может оставаться без ответа бота, пока это не странно. */
+const NO_REPLY_MS = 3 * 60_000;
+
+/**
+ * Правила до модели: обычный ход покупки (кнопки, ключевое слово, бот
+ * ответил) модели не показываем — это больше половины диалогов и почти весь
+ * расход. Возвращает причину показать или null.
+ */
+export function suspicion(d: ObservedDialog, now: number): string | null {
+  if (d.waitingMin != null) return "ждёт ответа";
+  const fresh = d.lines.filter((l) => l.fresh);
+  const customer = fresh.filter((l) => l.sender === "customer");
+  const bot = fresh.filter((l) => l.sender === "bot");
+  if (customer.some((l) => CUSTOMER_FLAG.test(l.text))) return "слова покупателя";
+  if (bot.some((l) => BOT_FLAG.test(l.text))) return "ответ бота";
+  const last = d.lines[d.lines.length - 1];
+  if (last?.sender === "customer" && now - Date.parse(last.at) >= NO_REPLY_MS) return "бот молчит";
+  const norm = (t: string) => t.trim().toLowerCase();
+  for (let i = 1; i < fresh.length; i++)
+    if (
+      fresh[i]!.sender === fresh[i - 1]!.sender &&
+      norm(fresh[i]!.text) === norm(fresh[i - 1]!.text)
+    )
+      return fresh[i]!.sender === "bot" ? "бот повторился" : "покупатель повторился";
+  return null;
 }
 
 // ── Промпт и ответ модели ───────────────────────────────────────────────

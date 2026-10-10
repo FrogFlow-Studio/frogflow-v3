@@ -38,6 +38,7 @@ import {
   type ObservedDialog,
   type ObserverRunSummary,
   type ObserverState,
+  suspicion,
 } from "@/core/observer/observer";
 import { serverFailure } from "@/lib/server-failure";
 import { previewReadonly } from "@/lib/preview";
@@ -348,14 +349,19 @@ async function runLeased(
     windowLines.filter((l) => l.sender === "customer").map((l) => l.telegramId),
   );
   const dialogs: ObservedDialog[] = [];
+  let calm = 0;
   for (const id of ids) {
     const d = await loadDialog(ctx, id, w, now);
     // Ждущий без свежих реплик идёт к модели, только если и правда молчат два часа.
-    if (d && (freshIds.has(id) || d.waitingMin != null)) dialogs.push(d);
+    if (!d || (!freshIds.has(id) && d.waitingMin == null)) continue;
+    // Обычный ход покупки модели не показываем: правила дешевле (core/observer suspicion).
+    if (suspicion(d, now)) dialogs.push(d);
+    else calm++;
   }
   const summary: ObserverRunSummary = {
     at: new Date(now).toISOString(),
     dialogs: dialogs.length,
+    ...(calm ? { calm } : {}),
     findings: 0,
     sent: 0,
     usd: 0,
