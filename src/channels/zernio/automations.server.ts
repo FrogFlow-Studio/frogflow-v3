@@ -17,6 +17,9 @@ import {
   DEFAULT_SECOND_DM,
   DM_LIMIT_PLAIN,
   LEGACY_REPLY_PROMPTS,
+  REQUESTS_HINT,
+  commentLang,
+  isNotReceivedComment,
   replyPromptsOf,
   STALE_PENDING_MS,
   annotateCommentStatus,
@@ -911,6 +914,8 @@ export async function handleCommentReceived(
   )
     return { note: "комментарий самого аккаунта" };
   const text = payload.comment?.text?.trim().toLowerCase() ?? "";
+  const hint = await answerNotReceived(ctx, payload, { accountId, username, commentId, text }, api);
+  if (hint) return { note: hint };
   const commentPostId =
     payload.comment?.platformPostId ||
     payload.post?.platformPostId ||
@@ -970,6 +975,72 @@ export async function handleCommentReceived(
     api,
   );
   return { note: ok ? `второе сообщение @${username}` : `в очередь pending @${username}` };
+}
+
+/** Сколько после первого сообщения «ничего нет» под постом получает подсказку про «Запросы». */
+export const NOT_RECEIVED_WINDOW_MS = 24 * 60 * 60_000;
+
+/**
+ * «Ничего нет / не пришло» от того, кому за последние сутки уже ушло первое
+ * сообщение правила: отвечаем публично под этим комментарием, где искать
+ * («Запросы»), и второе сообщение по нему не ставим — первое у покупателя
+ * уже есть. Один раз на комментарий: отметку ставит вставка с уникальным
+ * ключом, шлёт только выигравший; отправку, которая могла дойти, не
+ * повторяем. Private-reply на этот комментарий Zernio шлёт сам по правилу —
+ * его мы не отменяем. Только клиенты v2.
+ */
+async function answerNotReceived(
+  ctx: TenantContext,
+  payload: CommentReceivedPayload,
+  c: { accountId: string; username: string; commentId: string; text: string },
+  api: AutomationApi,
+  now: () => Date = () => new Date(),
+): Promise<string | null> {
+  if (!servedByV2(ctx.tenant) || !isNotReceivedComment(c.text)) return null;
+  const postId = payload.comment?.platformPostId || payload.post?.platformPostId;
+  if (!postId) return null;
+  const since = new Date(now().getTime() - NOT_RECEIVED_WINDOW_MS).toISOString();
+  const { data: earlier, error: readErr } = await ctx.db
+    .from("zernio_logs")
+    .select("id")
+    .in("event_type", TWO_STEP_TYPES)
+    // «_» в имени Instagram — подстановочный знак LIKE: экранируем.
+    .ilike("payload->>username", c.username.replace(/[\\%_]/g, "\\$&"))
+    .gte("created_at", since)
+    .neq("event_id", `two-step-dm:${c.commentId}`)
+    .order("id")
+    .limit(1);
+  if (readErr)
+    throw serverFailure(`[zernio] журнал первого сообщения не прочитан: ${readErr.message}`);
+  if (!earlier?.length) return null;
+
+  const key = `requests-hint:${c.commentId}`;
+  const message = REQUESTS_HINT[commentLang(payload.comment?.text ?? "")];
+  const { error: claimErr } = await ctx.db.from("zernio_logs").insert({
+    bot_id: ctx.tenant.id,
+    event_id: key,
+    event_type: "comment.requests_hint",
+    status: "pending",
+    error_message: null,
+    payload: { commentId: c.commentId, username: c.username, postId, message },
+  });
+  if (claimErr) {
+    if (/duplicate|unique/i.test(claimErr.message)) return "подсказка про «Запросы» уже ушла";
+    throw serverFailure(`[zernio] отметка подсказки не записана: ${claimErr.message}`);
+  }
+  const r = await api.publicReply(postId, c.commentId, c.accountId, message);
+  const { error: doneErr } = await ctx.db
+    .from("zernio_logs")
+    .update({
+      status: r.ok ? "processed" : "failed",
+      error_message: r.ok ? null : (r.error?.slice(0, 500) ?? null),
+    })
+    .eq("bot_id", ctx.tenant.id)
+    .eq("event_id", key);
+  if (doneErr) console.warn(`[zernio] итог подсказки не записан: ${doneErr.message}`);
+  return r.ok
+    ? `подсказка про «Запросы» @${c.username}`
+    : `подсказка про «Запросы» не ушла @${c.username}`;
 }
 
 const PENDING_TWO_STEP_DAYS = 7;
