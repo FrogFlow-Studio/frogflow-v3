@@ -4,6 +4,7 @@ import { COPY } from "@/channels/telegram/copy";
 import { commissionableAmount } from "@/core/commission/commission";
 import type { Locale } from "@/core/i18n/locale";
 import {
+  mailbox,
   modelHold,
   notices,
   outbound,
@@ -104,6 +105,7 @@ BURST.pollMs = 5;
 beforeEach(() => {
   setEnvForTests({});
   notices.count = 0;
+  mailbox.to = [];
   consultantStub.reply = undefined;
   modelRounds.list = [];
 });
@@ -134,6 +136,13 @@ describe("золотые диалоги", () => {
         invalidatePricelist({ tenant: { id: ROOM_BOT } } as TenantContext);
         modelRounds.list = s.pricelist.rounds.map((round) => [...round]);
       }
+      if (s.postpay) {
+        // ИИ после оплаты: настоящий вызов через SDK, ответ инструмента decide — из сценария.
+        setEnvForTests({ ANTHROPIC_API_KEY: "sk-test" });
+        modelRounds.list = s.postpay.map((d) => [
+          { type: "tool_use", id: "t1", name: "decide", input: { email: "", ...d } },
+        ]);
+      }
       const r = room(
         s.pricelist
           ? {
@@ -155,6 +164,7 @@ describe("золотые диалоги", () => {
       for (const { say, expect: e } of s.steps) {
         step++;
         const before = notices.count;
+        const mailsBefore = mailbox.to.length;
         const queuedBefore = r.sellerQueued();
         await r.say(say);
         const where = `шаг ${step} ${JSON.stringify(say)}`;
@@ -170,6 +180,7 @@ describe("золотые диалоги", () => {
           expect(has(r.buttons().join("\n"), b), `${where}: лишняя кнопка «${String(b)}»`).toBe(
             false,
           );
+        if (e.mails) expect(mailbox.to.slice(mailsBefore), `${where}: письма`).toEqual(e.mails);
         if (e.cart !== undefined) expect(r.cart().length, `${where}: корзина`).toBe(e.cart);
         if (e.state) expect(r.state(), `${where}: состояние`).toMatchObject(e.state);
         const seen = r.sellerReplies().join("\n");
