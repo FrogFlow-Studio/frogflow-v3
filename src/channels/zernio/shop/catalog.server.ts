@@ -34,6 +34,7 @@ import {
   productNumberFromName,
 } from "../shop-flow";
 import { serverFailure } from "@/lib/server-failure";
+import { inChunks } from "@/lib/in-chunks";
 import {
   BTN,
   LIST_TTL_MS,
@@ -87,12 +88,18 @@ export async function listedSectionByName(
   if (key.length < 3) return null;
   const ids = list.ids.filter((id) => !id.startsWith(OWN_PRODUCTS_PREFIX));
   if (!ids.length) return null;
-  const { data, error } = await ctx.db.from("categories").select("id, name").in("id", ids);
-  if (error) {
-    console.warn(`[zernio] разделы списка не прочитаны: ${error.message}`);
+  let rows: Array<{ id: string; name: string }>;
+  try {
+    rows = await inChunks(
+      ids,
+      (chunk) => ctx.db.from("categories").select("id, name").in("id", chunk),
+      "разделы списка",
+    );
+  } catch (e) {
+    console.warn(`[zernio] разделы списка не прочитаны: ${(e as Error).message}`);
     return null;
   }
-  return (data ?? []).find((c) => sectionKey(c.name) === key)?.id ?? null;
+  return rows.find((c) => sectionKey(c.name) === key)?.id ?? null;
 }
 
 /** Название раздела из свежего списка — открыть его, как по номеру. */
