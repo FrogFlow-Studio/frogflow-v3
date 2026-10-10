@@ -1613,7 +1613,7 @@ export async function deliverTwoStepForDmKeyword(
   );
   const rule =
     rules.find((a) => commentMatchesAutomation(t, a.keywords, a.matchMode)) ??
-    ruleNamedInTexts(t, all, p.accountId);
+    (await ruleNamedInDm(ctx, t, all, p.accountId));
   if (!rule) {
     // След для разбора: какие правила видели и почему ни одно не подошло
     // (обращение #50 Копилки ушло без следа). Только когда правила вообще есть.
@@ -1722,26 +1722,62 @@ function sameWord(a: string, b: string): boolean {
   return edits + (a.length - i) + (b.length - j) <= 1;
 }
 
+/** Слова в кавычках: «Пишите в комментариях слово "Палитра"» — кодовое слово поста. */
+function quotedWords(text: string | null | undefined): string[] {
+  if (!text) return [];
+  return [...text.matchAll(/[«"“„']([^«»"“”„']{2,40})[»"”“']/g)].map((x) => x[1]!);
+}
+
 /**
  * Правило «любой комментарий» (список кодовых слов пуст) в Direct по самому
- * списку не узнать. Узнаём по тексту: покупатель написал слово, которое есть
- * в названии правила, подписи поста, сообщениях или кнопках (Копилка, 09.10:
- * у рилса «Палитра» слова не вписаны, «Палитра» в личке молчала). Общие слова
- * («хочу», «цена», «здравствуйте») не считаются.
+ * списку не узнать (Копилка, 09.10: у рилса «Палитра» слова не вписаны,
+ * «Палитра» в личке молчала). Узнаём только по тому, что называет товар:
+ * название правила, название товара кнопки «Купить» и слово в кавычках из
+ * подписи или первого сообщения («Пишите слово "Палитра"»). Остальные слова
+ * подписи, сообщений и кнопок не считаются: на них название раздела каталога
+ * «Оформление и праздники» вызвало «Купить» Палитры (Копилка, заказ #127,
+ * 11.10). Общие слова («хочу», «цена», «здравствуйте») не считаются.
  */
-function ruleNamedInTexts(
+async function ruleNamedInDm(
+  ctx: TenantContext,
   text: string,
   all: CommentAutomation[],
   accountId: string,
-): CommentAutomation | undefined {
+): Promise<CommentAutomation | undefined> {
   const words = dmWords(text).filter((w) => !GENERIC_DM_WORDS.has(w));
   if (!words.length) return undefined;
-  return all.find((a) => {
-    if (!(a.twoStepDm || Boolean(a.buttons?.length))) return false;
-    if (a.isActive === false || a.accountId !== accountId) return false;
-    if (hasKeywords(a)) return false;
-    return wordsNameRule(words, a);
-  });
+  for (const a of all) {
+    if (!(a.twoStepDm || Boolean(a.buttons?.length))) continue;
+    if (a.isActive === false || a.accountId !== accountId) continue;
+    if (hasKeywords(a)) continue;
+    const productId = buyButtonProduct(
+      normalizeDmButtons(
+        (a.secondDmButtons?.length ? a.secondDmButtons : (a.buttons ?? [])) as DmButton[],
+      ),
+    );
+    let productName: string | null = null;
+    if (productId) {
+      const { data, error } = await ctx.db
+        .from("products")
+        .select("name")
+        .eq("id", productId)
+        .maybeSingle();
+      if (error) console.warn(`[comment-dm] товар правила не прочитан: ${error.message}`);
+      productName = data?.name ?? null;
+    }
+    const names = dmWords(
+      [
+        a.name,
+        productName,
+        ...quotedWords(a.postTitle),
+        ...quotedWords(a.firstMessage ?? a.dmMessage),
+      ]
+        .filter((x): x is string => typeof x === "string")
+        .join(" "),
+    ).filter((w) => !GENERIC_DM_WORDS.has(w));
+    if (words.some((w) => names.some((r) => sameWord(w, r)))) return a;
+  }
+  return undefined;
 }
 
 function hasKeywords(a: Pick<CommentAutomation, "keywords">): boolean {

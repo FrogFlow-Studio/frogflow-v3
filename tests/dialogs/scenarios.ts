@@ -296,6 +296,10 @@ export interface Scenario {
    * ключа ИИ нет, работает запасной разбор по названиям.
    */
   countryAi?: Array<{ country: string; answer_only: boolean }>;
+  /** Instagram/WhatsApp: ник покупателя во входящем. */
+  username?: string;
+  /** Instagram (только `full`): правила комментариев Zernio клиента (список /comment-automations). */
+  automations?: Array<Record<string, unknown>>;
   /** Подготовка до первой реплики (например, «продавец ответил руками»). */
   arrange?: (r: Room) => void;
   steps: Array<{ say: Input; expect: Expect }>;
@@ -2757,6 +2761,70 @@ export const SCENARIOS: Scenario[] = [
       {
         say: { text: "Я из России, как оплатить?" },
         expect: { notSays: ["Записал страну"], state: { country_code: "RU" } },
+      },
+    ],
+  },
+  {
+    id: "dm-section-name-not-rule-keyword-ig-ru",
+    title:
+      "название раздела в ответ на каталог открывает раздел, а не «Купить» правила без кодовых слов",
+    origin:
+      "заказ #127 Копилки русоведа 11.10 (musaevazabida2022): «Оформление и праздники» после списка разделов → кнопка «Купить» Палитры",
+    channel: "instagram",
+    locale: "ru",
+    full: true,
+    modules: { helpdesk: true, manager_chat: true },
+    username: "musaevazabida2022",
+    tenantSettings: { zernio: { profile_id: "prof-1", account_ids: ["acc-1"] } },
+    products: [
+      { id: P1, name: "Палитра средств выразительности", price: 1700 },
+      { id: P2, name: "Небосвод писателей", price: 150 },
+    ],
+    // Правило рилса «Палитра» без кодовых слов (отвечает на любой комментарий);
+    // в его сообщениях есть «оформление» и «праздники».
+    automations: [
+      {
+        id: "pal",
+        name: "Палитра",
+        accountId: "acc-1",
+        trigger: "comment",
+        keywords: [],
+        isActive: true,
+        postTitle: 'Пишите в комментариях слово "Палитра" и я вышлю подробную информацию.',
+        dmMessage: "Таблички к оформлению кабинета и к праздникам",
+        buttons: [{ type: "postback", title: "Купить", payload: `PROD:${P1}` }],
+      },
+    ],
+    arrange: (r) => {
+      r.db.tables.categories = [
+        {
+          id: "c1",
+          bot_id: r.db.tables.payment_methods![0]!.bot_id,
+          name: "Палитры",
+          parent_id: null,
+          is_visible: true,
+          sort_order: 1,
+        },
+        {
+          id: "c2",
+          bot_id: r.db.tables.payment_methods![0]!.bot_id,
+          name: "Оформление и праздники",
+          parent_id: null,
+          is_visible: true,
+          sort_order: 2,
+        },
+      ];
+      r.db.tables.products![0]!.category_ids = ["c1"];
+      r.db.tables.products![1]!.category_ids = ["c2"];
+    },
+    steps: [
+      {
+        say: { button: "CATALOG", title: "📚 Каталог" },
+        expect: { says: ["Оформление и праздники"] },
+      },
+      {
+        say: { text: "Оформление и праздники" },
+        expect: { says: ["Небосвод писателей"], notSays: ["Палитра средств"] },
       },
     ],
   },

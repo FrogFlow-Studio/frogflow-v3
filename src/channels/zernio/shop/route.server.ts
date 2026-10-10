@@ -102,6 +102,7 @@ import {
 import {
   pickByNumber,
   pickByTag,
+  pickSectionByName,
   pickSeveral,
   sendProductCard,
   showCatalog,
@@ -723,6 +724,9 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
     await removeFromCart(s, remove);
     return "handled";
   }
+
+  // Ответ на список разделов названием раздела, а не номером (Копилка, 11.10).
+  if (s.bot.features.catalog && (await pickSectionByName(s, text))) return "handled";
 
   const kind = classifyIncoming(text);
   switch (kind.kind) {

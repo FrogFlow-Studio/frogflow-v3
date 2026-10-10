@@ -136,6 +136,8 @@ export interface RoomOptions {
   rejectButtons?: boolean;
   /** Добавка к bots.settings клиента (например, консультант по прайсу). */
   tenantSettings?: Record<string, unknown>;
+  /** Instagram/WhatsApp: ник покупателя во входящем (без него правила комментариев не срабатывают). */
+  username?: string;
   /** Instagram/WhatsApp: почта платформы настроена, письма — в mailbox. */
   mail?: boolean;
   /** Instagram/WhatsApp: присланное фото скачивается (чек принимается). */
@@ -419,7 +421,7 @@ function directRoom(o: RoomOptions): Room {
       direction: "incoming",
       text: m.text ?? "",
       attachments: (m.attachments ?? []).map((a) => ({ type: a.type, url: a.url })),
-      sender: { id: "1", name: "Анна" },
+      sender: { id: "1", name: "Анна", ...(o.username ? { username: o.username } : {}) },
       ...(m.sentAt ? { sentAt: m.sentAt } : {}),
       ...(m.postbackPayload ? { metadata: { postbackPayload: m.postbackPayload } } : {}),
     },
