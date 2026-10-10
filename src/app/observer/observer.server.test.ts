@@ -294,6 +294,56 @@ describe("наблюдатель: дешёвый отсев до модели", 
   });
 });
 
+describe("наблюдатель: «оплата зависла» сверяется с заказом", () => {
+  const order = (status: string) =>
+    db.tables.orders!.push({
+      id: 4154,
+      order_no: 102,
+      display_no: 102,
+      bot_id: KOPILKA,
+      telegram_id: 8,
+      status,
+      total: 1700,
+      currency: "KZT",
+      created_at: ago(17),
+    });
+  const stuck = () => flag(8, "payment_stuck", "both");
+
+  it("заказ уже оплачен и выдан (Продамус) — продавцу и оператору не пишем, в журнале «оплачен»", async () => {
+    order("delivered");
+    say(8, "customer", 6, "Оплатила");
+    say(8, "bot", 6, "Оплата — по кнопке в сообщении выше; после оплаты заказ подтвердится сам.");
+    const x = deps(() => stuck());
+    const r = await runDialogObserver(tenant(), budget, x.d);
+    expect(r).toMatchObject({ findings: 1, sent: 0 });
+    expect(x.seller).toHaveLength(0);
+    expect(x.operator).toHaveLength(0);
+    // Модель видит статус словами, а не «delivered».
+    expect(x.calls[0]!.user).toContain("№102 оплачен и выдан");
+    const log = JSON.parse(setting(observerLogKey("2026-10-10"))!);
+    expect(log).toMatchObject([{ tid: 8, kind: "payment_stuck", sent: "settled" }]);
+  });
+
+  it("заказ ждёт оплаты — сигнал уходит продавцу", async () => {
+    order("awaiting_payment");
+    say(8, "customer", 6, "Оплатила");
+    const x = deps(() => stuck());
+    await runDialogObserver(tenant(), budget, x.d);
+    expect(x.seller).toHaveLength(1);
+  });
+
+  it("заказ оплатили, пока думала модель — статус читаем заново", async () => {
+    order("awaiting_payment");
+    say(8, "customer", 6, "Оплатила");
+    const x = deps(() => {
+      db.tables.orders![0]!.status = "paid";
+      return stuck();
+    });
+    await runDialogObserver(tenant(), budget, x.d);
+    expect(x.seller).toHaveLength(0);
+  });
+});
+
 describe("наблюдатель: разбор ответа модели и тексты", () => {
   it("чужие id, неизвестные виды и вторая находка по диалогу отбрасываются", () => {
     const f = parseFindings(
@@ -360,6 +410,10 @@ describe("наблюдатель: разбор ответа модели и те
       );
       expect(t).toContain("&lt;b&gt;50 шт&lt;/b&gt;");
       expect(t).toContain('href="https://x/admin/chat?c=1"');
+      // Наблюдатель не видит сообщений с файлами — не обещаем, что покупателю «ничего не отправлено».
+      expect(t).not.toMatch(
+        /ничего не отправлено|nothing was sent|ештеңе жіберілген|hech narsa yuborilmadi/,
+      );
     }
   });
 });
