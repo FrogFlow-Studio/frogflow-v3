@@ -5,6 +5,7 @@ import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Customer } from "@/core/customers/customers";
 import { updateStateSection } from "@/core/customers/customers";
 import {
+  BURST,
   commitTurn,
   isStaleIncoming,
   joinTurn,
@@ -653,6 +654,7 @@ export async function runConsultant(
   // Фото по ссылке может ответить любой ход — ссылки едут в очереди; публикацию
   // и уже скачанные фото Telegram — только своя функция.
   const own = Boolean(opts.images?.length) || Boolean(opts.story?.storyId || opts.story?.mediaUrl);
+  const joinedAt = Date.now();
   const joined = await joinTurn(ctx, customer, {
     id: opts.messageId,
     text: incoming,
@@ -683,10 +685,17 @@ export async function runConsultant(
     };
   }
   if (!joined.lead) return { reply: "", handoff: null, usage: NO_USAGE, skipped: joined.why };
-  // Фото приходят пачкой (одно касание — вебхук на каждое фото, подпись — ещё
-  // одним): ход с фото ждёт соседей и отвечает на всю пачку одним сообщением.
+  // Фото приходят пачкой (вебхук на каждое фото с разрывом до 12 с, подпись —
+  // ещё одним): ход с фото ждёт тишины и отвечает на всю пачку одним
+  // сообщением. Ожидание кончается до того, как ход (аренда) перестал бы
+  // укладываться в функцию: за чужим ходом сообщение уже могло ждать.
   const settled = photos
-    ? await settleTurn(ctx, joined).catch((e: unknown) => {
+    ? await settleTurn(ctx, joined, {
+        quietMs: opts.imageUrls?.length
+          ? BURST.settleMs
+          : Math.min(BURST.settleMs, BURST.settleShortMs),
+        until: joinedAt + BURST.budgetMs - BURST.leaseMs,
+      }).catch((e: unknown) => {
         console.error(`[consultant:${ctx.tenant.id}] очередь диалога не перечитана`, e);
         return joined;
       })

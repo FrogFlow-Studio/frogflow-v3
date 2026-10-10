@@ -48,6 +48,17 @@ const PL_HAIR_TOWEL: PricelistItem = {
   stock: true,
 };
 
+/** Дозатор Blomus SONO, о цвете которого спрашивала Индира (BOVI 10.10 23:49). */
+const PL_DISPENSER: PricelistItem = {
+  id: "D1",
+  name: "Blomus SONO дозатор для жидкого мыла",
+  category: "Аксессуары для ванной",
+  size: "",
+  colors: ["медный", "чёрный", "розовый"],
+  price_kzt: 33000,
+  stock: true,
+};
+
 /** Чтение настройки `key` падает исключением (обрыв в клиенте базы). */
 const failSettingRead =
   (key: string) =>
@@ -2077,6 +2088,73 @@ export const SCENARIOS: Scenario[] = [
           modelImages: [3],
           modelSees: ["Таких нет?"],
           history: ["Таких нет?"],
+        },
+      },
+    ],
+  },
+  {
+    id: "pricelist-photo-burst-gaps-ig-ru",
+    title:
+      "фото пачки приходят с разрывом в секунды — ход ждёт тишины и отвечает на все фото и подпись одним ответом",
+    origin:
+      "BOVI 11.10, ночной срез: фото tolkin8 приходили с разрывом 4–12 с, а ход ждал только 2,5 с от первого — остальные получали отдельные ответы",
+    channel: "instagram",
+    locale: "ru",
+    full: true,
+    vertical: "consultant",
+    modules: { shop: true },
+    pricelist: {
+      catalog: PL_CATALOG,
+      rounds: [said("Похоже на Uchino. Для чего нужно полотенце: для рук или банное?")],
+    },
+    steps: [
+      {
+        // Тишина в тестах — 100 мс, разрыв — 60 мс: прежнее ожидание (100 мс от
+        // взятия хода) теряло третье фото и подпись.
+        say: { photos: 3, caption: "Таких нет?", gapMs: 60 },
+        expect: {
+          count: 1,
+          modelImages: [3],
+          modelSees: ["Таких нет?"],
+          history: ["Таких нет?"],
+        },
+      },
+    ],
+  },
+  {
+    id: "pricelist-color-with-price-ig-ru",
+    title: "«Дозатор есть в каком цвете?» — цвета вместе с ценой из поиска, без передачи менеджеру",
+    origin:
+      "BOVI 10.10 23:49, indirenokars: бот перечислил цвета дозатора Blomus SONO, но не назвал цену 33 000 ₸",
+    channel: "instagram",
+    locale: "ru",
+    full: true,
+    vertical: "consultant",
+    modules: { shop: true },
+    pricelist: {
+      catalog: [...PL_CATALOG, PL_DISPENSER],
+      rounds: [
+        [
+          {
+            type: "tool_use",
+            id: "s1",
+            name: "search_products",
+            input: { query: "дозатор" },
+          },
+        ],
+        said("Медный, чёрный и розовый — 33 000 ₸."),
+      ],
+    },
+    steps: [
+      {
+        say: { text: "Дозатор есть в каком цвете?" },
+        expect: {
+          count: 1,
+          says: ["33 000"],
+          notSays: [pricelistHandoffReply("ru")],
+          // Цена была в выдаче поиска; правило «цвет — вместе с ценой» — в
+          // подсказке v2.22 (pricelist/persona.test.ts).
+          modelSees: ["Blomus SONO", "33"],
         },
       },
     ],

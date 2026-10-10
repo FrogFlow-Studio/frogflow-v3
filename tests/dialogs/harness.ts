@@ -45,8 +45,10 @@ export type Input =
   /**
    * Instagram/WhatsApp (только `full`): пачка фото одним касанием — вебхук на
    * каждое фото с разницей в доли секунды, подпись (если есть) — следом.
+   * `gapMs` — разрыв между вебхуками (по умолчанию 20 мс): Zernio шлёт фото
+   * одной пачки и с разницей в секунды (BOVI 11.10, 4–12 с).
    */
-  | { photos: number; caption?: string }
+  | { photos: number; caption?: string; gapMs?: number }
   /** Вложение, к которому Zernio не прислал ссылку (пересланная публикация, фото без адреса). */
   | { attachmentNoUrl: true }
   /** Сообщение, написанное `minutes` минут назад: канал доставил его с опозданием. */
@@ -533,7 +535,7 @@ function directRoom(o: RoomOptions): Room {
         try {
           await Promise.all(
             hooks.map(async (h, k) => {
-              await new Promise((r) => setTimeout(r, k * 20));
+              await new Promise((r) => setTimeout(r, k * (i.gapMs ?? 20)));
               await handleZernioMessage(ctx, h as never, transport);
             }),
           );
