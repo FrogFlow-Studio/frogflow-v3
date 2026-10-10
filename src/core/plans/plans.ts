@@ -15,12 +15,15 @@ import {
   COURSES_SALE,
   MONTHLY_PRICE,
   MULTI_BOT_FROM_TIER,
-  PLAN_LIMITS,
   PLAN_MODULES,
   PLAN_TIERS,
   SHOP_CHANNEL_MODULES,
   TIER_TITLES,
   TRIAL_DAYS,
+  addonAiDialogs,
+  addonForNiche,
+  tierLimits,
+  type AddonKey,
   type CoursesSale,
   type ParsedPlan,
   type PlanLimits,
@@ -84,9 +87,33 @@ export function keptModules(
 export function addonModules(niche: PlanNiche, billing: BillingSettings | undefined): ModuleKey[] {
   const out: ModuleKey[] = [];
   for (const a of billing?.addons ?? [])
-    for (const m of ADDONS[a].modules)
-      if (niche !== "consultant_universal" || !SHOP_CHANNEL_MODULES.includes(m)) out.push(m);
+    if (addonForNiche(a, niche))
+      for (const m of ADDONS[a].modules as readonly ModuleKey[])
+        if (niche !== "consultant_universal" || !SHOP_CHANNEL_MODULES.includes(m)) out.push(m);
   return out;
+}
+
+/**
+ * Надбавки, которые можно купить к плану: продаются в нише и ещё не входят в
+ * план (Instagram в Pro и VIP в Pro уже есть — их не предлагаем).
+ */
+export function availableAddons(niche: PlanNiche, tier: PlanTier): AddonKey[] {
+  const inPlan = planModules(niche, tier);
+  return (Object.keys(ADDONS) as AddonKey[]).filter((a) => {
+    if (!addonForNiche(a, niche)) return false;
+    const mods = ADDONS[a].modules as readonly ModuleKey[];
+    return mods.length === 0 || !mods.every((m) => inPlan.has(m));
+  });
+}
+
+/** Надбавки клиента, за которые выставляется счёт: те, что план не покрывает сам. */
+export function billableAddons(
+  niche: PlanNiche,
+  tier: PlanTier,
+  addons: readonly AddonKey[] | undefined,
+): AddonKey[] {
+  const can = new Set(availableAddons(niche, tier));
+  return (addons ?? []).filter((a) => can.has(a));
 }
 
 /**
@@ -127,10 +154,17 @@ export function planLimits(
   billing: BillingSettings | undefined,
 ): PlanLimits | null {
   if (!plan || plan.kind !== "tier") return null;
-  const base = PLAN_LIMITS[plan.tier];
+  const base = tierLimits(plan.niche, plan.tier);
   const q = billing?.ai_quota;
+  // Пакет диалогов ИИ прибавляется к лимиту плана; индивидуальный лимит оператора — окончательный.
+  const packs = addonAiDialogs(billableAddons(plan.niche, plan.tier, billing?.addons));
   return {
-    aiDialogs: q?.ai_dialogs !== undefined ? q.ai_dialogs : base.aiDialogs,
+    aiDialogs:
+      q?.ai_dialogs !== undefined
+        ? q.ai_dialogs
+        : base.aiDialogs === null
+          ? null
+          : base.aiDialogs + packs,
     receiptChecks: q?.receipt_checks !== undefined ? q.receipt_checks : base.receiptChecks,
   };
 }
@@ -217,7 +251,7 @@ export function nextPeriod(
 }
 
 /**
- * Пробный период: Basic ниши на TRIAL_DAYS дней, считая сегодняшний, один
+ * Пробный период: уровень TRIAL_TIER (Pro) ниши на TRIAL_DAYS дней, считая сегодняшний, один
  * раз на клиента. Конец включительно — как у оплаченного периода.
  */
 export function trialWindow(today: string): { until: string } {

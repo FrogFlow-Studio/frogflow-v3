@@ -15,7 +15,7 @@ import {
   trialWindow,
 } from "./plans";
 import {
-  ADDON_KEYS,
+  CHANNEL_ADDONS,
   COURSES_SALE,
   CUSTOM_PLAN,
   DB_PLAN_VALUES,
@@ -155,17 +155,17 @@ describe("флаги модулей по плану", () => {
 });
 
 describe("лимиты ИИ", () => {
-  it("по уровню плана: диалоги 300/1500/5000, чеки 200/1000/без лимита", () => {
+  it("по уровню плана: диалоги 0/100/250, чеки 100/1000/без лимита", () => {
     expect(planLimits(parsePlan("flowers.basic"), undefined)).toEqual({
-      aiDialogs: 300,
-      receiptChecks: 200,
+      aiDialogs: 0,
+      receiptChecks: 100,
     });
     expect(planLimits(parsePlan("flowers.pro"), undefined)).toEqual({
-      aiDialogs: 1500,
+      aiDialogs: 100,
       receiptChecks: 1000,
     });
     expect(planLimits(parsePlan("flowers.business"), undefined)).toEqual({
-      aiDialogs: 5000,
+      aiDialogs: 250,
       receiptChecks: null,
     });
   });
@@ -362,7 +362,7 @@ describe("расход ИИ за месяц", () => {
       month: "2026-09",
       aiDialogs: 42,
       receiptChecks: 150,
-      limits: { aiDialogs: 300, receiptChecks: 200 },
+      limits: { aiDialogs: 0, receiptChecks: 100 },
     });
   });
 
@@ -390,7 +390,7 @@ describe("клиенты прежней платформы", () => {
 
 describe("надбавки за каналы", () => {
   it("WhatsApp и Instagram — по 5 000 ₸ в месяц, в годовом счёте 10 месяцев", () => {
-    for (const a of ADDON_KEYS) expect(ADDON_MONTHLY_PRICE[a]).toBe(5000);
+    for (const a of CHANNEL_ADDONS) expect(ADDON_MONTHLY_PRICE[a]).toBe(5000);
     const inv = planInvoice("basic", {
       period: "year",
       withConnection: false,
@@ -548,9 +548,9 @@ describe("купленное сверх плана не пропадает пр�
     const kept = keptModules(
       prev,
       { addons: ["whatsapp"], grandfathered: ["telegram_stars"] },
-      on("shop", proOnly, "whatsapp", "instagram"),
+      on("shop", proOnly, "whatsapp", "web_storefront"),
     );
-    expect(kept).toContain("instagram");
+    expect(kept).toContain("web_storefront");
     expect(kept).toContain("telegram_stars");
     expect(kept).not.toContain(proOnly);
     expect(kept).not.toContain("whatsapp");

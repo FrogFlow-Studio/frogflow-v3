@@ -3,10 +3,10 @@ import {
   ADDONS,
   ADDON_MONTHLY_PRICE,
   ANNUAL_BILLED_MONTHS,
+  CHANNEL_ADDONS,
   CONNECTION_PRICE,
   MONTHLY_PRICE,
   PLAN_TIERS,
-  type AddonKey,
   type PlanNiche,
   type PlanTier,
 } from "./registry";
@@ -20,16 +20,17 @@ import {
  * не зависит. Рекомендуется самый дешёвый по месячной сумме тариф; при равенстве
  * — младший.
  */
-export type CalcChannel = "telegram" | AddonKey;
+export type ChannelAddon = (typeof CHANNEL_ADDONS)[number];
+export type CalcChannel = "telegram" | ChannelAddon;
 /** Порядок на странице. */
 export const CALC_CHANNELS: readonly CalcChannel[] = ["telegram", "instagram", "whatsapp"];
 
 export type TierQuote = {
   tier: PlanTier;
   /** Выбранные каналы, которые входят в тариф. */
-  included: AddonKey[];
+  included: ChannelAddon[];
   /** Выбранные каналы с доплатой. */
-  extra: AddonKey[];
+  extra: ChannelAddon[];
   /** ₸ в месяц при помесячной оплате. */
   monthly: number;
   /** ₸ в месяц с учётом выбранной оплаты (при годовой — годовая сумма / 12). */
@@ -51,7 +52,7 @@ export function quoteTier(
   annual: boolean,
 ): TierQuote {
   const modules = planModules(niche, tier);
-  const picked = (Object.keys(ADDONS) as AddonKey[]).filter((k) => channels.includes(k));
+  const picked = CHANNEL_ADDONS.filter((k) => channels.includes(k));
   const included = picked.filter((k) => modules.has(ADDONS[k].modules[0]));
   const extra = picked.filter((k) => !included.includes(k));
   const monthly = MONTHLY_PRICE[tier] + extra.reduce((s, k) => s + ADDON_MONTHLY_PRICE[k], 0);

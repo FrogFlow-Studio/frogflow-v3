@@ -1,5 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { BILLING_ADDONS } from "@/core/tenant/types";
+import { TIER_TITLES, TRIAL_TIER } from "@/core/plans/registry";
 
 /**
  * Серверные функции панели оператора: тариф клиента, выручка, реквизиты, комиссия и ИИ-баланс.
@@ -27,7 +29,7 @@ export const revenueFn = createServerFn({ method: "GET" }).handler(async () => {
   return (await import("./revenue.server")).revenueReport();
 });
 
-const addonKey = z.enum(["whatsapp", "instagram"]);
+const addonKey = z.enum(BILLING_ADDONS);
 
 const quota = z.number().int().min(0).max(1_000_000).nullable().optional();
 
@@ -67,7 +69,7 @@ export const planActionFn = createServerFn({ method: "POST" })
     }
     const r = await p.startTrial(data.botId, await actor());
     return {
-      message: `Пробный период Basic до ${new Date(r.until).toLocaleDateString("ru")}.`,
+      message: `Пробный период ${TIER_TITLES[TRIAL_TIER]} до ${new Date(r.until).toLocaleDateString("ru")}.`,
     };
   });
 

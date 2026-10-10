@@ -5,6 +5,7 @@ import {
   OBSERVER_STATE_KEY,
   observerLogKey,
   parseEnabled,
+  observerInPlan,
   parseFindings,
   sellerSignalText,
 } from "@/core/observer/observer";
@@ -27,8 +28,15 @@ vi.mock("@/lib/preview", () => ({ previewReadonly: () => false }));
 
 const { runDialogObserver } = await import("./observer.server");
 
-const tenant = (id = KOPILKA) =>
-  ({ id, name: "Копилка", archived: false, settings: { served_by: "v2" }, modules: {} }) as never;
+const tenant = (id = KOPILKA, plan = "digital.business") =>
+  ({
+    id,
+    name: "Копилка",
+    plan,
+    archived: false,
+    settings: { served_by: "v2" },
+    modules: {},
+  }) as never;
 const budget = { left: () => 90_000 };
 
 let seq = 0;
@@ -111,6 +119,18 @@ describe("наблюдатель: кто включён", () => {
     const x = deps(() => ({ findings: [] }));
     expect(await runDialogObserver(tenant("other"), budget, x.d)).toEqual({ skipped: "off" });
     expect(x.calls).toHaveLength(0);
+  });
+
+  it("наблюдатель только в Business и по договору: на Pro модель не зовём", async () => {
+    say(1, "customer", 5, "Здравствуйте");
+    const x = deps(() => ({ findings: [] }));
+    expect(await runDialogObserver(tenant(KOPILKA, "digital.pro"), budget, x.d)).toEqual({
+      skipped: "plan",
+    });
+    expect(x.calls).toHaveLength(0);
+    expect(observerInPlan("custom")).toBe(true);
+    expect(observerInPlan("digital.business")).toBe(true);
+    expect(observerInPlan(null)).toBe(false);
   });
 });
 

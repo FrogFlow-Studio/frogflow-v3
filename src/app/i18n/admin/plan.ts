@@ -86,6 +86,11 @@ export const ru = {
   "plan.payTransfer":
     "Переведите ровно {amount} ₸ по реквизитам ниже и пришлите чек в вашего бота. Счёт продублирован в бота.",
   "plan.included": "в вашем плане",
+  "plan.notIncluded": "не входит в план",
+  "plan.chooseTier": "Выбрать {tier}",
+  "plan.nextLimits": "В {tier}: диалогов консультанта — {dialogs}, проверок чеков — {receipts}",
+  "plan.noLimit": "без лимита",
+  "plan.none": "нет",
   "limits.title": "Лимиты тарифа",
   "limits.aiDialogs": "Диалоги консультанта",
   "limits.receiptChecks": "Проверки чеков",
@@ -183,6 +188,12 @@ export const kk: SectionDict<typeof ru> = {
   "plan.payTransfer":
     "Төмендегі деректемелер бойынша дәл {amount} ₸ аударып, чекті ботыңызға жіберіңіз. Шот ботқа да жіберілді.",
   "plan.included": "жоспарыңызда бар",
+  "plan.notIncluded": "жоспарға кірмейді",
+  "plan.chooseTier": "{tier} таңдау",
+  "plan.nextLimits":
+    "{tier} жоспарында: кеңесші диалогтары — {dialogs}, чек тексерулері — {receipts}",
+  "plan.noLimit": "шектеусіз",
+  "plan.none": "жоқ",
   "limits.title": "Тариф шектері",
   "limits.aiDialogs": "Кеңесші диалогтары",
   "limits.receiptChecks": "Чек тексерулері",
@@ -281,6 +292,11 @@ export const en: SectionDict<typeof ru> = {
   "plan.payTransfer":
     "Transfer exactly {amount} ₸ using the details below and send the receipt to your bot. The invoice was also sent to the bot.",
   "plan.included": "in your plan",
+  "plan.notIncluded": "not in your plan",
+  "plan.chooseTier": "Choose {tier}",
+  "plan.nextLimits": "In {tier}: consultant dialogs — {dialogs}, receipt checks — {receipts}",
+  "plan.noLimit": "unlimited",
+  "plan.none": "none",
   "limits.title": "Plan limits",
   "limits.aiDialogs": "Consultant dialogs",
   "limits.receiptChecks": "Receipt checks",
@@ -376,6 +392,12 @@ export const uz: SectionDict<typeof ru> = {
   "plan.payTransfer":
     "Quyidagi rekvizitlar boʻyicha aynan {amount} ₸ oʻtkazing va chekni botingizga yuboring. Hisob botga ham yuborildi.",
   "plan.included": "rejangizda bor",
+  "plan.notIncluded": "rejaga kirmaydi",
+  "plan.chooseTier": "{tier} tanlash",
+  "plan.nextLimits":
+    "{tier} rejasida: maslahatchi dialoglari — {dialogs}, chek tekshiruvlari — {receipts}",
+  "plan.noLimit": "cheksiz",
+  "plan.none": "yoʻq",
   "limits.title": "Tarif limitlari",
   "limits.aiDialogs": "Maslahatchi dialoglari",
   "limits.receiptChecks": "Chek tekshiruvlari",

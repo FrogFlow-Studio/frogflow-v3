@@ -10,6 +10,7 @@ import {
   observerLogKey,
   parseCap,
   parseEnabled,
+  observerInPlan,
   parseState,
   type ObserverRunSummary,
 } from "@/core/observer/observer";
@@ -78,7 +79,7 @@ export async function observerOverview(): Promise<{
     return {
       botId: t.id,
       name: t.name,
-      enabled: parseEnabled(get(t.id, OBSERVER_ENABLED_KEY), t.id),
+      enabled: parseEnabled(get(t.id, OBSERVER_ENABLED_KEY), t.id) && observerInPlan(t.plan),
       cap: parseCap(get(t.id, OBSERVER_CAP_KEY)),
       spentToday: state.spend.usd,
       last: state.last ?? null,

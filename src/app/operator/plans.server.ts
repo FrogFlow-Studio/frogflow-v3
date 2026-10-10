@@ -16,6 +16,7 @@ import {
   planModules,
   type InvoiceLine,
   addonModules,
+  billableAddons,
   suggestPlan,
   trialExtension,
   trialWindow,
@@ -230,7 +231,7 @@ export async function adoptSuggestedPlan(botId: string, actor: string): Promise<
 }
 
 /**
- * Пробный период: Basic ниши на TRIAL_DAYS дней, один раз на клиента.
+ * Пробный период: Pro ниши (TRIAL_TIER) на TRIAL_DAYS дней, один раз на клиента.
  * Включается сам при регистрации (/signup), клиенту, заведённому
  * оператором, — кнопкой. Срок подписки двигается нулевым платежом — тем же
  * путём, что и оплата, так что обход неоплаты предупредит и остановит по
@@ -435,7 +436,8 @@ export function planInvoicePreview(
           amount: connectionDiscount(CONNECTION_PRICE[parsed.tier]),
         }
       : undefined,
-    addons: (billing.addons ?? []).map((a) => ({
+    // Надбавка, которую план покрывает сам (Instagram в Pro с версии 2), в счёт не идёт.
+    addons: billableAddons(parsed.niche, parsed.tier, billing.addons).map((a) => ({
       title: ADDONS[a].title,
       monthly: addonPrice(a, addonPrices[a]),
     })),
