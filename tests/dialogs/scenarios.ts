@@ -2024,6 +2024,29 @@ export const SCENARIOS: Scenario[] = [
     ],
   },
   {
+    id: "prodamus-paid-word-before-webhook-ig-ru",
+    title:
+      "«Оплатила» сразу после оплаты картой, уведомление Продамуса ещё не пришло: бот говорит, что заказ подтвердится сам и материалы придут сюда, а не только «оплата по кнопке выше»",
+    origin:
+      "заказ #102 Копилки 10.10 12:34: «Оплатила» за 11 с до уведомления Продамуса, бот ответил «Оплата — по кнопке выше», наблюдатель решил, что оплата зависла",
+    channel: "instagram",
+    locale: "ru",
+    modules: { prodamus: true },
+    state: { mode: "choose_pay", pending_order_id: 15, pending_display_no: 15 },
+    arrange: prodamusOrder,
+    steps: [
+      { say: { button: "PAY:pdm" }, expect: { state: { mode: "awaiting_payment" } } },
+      {
+        say: { text: "Оплатила" },
+        expect: {
+          count: 1,
+          says: ["Если уже оплатили", "материалы придут сюда"],
+          notSays: ["Пришлите"],
+        },
+      },
+    ],
+  },
+  {
     id: "prodamus-link-question-ig-ru",
     title:
       "после «Картой РФ» кнопка ссылки называется иначе, чем способ оплаты; «А ссылка где?» — ссылка текстом, не «пришлите чек»",
