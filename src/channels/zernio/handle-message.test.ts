@@ -62,8 +62,10 @@ const deliverPendingTwoStepDm = vi.fn(async () => false);
 const deliverTwoStepFromDm = vi.fn(async () => false);
 const deliverTwoStepForDmKeyword = vi.fn(async (..._a: unknown[]) => false);
 // Магазин в переписке — отдельный модуль со своими тестами; здесь важно, дошло ли до него.
+const expressFromAutomation = vi.fn(async (..._a: unknown[]) => true);
 vi.mock("./shop.server", () => ({
   handleShopMessage: async (_ctx: unknown, customer: unknown) => ({ outcome: "handled", customer }),
+  expressFromAutomation: (...a: unknown[]) => expressFromAutomation(...a),
 }));
 vi.mock("./automations.server", () => ({
   deliverPendingTwoStepDm: (...a: unknown[]) => deliverPendingTwoStepDm(...(a as [])),
@@ -234,6 +236,32 @@ describe("Comment-to-DM: второй быстрый «+»", () => {
       express: expect.any(Function),
     });
     deliverTwoStepFromDm.mockClear();
+  });
+
+  it("заказ из автоматизации — только на явное согласие: «+» оформляет, вопрос и «❤️» — нет (Копилка #115, #121)", async () => {
+    const shopCtx = {
+      tenant: { ...igCtx.tenant, modules: { instagram: true, dm_shop: true } },
+    } as unknown as TenantContext;
+    const t = transport as unknown as ZernioTransport;
+    const expressFor = async (message: Record<string, unknown>) => {
+      deliverPendingTwoStepDm.mockClear();
+      expressFromAutomation.mockClear();
+      await handleZernioMessage(shopCtx, igEvent(message), t);
+      const who = (deliverPendingTwoStepDm.mock.calls[0] as unknown[])[1] as {
+        express: (id: string) => Promise<boolean>;
+      };
+      return { ok: await who.express("p-1"), calls: expressFromAutomation.mock.calls.length };
+    };
+    expect(await expressFor({ text: "+" })).toEqual({ ok: true, calls: 1 });
+    expect(await expressFor({ text: "Хочу" })).toEqual({ ok: true, calls: 1 });
+    expect(await expressFor({ text: "Здравствуйте. А в Беларусь 🇧🇾 высылаете?" })).toEqual({
+      ok: false,
+      calls: 0,
+    });
+    expect(await expressFor({ text: "❤️" })).toEqual({ ok: false, calls: 0 });
+    expect(
+      await expressFor({ text: "", attachments: [{ type: "image", url: "https://cdn.test/i" }] }),
+    ).toEqual({ ok: false, calls: 0 });
   });
 
   it("«/start» сразу после второго сообщения при магазине в Direct идёт магазину", async () => {
