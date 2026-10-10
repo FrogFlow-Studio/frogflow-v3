@@ -657,7 +657,7 @@ export const SCENARIOS: Scenario[] = [
     steps: [
       {
         say: { button: `PROD:${P1}`, title: "Купить" },
-        expect: { count: 1, says: ["К оплате: 1700 ₸ / 470 ₽"], state: { mode: "choose_pay" } },
+        expect: { count: 1, says: ["К оплате: 1700 ₸ / ≈470 ₽"], state: { mode: "choose_pay" } },
       },
     ],
   },
