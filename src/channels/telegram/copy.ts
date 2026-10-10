@@ -419,7 +419,8 @@ const ru: Msg = {
     `Выберите способ оплаты и нажмите кнопку ниже: ${l.map((x) => `«${x}»`).join(" или ")}.`,
   choosePayHint:
     "Выберите способ оплаты кнопкой в сообщении выше. Если есть вопрос — напишите, продавец ответит здесь.",
-  payLinkAboveHint: "Оплата — по кнопке в сообщении выше; после оплаты заказ подтвердится сам.",
+  payLinkAboveHint:
+    "Если уже оплатили — заказ подтвердится сам в течение минуты, материалы придут сюда. Если ещё нет — оплатите по кнопке в сообщении выше.",
   dmReceiptPrompt: "Пришлите, пожалуйста, сюда фото или скриншот чека об оплате (можно PDF).",
   payLinkAsText: (url) => `🔗 Ссылка на оплату — откройте её и оплатите:\n${url}`,
   payKaspiBtn: "🧾 Перевод Kaspi",
@@ -846,7 +847,7 @@ const kk: Msg = {
   choosePayHint:
     "Жоғарыдағы хабарламадағы батырма арқылы төлем тәсілін таңдаңыз. Сұрағыңыз болса — жазыңыз, сатушы осында жауап береді.",
   payLinkAboveHint:
-    "Төлем — жоғарыдағы хабарламадағы батырма арқылы; төлегеннен кейін тапсырыс өзі расталады.",
+    "Төлеп қойсаңыз — тапсырыс бір минут ішінде өзі расталады, материалдар осында келеді. Әлі төлемесеңіз — жоғарыдағы хабарламадағы батырма арқылы төлеңіз.",
   dmReceiptPrompt: "Төлем чегінің фотосын немесе скриншотын осында жіберіңізші (PDF те болады).",
   payLinkAsText: (url) => `🔗 Төлем сілтемесі — ашып, төлеңіз:\n${url}`,
   payKaspiBtn: "🧾 Kaspi аударым",
@@ -1160,7 +1161,7 @@ const en: Msg = {
   choosePayHint:
     "Pick a payment method with a button in the message above. If you have a question, write it here and the seller will reply.",
   payLinkAboveHint:
-    "Pay with the button in the message above; the order is confirmed automatically after payment.",
+    "If you have already paid, the order will be confirmed automatically within a minute and the materials will arrive here. If not yet, pay with the button in the message above.",
   dmReceiptPrompt:
     "Please send a photo or screenshot of your payment receipt here (a PDF works too).",
   payLinkAsText: (url) => `🔗 Payment link — open it and pay:\n${url}`,
@@ -1502,7 +1503,7 @@ const uz: Msg = {
   choosePayHint:
     "Yuqoridagi xabardagi tugma orqali to‘lov usulini tanlang. Savolingiz bo‘lsa, yozing, sotuvchi shu yerda javob beradi.",
   payLinkAboveHint:
-    "To‘lov — yuqoridagi xabardagi tugma orqali; to‘lovdan so‘ng buyurtma avtomatik tasdiqlanadi.",
+    "Agar to‘lagan bo‘lsangiz — buyurtma bir daqiqa ichida avtomatik tasdiqlanadi, materiallar shu yerga keladi. Hali to‘lamagan bo‘lsangiz — yuqoridagi xabardagi tugma orqali to‘lang.",
   dmReceiptPrompt:
     "Iltimos, to‘lov chekining rasmi yoki skrinshotini shu yerga yuboring (PDF ham bo‘ladi).",
   payLinkAsText: (url) => `🔗 To‘lov havolasi — oching va to‘lang:\n${url}`,
