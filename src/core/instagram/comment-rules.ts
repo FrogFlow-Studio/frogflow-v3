@@ -494,3 +494,50 @@ export function isTwoStepAcknowledgement(text: string | null | undefined): boole
     ["+", ".", "1", "да", "ссылка", "материалы", "купить", "старт", "/start", "хочу"].includes(t)
   );
 }
+
+/**
+ * Повторный комментарий «ничего нет / не пришло» под постом: первое
+ * сообщение ушло, но покупатель его не видит — у неподписанных оно лежит в
+ * папке «Запросы» (Копилка, 09.10: _queen_lebed_, _nonna2015_; на первое
+ * ответили 52 из 221, из ответивших 57 из 62 — подписчики).
+ */
+const NOT_RECEIVED_RE = new RegExp(
+  [
+    "ничего\\s+нет",
+    "нет\\s+ничего",
+    "ничего\\s+не\\s+(пришл|приход|получ|вижу|видно)",
+    "не\\s+(пришл|приходит|получил|вижу\\s+сообщ)",
+    "где\\s+(сообщени|ссылк)",
+    "ештеңе\\s+(жоқ|келмед)",
+    "келмеді",
+    "hech\\s+narsa\\s+yo",
+    "kelmadi",
+    "nothing\\s+(came|here|received)",
+    "(didn.?t|did\\s+not|haven.?t)\\s+(get|receive)",
+    "not\\s+received",
+  ].join("|"),
+  "i",
+);
+
+export function isNotReceivedComment(text: string): boolean {
+  const t = text.trim();
+  return t.length > 0 && t.length <= 120 && NOT_RECEIVED_RE.test(t);
+}
+
+export type HintLang = "ru" | "kk" | "en" | "uz";
+
+/** Язык подсказки — по тексту комментария; по умолчанию русский. */
+export function commentLang(text: string): HintLang {
+  if (/[әғқңөұүһі]/i.test(text)) return "kk";
+  if (/[а-яё]/i.test(text)) return "ru";
+  if (/\b(yo.?q|kelmadi|hech|narsa|olmadim)\b|[og][\u2018\u2019'`]/i.test(text)) return "uz";
+  return /[a-z]/i.test(text) ? "en" : "ru";
+}
+
+/** Публичный ответ на «ничего нет»: сообщение уже в Direct, ищите в «Запросах». */
+export const REQUESTS_HINT: Record<HintLang, string> = {
+  ru: "Сообщение уже у вас в Direct 📩 Если его нет во входящих, загляните в папку «Запросы» и ответьте на него «+».",
+  kk: "Хабарлама Direct-те тұр 📩 Кіріс хаттарда болмаса, «Сұраулар» бумасын қарап, оған «+» деп жауап беріңіз.",
+  en: "The message is already in your Direct 📩 If it's not in your inbox, check the Requests folder and reply «+» to it.",
+  uz: "Xabar allaqachon Direct’da 📩 Kiruvchilarda bo‘lmasa, «So‘rovlar» papkasini oching va unga «+» deb javob bering.",
+};

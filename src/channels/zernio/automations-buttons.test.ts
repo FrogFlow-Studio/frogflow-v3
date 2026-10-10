@@ -434,6 +434,117 @@ describe("Comment-to-DM: прежний призыв по умолчанию м�
   });
 });
 
+describe("Comment-to-DM: «ничего нет» под постом — подсказка про «Запросы» (Копилка, _nonna2015_)", () => {
+  function hintSetup(servedBy: "v1" | "v2" = "v2") {
+    const { ctx, db, api } = setup();
+    (ctx.tenant.settings as Record<string, unknown>).served_by = servedBy;
+    db.tables.bot_users = [];
+    const publicReply = vi.fn(async () => ({ ok: true }));
+    (api as unknown as Record<string, unknown>).publicReply = publicReply;
+    (api as unknown as Record<string, unknown>).update = vi.fn(async () => ({}));
+    const comment = (id: string, text: string, username = "nonna2015") => ({
+      account: { id: "acc-1" },
+      comment: { id, text, platformPostId: "ig-post-1", author: { id: "u-9", username } },
+    });
+    return { ctx, db, api, publicReply, comment };
+  }
+  /** created_at в базе ставит default; в fakeDb у вставки его нет — проставляем. */
+  const first = async (
+    h: ReturnType<typeof hintSetup>,
+    id = "c-1",
+    at = new Date().toISOString(),
+  ) => {
+    await handleCommentReceived(h.ctx, h.comment(id, "хочу"), h.api, { delayMs: 0 });
+    for (const l of h.db.tables.zernio_logs!) l.created_at ??= at;
+  };
+  const hints = (db: ReturnType<typeof fakeDb>) =>
+    db.tables.zernio_logs!.filter((l) => l.event_type === "comment.requests_hint");
+
+  it("первое уже ушло — публичный ответ под комментарием, второе по нему не ставим", async () => {
+    const h = hintSetup();
+    const { ctx, db, api, publicReply, comment } = h;
+    await first(h);
+    expect(secondSteps(db).map((l) => l.status)).toEqual(["pending"]);
+    const r = await handleCommentReceived(ctx, comment("c-2", "Ничего нет"), api, { delayMs: 0 });
+    expect(r.note).toBe("подсказка про «Запросы» @nonna2015");
+    expect(publicReply).toHaveBeenCalledTimes(1);
+    expect(publicReply).toHaveBeenCalledWith(
+      "ig-post-1",
+      "c-2",
+      "acc-1",
+      expect.stringContaining("«Запросы»"),
+    );
+    expect(hints(db).map((l) => [l.event_id, l.status])).toEqual([
+      ["requests-hint:c-2", "processed"],
+    ]);
+    expect(secondSteps(db).map((l) => l.event_id)).toEqual(["two-step-dm:c-1"]);
+  });
+
+  it("повтор вебхука и два одновременно — ответ один", async () => {
+    const h = hintSetup();
+    const { ctx, api, publicReply, comment } = h;
+    await first(h);
+    const [a, b] = await Promise.all([
+      handleCommentReceived(ctx, comment("c-2", "не пришло"), api, { delayMs: 0 }),
+      handleCommentReceived(ctx, comment("c-2", "не пришло"), api, { delayMs: 0 }),
+    ]);
+    await handleCommentReceived(ctx, comment("c-2", "не пришло"), api, { delayMs: 0 });
+    expect(publicReply).toHaveBeenCalledTimes(1);
+    expect([a.note, b.note].sort()).toEqual([
+      "подсказка про «Запросы» @nonna2015",
+      "подсказка про «Запросы» уже ушла",
+    ]);
+  });
+
+  it("язык подсказки — по комментарию", async () => {
+    const h = hintSetup();
+    const { ctx, api, publicReply, comment } = h;
+    await first(h);
+    await handleCommentReceived(ctx, comment("c-2", "ештеңе жоқ"), api, { delayMs: 0 });
+    expect(publicReply).toHaveBeenCalledWith(
+      "ig-post-1",
+      "c-2",
+      "acc-1",
+      expect.stringContaining("«Сұраулар»"),
+    );
+  });
+
+  it("первого сообщения не было — «ничего нет» идёт обычным путём, без подсказки", async () => {
+    const { ctx, db, api, publicReply, comment } = hintSetup();
+    await handleCommentReceived(ctx, comment("c-3", "ничего нет"), api, { delayMs: 0 });
+    expect(publicReply).not.toHaveBeenCalled();
+    expect(hints(db)).toEqual([]);
+  });
+
+  it("первое было больше суток назад — без подсказки", async () => {
+    const h = hintSetup();
+    const { ctx, api, publicReply, comment } = h;
+    await first(h, "c-1", new Date(Date.now() - 25 * 60 * 60_000).toISOString());
+    await handleCommentReceived(ctx, comment("c-2", "ничего нет"), api, { delayMs: 0 });
+    expect(publicReply).not.toHaveBeenCalled();
+  });
+
+  it("Instagram отказал — отметка «failed», повторно не шлём", async () => {
+    const h = hintSetup();
+    const { ctx, db, api, publicReply, comment } = h;
+    publicReply.mockResolvedValue({ ok: false, error: "timeout" } as never);
+    await first(h);
+    const r = await handleCommentReceived(ctx, comment("c-2", "ничего нет"), api, { delayMs: 0 });
+    expect(r.note).toBe("подсказка про «Запросы» не ушла @nonna2015");
+    await handleCommentReceived(ctx, comment("c-2", "ничего нет"), api, { delayMs: 0 });
+    expect(publicReply).toHaveBeenCalledTimes(1);
+    expect(hints(db).map((l) => [l.status, l.error_message])).toEqual([["failed", "timeout"]]);
+  });
+
+  it("клиент ещё на v1 — не отвечаем", async () => {
+    const h = hintSetup("v1");
+    const { ctx, api, publicReply, comment } = h;
+    await first(h);
+    await handleCommentReceived(ctx, comment("c-2", "ничего нет"), api, { delayMs: 0 });
+    expect(publicReply).not.toHaveBeenCalled();
+  });
+});
+
 describe("Comment-to-DM: пересохранение правила", () => {
   function patchSetup() {
     const { ctx, db } = setup();

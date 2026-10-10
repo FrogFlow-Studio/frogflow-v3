@@ -384,3 +384,28 @@ describe("isPrivateReplyAlreadySent", () => {
     expect(isPrivateReplyAlreadySent("2534066 comment id is valid")).toBe(false);
   });
 });
+
+describe("«ничего нет» под постом", () => {
+  it("узнаёт жалобу на четырёх языках и не трогает обычные комментарии", async () => {
+    const { isNotReceivedComment, commentLang } = await import("./comment-rules");
+    for (const t of [
+      "@kopilka_rusoveda нет ничего",
+      "Ничего нет",
+      "не пришло",
+      "ничего не пришло(",
+      "где ссылка?",
+      "ештеңе жоқ",
+      "келмеді",
+      "hech narsa yo'q",
+      "nothing came",
+      "I didn't get it",
+    ])
+      expect(isNotReceivedComment(t.toLowerCase()), t).toBe(true);
+    for (const t of ["палитра", "хочу", "+", "очень нужно, спасибо", "цена?"])
+      expect(isNotReceivedComment(t), t).toBe(false);
+    expect(commentLang("Ничего нет")).toBe("ru");
+    expect(commentLang("ештеңе жоқ")).toBe("kk");
+    expect(commentLang("hech narsa yo'q")).toBe("uz");
+    expect(commentLang("nothing came")).toBe("en");
+  });
+});
