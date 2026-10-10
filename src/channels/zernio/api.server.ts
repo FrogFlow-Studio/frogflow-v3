@@ -557,6 +557,8 @@ export type ZernioTransport = {
   refresh?: typeof refreshAttachmentUrl;
   /** Готова ли почта платформы (SMTP) — в тестах подменяется; живое — isMailConfigured. */
   mailReady?: () => boolean;
+  /** Отправка письма покупателю — в тестах подменяется; живое — smtpMailer. */
+  mailer?: import("@/core/mail/mail.server").Mailer;
   /**
    * Тип и размер фото в бакете — выбрать то, что примут Instagram/WhatsApp
    * (media.server). Без него — только по расширению (тесты).

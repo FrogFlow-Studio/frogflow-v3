@@ -129,6 +129,8 @@ export interface RoomOptions {
   rejectButtons?: boolean;
   /** Добавка к bots.settings клиента (например, консультант по прайсу). */
   tenantSettings?: Record<string, unknown>;
+  /** Instagram/WhatsApp: почта платформы настроена, письма — в mailbox. */
+  mail?: boolean;
 }
 
 /** Куда уходят сообщения покупателю, отправленные не из его реплики (ответ продавца, трек). */
@@ -138,6 +140,8 @@ export const SELLER_ID = 900;
 export const ROOM_BOT = "00000000-0000-4000-8000-0000000000aa";
 const BOT = ROOM_BOT;
 export const notices = { count: 0 };
+/** Письма покупателю (адреса по порядку) — почта платформы в комнате с `mail`. */
+export const mailbox: { to: string[] } = { to: [] };
 
 /**
  * Модель «думает», пока все сообщения пачки не встали в очередь диалога: в
@@ -325,7 +329,11 @@ function directRoom(o: RoomOptions): Room {
     ),
     tail: vi.fn(async () => [...tail, ...inbox]),
     download: vi.fn(async () => null),
-    mailReady: () => false,
+    mailReady: () => Boolean(o.mail),
+    mailer: async (m: { to: string }) => {
+      mailbox.to.push(m.to);
+      return { ok: true };
+    },
   } as unknown as ZernioTransport;
   let current = {
     userKey: key,

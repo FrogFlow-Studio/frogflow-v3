@@ -739,8 +739,12 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
     case "dismissal":
       // Разговор закрыт — не начинать его заново приветствием.
       return "handled";
-    case "question":
-      return (await listWordsHint(s)) ? "handled" : "question";
+    case "question": {
+      if (await listWordsHint(s)) return "handled";
+      // После оплаты: «отправьте на почту», «не пришло» — понимает модель (core/postpay).
+      const { postPayAssist } = await import("./postpay.server");
+      return (await postPayAssist(s, text)) ?? "question";
+    }
   }
 }
 

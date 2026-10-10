@@ -122,6 +122,48 @@ const prodamusOrder = (r: Room): void => {
   });
 };
 
+/** Заказ №82 Копилки (10.10): оплачен картой и выдан; почта и письмо — по сценарию. */
+const paidOrder =
+  (o: { email?: string; sentAt?: string; status?: string } = {}) =>
+  (r: Room): void => {
+    const buyer = r.db.tables.bot_users![0]!;
+    r.db.tables.orders!.push({
+      id: 82,
+      order_no: 82,
+      display_no: 82,
+      bot_id: buyer.bot_id,
+      telegram_id: buyer.telegram_id,
+      user_key: buyer.user_key,
+      platform: buyer.platform,
+      status: o.status ?? "delivered",
+      total: 1700,
+      currency: "KZT",
+      fulfillment_kind: "digital",
+      customer_email: o.email ?? null,
+      created_at: new Date(Date.now() - 3 * 60_000).toISOString(),
+      updated_at: new Date(Date.now() - 2 * 60_000).toISOString(),
+      order_items: [
+        {
+          id: 1,
+          order_id: 82,
+          name_snapshot: "Палитра средств выразительности",
+          file_url_snapshot: "https://files.example/palitra.pdf",
+          file_name_snapshot: "palitra.pdf",
+        },
+      ],
+    });
+    if (o.sentAt)
+      (r.db.tables.zernio_logs ??= []).push({
+        id: "ev-1",
+        bot_id: buyer.bot_id,
+        event_id: "order:82:email_sent:x",
+        event_type: "order.email_sent",
+        status: "event",
+        created_at: o.sentAt,
+        payload: { order_id: 82, actor: "bot", to: o.email, files: 1 },
+      });
+  };
+
 /** Быстрая покупка выключена: «Купить» кладёт в корзину, дальше «Оформить заказ». */
 const noExpress = (r: Room): void => {
   r.db.tables.app_settings!.push({
@@ -155,6 +197,8 @@ export interface Expect {
   state?: Record<string, unknown>;
   /** Сколько уведомлений ушло продавцу на эту реплику. */
   sellerNotices?: number;
+  /** Письма покупателю на эту реплику — адреса по порядку (комната с `mail`). */
+  mails?: string[];
   /** Что за эту реплику увидел продавец в Telegram (его ответы от бота). */
   sellerSees?: Says[];
   /** Причин ответов бота в «Чате» не меньше стольки (Б13). */
@@ -207,6 +251,13 @@ export interface Scenario {
   rejectButtons?: boolean;
   /** Direct/WhatsApp: реплика идёт через весь разбор входящего (слова «позови человека», пауза). */
   full?: boolean;
+  /** Instagram/WhatsApp: почта платформы настроена, письма считаются (`mails`). */
+  mail?: boolean;
+  /**
+   * ИИ после оплаты (core/postpay): ответы инструмента decide по вызовам —
+   * маршрут и исполнение настоящие, подменён только ответ API модели.
+   */
+  postpay?: Array<{ action: "pass" | "status" | "resend"; email?: string }>;
   /** Подготовка до первой реплики (например, «продавец ответил руками»). */
   arrange?: (r: Room) => void;
   steps: Array<{ say: Input; expect: Expect }>;
@@ -250,6 +301,125 @@ function everyLocale(
 
 export const SCENARIOS: Scenario[] = [
   ...BOTS_20,
+  // ───── После оплаты: «отправьте на почту» понимает ИИ (заказ #82 Копилки, 10.10) ─────
+  ...everyLocale(() => ({
+    id: "postpay-already-sent",
+    title:
+      "письмо с материалами уже ушло: на «отправьте на почту» бот говорит, куда отправлено, второе письмо не шлёт и продавцу не передаёт",
+    origin:
+      "заказ #82 Копилки 10.10: письмо ушло 09:41, «Отправьте на почту пожалуйста» ушло Кристине тикетом",
+    channel: "instagram",
+    products: PRODUCTS,
+    full: true,
+    mail: true,
+    postpay: [{ action: "status" }],
+    arrange: paidOrder({
+      email: "anna@mail.ru",
+      sentAt: new Date(Date.now() - 60_000).toISOString(),
+    }),
+    steps: [
+      {
+        say: { text: "Отправьте на почту пожалуйста" },
+        expect: { count: 1, says: ["anna@mail.ru"], mails: [], sellerNotices: 0 },
+      },
+    ],
+  })),
+  ...everyLocale(() => ({
+    id: "postpay-no-email",
+    title:
+      "почты в выданном заказе нет: бот просит её, а после адреса сразу шлёт письмо и говорит «отправил», не «после проверки оплаты»",
+    origin: "Яков 10.10: «или просит почту, или уведомляет и отправляет»; заказ #75 Копилки",
+    channel: "instagram",
+    products: PRODUCTS,
+    full: true,
+    mail: true,
+    postpay: [{ action: "status" }],
+    arrange: paidOrder(),
+    steps: [
+      {
+        say: { text: "Можно на почту?" },
+        expect: {
+          count: 1,
+          says: ["82"],
+          mails: [],
+          state: { mode: "awaiting_order_email", pending_order_id: 82 },
+        },
+      },
+      {
+        say: { text: "anna@mail.ru" },
+        expect: {
+          count: 1,
+          says: ["anna@mail.ru"],
+          notSays: [(c) => c.emailSaved("anna@mail.ru")],
+          mails: ["anna@mail.ru"],
+        },
+      },
+    ],
+  })),
+  {
+    id: "postpay-resend-new-address-ig-ru",
+    title:
+      "«не пришло, вот другая почта»: письмо на новый адрес один раз, повтор того же сообщения второго письма не даёт",
+    origin: "ожидание к заказу #82 Копилки 10.10",
+    channel: "instagram",
+    locale: "ru",
+    products: PRODUCTS,
+    full: true,
+    mail: true,
+    postpay: [
+      { action: "resend", email: "new@mail.ru" },
+      { action: "resend", email: "new@mail.ru" },
+    ],
+    arrange: paidOrder({
+      email: "old@mail.ru",
+      sentAt: new Date(Date.now() - 60_000).toISOString(),
+    }),
+    steps: [
+      {
+        say: { text: "Письмо не пришло, отправьте на new@mail.ru" },
+        expect: { says: ["new@mail.ru"], mails: ["new@mail.ru"], sellerNotices: 0 },
+      },
+      { say: { text: "Письмо не пришло, отправьте на new@mail.ru" }, expect: { mails: [] } },
+    ],
+  },
+  {
+    id: "postpay-pass-ig-ru",
+    title:
+      "после оплаты новый вопрос не про заказ — бот не отвечает за продавца, как раньше; письма нет",
+    origin: "заказ №77 Копилки 10.10: «Ещё нужен материал к декаде русского языка»",
+    channel: "instagram",
+    locale: "ru",
+    products: PRODUCTS,
+    full: true,
+    mail: true,
+    postpay: [{ action: "pass" }],
+    arrange: paidOrder({ email: "anna@mail.ru" }),
+    steps: [
+      {
+        say: { text: "Ещё нужен материал к декаде русского языка" },
+        expect: { silent: true, mails: [] },
+      },
+    ],
+  },
+  {
+    id: "postpay-pending-ig-ru",
+    title:
+      "чек ещё проверяют: на «отправите на почту?» бот говорит, что материалы придут после подтверждения на эту почту",
+    origin: "ожидание к заказу #82 Копилки 10.10",
+    channel: "instagram",
+    locale: "ru",
+    products: PRODUCTS,
+    full: true,
+    mail: true,
+    postpay: [{ action: "status" }],
+    arrange: paidOrder({ email: "anna@mail.ru", status: "awaiting_confirmation" }),
+    steps: [
+      {
+        say: { text: "А на почту отправите?" },
+        expect: { count: 1, says: ["подтверд", "anna@mail.ru"], mails: [] },
+      },
+    ],
+  },
   // ───── Телефон не коды товаров (Б2, скрин Якова 04.10) ─────
   ...everyLocale(
     () => ({

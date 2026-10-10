@@ -394,9 +394,16 @@ export async function saveOrderEmail(s: Shop, orderId: number, email: string) {
     const fresh = await getOrder(s.ctx, orderId);
     if (fresh?.status === "delivered") {
       const { emailOrderMaterials } = await import("@/core/orders/email");
-      await emailOrderMaterials(s.ctx, fresh).catch((e) =>
-        console.warn(`[zernio] письмо по заказу #${orderId}: ${String(e)}`),
-      );
+      const r = await emailOrderMaterials(s.ctx, fresh, s.transport.mailer).catch((e) => {
+        console.warn(`[zernio] письмо по заказу #${orderId}: ${String(e)}`);
+        return { sent: false };
+      });
+      // Заказ уже выдан и письмо ушло — не «придут после проверки оплаты» (заказ #82 Копилки, 10.10).
+      if (r.sent) {
+        const { emailSentNow } = await import("@/core/postpay/postpay");
+        await reply(s, emailSentNow(s.locale, email), { force: true });
+        return;
+      }
     }
   }
   await reply(s, s.m.emailSaved(email), { force: true });
