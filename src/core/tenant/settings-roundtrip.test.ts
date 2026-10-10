@@ -265,6 +265,7 @@ const ALL = {
   collections: [{ id: "a1b2c3d4", name: "Весна", product_ids: [UUID], created_at: AT }],
   delivery: { pdf_watermark: true },
   catalog_skus: { "ab-1": UUID },
+  apipay: { org_id: "123" },
 } satisfies Record<keyof TenantSettings, unknown>;
 
 describe("каждый верхний ключ TenantSettings переживает чтение", () => {

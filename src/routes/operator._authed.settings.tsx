@@ -28,6 +28,7 @@ import { Badge, Card, ErrorBox, Field, PageTitle, useAction } from "@/app/ui";
 import { UnmatchedZernioCard } from "@/app/operator/client/channels";
 import { shownError } from "@/lib/shown-error";
 import { CommissionSwitchCard } from "@/app/operator/client/commission";
+import { ApipayPartnerKeyCard } from "@/app/operator/client/kaspi";
 
 export const Route = createFileRoute("/operator/_authed/settings")({
   loader: async () => {
@@ -82,6 +83,7 @@ function SettingsPage() {
         <ErrorTrackingCard />
         <AlertsCard status={cred.alerts} />
         <ZernioWebhookCard />
+        <ApipayPartnerKeyCard />
         <UnmatchedZernioCard />
         <TwoFactorCard status={cred.twoFactor} />
         <Card title="Учётка оператора">

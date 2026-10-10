@@ -156,6 +156,7 @@ export function settingsFromJson(json: unknown): TenantSettings {
       webhook_ok: vip.webhook_ok === true,
     },
     multi_bot: str(mb.group) ? { group: str(mb.group)!.toLowerCase() } : undefined,
+    apipay: str(obj(s.apipay).org_id) ? { org_id: str(obj(s.apipay).org_id) } : undefined,
     served_by: served,
     served_by_since:
       typeof s.served_by_since === "string" && !Number.isNaN(Date.parse(s.served_by_since))
