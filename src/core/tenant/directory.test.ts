@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { asPlanned } from "../../../tests/planned-module";
 import { availableModules } from "@/core/modules/registry";
 import {
   addressConflict,
@@ -265,7 +266,7 @@ describe("модули клиента v2 на плане — по плану, а
     expect(t.modules.courses).toBe(true);
   });
 
-  it("включённое в базе вне плана не выключается молча (как у «Демо-тестера» на Pro)", () => {
+  it("включённое в базе вне плана не выключается молча (как у «Демо-тестера» на Pro)", async () => {
     const t = tenant(
       { served_by: "v2", billing: { plan: "digital.pro" } },
       { shop: true, instagram: true, wa_shop: true, referral: true, kaspi_pay: true },
@@ -274,7 +275,7 @@ describe("модули клиента v2 на плане — по плану, а
     expect(t.modules.wa_shop).toBe(true);
     expect(t.modules.referral).toBe(true);
     // «В разработке» не открывается и так: его снимает контекст клиента.
-    expect(availableModules(t.modules).kaspi_pay).toBe(false);
+    await asPlanned("kaspi_pay", () => expect(availableModules(t.modules).kaspi_pay).toBe(false));
   });
 
   it("клиент v1, индивидуальные условия и без плана — флаги как в базе", () => {

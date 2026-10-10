@@ -133,8 +133,8 @@ export const MODULES = {
     desc: "Оплата через Kaspi.kz по QR или ссылке; заказ подтверждается и выдаётся автоматически.",
     group: "Оплата",
     price: 25000,
-    status: "planned",
-    note: "Кода оплаты ещё нет — тумблер серый: API Kaspi Pay доступен только партнёрам Kaspi, нужен договор продавца. Пока — перевод по реквизитам Kaspi с чеком и автопроверкой (receipt_ocr).",
+    status: "available",
+    note: "Через ApiPay (apipay.kz): у продавца своя организация в ApiPay с кассиром Kaspi Pay и своим тарифом ApiPay, деньги идут прямо на его Kaspi. Ключ API и секрет вебхука — в «Настройки → Оплата» (видит только владелец). Ссылка «Оплатить в Kaspi» из бота и Instagram/WhatsApp для заказов в тенге, подтверждение вебхуком /api/kaspi/<bot_id> (core/payments/kaspi-apipay).",
   },
   receipt_ocr: {
     title: "Распознавание чека",

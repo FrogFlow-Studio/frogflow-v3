@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { asPlanned } from "../../../tests/planned-module";
 import {
   evaluatePreflight,
   preflightBlockers,
@@ -122,13 +123,15 @@ describe("evaluatePreflight", () => {
     ]);
     expect(p.checks[1]!.title).toContain("@demo_bot");
   });
-  it("не перенесённый модуль и отсутствие токена блокируют переезд", () => {
-    const p = evaluatePreflight({
-      ...base,
-      modulesOn: ["shop", "kaspi_pay"],
-      tokenPresent: false,
-      tokenOk: null,
-    });
+  it("не перенесённый модуль и отсутствие токена блокируют переезд", async () => {
+    const p = await asPlanned("kaspi_pay", () =>
+      evaluatePreflight({
+        ...base,
+        modulesOn: ["shop", "kaspi_pay"],
+        tokenPresent: false,
+        tokenOk: null,
+      }),
+    );
     expect(p.ready).toBe(false);
     expect(preflightBlockers(p)).toEqual(["Не все модули перенесены", "Нет токена бота"]);
   });

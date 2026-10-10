@@ -45,6 +45,33 @@ export async function payButton(b: Bot, customer: Customer, data: string): Promi
     );
     return;
   }
+  if (kind === "kaspi") {
+    const { kaspiApipayFor } = await import("@/core/payments/payment");
+    const cfg = await kaspiApipayFor(ctx, order.currency);
+    if (!cfg.ready) return;
+    const { createKaspiLink } = await import("@/core/payments/kaspi-apipay");
+    const link = await createKaspiLink(cfg, {
+      orderId: order.id,
+      amount: due,
+      description: `Заказ #${no}`,
+    });
+    if (!link.ok) {
+      console.error(`[kaspi:${ctx.tenant.id}] ссылка по заказу ${order.id}: ${link.error}`);
+      return void (await send(b, b.m.kaspiApipayUnavailable));
+    }
+    b.customer = await setState(ctx, customer, {
+      ...customer.state,
+      mode: "awaiting_payment",
+      pending_order_id: order.id,
+      pending_display_no: no,
+    });
+    await send(
+      b,
+      `${b.m.manualTitleNew(no)}\n\n${b.m.amountToPay(formatMoney(due, order.currency))}\n\n${b.m.kaspiApipayHint}`,
+      { reply_markup: { inline_keyboard: [[{ text: b.m.payViaKaspiApipayBtn, url: link.url }]] } },
+    );
+    return;
+  }
   if (kind === "crypto") {
     const { nowpaymentsFor } = await import("@/core/payments/payment");
     const cfg = await nowpaymentsFor(ctx);

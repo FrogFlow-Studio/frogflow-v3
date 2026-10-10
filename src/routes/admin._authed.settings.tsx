@@ -43,6 +43,7 @@ import {
   ReceiptOcrCard,
   RobokassaCard,
   CryptoCard,
+  KaspiCard,
   StripeCard,
   ProdamusCard,
   StarsCard,
@@ -542,6 +543,11 @@ function SettingsPage() {
               {shop.modules.crypto && shop.role === "owner" && (
                 <SettingsSection id="crypto">
                   <CryptoCard settings={settings} />
+                </SettingsSection>
+              )}
+              {shop.modules.kaspi_pay && shop.role === "owner" && (
+                <SettingsSection id="kaspi">
+                  <KaspiCard settings={settings} />
                 </SettingsSection>
               )}
               {shop.modules.stripe && shop.role === "owner" && (

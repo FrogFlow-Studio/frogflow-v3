@@ -48,6 +48,20 @@ export async function nowpaymentsFor(ctx: TenantContext) {
   );
 }
 
+/**
+ * Kaspi через ApiPay продавца (модуль kaspi_pay, core/payments/kaspi-apipay).
+ * С валютой заказа — только тенге: Kaspi других валют не принимает.
+ */
+export async function kaspiApipayFor(ctx: TenantContext, currency?: string | null) {
+  const { KASPI_APIPAY_KEYS, kaspiApipayConfig, kaspiAccepts } = await import("./kaspi-apipay");
+  const cfg = kaspiApipayConfig(
+    await getSettingsStrict(ctx, KASPI_APIPAY_KEYS),
+    ctx.tenant.modules.kaspi_pay,
+  );
+  if (cfg.ready && currency != null && !kaspiAccepts(currency)) return { ready: false as const };
+  return cfg;
+}
+
 /** Оплата иностранной картой (модуль stripe, core/payments/stripe). */
 export async function stripeFor(ctx: TenantContext) {
   const { STRIPE_KEYS, stripeConfig } = await import("./stripe");
