@@ -217,9 +217,13 @@ export async function handleZernioMessage(
       return processed("второе сообщение по комментарию");
     // Кодовое слово из рилса прямо в Direct («Палитра») — сообщение правила с
     // кнопками сразу, а не обращение продавцу (Копилка русоведа, 09.10).
+    // Ответ на только что показанный список разделов («Оформление и праздники»)
+    // — выбор раздела, его разбирает магазин (Копилка, заказ #127, 11.10).
     if (!ack && !toShop && typedOnly && !inStep && m.text?.trim()) {
+      const { listedSectionByName } = await import("./shop/catalog.server");
+      const section = await listedSectionByName(ctx, customer, m.text);
       const { deliverTwoStepForDmKeyword } = await import("./automations.server");
-      if (await deliverTwoStepForDmKeyword(ctx, who, m.text))
+      if (!section && (await deliverTwoStepForDmKeyword(ctx, who, m.text)))
         return processed("кодовое слово в Direct — сообщение правила");
     }
   }

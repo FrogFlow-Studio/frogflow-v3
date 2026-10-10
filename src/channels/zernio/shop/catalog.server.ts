@@ -1,4 +1,6 @@
 import { shownLeadDays } from "@/core/catalog/lead-time";
+import type { Customer } from "@/core/customers/customers";
+import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Json } from "@/core/db-types";
 import { type Locale } from "@/core/i18n/locale";
 import {
@@ -32,6 +34,7 @@ import {
   productNumberFromName,
 } from "../shop-flow";
 import { serverFailure } from "@/lib/server-failure";
+import { inChunks } from "@/lib/in-chunks";
 import {
   BTN,
   LIST_TTL_MS,
@@ -58,6 +61,54 @@ const OWN_PRODUCTS_LABEL: Record<Locale, string> = {
   en: "Products in this section",
   uz: "Shu bo‘lim mahsulotlari",
 };
+
+function sectionKey(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/ё/g, "е")
+    .replace(/^\s*\d{1,3}\s*[.)]?\s*/, "")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim();
+}
+
+/**
+ * Покупатель ответил на свежий список разделов названием раздела, а не номером
+ * («Оформление и праздники» вместо «2»): id пункта списка, иначе null. Раньше
+ * такая реплика ловила кнопку «Купить» чужого правила (Копилка, заказ #127,
+ * 11.10) или уходила продавцу. Не прочиталось — null: реплика идёт как обычно.
+ */
+export async function listedSectionByName(
+  ctx: TenantContext,
+  customer: Customer,
+  text: string,
+): Promise<string | null> {
+  const list = memory(customer).list;
+  if (list?.kind !== "categories" || !(Date.now() - Date.parse(list.at) < LIST_TTL_MS)) return null;
+  const key = sectionKey(text);
+  if (key.length < 3) return null;
+  const ids = list.ids.filter((id) => !id.startsWith(OWN_PRODUCTS_PREFIX));
+  if (!ids.length) return null;
+  let rows: Array<{ id: string; name: string }>;
+  try {
+    rows = await inChunks(
+      ids,
+      (chunk) => ctx.db.from("categories").select("id, name").in("id", chunk),
+      "разделы списка",
+    );
+  } catch (e) {
+    console.warn(`[zernio] разделы списка не прочитаны: ${(e as Error).message}`);
+    return null;
+  }
+  return rows.find((c) => sectionKey(c.name) === key)?.id ?? null;
+}
+
+/** Название раздела из свежего списка — открыть его, как по номеру. */
+export async function pickSectionByName(s: Shop, text: string): Promise<boolean> {
+  const id = await listedSectionByName(s.ctx, s.customer, text);
+  if (!id) return false;
+  await openEntry(s, id);
+  return true;
+}
 
 /** Открыть пункт списка разделов: подраздел или товары самого раздела. */
 function openEntry(s: Shop, id: string) {

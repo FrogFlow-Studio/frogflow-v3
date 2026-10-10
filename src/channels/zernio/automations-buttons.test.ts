@@ -1383,13 +1383,13 @@ describe("Comment-to-DM: кодовое слово прямо в Direct (Коп�
     expect(inbox).toHaveBeenCalledTimes(1);
   });
 
-  it("правило без кодовых слов узнаётся по подписи поста, и «Политра» тоже (Копилка, 09.10)", async () => {
+  it("правило без кодовых слов узнаётся по слову в кавычках из подписи, и «Политра» тоже (Копилка, 09.10)", async () => {
     const reel = {
       ...palette,
       id: "reel",
       name: "Рилс 09.10",
       keywords: [],
-      postTitle: "Палитра для уроков русского языка",
+      postTitle: 'Пишите в комментариях слово "Палитра" и я вышлю подробную информацию',
       dmMessage: "Спасибо за интерес!",
       buttons: [{ type: "postback", title: "Купить", payload: "buy" }],
     };
@@ -1400,10 +1400,36 @@ describe("Comment-to-DM: кодовое слово прямо в Direct (Коп�
       expect(inbox).toHaveBeenCalledTimes(1);
       expect(secondSteps(db)[0]?.payload).toMatchObject({ automationId: "reel" });
     }
-    for (const word of ["Здравствуйте", "Хочу", "уроков нет?", "Пала"]) {
-      const { ctx, api, inbox } = kwSetup([{ ...reel, postTitle: "Палитра" }]);
+    for (const word of ["Здравствуйте", "Хочу", "комментариях", "информацию", "Пала"]) {
+      const { ctx, api, inbox } = kwSetup([reel]);
       expect(await deliverTwoStepForDmKeyword(ctx, who, word, api)).toBe(false);
       expect(inbox).not.toHaveBeenCalled();
+    }
+  });
+
+  it("правило без кодовых слов: в Direct только название правила или товара, не слова его текстов (Копилка, заказ #127)", async () => {
+    const rule = {
+      id: "pal127",
+      name: "Палитра",
+      accountId: "acc-1",
+      keywords: [],
+      twoStepDm: true,
+      postTitle:
+        'Пишите в комментариях слово "Палитра" и я вышлю подробную информацию. Стоимость материала в электронном формате 1700 тг.',
+      dmMessage: "Материал для оформления кабинета и к праздникам",
+      secondDmMessage: "Палитра средств выразительности — к оформлению и праздникам",
+      buttons: [{ type: "postback", title: "Купить", payload: "PROD:p-pal" }],
+    };
+    for (const word of ["Оформление и праздники", "оформление", "праздники", "электронном"]) {
+      const { ctx, api, inbox } = kwSetup([rule]);
+      expect(await deliverTwoStepForDmKeyword(ctx, who, word, api)).toBe(false);
+      expect(inbox).not.toHaveBeenCalled();
+    }
+    for (const word of ["Палитра", "средства выразительности"]) {
+      const { ctx, db, api, inbox } = kwSetup([rule]);
+      db.tables.products = [{ id: "p-pal", bot_id: BOT, name: "Палитра средств выразительности" }];
+      expect(await deliverTwoStepForDmKeyword(ctx, who, word, api)).toBe(true);
+      expect(inbox).toHaveBeenCalledTimes(1);
     }
   });
 
