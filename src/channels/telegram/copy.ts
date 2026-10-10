@@ -724,7 +724,7 @@ const ru: Msg = {
   prodamusHint:
     "Откройте ссылку и оплатите картой российского банка или через СБП. Форма попросит номер телефона: укажите свой, на него придёт чек. Заказ подтвердится сам сразу после оплаты.",
   prodamusRubViaKztHint:
-    "Откройте ссылку и оплатите картой российского банка. Форма покажет сумму в тенге, а банк спишет её с карты в рублях. Форма попросит номер телефона: укажите свой, на него придёт чек. Заказ подтвердится сам сразу после оплаты.",
+    "Откройте ссылку и оплатите картой российского банка. Форма покажет сумму в тенге, а банк спишет её с карты в рублях. Форма попросит номер телефона: укажите свой, на него придёт чек. Заказ подтвердится сам сразу после оплаты. Если банк отклонит оплату, отключите VPN или попробуйте другую карту; не получится — напишите сюда.",
   prodamusFormSum: (sum) => `в форме оплаты — ${sum}`,
   payManualBtn: "🧾 Перевод по реквизитам + чек",
   robokassaHint: "Нажмите кнопку, оплатите картой — после оплаты всё придёт сюда автоматически.",
@@ -847,7 +847,7 @@ const kk: Msg = {
   prodamusHint:
     "Сілтемені ашып, Ресей банкінің картасымен немесе СБП арқылы төлеңіз. Форма телефон нөмірін сұрайды: өз нөміріңізді жазыңыз, чек соған келеді. Тапсырыс төлемнен кейін бірден өзі расталады.",
   prodamusRubViaKztHint:
-    "Сілтемені ашып, Ресей банкінің картасымен төлеңіз. Форма соманы теңгемен көрсетеді, ал банк оны картадан рубльмен шешеді. Форма телефон нөмірін сұрайды: өз нөміріңізді жазыңыз, чек соған келеді. Тапсырыс төлемнен кейін бірден өзі расталады.",
+    "Сілтемені ашып, Ресей банкінің картасымен төлеңіз. Форма соманы теңгемен көрсетеді, ал банк оны картадан рубльмен шешеді. Форма телефон нөмірін сұрайды: өз нөміріңізді жазыңыз, чек соған келеді. Тапсырыс төлемнен кейін бірден өзі расталады. Банк төлемді қабылдамаса, VPN-ді өшіріп, басқа картамен көріңіз; болмаса — осында жазыңыз.",
   prodamusFormSum: (sum) => `төлем формасында — ${sum}`,
   phoneNoted: "Нөміріңізді жазып алдым 👍",
   loginCodeMsg: (code, minutes) =>
@@ -1203,7 +1203,7 @@ const en: Msg = {
   prodamusHint:
     "Open the link and pay with a Russian bank card or via SBP. The form will ask for a phone number: enter yours, the receipt goes there. The order is confirmed automatically right after payment.",
   prodamusRubViaKztHint:
-    "Open the link and pay with a Russian bank card. The form shows the amount in tenge, and your bank charges it to the card in rubles. The form will ask for a phone number: enter yours, the receipt goes there. The order is confirmed automatically right after payment.",
+    "Open the link and pay with a Russian bank card. The form shows the amount in tenge, and your bank charges it to the card in rubles. The form will ask for a phone number: enter yours, the receipt goes there. The order is confirmed automatically right after payment. If the bank declines the payment, turn off your VPN or try another card; if it still fails, write here.",
   prodamusFormSum: (sum) => `${sum} in the payment form`,
   payBalanceBtn: (no) => `💳 Pay the balance #${no}`,
   balanceTitle: (no, sum) => `💳 <b>Balance for order #${no}</b>\n\n💰 To pay: <b>${sum}</b>`,
@@ -1493,7 +1493,7 @@ const uz: Msg = {
   prodamusHint:
     "Havolani oching va Rossiya banki kartasi yoki SBP orqali to‘lang. Forma telefon raqamini so‘raydi: o‘z raqamingizni kiriting, chek unga keladi. Buyurtma to‘lovdan so‘ng darhol o‘zi tasdiqlanadi.",
   prodamusRubViaKztHint:
-    "Havolani oching va Rossiya banki kartasi bilan to‘lang. Forma summani tengeda ko‘rsatadi, bank esa uni kartadan rublda yechadi. Forma telefon raqamini so‘raydi: o‘z raqamingizni kiriting, chek unga keladi. Buyurtma to‘lovdan so‘ng darhol o‘zi tasdiqlanadi.",
+    "Havolani oching va Rossiya banki kartasi bilan to‘lang. Forma summani tengeda ko‘rsatadi, bank esa uni kartadan rublda yechadi. Forma telefon raqamini so‘raydi: o‘z raqamingizni kiriting, chek unga keladi. Buyurtma to‘lovdan so‘ng darhol o‘zi tasdiqlanadi. Bank to‘lovni rad etsa, VPN’ni o‘chiring yoki boshqa karta bilan urinib ko‘ring; bo‘lmasa, shu yerga yozing.",
   prodamusFormSum: (sum) => `to‘lov formasida — ${sum}`,
   cartHeader: "🛒 <b>Savatingiz</b>\n\n",
   phoneNoted: "Raqamingizni yozib oldim 👍",
