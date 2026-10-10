@@ -260,6 +260,8 @@ export type Msg = {
   defaultInstructions: string;
   afterProofManual: string;
   sendReceiptPrompt: string;
+  /** «Не знаю как», «как отправить чек»: как приложить скриншот в Direct/WhatsApp. */
+  receiptHowTo: string;
   /** Напоминание об оплате (core/orders/pay-remind): заголовок и просьба прислать чек. */
   payReminderTitle: (no: number) => string;
   payReminderAfter: string;
@@ -749,6 +751,8 @@ const ru: Msg = {
     "После оплаты пришлите сюда фото или PDF чека — продавец проверит и выдаст материалы.",
   sendReceiptPrompt:
     "Пришлите, пожалуйста, фото или PDF чека об оплате. Чтобы вернуться в меню — нажмите любую кнопку ниже.",
+  receiptHowTo:
+    "Как прислать чек: в приложении Kaspi или банка откройте этот платёж и сделайте скриншот. Потом здесь, в переписке, нажмите значок фото 🖼 или скрепку 📎 рядом с полем сообщения и выберите скриншот из галереи.",
   proofReceived: (no) => `✅ Чек по заказу #${no} получен. Ожидайте подтверждения продавца.`,
   payReminderTitle: (no) => `⏰ <b>Заказ #${no} ждёт оплаты</b>`,
   payReminderAfter: "После оплаты пришлите сюда фото или PDF чека.",
@@ -912,6 +916,8 @@ const kk: Msg = {
     `❌ #${no} тапсырыс бойынша қалған сомаға чекті сатушы қабылдамады. Қалған соманы қайта төлеңіз немесе басқа чек жіберіңіз; сұрақтар болса — сатушыға.`,
   payReminderTitle: (no) => `⏰ <b>#${no} тапсырыс төлемді күтуде</b>`,
   payReminderAfter: "Төлегеннен кейін чектің фотосын немесе PDF файлын осында жіберіңіз.",
+  receiptHowTo:
+    "Чекті қалай жіберу керек: Kaspi немесе банк қосымшасында осы төлемді ашып, скриншот жасаңыз. Содан кейін осы чатта хабарлама жолының жанындағы сурет 🖼 немесе қыстырғыш 📎 белгісін басып, скриншотты галереядан таңдаңыз.",
   payReminderAmount: (a) => `💰 Төлеуге: <b>${a}</b>`,
   payReminderDeposit: (due, total) =>
     `Қазір — кепілақы ${due}, қалғаны алған кезде (барлығы ${total}).`,
@@ -1443,6 +1449,8 @@ const en: Msg = {
     "After paying, send a photo or PDF of the receipt here — the seller will confirm and deliver.",
   sendReceiptPrompt:
     "Please send a photo or PDF of your payment receipt. Tap any menu button to go back.",
+  receiptHowTo:
+    "How to send the receipt: open this payment in the Kaspi or bank app and take a screenshot. Then, here in the chat, tap the photo 🖼 or paperclip 📎 icon next to the message field and pick the screenshot from your gallery.",
   useMenu: "Pick a section from the menu below 👇",
   nativeCartForwarded:
     "Got your cart from the catalog and passed it to the seller — they will confirm the order and reply here.",
@@ -1464,6 +1472,8 @@ const uz: Msg = {
   payLinkBtn: (kaspi) => (kaspi ? "💳 Kaspi orqali to‘lash" : "💳 To‘lovni ochish"),
   payTroubleHandoff:
     "Savolingizni sotuvchiga yubordim: u shu yerda qanday to‘lash qulayligini yozadi. Buyurtma saqlandi.",
+  receiptHowTo:
+    "Chekni qanday yuborish: Kaspi yoki bank ilovasida shu to‘lovni oching va skrinshot oling. Keyin shu chatda xabar maydoni yonidagi rasm 🖼 yoki qisqich 📎 belgisini bosing va skrinshotni galereyadan tanlang.",
   payLinkHint:
     "Quyidagi tugmani bosing. Ochilmasa — havolani nusxalab, brauzerda yoki Kaspi ilovasida oching.",
   payByCardBtn: "💳 Karta orqali",
