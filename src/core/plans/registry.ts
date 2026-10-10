@@ -1,5 +1,6 @@
 import type { ModuleKey } from "@/core/modules/registry";
 import type { VerticalKey } from "@/core/verticals/registry";
+import type { BillingAddon } from "@/core/tenant/types";
 
 /**
  * Тарифы платформы: подключение один раз и дальше подписка на план. План —
@@ -11,10 +12,14 @@ import type { VerticalKey } from "@/core/verticals/registry";
  * все проверки `ctx.tenant.modules.*` в коде работают как раньше, и v1,
  * читающий ту же колонку, тоже.
  *
- * Условия утверждены Яковом 26.09.2026: цены одинаковы для всех ниш, сверх
- * плана докупаются только каналы (WhatsApp, Instagram), лимиты ИИ помесячно,
- * годовая оплата — 10 месяцев вместо 12, пробный период 7 дней на Basic:
- * включается сам при регистрации, оператор может продлить вручную.
+ * Условия утверждены Яковом 26.09.2026, сетка уточнена 10.10.2026 (версия 2):
+ * цены одинаковы для всех ниш; Basic продаёт (магазин и проверка чека),
+ * Pro делает всё сам (оплата картой, Продамус, VIP, Instagram), Business —
+ * все каналы, приложение, витрина и команда. Сверх плана докупаются каналы,
+ * VIP-клуб к Basic и пакет диалогов ИИ; лимиты ИИ помесячно и по
+ * себестоимости (диалог консультанта ≈ 55 ₸); годовая оплата — 10 месяцев
+ * вместо 12, пробный период 7 дней с функциями Pro: включается сам при
+ * регистрации, оператор может продлить вручную.
  * Консультант BOVI (ниша `consultant`) — вне тарифов, по договору: у него
  * план `custom`, модули оператор включает руками, как до тарифов.
  *
@@ -44,7 +49,7 @@ export const CUSTOM_PLAN = "custom";
  * клиенту пишется версия, по которой он подключён (`billing.plan_version`),
  * чтобы изменение не меняло его условия молча.
  */
-export const PLAN_VERSION = 1;
+export const PLAN_VERSION = 2;
 
 export const TIER_TITLES: Record<PlanTier, string> = {
   basic: "Basic",
@@ -94,15 +99,32 @@ export const ANNUAL_BILLED_MONTHS = 10;
 export const TRIAL_DAYS = 7;
 /** Продление пробного периода оператором за один раз, дней. */
 export const TRIAL_EXTEND_MAX_DAYS = 30;
-export const TRIAL_TIER: PlanTier = "basic";
+/** Пробный период показывает Pro: проверку чека, оплату картой, VIP (решение Якова 10.10.2026). */
+export const TRIAL_TIER: PlanTier = "pro";
 
-/** Месячные лимиты ИИ; null — без лимита. */
+/**
+ * Месячные лимиты ИИ; null — без лимита, 0 — не входит в план. Лимит
+ * консультанта считает диалоги (новый — после суток тишины), диалог по базе
+ * BOVI за 30 дней ≈ 3,6 ответа ≈ $0,105 ≈ 55 ₸. Лимиты подобраны так, чтобы
+ * даже полностью выбранный лимит не съедал цену тарифа (решение Якова
+ * 10.10.2026). Проверка чека ≈ $2 за 1 000 — у Business без лимита.
+ */
 export type PlanLimits = { aiDialogs: number | null; receiptChecks: number | null };
 export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
-  basic: { aiDialogs: 300, receiptChecks: 200 },
-  pro: { aiDialogs: 1_500, receiptChecks: 1_000 },
-  business: { aiDialogs: 5_000, receiptChecks: null },
+  basic: { aiDialogs: 0, receiptChecks: 100 },
+  pro: { aiDialogs: 100, receiptChecks: 1_000 },
+  business: { aiDialogs: 250, receiptChecks: null },
 };
+/** У ИИ-консультанта ИИ — сам продукт, поэтому диалогов больше и с Basic. */
+export const CONSULTANT_PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
+  basic: { aiDialogs: 100, receiptChecks: 100 },
+  pro: { aiDialogs: 200, receiptChecks: 1_000 },
+  business: { aiDialogs: 400, receiptChecks: null },
+};
+
+export function tierLimits(niche: PlanNiche, tier: PlanTier): PlanLimits {
+  return (niche === "consultant_universal" ? CONSULTANT_PLAN_LIMITS : PLAN_LIMITS)[tier];
+}
 
 /** Бесплатная часть: во всех планах всех ниш. */
 export const BASE_MODULES: readonly ModuleKey[] = [
@@ -122,12 +144,14 @@ export const BASE_MODULES: readonly ModuleKey[] = [
 export const PLAN_MODULES: Record<PlanNiche, Record<PlanTier, readonly ModuleKey[]>> = {
   confectionery: {
     // Дата и способ получения, зоны, ручной заказ и задаток — в ядре, без флага.
-    basic: ["stock"],
+    basic: ["stock", "receipt_ocr"],
     pro: [
       "warehouse",
       "profit",
       "robokassa",
-      "receipt_ocr",
+      "prodamus",
+      "instagram",
+      "dm_shop",
       "coupons",
       "gift_certificates",
       "cart_reminder",
@@ -141,8 +165,6 @@ export const PLAN_MODULES: Record<PlanNiche, Record<PlanTier, readonly ModuleKey
     business: [
       "whatsapp",
       "wa_shop",
-      "instagram",
-      "dm_shop",
       "loyalty",
       "referral",
       "web_storefront",
@@ -156,12 +178,14 @@ export const PLAN_MODULES: Record<PlanNiche, Record<PlanTier, readonly ModuleKey
   },
   flowers: {
     // Покупатели цветов пишут в WhatsApp — он с Basic.
-    basic: ["whatsapp", "wa_shop", "stock"],
+    basic: ["whatsapp", "wa_shop", "stock", "receipt_ocr"],
     pro: [
       "warehouse",
       "profit",
       "robokassa",
-      "receipt_ocr",
+      "prodamus",
+      "instagram",
+      "dm_shop",
       "manager_chat",
       "gift_certificates",
       "coupons",
@@ -172,8 +196,6 @@ export const PLAN_MODULES: Record<PlanNiche, Record<PlanTier, readonly ModuleKey
       "giveaways",
     ],
     business: [
-      "instagram",
-      "dm_shop",
       "wa_broadcasts",
       "smart_search",
       "web_storefront",
@@ -184,17 +206,19 @@ export const PLAN_MODULES: Record<PlanNiche, Record<PlanTier, readonly ModuleKey
     ],
   },
   digital: {
-    basic: [],
+    basic: ["receipt_ocr"],
     pro: [
       "profit",
       "robokassa",
-      "receipt_ocr",
+      "prodamus",
       "coupons",
       "cart_reminder",
       "vip",
       "multi_language",
       "crm_pipeline",
       "giveaways",
+      "instagram",
+      "dm_shop",
     ],
     business: [
       "telegram_mini_app",
@@ -203,12 +227,12 @@ export const PLAN_MODULES: Record<PlanNiche, Record<PlanTier, readonly ModuleKey
       "loyalty",
       "referral",
       "gift_certificates",
-      "instagram",
-      "dm_shop",
       "whatsapp",
       "wa_shop",
       "manager_chat",
       "helpdesk",
+      "multi_currency",
+      "admin_roles",
     ],
   },
   // Онлайн-школа: вопросы преподавателю — с Basic. Сами «Курсы» с закрытым
@@ -218,11 +242,13 @@ export const PLAN_MODULES: Record<PlanNiche, Record<PlanTier, readonly ModuleKey
   // Цены те же, что у всех ниш (решение Якова 2026-09-26), пока он не назовёт
   // свои для школ.
   courses: {
-    basic: ["manager_chat"],
+    basic: ["manager_chat", "receipt_ocr"],
     pro: [
       "profit",
       "robokassa",
-      "receipt_ocr",
+      "prodamus",
+      "instagram",
+      "dm_shop",
       "coupons",
       "gift_certificates",
       "cart_reminder",
@@ -237,8 +263,6 @@ export const PLAN_MODULES: Record<PlanNiche, Record<PlanTier, readonly ModuleKey
       "smart_search",
       "loyalty",
       "referral",
-      "instagram",
-      "dm_shop",
       "whatsapp",
       "wa_shop",
       "helpdesk",
@@ -274,16 +298,58 @@ export const COURSES_NICHES: readonly PlanNiche[] = ["digital", "confectionery",
  */
 export const MULTI_BOT_FROM_TIER: PlanTier | null = "business";
 
-/** Докупаются сверх плана только каналы: у них разная себестоимость. */
+/**
+ * Что докупается сверх плана: каналы (у них своя себестоимость), VIP-клуб к
+ * Basic (мелкому клубу не нужен весь Pro) и пакет диалогов ИИ. Надбавка,
+ * модули которой уже в плане, не продаётся и в счёт не идёт (billableAddons).
+ * Basic с двумя надбавками стоит как Pro, а Pro даёт больше — стимул расти.
+ */
 export const ADDONS = {
   whatsapp: { title: "WhatsApp", modules: ["whatsapp", "wa_shop"] },
   instagram: { title: "Instagram", modules: ["instagram", "dm_shop"] },
-} as const satisfies Record<string, { title: string; modules: readonly ModuleKey[] }>;
+  vip: { title: "VIP-клуб", modules: ["vip"], niches: ["digital"] },
+  ai_pack: { title: "Пакет 200 диалогов ИИ", modules: [], aiDialogs: 200 },
+} as const satisfies Record<
+  string,
+  {
+    title: string;
+    modules: readonly ModuleKey[];
+    /** Ниши, где надбавка продаётся; нет — во всех. */
+    niches?: readonly PlanNiche[];
+    /** Сколько диалогов ИИ добавляет к лимиту плана в месяц. */
+    aiDialogs?: number;
+  }
+>;
 export type AddonKey = keyof typeof ADDONS;
+/** Ключи надбавок в настройках клиента обязаны совпадать с реестром. */
+const _addonKeysMatch: [AddonKey, BillingAddon] extends [BillingAddon, AddonKey] ? true : never =
+  true;
+void _addonKeysMatch;
 export const ADDON_KEYS = Object.keys(ADDONS) as AddonKey[];
+/** Каналы среди надбавок: калькулятор главной и «сверх тарифа» на странице цен. */
+export const CHANNEL_ADDONS = ["whatsapp", "instagram"] as const satisfies readonly AddonKey[];
 
-/** Надбавка за канал сверх плана, ₸ в месяц (решение Якова 2026-09-26). */
-export const ADDON_MONTHLY_PRICE: Record<AddonKey, number> = { whatsapp: 5000, instagram: 5000 };
+/** Надбавка сверх плана, ₸ в месяц (каналы — решение Якова 2026-09-26, VIP и пакет ИИ — 10.10). */
+export const ADDON_MONTHLY_PRICE: Record<AddonKey, number> = {
+  whatsapp: 5000,
+  instagram: 5000,
+  vip: 5000,
+  ai_pack: 20_000,
+};
+
+/** Продаётся ли надбавка в нише. */
+export function addonForNiche(a: AddonKey, niche: PlanNiche): boolean {
+  const n = (ADDONS[a] as { niches?: readonly PlanNiche[] }).niches;
+  return !n || n.includes(niche);
+}
+
+/** Диалоги ИИ сверх лимита плана от надбавок. */
+export function addonAiDialogs(addons: readonly string[] | undefined): number {
+  let n = 0;
+  for (const a of addons ?? [])
+    n += (ADDONS[a as AddonKey] as { aiDialogs?: number } | undefined)?.aiDialogs ?? 0;
+  return n;
+}
 
 /** Модули магазина в каналах — консультанту (без кассы) не включаются. */
 export const SHOP_CHANNEL_MODULES: readonly ModuleKey[] = ["wa_shop", "dm_shop"];

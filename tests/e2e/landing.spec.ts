@@ -47,7 +47,9 @@ test("страница ниши: свой заголовок и canonical, та�
   await expect(page.getByRole("heading", { level: 1 })).toContainText("торты");
   // Тарифы только этой ниши: без вкладок, со строкой кондитерской.
   await expect(page.getByRole("tablist")).toHaveCount(0);
-  await expect(page.getByText("Задаток и ручной заказ")).toBeVisible();
+  await expect(page.getByText("Задаток, ручной заказ, проверка чека Kaspi")).toBeVisible();
+  // Лимиты тарифа — в карточке, из реестра планов.
+  await expect(page.getByText("Проверка чека Kaspi: 100 в месяц")).toBeVisible();
   await page.getByRole("link", { name: "KZ" }).click();
   await expect(page).toHaveURL(/\/for\/cakes\?lang=kk$/);
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(

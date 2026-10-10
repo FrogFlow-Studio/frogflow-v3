@@ -246,11 +246,15 @@ export type TenantSettings = {
   };
 };
 
+/** Ключи надбавок; те же, что ADDONS в core/plans/registry (тест сверяет). */
+export const BILLING_ADDONS = ["whatsapp", "instagram", "vip", "ai_pack"] as const;
+export type BillingAddon = (typeof BILLING_ADDONS)[number];
+
 export type BillingSettings = {
   /** Ключ плана (`flowers.pro`) или `custom`; в `bots.subscription_plan` — только уровень. */
   plan?: string;
-  /** Каналы, докупленные сверх плана (core/plans/registry ADDONS). */
-  addons?: Array<"whatsapp" | "instagram">;
+  /** Надбавки сверх плана: каналы, VIP-клуб, пакет диалогов ИИ (core/plans/registry ADDONS). */
+  addons?: BillingAddon[];
   /** Модули, купленные по старой схеме или подаренные оператором: включены бесплатно сверх плана. */
   grandfathered?: ModuleKey[];
   /** Индивидуальные месячные лимиты вместо лимитов плана; null — без лимита. */

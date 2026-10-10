@@ -1,4 +1,5 @@
 import type { Locale } from "@/core/i18n/locale";
+import { parsePlan } from "@/core/plans/registry";
 
 /**
  * ИИ-наблюдатель за диалогами (фаза 1, решение Якова 09.10): раз в 15 минут
@@ -30,6 +31,7 @@ export const observerLogKey = (date: string) => `observer_log:${date}`;
 
 /** Копилка Русоведа — первый клиент наблюдателя; остальным включает оператор. */
 export const OBSERVER_DEFAULT_ON: readonly string[] = ["4f9562e2-3bf4-4cba-8a58-794637511431"];
+/** ≈ 4 700 ₸ в месяц на клиента — в пределах цены Business (сетка тарифов 10.10.2026). */
 export const OBSERVER_DAILY_USD = 0.3;
 export const OBSERVER_LEASE_MS = 5 * 60_000;
 /** Не больше одного сигнала продавцу по диалогу за час. */
@@ -50,6 +52,15 @@ export function parseEnabled(raw: string | null | undefined, botId: string): boo
   if (raw === "true") return true;
   if (raw === "false") return false;
   return OBSERVER_DEFAULT_ON.includes(botId);
+}
+
+/**
+ * Наблюдатель входит только в Business (и в индивидуальные условия): он
+ * тратит ИИ платформы без лимита диалогов (сетка тарифов 10.10.2026).
+ */
+export function observerInPlan(plan: string | null | undefined): boolean {
+  const p = parsePlan(plan);
+  return p?.kind === "custom" || (p?.kind === "tier" && p.tier === "business");
 }
 
 export function parseCap(raw: string | null | undefined): number {

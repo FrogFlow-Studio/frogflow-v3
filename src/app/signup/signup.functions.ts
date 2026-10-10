@@ -82,7 +82,7 @@ export const signupFn = createServerFn({ method: "POST" })
     } catch (e) {
       console.error(`[signup] invite for ${id}: ${e instanceof Error ? e.message : e}`);
     }
-    // Пробный период Basic включается сам. Сбой не ломает регистрацию:
+    // Пробный период (Pro, TRIAL_TIER) включается сам. Сбой не ломает регистрацию:
     // магазин уже создан, оператор включит пробный период кнопкой.
     try {
       const { nicheForVertical } = await import("@/core/plans/registry");

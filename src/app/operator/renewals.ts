@@ -2,7 +2,7 @@
  * Воронка продлений: чистая часть — какое напоминание пора слать и как хранится
  * отметка «уже слали». Отправка — в renewals.server.ts.
  */
-import { planInvoice } from "@/core/plans/plans";
+import { billableAddons, planInvoice } from "@/core/plans/plans";
 import { ADDON_MONTHLY_PRICE, ADDONS, parsePlan, planMonthlyPrice } from "@/core/plans/registry";
 import type { Tenant } from "@/core/tenant/types";
 
@@ -91,7 +91,7 @@ export function renewalPrice(
     period,
     monthlyPrice: planMonthlyPrice(parsed.tier, billing),
     withConnection: false,
-    addons: (billing.addons ?? []).map((a) => ({
+    addons: billableAddons(parsed.niche, parsed.tier, billing.addons).map((a) => ({
       title: ADDONS[a].title,
       monthly: ADDON_MONTHLY_PRICE[a],
     })),

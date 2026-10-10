@@ -97,7 +97,11 @@ function PlanPanel({
   const usageLine = (used: number, limit: number | null | undefined) =>
     limit === null || limit === undefined
       ? t("plan.unlimited", { used: n(used) })
-      : t("plan.of", { used: n(used), limit: n(limit) });
+      : limit === 0 && used === 0
+        ? t("plan.notIncluded")
+        : t("plan.of", { used: n(used), limit: n(limit) });
+  const limitValue = (v: number | null) =>
+    v === null ? t("plan.noLimit") : v === 0 ? t("plan.none") : n(v);
   if (p.plan === "custom")
     return (
       <Card title={t("plan.title")} className="mb-4">
@@ -106,7 +110,12 @@ function PlanPanel({
     );
   if (!p.plan) return null;
   const current = p.plan;
-  const higher = PLAN_TIERS.slice(PLAN_TIERS.indexOf(current) + 1);
+  // В пробном периоде тариф ещё не выбран: предлагаем любой, после оплаты — только выше.
+  const higher = p.choosing
+    ? PLAN_TIERS.filter((x) => x !== current)
+    : PLAN_TIERS.slice(PLAN_TIERS.indexOf(current) + 1);
+  const nextTier = PLAN_TIERS[PLAN_TIERS.indexOf(current) + 1];
+  const nextLimits = nextTier && p.tierLimits ? p.tierLimits[nextTier] : null;
   const addons = p.availableAddons.filter((a) => !p.addons.includes(a));
   return (
     <Card
@@ -155,6 +164,15 @@ function PlanPanel({
               {usageLine(p.usage.receiptChecks, p.usage.limits?.receiptChecks)}
             </span>
           </div>
+          {nextTier && nextLimits && (
+            <p className="text-xs text-muted">
+              {t("plan.nextLimits", {
+                tier: TIER_TITLES[nextTier],
+                dialogs: limitValue(nextLimits.aiDialogs),
+                receipts: limitValue(nextLimits.receiptChecks),
+              })}
+            </p>
+          )}
           <p className="text-xs text-muted">{t("plan.limitHint")}</p>
         </div>
       </div>
@@ -189,7 +207,12 @@ function PlanPanel({
               >
                 {sent.has(key)
                   ? t("plan.requested")
-                  : `${t("plan.upgradeTo", { tier: TIER_TITLES[tier] })} · ${n(p.prices.monthly[tier])} ₸`}
+                  : `${t(
+                      PLAN_TIERS.indexOf(tier) > PLAN_TIERS.indexOf(current)
+                        ? "plan.upgradeTo"
+                        : "plan.chooseTier",
+                      { tier: TIER_TITLES[tier] },
+                    )} · ${n(p.prices.monthly[tier])} ₸`}
               </button>
             );
           })}
