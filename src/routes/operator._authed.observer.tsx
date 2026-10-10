@@ -61,8 +61,9 @@ function ObserverPage() {
             </div>
             {c.last && (
               <div className="text-xs text-muted">
-                прогон {fmt(c.last.at)}: диалогов {c.last.dialogs}, находок {c.last.findings},
-                продавцу {c.last.sent}
+                прогон {fmt(c.last.at)}: модели показано {c.last.dialogs}
+                {c.last.calm ? `, обычных пропущено ${c.last.calm}` : ""}, находок {c.last.findings}
+                , продавцу {c.last.sent}
                 {c.last.overflow ? `, сверх потолка ${c.last.overflow}` : ""}
                 {c.last.failed ? `, не разобрано ${c.last.failed}` : ""}
               </div>

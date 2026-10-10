@@ -246,6 +246,34 @@ describe("наблюдатель: прогон", () => {
   });
 });
 
+describe("наблюдатель: дешёвый отсев до модели", () => {
+  it("обычный ход покупки (ключевое слово, кнопки, бот ответил) — модель не зовём", async () => {
+    say(3, "customer", 8, "Палитра");
+    say(3, "bot", 8, "Палитра — 1700 ₸. Нажмите «Купить».");
+    say(3, "customer", 7, "Купить");
+    say(3, "bot", 7, "Оформить заказ?");
+    const x = deps(() => flag(3));
+    const r = await runDialogObserver(tenant(), budget, x.d);
+    expect(r).toMatchObject({ dialogs: 0, calm: 1, usd: 0 });
+    expect(x.calls).toHaveLength(0);
+  });
+
+  it("бот дважды прислал одно и то же — к модели", async () => {
+    say(4, "customer", 8, "Купить");
+    say(4, "bot", 8, "Оформить заказ?");
+    say(4, "bot", 8, "Оформить заказ?");
+    const x = deps(() => ({ findings: [] }));
+    expect(await runDialogObserver(tenant(), budget, x.d)).toMatchObject({ dialogs: 1 });
+  });
+
+  it("бот передал продавцу — к модели", async () => {
+    say(6, "customer", 8, "Здравствуйте");
+    say(6, "bot", 8, "Передаю ваш вопрос продавцу, он скоро ответит.");
+    const x = deps(() => ({ findings: [] }));
+    expect(await runDialogObserver(tenant(), budget, x.d)).toMatchObject({ dialogs: 1 });
+  });
+});
+
 describe("наблюдатель: разбор ответа модели и тексты", () => {
   it("чужие id, неизвестные виды и вторая находка по диалогу отбрасываются", () => {
     const f = parseFindings(
