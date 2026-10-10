@@ -1909,6 +1909,79 @@ export const SCENARIOS: Scenario[] = [
     ],
   },
   {
+    id: "choose-pay-no-receipt-prompt-ig-ru",
+    title: "способ оплаты не выбран — бот не просит чек; «Я из Нукуса» — продавцу",
+    origin:
+      "заказ #76 Копилки русоведа 10.10: «Я из Нукуса» до выбора способа оплаты — бот ответил «Пришлите чек»",
+    channel: "instagram",
+    locale: "ru",
+    modules: { prodamus: true },
+    state: { mode: "choose_pay", pending_order_id: 15, pending_display_no: 15 },
+    arrange: prodamusOrder,
+    steps: [
+      {
+        say: { text: "Я из Нукуса" },
+        expect: {
+          count: 1,
+          says: [(c) => c.payTroubleHandoff],
+          notSays: [(c) => c.sendReceiptPrompt],
+        },
+      },
+    ],
+  },
+  {
+    id: "choose-pay-unclear-text-hint-ig-ru",
+    title: "непонятная реплика до выбора способа оплаты — «выберите способ», не «пришлите чек»",
+    origin: "заказ #76 Копилки русоведа 10.10",
+    channel: "instagram",
+    locale: "ru",
+    full: true,
+    modules: { prodamus: true },
+    products: [{ id: P1, name: "Палитра средств выразительности" }],
+    arrange: (r) => {
+      r.db.tables.app_settings!.push(
+        { key: "prodamus_enabled", value: "true" },
+        { key: "prodamus_form_url", value: "https://kopilka.proeducation.kz" },
+        { key: "prodamus_secret_key", value: "k".repeat(64) },
+        { key: "prodamus_currency", value: "KZT" },
+      );
+    },
+    steps: [
+      {
+        say: { button: `PROD:${P1}`, title: "Купить" },
+        expect: { state: { mode: "choose_pay" } },
+      },
+      {
+        say: { text: "А это подойдёт учителю начальных классов?" },
+        expect: {
+          count: 1,
+          says: [(c) => c.choosePayHint],
+          notSays: [(c) => c.sendReceiptPrompt],
+        },
+      },
+    ],
+  },
+  {
+    id: "russian-region-gets-card-link-ig-ru",
+    title: "«Я с Дагестана» — регион России: ссылка картой, а не продавцу",
+    origin: "заказ #65 Копилки русоведа 10.10 (sultanahmedovatamila798): «Я с Дагестана»",
+    channel: "instagram",
+    locale: "ru",
+    modules: { prodamus: true },
+    state: { mode: "choose_pay", pending_order_id: 15, pending_display_no: 15 },
+    arrange: prodamusOrder,
+    steps: [
+      {
+        say: { text: "Я с Дагестана" },
+        expect: {
+          count: 1,
+          says: [(c) => c.prodamusRubViaKztHint],
+          notSays: [(c) => c.payTroubleHandoff, (c) => c.sendReceiptPrompt],
+        },
+      },
+    ],
+  },
+  {
     id: "prodamus-link-no-buttons-ig-ru",
     title: "кнопки канал не принял — ссылка на оплату приходит текстом",
     origin: "заказ #15 Копилки Русоведа, 09.10",

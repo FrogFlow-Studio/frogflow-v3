@@ -202,6 +202,8 @@ export type Msg = {
   choosePayMethod: string;
   /** Выбор оплаты с названиями кнопок словами (в переписке кнопки не всегда замечают). */
   choosePayMethodNamed: (labels: string[]) => string;
+  /** Непонятная реплика, пока способ оплаты не выбран: не «пришлите чек». */
+  choosePayHint: string;
   /** Оплата — акцепт оферты; ссылки на опубликованные документы. */
   payConsent: (offer: string | null, privacy: string | null) => string;
   payViaRobokassaBtn: string;
@@ -409,6 +411,8 @@ export type Msg = {
 const ru: Msg = {
   choosePayMethodNamed: (l) =>
     `Выберите способ оплаты и нажмите кнопку ниже: ${l.map((x) => `«${x}»`).join(" или ")}.`,
+  choosePayHint:
+    "Выберите способ оплаты кнопкой в сообщении выше. Если есть вопрос — напишите, продавец ответит здесь.",
   payKaspiBtn: "🧾 Перевод Kaspi",
   payLinkBtn: (kaspi) => (kaspi ? "💳 Оплатить в Kaspi" : "💳 Открыть оплату"),
   payTroubleHandoff:
@@ -828,6 +832,8 @@ const kk: Msg = {
   kaspiApipayUnavailable: "Kaspi арқылы төлем қазір қолжетімсіз — басқа тәсілді таңдаңыз.",
   choosePayMethodNamed: (l) =>
     `Төлем тәсілін таңдап, төмендегі батырманы басыңыз: ${l.map((x) => `«${x}»`).join(" немесе ")}.`,
+  choosePayHint:
+    "Жоғарыдағы хабарламадағы батырма арқылы төлем тәсілін таңдаңыз. Сұрағыңыз болса — жазыңыз, сатушы осында жауап береді.",
   payKaspiBtn: "🧾 Kaspi аударым",
   payLinkBtn: (kaspi) => (kaspi ? "💳 Kaspi арқылы төлеу" : "💳 Төлемді ашу"),
   payTroubleHandoff:
@@ -1134,6 +1140,8 @@ const en: Msg = {
   kaspiApipayUnavailable: "Kaspi payment is unavailable right now — please choose another method.",
   choosePayMethodNamed: (l) =>
     `Choose how to pay and tap a button below: ${l.map((x) => `“${x}”`).join(" or ")}.`,
+  choosePayHint:
+    "Pick a payment method with a button in the message above. If you have a question, write it here and the seller will reply.",
   payKaspiBtn: "🧾 Kaspi transfer",
   payLinkBtn: (kaspi) => (kaspi ? "💳 Pay with Kaspi" : "💳 Open payment"),
   payTroubleHandoff:
@@ -1467,6 +1475,8 @@ const uz: Msg = {
   kaspiApipayUnavailable: "Kaspi orqali toʻlov hozir mavjud emas — boshqa usulni tanlang.",
   choosePayMethodNamed: (l) =>
     `To‘lov usulini tanlang va pastdagi tugmani bosing: ${l.map((x) => `«${x}»`).join(" yoki ")}.`,
+  choosePayHint:
+    "Yuqoridagi xabardagi tugma orqali to‘lov usulini tanlang. Savolingiz bo‘lsa, yozing, sotuvchi shu yerda javob beradi.",
   choosePayCountry: "💳 Qaysi davlatdan to‘laysiz? Summa o‘sha davlat valyutasida:",
   payKaspiBtn: "🧾 Kaspi o‘tkazma",
   payLinkBtn: (kaspi) => (kaspi ? "💳 Kaspi orqali to‘lash" : "💳 To‘lovni ochish"),

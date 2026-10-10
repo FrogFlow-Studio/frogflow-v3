@@ -59,6 +59,7 @@ import {
   isCancel,
   isPaymentComplaint,
   isPayTrouble,
+  isFromRussia,
   isReceiptHowQuestion,
   matchCountry,
   matchDeliveryLangChoice,
@@ -654,7 +655,7 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
       // чек» (заказ #46 Копилки, 09.10) — реквизиты для России, если они
       // заведены, иначе честно: вопрос у продавца, он напишет здесь.
       if (isPayTrouble(text)) {
-        const ru = /росси|рубл|сбп|рф/i.test(text)
+        const ru = isFromRussia(text)
           ? await paymentMethodFor(s.ctx, "RU").catch(() => null)
           : null;
         if (ru?.instructions && ru.country_code !== s.customer.state.country_code) {
@@ -666,7 +667,7 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
         // сразу ссылка, а не «передал продавцу» (Копилка, заказ #73, 10.10).
         // Не прошла карта — это к продавцу, ссылку не повторяем.
         if (
-          /росси|рубл|рф/i.test(text) &&
+          isFromRussia(text) &&
           !PAY_FAILED.test(text) &&
           (await choosePayment(s, "pdm", { ruCard: true }))
         )
@@ -681,7 +682,8 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
         // режим — один раз и только сразу после реквизитов).
         if (mayHint(s)) {
           s.hint = strict(s);
-          await reply(s, s.m.sendReceiptPrompt);
+          // Способ оплаты ещё не выбран — чек просить рано (заказ #76, 10.10).
+          await reply(s, mode === "choose_pay" ? s.m.choosePayHint : s.m.sendReceiptPrompt);
         }
         return "question";
       }
