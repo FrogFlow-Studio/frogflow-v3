@@ -51,6 +51,7 @@ import {
 import {
   LegalCard,
   PayReminderCard,
+  EmailAskCard,
   SmartSearchCard,
   WatermarkCard,
   WeeklyReportCard,
@@ -586,6 +587,9 @@ function SettingsPage() {
               </SettingsSection>
               <SettingsSection id="pay-remind">
                 <PayReminderCard settings={settings} />
+              </SettingsSection>
+              <SettingsSection id="email-ask">
+                <EmailAskCard settings={settings} />
               </SettingsSection>
               {shop.modules.legal_docs && (
                 <SettingsSection id="legal">

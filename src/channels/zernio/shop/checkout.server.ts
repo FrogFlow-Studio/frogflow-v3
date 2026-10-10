@@ -1,3 +1,4 @@
+import { getSetting } from "@/core/settings/settings";
 import { recordEngage } from "@/core/automsg/engage";
 import { setEmail, setState } from "@/core/customers/customers";
 import { localeNames } from "@/core/i18n/locale";
@@ -419,6 +420,9 @@ export async function askOrderEmailIfMissing(s: Shop, order: OrderWithItems): Pr
     !(s.transport.mailReady ?? isMailConfigured)()
   )
     return false;
+  // Продавец выдаёт только в чат: почту не спрашиваем (core/orders/email-ask).
+  const { CHAT_EMAIL_ASK_KEY, emailAskOn } = await import("@/core/orders/email-ask");
+  if (!emailAskOn(await getSetting(s.ctx, CHAT_EMAIL_ASK_KEY), s.ctx.tenant.id)) return false;
   await setMode(s, { mode: "awaiting_order_email", pending_order_id: order.id });
   return true;
 }

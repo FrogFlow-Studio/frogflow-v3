@@ -131,6 +131,8 @@ export interface RoomOptions {
   tenantSettings?: Record<string, unknown>;
   /** Instagram/WhatsApp: почта платформы настроена, письма — в mailbox. */
   mail?: boolean;
+  /** Instagram/WhatsApp: присланное фото скачивается (чек принимается). */
+  receipts?: boolean;
 }
 
 /** Куда уходят сообщения покупателю, отправленные не из его реплики (ответ продавца, трек). */
@@ -328,7 +330,12 @@ function directRoom(o: RoomOptions): Room {
       },
     ),
     tail: vi.fn(async () => [...tail, ...inbox]),
-    download: vi.fn(async () => null),
+    // Фото чека скачивается (receipts) — иначе вложение не читается.
+    download: vi.fn(async () =>
+      o.receipts
+        ? { bytes: new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3]), mime: "image/jpeg" }
+        : null,
+    ),
     mailReady: () => Boolean(o.mail),
     mailer: async (m: { to: string }) => {
       mailbox.to.push(m.to);
