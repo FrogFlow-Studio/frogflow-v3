@@ -466,6 +466,57 @@ export const SCENARIOS: Scenario[] = [
     ],
   },
   {
+    id: "pay-amount-rub-price-ig-ru",
+    title: "«К оплате: 1700 ₸ / 470 ₽» — рублёвая цена товара рядом с тенге",
+    origin:
+      "Копилка русоведа 10.10 09:32: «где «к оплате 1700» добавить через слеш сумму в рублях — некоторые думают, что это в рублях»",
+    channel: "instagram",
+    locale: "ru",
+    full: true,
+    modules: { helpdesk: true, manager_chat: true, prodamus: true },
+    products: [{ id: P1, name: "Палитра средств выразительности", price: 1700 }],
+    arrange: (r) => {
+      r.db.tables.app_settings!.push(
+        { key: "prodamus_enabled", value: "true" },
+        { key: "prodamus_form_url", value: "https://kopilka.proeducation.kz" },
+        { key: "prodamus_secret_key", value: "k".repeat(64) },
+        { key: "prodamus_rate", value: "3.573" },
+      );
+      for (const p of r.db.tables.products!) p.country_prices = { KZ: 1700, RU: 470 };
+    },
+    steps: [
+      {
+        say: { button: `PROD:${P1}`, title: "Купить" },
+        expect: { count: 1, says: ["К оплате: 1700 ₸ / 470 ₽"], state: { mode: "choose_pay" } },
+      },
+    ],
+  },
+  {
+    id: "pay-amount-rub-by-rate-ig-ru",
+    title: "без рублёвой цены — рубли по курсу Продамуса: «1700 ₸ / ≈476 ₽»",
+    origin:
+      "Копилка русоведа 10.10 09:32: «где «к оплате 1700» добавить через слеш сумму в рублях — некоторые думают, что это в рублях»",
+    channel: "instagram",
+    locale: "ru",
+    full: true,
+    modules: { helpdesk: true, manager_chat: true, prodamus: true },
+    products: [{ id: P1, name: "Палитра средств выразительности", price: 1700 }],
+    arrange: (r) => {
+      r.db.tables.app_settings!.push(
+        { key: "prodamus_enabled", value: "true" },
+        { key: "prodamus_form_url", value: "https://kopilka.proeducation.kz" },
+        { key: "prodamus_secret_key", value: "k".repeat(64) },
+        { key: "prodamus_rate", value: "3.573" },
+      );
+    },
+    steps: [
+      {
+        say: { button: `PROD:${P1}`, title: "Купить" },
+        expect: { count: 1, says: ["К оплате: 1700 ₸ / ≈476 ₽"], state: { mode: "choose_pay" } },
+      },
+    ],
+  },
+  {
     id: "two-step-buy-express-off-ig-ru",
     title: "быстрая покупка выключена продавцом — «Купить» кладёт в корзину, как раньше",
     origin: "настройка «быстрая покупка по автоматизации» (09.10): выключенная не меняет сценарий",

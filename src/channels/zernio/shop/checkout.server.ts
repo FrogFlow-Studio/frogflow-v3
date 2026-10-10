@@ -4,6 +4,7 @@ import { localeNames } from "@/core/i18n/locale";
 import { getProduct, type Product } from "@/core/catalog/catalog";
 import { cartCount, listCart, priceCart } from "@/core/cart/cart";
 import { formatMoney } from "@/core/money/money";
+import { rubEquivalent, withRub } from "@/core/payments/rub-equivalent";
 import { allPriceCountries, payAtLastStep, payChoiceTotals } from "@/core/pricing/all-prices";
 import { defaultCountryCode } from "@/core/pricing/pricing";
 import {
@@ -681,6 +682,7 @@ export async function finishCheckout(s: Shop, countryCode: string) {
       pending_display_no: no,
     });
     await sendPayChoice(s, {
+      orderId: order.id,
       no,
       due,
       currency: order.currency,
@@ -718,7 +720,14 @@ export async function finishCheckout(s: Shop, countryCode: string) {
  */
 async function sendPayChoice(
   s: Shop,
-  p: { no: number; due: number; currency: string; instructions: string | null; items?: string[] },
+  p: {
+    orderId: number;
+    no: number;
+    due: number;
+    currency: string;
+    instructions: string | null;
+    items?: string[];
+  },
 ) {
   const rk = await robokassaFor(s.ctx, p.currency);
   const pdm = await prodamusFor(s.ctx, p.currency);
@@ -760,9 +769,13 @@ async function sendPayChoice(
     pdm.ready && buttons.some((b) => b.payload === "PAY:pdm")
       ? `\n\n${plain(prodamusAnyCardLine(s.m, pdm.currency))}`.trimEnd()
       : "";
+  // «1700 ₸ / 470 ₽»: покупатели из России принимали 1700 за рубли (Копилка, 10.10).
+  const rub = anyCard
+    ? await rubEquivalent(s.ctx, pdm, { id: p.orderId, due: p.due, currency: p.currency })
+    : null;
   await reply(
     s,
-    `${plain(s.m.manualTitleNew(p.no))}\n${itemsLine(p.items)}\n${plain(s.m.amountToPay(formatMoney(p.due, p.currency)))}\n\n${plain(s.m.choosePayMethodNamed(buttons.map((b) => b.title)))}${anyCard}`,
+    `${plain(s.m.manualTitleNew(p.no))}\n${itemsLine(p.items)}\n${plain(s.m.amountToPay(withRub(formatMoney(p.due, p.currency), rub)))}\n\n${plain(s.m.choosePayMethodNamed(buttons.map((b) => b.title)))}${anyCard}`,
     { force: true, buttons },
   );
 }
@@ -798,6 +811,7 @@ async function resumePendingPayChoice(s: Shop): Promise<boolean> {
     fulfillment_kind: order.fulfillment_kind,
   });
   await sendPayChoice(s, {
+    orderId: order.id,
     no: displayNo(order),
     due,
     currency: order.currency,
