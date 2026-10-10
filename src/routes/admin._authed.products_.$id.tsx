@@ -63,6 +63,7 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
     preorderPast,
     categories,
     countries,
+    ruCardPrice,
     defaultFulfillment,
     topics: shopTopics,
   } = Route.useLoaderData();
@@ -98,9 +99,9 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
 
   const save = useAction(async (f: FormData) => {
     const countryPrices: Record<string, number> = {};
-    for (const c of countries) {
-      const v = Number(f.get(`cp_${c.code}`));
-      if (v > 0) countryPrices[c.code] = v;
+    for (const code of [...countries.map((c) => c.code), ...(ruCardPrice ? ["RU"] : [])]) {
+      const v = Number(f.get(`cp_${code}`));
+      if (v > 0) countryPrices[code] = v;
     }
     const num = (name: string) => {
       const v = f.get(name);
@@ -505,7 +506,21 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
                   />
                 </Field>
               </div>
-              {shop.modules.multi_currency && countries.length === 0 && (
+              {ruCardPrice && (
+                <div className="mt-4 max-w-xs">
+                  <Field label={t("product.ruCardPrice")} hint={t("product.ruCardPriceHint")}>
+                    <input
+                      className="input"
+                      name="cp_RU"
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      defaultValue={(p?.country_prices as Record<string, number> | null)?.RU ?? ""}
+                    />
+                  </Field>
+                </div>
+              )}
+              {shop.modules.multi_currency && countries.length === 0 && !ruCardPrice && (
                 <p className="mt-4 text-sm text-muted">
                   {t("product.countryPricesEmpty")}{" "}
                   <Link to="/admin/settings" className="underline">

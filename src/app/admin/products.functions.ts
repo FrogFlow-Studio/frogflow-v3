@@ -131,6 +131,9 @@ export const productFn = createServerFn({ method: "GET" })
       ? (await import("@/core/preorder/preorder")).preorderDatePast(preorder, ctx.timezone)
       : false;
     const { listShopTopics } = await import("@/core/catalog/topics.server");
+    const countries = methods
+      .filter((x) => x.is_active)
+      .map((x) => ({ code: x.country_code, name: x.country_name, currency: x.currency }));
     return {
       preorderPast,
       product,
@@ -141,9 +144,20 @@ export const productFn = createServerFn({ method: "GET" })
       lowStock: low,
       preorder,
       categories,
-      countries: methods
-        .filter((x) => x.is_active)
-        .map((x) => ({ code: x.country_code, name: x.country_name, currency: x.currency })),
+      countries,
+      /**
+       * Цена для России (₽) при подключённом Продамусе без страны оплаты «Россия»:
+       * бот пишет её рядом с тенге («1700 ₸ / 470 ₽»), а лишнего вопроса о стране
+       * не появляется (Копилка, Яков 10.10).
+       */
+      ruCardPrice:
+        !countries.some((c) => c.code.toUpperCase() === "RU") &&
+        (await (
+          await import("@/core/payments/payment")
+        )
+          .prodamusFor(ctx)
+          .then((p) => p.ready)
+          .catch(() => false)),
       defaultFulfillment: (await import("@/core/verticals/registry")).VERTICALS[ctx.tenant.vertical]
         .defaultFulfillment,
     };
