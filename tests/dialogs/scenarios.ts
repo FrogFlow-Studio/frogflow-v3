@@ -1773,6 +1773,29 @@ export const SCENARIOS: Scenario[] = [
   ),
   // ───── «Карта РФ / СБП» в Instagram: бот молчал (заказ #15 Копилки Русоведа, 09.10) ─────
   {
+    id: "prodamus-link-rub-ig-ru",
+    title: "ссылка на Продамус в тенге — рядом рубли по курсу продавца: «150 ₸ / ≈42 ₽»",
+    origin: "заказ #85 Копилки Русоведа, Яков 10.10 09:45: «цена всё равно только в тенге»",
+    channel: "instagram",
+    locale: "ru",
+    modules: { prodamus: true },
+    state: { mode: "choose_pay", pending_order_id: 15, pending_display_no: 15 },
+    arrange: (r) => {
+      prodamusOrder(r);
+      r.db.tables.app_settings!.push({ key: "prodamus_rate", value: "3,573" });
+    },
+    steps: [
+      {
+        say: { button: "PAY:pdm" },
+        expect: {
+          count: 1,
+          says: ["К оплате: 150 ₸ / ≈42 ₽"],
+          state: { mode: "awaiting_payment" },
+        },
+      },
+    ],
+  },
+  {
     id: "prodamus-link-ig-ru",
     title:
       "касса в тенге — «💳 Картой РФ» (форма *.kz берёт только карты РФ); ссылка кнопкой, текст не длиннее предела Meta",

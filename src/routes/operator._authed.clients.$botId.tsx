@@ -23,6 +23,7 @@ import { HealthCard, MessageCard } from "@/app/operator/client/health";
 import { ReceiptAuditCard } from "@/app/operator/client/receipt-audit";
 import { AiBalanceCard } from "@/app/operator/client/ai-balance";
 import { ApipayCard } from "@/app/operator/client/kaspi";
+import { ProdamusRateCard } from "@/app/operator/client/prodamus-rate";
 import { ConfirmName } from "@/app/operator/client/ConfirmName";
 import { CLIENT_TABS, parseTab, type ClientTab } from "@/app/operator/client/confirm-name";
 import { StatusBadge } from "./operator._authed.index";
@@ -176,6 +177,7 @@ function ClientPage() {
             <PlanCard c={c} onDone={refresh} />
             <BillingCard c={c} />
             <ApipayCard c={c} />
+            <ProdamusRateCard c={c} />
             <InvitesCard c={c} />
             <CommissionStartCard c={c} start={c.commissionStart} billed={c.commissionBilled} />
             <AiBalanceCard c={c} ai={ai} onDone={refresh} />
