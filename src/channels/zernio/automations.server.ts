@@ -26,6 +26,7 @@ import {
   buildAutomationBody,
   commentAgeVerdict,
   commentMatchesAutomation,
+  commentOnRulePost,
   commentPrivateReplyBlockReason,
   describePostMediaKind,
   explainInstagramPrivateReplyError,
@@ -932,11 +933,14 @@ export async function handleCommentReceived(
       a.accountId === accountId,
   );
   if (automations.length === 0) return { note: "двухшаговых правил нет" };
+  const caption = payload.post?.content;
   const matched = automations.find((a) => {
-    const target = a.platformPostId || a.postId;
-    if (target && (!commentPostId || String(target).trim() !== String(commentPostId).trim()))
-      return false;
-    return commentMatchesAutomation(text, a.keywords, a.matchMode);
+    const own = commentOnRulePost(a, commentPostId, caption);
+    if (own === false) return false;
+    if (!commentMatchesAutomation(text, a.keywords, a.matchMode)) return false;
+    // Пост не узнать (нет подписи в событии), а правило «любой комментарий» —
+    // только если комментарий называет товар правила («Палитра», «Политра»).
+    return own === true || expressAllowed(text, a);
   });
   if (!matched) return { note: "правило не совпало" };
 

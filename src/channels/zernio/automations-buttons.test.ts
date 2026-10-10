@@ -1418,3 +1418,87 @@ describe("Comment-to-DM: кодовое слово прямо в Direct (Коп�
     });
   });
 });
+
+describe("Comment-to-DM: правило с подписью поста — только под своим постом (Копилка #96, AATeach #1361)", () => {
+  const PALITRA =
+    'Пишите в комментариях слово "Палитра" и я вышлю подробную информацию. Стоимость материала в электронном формате 1700 тг.';
+  const BREAD =
+    "🍞Пишите слово ХЛЕБ в комментариях и я отправлю вам в личные сообщения всю информацию по получению комплекта 😉";
+  const PAMYATKI =
+    "📐Пишите слово НУЖНО в комментариях под этим видео и я отправлю вам в личные сообщения всю информацию по получению памяток";
+
+  function ownPostSetup(rule: { keywords: string[]; postTitle: string; name: string }) {
+    const { ctx, db, inbox } = setup();
+    const api = {
+      list: async () => [{ id: "rule1", accountId: "acc-1", dmMessage: "Ответьте «+»", ...rule }],
+      inbox,
+    } as unknown as AutomationApi;
+    const comment = (id: string, text: string, content?: string) => ({
+      account: { id: "acc-1" },
+      post: { platformPostId: `post-${id}`, ...(content === undefined ? {} : { content }) },
+      comment: {
+        id,
+        text,
+        platformPostId: `post-${id}`,
+        author: { id: `u-${id}`, username: "anya" },
+      },
+    });
+    return { ctx, db, api, inbox, comment };
+  }
+
+  it("«Палитра» без слов: «Уголок» под рилсом про уголок — не срабатывает, под своим рилсом «Хочу» — срабатывает", async () => {
+    const h = ownPostSetup({ name: "Палитра", keywords: [], postTitle: PALITRA });
+    const foreign = await handleCommentReceived(
+      h.ctx,
+      h.comment(
+        "c-1",
+        "Уголок",
+        'Пишите в комментариях слово "уголок" и материал придёт в личные сообщения 🤎',
+      ),
+      h.api,
+      { delayMs: 0 },
+    );
+    expect(foreign.note).toBe("правило не совпало");
+    expect(secondSteps(h.db)).toEqual([]);
+
+    const own = await handleCommentReceived(h.ctx, h.comment("c-2", "Хочу", PALITRA), h.api, {
+      delayMs: 0,
+    });
+    expect(own.note).toBe("второе сообщение @anya");
+    expect(secondSteps(h.db).map((l) => l.event_id)).toEqual(["two-step-dm:c-2"]);
+    expect(h.inbox).toHaveBeenCalledTimes(1);
+  });
+
+  it("подписи поста в событии нет — срабатывает, только если комментарий называет товар («Политра»), «Викторина» — нет", async () => {
+    const h = ownPostSetup({ name: "Палитра", keywords: [], postTitle: PALITRA });
+    expect(
+      (await handleCommentReceived(h.ctx, h.comment("c-1", "Викторина"), h.api, { delayMs: 0 }))
+        .note,
+    ).toBe("правило не совпало");
+    expect(
+      (await handleCommentReceived(h.ctx, h.comment("c-2", "Политра"), h.api, { delayMs: 0 })).note,
+    ).toBe("второе сообщение @anya");
+    expect(secondSteps(h.db).map((l) => l.event_id)).toEqual(["two-step-dm:c-2"]);
+  });
+
+  it("«день хлеба» со словом «нужно»: «Нужно» под рилсом памяток — не срабатывает, под рилсом про хлеб — срабатывает", async () => {
+    const h = ownPostSetup({ name: "день хлеба", keywords: ["хлеб", "нужно"], postTitle: BREAD });
+    expect(
+      (
+        await handleCommentReceived(h.ctx, h.comment("c-1", "Нужно", PAMYATKI), h.api, {
+          delayMs: 0,
+        })
+      ).note,
+    ).toBe("правило не совпало");
+    // Подпись в событии полная, у правила — та же, с другими пробелами и переносом.
+    const caption = BREAD.replace("в личные", "в\nличные") + "\n\nВ комплекте 12 карточек";
+    expect(
+      (
+        await handleCommentReceived(h.ctx, h.comment("c-2", "Нужно", caption), h.api, {
+          delayMs: 0,
+        })
+      ).note,
+    ).toBe("второе сообщение @anya");
+    expect(secondSteps(h.db).map((l) => l.event_id)).toEqual(["two-step-dm:c-2"]);
+  });
+});

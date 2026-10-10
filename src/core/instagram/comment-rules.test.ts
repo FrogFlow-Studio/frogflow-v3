@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  commentOnRulePost,
   FALLBACK_MAX_AGE_MS,
   FALLBACK_MIN_AGE_MS,
   STALE_PENDING_MS,
@@ -407,5 +408,29 @@ describe("«ничего нет» под постом", () => {
     expect(commentLang("ештеңе жоқ")).toBe("kk");
     expect(commentLang("hech narsa yo'q")).toBe("uz");
     expect(commentLang("nothing came")).toBe("en");
+  });
+});
+
+describe("commentOnRulePost: под своим ли постом комментарий", () => {
+  it("id поста у правила — строгое равенство", () => {
+    expect(commentOnRulePost({ platformPostId: "1" }, "1", "x")).toBe(true);
+    expect(commentOnRulePost({ platformPostId: "1" }, "2", "x")).toBe(false);
+    expect(commentOnRulePost({ platformPostId: "1" }, null, "x")).toBe(false);
+  });
+  it("без id — по подписи: одна начинается с другой, регистр, пробелы и «…» не важны", () => {
+    const rule = { postTitle: "Пишите слово НУЖНО в комментариях ➡️ отправлю 🍁…" };
+    expect(
+      commentOnRulePost(rule, "p", "пишите слово нужно в\nкомментариях ➡️ отправлю 🍁 ещё текст"),
+    ).toBe(true);
+    expect(commentOnRulePost(rule, "p", "Пишите слово НУЖНО в комментариях ➡️ отправлю 💐")).toBe(
+      false,
+    );
+    expect(commentOnRulePost(rule, "p", "Пишите слово НУЖНО")).toBe(true);
+  });
+  it("подписи в событии нет — unknown; правило без поста и подписи — на все посты", () => {
+    expect(commentOnRulePost({ postTitle: "Палитра" }, "p", null)).toBe("unknown");
+    expect(commentOnRulePost({ postTitle: "Палитра" }, "p", "  ")).toBe("unknown");
+    expect(commentOnRulePost({}, "p", "что угодно")).toBe(true);
+    expect(commentOnRulePost({ platformPostId: null, postTitle: null }, null, null)).toBe(true);
   });
 });
