@@ -8,7 +8,6 @@ import {
   PLAN_MODULES,
   PLAN_NICHES,
   PLAN_TIERS,
-  type AddonKey,
 } from "./registry";
 
 /** Калькулятор против реестра: каждая ниша, тариф и набор каналов. */
@@ -33,7 +32,7 @@ describe("калькулятор тарифа (Б31)", () => {
         for (const annual of [false, true])
           it(`${niche} ${tier} ${set.join("+")} ${annual ? "год" : "месяц"}`, () => {
             const inc = includedBy(niche, tier);
-            const picked = (["whatsapp", "instagram"] as AddonKey[]).filter((k) => set.includes(k));
+            const picked = (["whatsapp", "instagram"] as const).filter((k) => set.includes(k));
             const extra = picked.filter((k) => !inc[k]);
             const monthly = MONTHLY_PRICE[tier] + extra.length * ADDON_MONTHLY_PRICE.whatsapp;
             const q = quoteTier(niche, tier, set, annual);

@@ -26,6 +26,7 @@ import {
   operatorBugText,
   parseCap,
   parseEnabled,
+  observerInPlan,
   parseFindings,
   parseState,
   pickDialogs,
@@ -267,6 +268,7 @@ export async function runDialogObserver(
   const ctx = tenantContext(tenant);
   if (!parseEnabled(await readSetting(ctx, OBSERVER_ENABLED_KEY), tenant.id))
     return { skipped: "off" };
+  if (!observerInPlan(tenant.plan)) return { skipped: "plan" };
   if (previewReadonly()) return { skipped: "preview" };
   const lease = await takeLease(ctx, now);
   if (!lease) return { skipped: "busy" };

@@ -97,30 +97,41 @@ describe("оператор и модули клиента на плане", () =
 });
 
 describe("любое назначение плана сохраняет купленное сверх него", () => {
-  const bought = { shop: true, instagram: true, whatsapp: true, wa_shop: true, referral: true };
+  // Сверх Pro цифровых товаров: Instagram с версии 2 входит в Pro, поэтому покупка — витрина.
+  const bought = {
+    shop: true,
+    web_storefront: true,
+    whatsapp: true,
+    wa_shop: true,
+    referral: true,
+  };
   const kept = () => current().settings.billing?.grandfathered ?? [];
 
   it("выбор плана оператором (в том числе тот же план)", async () => {
     client("digital.pro", bought);
     await setPlan("b", { tier: "pro", period: "month", addons: [] }, "op");
-    expect(kept()).toEqual(expect.arrayContaining(["instagram", "wa_shop", "referral"]));
-    expect(row.modules).toMatchObject({ instagram: true, wa_shop: true, referral: true });
+    expect(kept()).toEqual(expect.arrayContaining(["web_storefront", "wa_shop", "referral"]));
+    expect(row.modules).toMatchObject({ web_storefront: true, wa_shop: true, referral: true });
   });
 
   it("первый план после переезда и пробный период", async () => {
     client(null, bought);
     await setPlan("b", { tier: "basic", period: "month", addons: [] }, "op");
-    expect(kept()).toEqual(expect.arrayContaining(["instagram", "wa_shop", "referral"]));
+    expect(kept()).toEqual(expect.arrayContaining(["web_storefront", "wa_shop", "referral"]));
     client(null, bought);
     await startTrial("b", "op");
-    expect(kept()).toEqual(expect.arrayContaining(["instagram", "wa_shop", "referral"]));
-    expect(current().modules.instagram).toBe(true);
+    expect(kept()).toEqual(expect.arrayContaining(["web_storefront", "wa_shop", "referral"]));
+    expect(current().modules.web_storefront).toBe(true);
   });
 
   it("переход на подобранный план", async () => {
     client(null, bought);
     await adoptSuggestedPlan("b", "op");
-    expect(current().modules).toMatchObject({ instagram: true, wa_shop: true, referral: true });
+    expect(current().modules).toMatchObject({
+      web_storefront: true,
+      wa_shop: true,
+      referral: true,
+    });
   });
 
   it("понижение плана выключает модули прежнего плана, но не купленные", async () => {
@@ -131,6 +142,6 @@ describe("любое назначение плана сохраняет купл
     row = { ...row, modules: { ...bought, [proOnly]: true } };
     await setPlan("b", { tier: "basic", period: "month", addons: [] }, "op");
     expect(current().modules[proOnly]).toBe(false);
-    expect(current().modules.instagram).toBe(true);
+    expect(current().modules.web_storefront).toBe(true);
   });
 });

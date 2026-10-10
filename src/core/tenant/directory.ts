@@ -12,6 +12,7 @@ import type {
   TenantLookup,
   TenantSettings,
 } from "./types";
+import { BILLING_ADDONS, type BillingAddon } from "./types";
 import { isLocale } from "@/core/i18n/locale";
 import { parseWizardMap } from "./wizard-entry";
 import { effectiveModules } from "@/core/plans/plans";
@@ -387,7 +388,10 @@ function billingFromJson(json: unknown): BillingSettings | undefined {
   return {
     plan: str(b.plan),
     addons: Array.isArray(b.addons)
-      ? b.addons.filter((a): a is "whatsapp" | "instagram" => a === "whatsapp" || a === "instagram")
+      ? b.addons.filter(
+          (a): a is BillingAddon =>
+            typeof a === "string" && (BILLING_ADDONS as readonly string[]).includes(a),
+        )
       : undefined,
     grandfathered: Array.isArray(b.grandfathered)
       ? b.grandfathered.filter(

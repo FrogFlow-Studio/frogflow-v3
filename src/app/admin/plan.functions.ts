@@ -23,8 +23,9 @@ const actor = async () => (await import("@/app/auth/guards.server")).adminActor(
 
 export const myPlanFn = createServerFn({ method: "GET" }).handler(async () => {
   const ctx = await admin();
-  const { parsePlan, nicheForVertical, MONTHLY_PRICE, CONNECTION_PRICE, ADDON_KEYS } =
+  const { parsePlan, nicheForVertical, MONTHLY_PRICE, CONNECTION_PRICE, PLAN_TIERS, tierLimits } =
     await import("@/core/plans/registry");
+  const { availableAddons } = await import("@/core/plans/plans");
   const { planUsage, USAGE_KEYS } = await import("@/core/plans/tenant");
   const { getSettings } = await import("@/core/settings/settings");
   const plan = parsePlan(ctx.tenant.plan);
@@ -35,6 +36,13 @@ export const myPlanFn = createServerFn({ method: "GET" }).handler(async () => {
     .eq("status", "pending");
   if (pendingError) throw serverFailure(`Админка: ${pendingError.message}`);
   const billing = ctx.tenant.settings.billing ?? {};
+  // Пробный период идёт или кончился, а оплаты за ним нет: тариф ещё не выбран.
+  let choosing = false;
+  if (billing.trial_until) {
+    const { subscriptionExpiresAt } = await import("@/app/operator/billing.server");
+    const exp = await subscriptionExpiresAt(ctx.tenant.id);
+    choosing = !exp || exp.slice(0, 10) <= billing.trial_until;
+  }
   return {
     plan: plan?.kind === "tier" ? plan.tier : plan?.kind === "custom" ? ("custom" as const) : null,
     hasTiers: Boolean(nicheForVertical(ctx.tenant.vertical)),
@@ -43,7 +51,15 @@ export const myPlanFn = createServerFn({ method: "GET" }).handler(async () => {
     /** Срок оплаченной подписки: до какого дня и что будет (null — срок не заведён). */
     subscription: (await trialBanner(ctx)) ? null : await subscriptionView(ctx),
     addons: billing.addons ?? [],
-    availableAddons: ADDON_KEYS,
+    /** Что можно докупить к своему плану: продаётся в нише и ещё не входит в план. */
+    availableAddons: plan?.kind === "tier" ? availableAddons(plan.niche, plan.tier) : [],
+    /** Лимиты каждого уровня ниши — продавец видит, что даёт тариф выше. */
+    tierLimits:
+      plan?.kind === "tier"
+        ? Object.fromEntries(PLAN_TIERS.map((t) => [t, tierLimits(plan.niche, t)]))
+        : null,
+    /** Пробный период ещё идёт или кончился без оплаты: продавец выбирает любой тариф, не только выше. */
+    choosing,
     prices: { monthly: MONTHLY_PRICE, connection: CONNECTION_PRICE },
     /** Цена своего плана в месяц по договору (billing.monthly_price); null — по тарифу. */
     contractMonthly: billing.monthly_price ?? null,
@@ -99,6 +115,8 @@ export const requestPlanFn = createServerFn({ method: "POST" })
           "plan:business",
           "addon:whatsapp",
           "addon:instagram",
+          "addon:vip",
+          "addon:ai_pack",
         ]),
       })
       .parse(d),

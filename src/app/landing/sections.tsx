@@ -8,7 +8,14 @@ import { useState, type ReactNode } from "react";
 import type { LandingKey, LandingT } from "@/app/i18n/landing";
 import { SUPPORTED_LOCALES, type Locale } from "@/core/i18n/locale";
 import { CALC_CHANNELS, calculate, type CalcChannel } from "@/core/plans/calculator";
-import { ADDONS, TIER_TITLES, TRIAL_TIER } from "@/core/plans/registry";
+import {
+  ADDONS,
+  ADDON_MONTHLY_PRICE,
+  TIER_TITLES,
+  TRIAL_TIER,
+  addonForNiche,
+  tierLimits,
+} from "@/core/plans/registry";
 import {
   CONTACTS,
   FEATURED_PLAN,
@@ -309,6 +316,19 @@ function TariffCalculator({
 
 const PRICING_NICHES: PricingNiche[] = ["dig", "cake", "flow", "ai"];
 
+/** Лимиты тарифа строками карточки — из реестра, не из текста. ИИ, не входящий в тариф, не пишем. */
+function limitLines(t: LandingT, niche: PricingNiche, plan: PlanKey): string[] {
+  const l = tierLimits(PLAN_NICHE[niche], plan);
+  const out = [
+    l.receiptChecks === null
+      ? t("pricing.limit.receiptsUnlimited")
+      : t("pricing.limit.receipts", { n: l.receiptChecks.toLocaleString("ru-RU") }),
+  ];
+  if (l.aiDialogs === null || l.aiDialogs > 0)
+    out.push(t("pricing.limit.ai", { n: l.aiDialogs === null ? "∞" : String(l.aiDialogs) }));
+  return out;
+}
+
 /** Тарифы; с `niche` — только этой ниши, без вкладок. */
 export function Pricing({
   t,
@@ -388,6 +408,11 @@ export function Pricing({
                     <span className="font-bold text-accent">✓</span> {t(k)}
                   </li>
                 ))}
+                {limitLines(t, niche, p).map((line) => (
+                  <li key={line} className="text-muted">
+                    <span className="font-bold text-accent">✓</span> {line}
+                  </li>
+                ))}
               </ul>
               {signup ? (
                 <Link
@@ -411,7 +436,18 @@ export function Pricing({
       </div>
       <p className="mt-4 text-sm text-muted">
         {ANNUAL_FREE_MONTHS > 0 && <>{t("pricing.annual", { free: ANNUAL_FREE_MONTHS })} </>}
-        {t("pricing.addon", { price: formatTenge(ADDON_PRICE) })}
+        {t("pricing.addon", { price: formatTenge(ADDON_PRICE) })}{" "}
+        {addonForNiche("vip", PLAN_NICHE[niche]) && (
+          <>
+            {t("pricing.vipAddon", {
+              price: formatTenge(PLAN_PRICES.basic + ADDON_MONTHLY_PRICE.vip),
+            })}{" "}
+          </>
+        )}
+        {t("pricing.aiPack", {
+          n: ADDONS.ai_pack.aiDialogs,
+          price: formatTenge(ADDON_MONTHLY_PRICE.ai_pack),
+        })}
       </p>
       <TariffCalculator t={t} signup={signup} niche={niche} page={page} />
     </section>
