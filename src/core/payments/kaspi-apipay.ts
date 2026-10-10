@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { PREVIEW_SEND_OFF, previewReadonly } from "@/lib/preview";
 
 /**
  * Оплата заказа через Kaspi (модуль `kaspi_pay`) — ApiPay продавца: у
@@ -87,6 +88,8 @@ export async function createKaspiLink(
   p: { orderId: number; amount: number; description: string },
   fetchImpl: Fetch = fetch,
 ): Promise<KaspiLink> {
+  // Предпросмотр не выставляет настоящих ссылок на оплату.
+  if (previewReadonly()) return { ok: false, error: PREVIEW_SEND_OFF };
   const amount = Math.round(p.amount * 100) / 100;
   const description =
     p.description.length > DESCRIPTION_MAX
