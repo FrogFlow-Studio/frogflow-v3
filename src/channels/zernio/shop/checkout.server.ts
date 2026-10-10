@@ -43,6 +43,7 @@ import {
   manualPayBtn,
   minOrderText,
   prodamusCopy,
+  prodamusAnyCardLine,
   prodamusSum,
 } from "@/channels/telegram/copy";
 import { adminTelegramApi } from "@/channels/telegram/notify";
@@ -754,9 +755,14 @@ async function sendPayChoice(
       payload: "PAY:manual",
     },
   ];
+  // Покупатель из России не узнаёт в «Картой» свою карту (Копилка, 10.10).
+  const anyCard =
+    pdm.ready && buttons.some((b) => b.payload === "PAY:pdm")
+      ? `\n\n${plain(prodamusAnyCardLine(s.m, pdm.currency))}`.trimEnd()
+      : "";
   await reply(
     s,
-    `${plain(s.m.manualTitleNew(p.no))}\n${itemsLine(p.items)}\n${plain(s.m.amountToPay(formatMoney(p.due, p.currency)))}\n\n${plain(s.m.choosePayMethodNamed(buttons.map((b) => b.title)))}`,
+    `${plain(s.m.manualTitleNew(p.no))}\n${itemsLine(p.items)}\n${plain(s.m.amountToPay(formatMoney(p.due, p.currency)))}\n\n${plain(s.m.choosePayMethodNamed(buttons.map((b) => b.title)))}${anyCard}`,
     { force: true, buttons },
   );
 }

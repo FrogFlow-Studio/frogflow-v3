@@ -453,7 +453,7 @@ export const SCENARIOS: Scenario[] = [
         say: { button: `PROD:${P1}`, title: "Купить" },
         expect: {
           count: 1,
-          says: ["Палитра средств выразительности", "К оплате"],
+          says: ["Палитра средств выразительности", "К оплате", (c) => c.cardAnyCountryLine],
           buttons: [COPY.ru.payByCardBtn, COPY.ru.payKaspiBtn],
           noButtons: ["✅ Оформить заказ"],
           state: { mode: "choose_pay" },
@@ -1811,7 +1811,7 @@ export const SCENARIOS: Scenario[] = [
         expect: {
           count: 1,
           says: [(c) => c.prodamusRubViaKztHint],
-          buttons: ["💳 Картой онлайн"],
+          buttons: [COPY.ru.payByCardBtn],
           notSays: [(c) => c.payTroubleHandoff, (c) => c.sendReceiptPrompt],
           state: { mode: "awaiting_payment" },
         },

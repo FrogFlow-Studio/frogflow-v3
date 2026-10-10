@@ -3,7 +3,7 @@ import { imageUrl } from "@/core/catalog/catalog";
 import { isDeliveryLangChoice } from "@/core/catalog/materials";
 import { sendPhotoOrText } from "../api";
 import { orderThanksHtml } from "../screens";
-import { escapeHtml, manualPayBtn, minOrderText, prodamusCopy } from "../copy";
+import { escapeHtml, manualPayBtn, minOrderText, prodamusAnyCardLine, prodamusCopy } from "../copy";
 import { localeFlags, localeNames } from "@/core/i18n/locale";
 import { storefrontBase } from "@/core/tenant/custom-domain";
 import { formatMoney } from "@/core/money/money";
@@ -510,7 +510,7 @@ export async function finishCheckout(b: Bot, countryCode: string) {
     });
     await send(
       b,
-      `${b.m.manualTitleNew(no)}\n\n${b.m.amountToPay(formatMoney(due, order.currency))}${await consentLine(b)}\n\n${b.m.choosePayMethod}`,
+      `${b.m.manualTitleNew(no)}\n\n${b.m.amountToPay(formatMoney(due, order.currency))}${await consentLine(b)}\n\n${b.m.choosePayMethod}${prodamus.ready && prodamusAnyCardLine(b.m, prodamus.currency) ? `\n\n${prodamusAnyCardLine(b.m, prodamus.currency)}` : ""}`,
       {
         reply_markup: {
           inline_keyboard: [
