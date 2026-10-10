@@ -6,46 +6,46 @@ import type { ProdamusConfig } from "./prodamus";
 /**
  * Рубли рядом с тенге в «К оплате»: «1700 ₸ / 470 ₽». Покупатели из России
  * принимали 1700 за рубли (Копилка Русоведа, 10.10), а картой РФ платят через
- * Продамус. Рублёвая цена товара (country_prices.RU), если она есть у каждого
- * товара заказа и заказ без скидок; иначе — по курсу Продамуса продавца,
- * с «≈». null — без Продамуса, не тенге или нечем посчитать.
+ * Продамус. Только рублёвая цена товара (country_prices.RU), которую задаёт
+ * продавец, — если она есть у каждого товара заказа и заказ без скидок. По
+ * курсу не пересчитываем (Яков, 10.10: «лучше чтобы она сама писала»).
+ * null — без Продамуса, не тенге или рублёвой цены нет.
  *
- * Чтение мягкое: строка только подсказка, при сбое базы считаем по курсу.
+ * Чтение мягкое: строка только подсказка, при сбое базы — одни тенге.
  */
 export async function rubEquivalent(
   ctx: TenantContext,
   cfg: (ProdamusConfig & { ready: true }) | { ready: false },
   order: { id: number; due: number; currency: string },
-): Promise<{ amount: number; approx: boolean } | null> {
+): Promise<{ amount: number } | null> {
   if (!cfg.ready || order.currency.toUpperCase() !== "KZT" || !(order.due > 0)) return null;
-  const byRate = cfg.rate ? { amount: Math.ceil(order.due / cfg.rate - 1e-9), approx: true } : null;
   const { data: items, error } = await ctx.db
     .from("order_items")
     .select("product_id, quantity, price_snapshot")
     .eq("order_id", order.id);
-  if (error || !items?.length) return byRate;
+  if (error || !items?.length) return null;
   const ids = [...new Set(items.map((i) => i.product_id).filter((x): x is string => !!x))];
-  if (ids.length === 0) return byRate;
+  if (ids.length === 0) return null;
   const products = await inChunks(
     ids,
     (chunk) => ctx.db.from("products").select("id, country_prices").in("id", chunk),
     "Товары заказа",
   ).catch(() => null);
-  if (!products) return byRate;
+  if (!products) return null;
   const ru = new Map(products.map((p) => [p.id, manualCountryPrice(p.country_prices, "RU")]));
   let rub = 0;
   let kzt = 0;
   for (const i of items) {
     const price = i.product_id ? ru.get(i.product_id) : null;
-    if (!price) return byRate;
+    if (!price) return null;
     rub += price * i.quantity;
     kzt += Number(i.price_snapshot) * i.quantity;
   }
   // Скидка, баллы или предоплата — рублёвые цены уже не та сумма.
-  if (Math.abs(kzt - order.due) > 0.005) return byRate;
-  return { amount: rub, approx: false };
+  if (Math.abs(kzt - order.due) > 0.005) return null;
+  return { amount: rub };
 }
 
-export function withRub(tenge: string, rub: { amount: number; approx: boolean } | null): string {
-  return rub ? `${tenge} / ${rub.approx ? "≈" : ""}${rub.amount} ₽` : tenge;
+export function withRub(tenge: string, rub: { amount: number } | null): string {
+  return rub ? `${tenge} / ${rub.amount} ₽` : tenge;
 }
