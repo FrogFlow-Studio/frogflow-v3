@@ -42,6 +42,13 @@ export type Input =
    * обрабатываются одновременно («Здравствуйте» / «Есть полотенца?» / «А белые?»).
    */
   | { burst: string[] }
+  /**
+   * Instagram/WhatsApp (только `full`): пачка фото одним касанием — вебхук на
+   * каждое фото с разницей в доли секунды, подпись (если есть) — следом.
+   */
+  | { photos: number; caption?: string }
+  /** Вложение, к которому Zernio не прислал ссылку (пересланная публикация, фото без адреса). */
+  | { attachmentNoUrl: true }
   /** Сообщение, написанное `minutes` минут назад: канал доставил его с опозданием. */
   | { late: string; minutes: number }
   /**
@@ -152,6 +159,16 @@ export const mailbox: { to: string[] } = { to: [] };
  * сценарий пачки падал через раз (09.10, gate #64 и #65).
  */
 export const modelHold: { wait: Promise<void> | null } = { wait: null };
+
+/**
+ * Что видела модель консультанта: на каждый вызов — число картинок и текст
+ * последнего сообщения покупателя (с пометками). Заполняет подмена SDK в
+ * dialogs.test.ts.
+ */
+export const modelSeen: { calls: Array<{ images: number; text: string }> } = { calls: [] };
+
+/** Самый маленький JPEG для подменённой загрузки фото покупателя. */
+const TINY_JPEG = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46]);
 
 function holdModelUntilQueued(rows: () => Array<{ state?: unknown }>, n: number): () => void {
   let done = false;
@@ -383,7 +400,8 @@ function directRoom(o: RoomOptions): Room {
     if ("text" in i) return { text: i.text };
     if ("late" in i)
       return { text: i.late, sentAt: new Date(Date.now() - i.minutes * 60_000).toISOString() };
-    if ("burst" in i) return {};
+    if ("burst" in i || "photos" in i) return {};
+    if ("attachmentNoUrl" in i) return { attachments: [{ type: "share" }] as never };
     if ("stuck" in i) return { text: i.stuck };
     if ("button" in i) return { text: i.title ?? i.button, postbackPayload: i.button };
     if ("sellerTrack" in i) return {};
@@ -492,6 +510,35 @@ function directRoom(o: RoomOptions): Room {
           await Promise.all(hooks.map((h) => handleZernioMessage(ctx, h as never, transport)));
         } finally {
           release();
+        }
+        current.state = db.tables.bot_users![0]!.state as Customer["state"];
+        return;
+      }
+      if (o.full && "photos" in i) {
+        const hooks = Array.from({ length: i.photos }, (_, k) =>
+          webhook({
+            attachments: [{ type: "image", url: `https://cdn.test/photo-${k + 1}.jpg` }] as never,
+          }),
+        );
+        if (i.caption) hooks.push(webhook({ text: i.caption }));
+        // Фото скачиваются по ссылке — отдаём крошечный JPEG, остальная сеть как была.
+        const realFetch = globalThis.fetch;
+        const spy = vi
+          .spyOn(globalThis, "fetch")
+          .mockImplementation(async (input, init) =>
+            String(input).startsWith("https://cdn.test/")
+              ? new Response(TINY_JPEG, { headers: { "content-type": "image/jpeg" } })
+              : realFetch(input, init),
+          );
+        try {
+          await Promise.all(
+            hooks.map(async (h, k) => {
+              await new Promise((r) => setTimeout(r, k * 20));
+              await handleZernioMessage(ctx, h as never, transport);
+            }),
+          );
+        } finally {
+          spy.mockRestore();
         }
         current.state = db.tables.bot_users![0]!.state as Customer["state"];
         return;

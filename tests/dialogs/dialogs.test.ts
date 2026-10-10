@@ -6,6 +6,7 @@ import type { Locale } from "@/core/i18n/locale";
 import {
   mailbox,
   modelHold,
+  modelSeen,
   notices,
   outbound,
   room,
@@ -55,6 +56,19 @@ vi.mock("@/core/notify/recipients", () => ({
   adminRecipients: async () => ["900"],
   shopAdminIds: async () => ["900"],
 }));
+// Пределы вызовов модели в памяти процесса — на платформу (600 в минуту) и
+// на клиента (60 в минуту, у всех комнат один id бота): сценарии идут в одном
+// процессе подряд, и поздние упирались в чужой счёт. Счёт клиента в базе
+// комнаты — настоящий (на нём сценарий «остался один вызов»).
+vi.mock("@/core/consultant/rate.server", async (orig) => {
+  const real = await orig<typeof import("@/core/consultant/rate.server")>();
+  const { rateLimiter, takeShared } = await import("@/core/storefront/rate-limit");
+  return {
+    ...real,
+    takeAiCall: (ctx: TenantContext) =>
+      takeShared(ctx, "consultant_ai", "calls", real.CLIENT_CALLS, rateLimiter(4)),
+  };
+});
 // Консультант по прайсу (`pricelist` в сценарии): настоящий runConsultant, подменён
 // только ответ API модели — раунды по очереди из сценария.
 const modelRounds: { list: Array<Array<Record<string, unknown>>> } = { list: [] };
@@ -62,7 +76,24 @@ vi.mock("@anthropic-ai/sdk", () => {
   class APIError extends Error {
     status?: number;
   }
-  const create = async () => {
+  const create = async (req: { messages?: Array<{ role: string; content: unknown }> }) => {
+    const last = req.messages?.filter((m) => m.role === "user").at(-1);
+    const blocks = Array.isArray(last?.content)
+      ? (last.content as Array<{ type: string; text?: string; content?: unknown }>)
+      : [{ type: "text", text: String(last?.content ?? "") }];
+    modelSeen.calls.push({
+      images: blocks.filter((b) => b.type === "image").length,
+      // Пометки — в тексте, выдача инструментов — в tool_result.
+      text: blocks
+        .map((b) =>
+          b.type === "tool_result"
+            ? typeof b.content === "string"
+              ? b.content
+              : JSON.stringify(b.content ?? "")
+            : (b.text ?? ""),
+        )
+        .join("\n"),
+    });
     // Модель думает (в жизни — секунды): соседние вебхуки успевают встать в очередь
     // диалога. В пачке — ровно до того, как встали все (harness.modelHold).
     await (modelHold.wait ?? new Promise((r) => setTimeout(r, 15)));
@@ -101,6 +132,8 @@ vi.mock("@/core/catalog/low-stock", async (orig) => ({
 
 // Сообщения подряд ждут соседний ход: в тестах перечитывают состояние каждые 5 мс.
 BURST.pollMs = 5;
+// Ход с фото ждёт соседние фото пачки: в тестах — доли секунды.
+BURST.settleMs = 100;
 
 beforeEach(() => {
   setEnvForTests({});
@@ -166,6 +199,7 @@ describe("золотые диалоги", () => {
         const before = notices.count;
         const mailsBefore = mailbox.to.length;
         const queuedBefore = r.sellerQueued();
+        modelSeen.calls = [];
         await r.say(say);
         const where = `шаг ${step} ${JSON.stringify(say)}`;
         const all = r.replies().join("\n");
@@ -199,6 +233,15 @@ describe("золотые диалоги", () => {
             ?.paused_until;
           const paused = Boolean(until) && Date.parse(until!) > Date.now();
           expect(paused, `${where}: консультант на паузе`).toBe(e.paused);
+        }
+        if (e.modelImages !== undefined)
+          expect(
+            modelSeen.calls.map((c) => c.images),
+            `${where}: картинок модели по вызовам`,
+          ).toEqual(e.modelImages);
+        for (const x of e.modelSees ?? []) {
+          const seen = modelSeen.calls.map((c) => c.text).join("\n");
+          expect(has(seen, x), `${where}: модель не видела «${String(x)}»`).toBe(true);
         }
         if (e.history) {
           const recent =

@@ -8,6 +8,7 @@ import {
   finalizePricelistText,
   isCatalogExcuse,
   offersDiscontinuedMattress,
+  stripRepeatGreeting,
 } from "./finalize";
 import { executeConsultantTool } from "./tools";
 import {
@@ -200,5 +201,23 @@ describe("статьи базы знаний", () => {
     expect(promptText).toContain("Combed Cotton");
     expect(promptText).toContain("300 TC");
     expect(promptText).toContain("swan down");
+  });
+});
+
+describe("повторное приветствие (BOVI 10.10, tolkin8)", () => {
+  it("уже здоровались — «Здравствуйте.» в начале срезается", () => {
+    expect(
+      finalizePricelistText("Здравствуйте. Есть Uchino 50х100 — 9 000 ₸.", [], { greeted: true }),
+    ).toBe("Есть Uchino 50х100 - 9 000 ₸.");
+    expect(stripRepeatGreeting("Добрый день! Какой размер нужен?")).toBe("Какой размер нужен?");
+    expect(stripRepeatGreeting("Сәлеметсіз бе, қандай өлшем керек?")).toBe("Қандай өлшем керек?");
+  });
+
+  it("первый ответ разговора и ответ из одного приветствия — как есть", () => {
+    expect(finalizePricelistText("Здравствуйте. Что подсказать?", [])).toBe(
+      "Здравствуйте. Что подсказать?",
+    );
+    expect(stripRepeatGreeting("Здравствуйте.")).toBe("Здравствуйте.");
+    expect(stripRepeatGreeting("Здравствуйтеее")).toBe("Здравствуйтеее");
   });
 });

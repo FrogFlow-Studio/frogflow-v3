@@ -4,7 +4,14 @@ import { env } from "@/config/env";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Customer } from "@/core/customers/customers";
 import { updateStateSection } from "@/core/customers/customers";
-import { commitTurn, isStaleIncoming, joinTurn, releaseUnanswered, type InboxItem } from "./burst";
+import {
+  commitTurn,
+  isStaleIncoming,
+  joinTurn,
+  releaseUnanswered,
+  settleTurn,
+  type InboxItem,
+} from "./burst";
 import { handoffSummary, sellerLocaleSafe } from "@/core/ai/seller-text";
 import { offerForProductRow } from "@/core/offers/offers";
 import { activePreorder, preordersFor } from "@/core/preorder/preorder";
@@ -632,12 +639,26 @@ export async function runConsultant(
     c: Customer | null,
     a: { incoming: string; state: ConsultantState },
     turn: OpenTurn | null,
-  ) => answerConsultant(ctx, c, opts, { ...a, bLocale, apiKey, pricelist, profile, docs, turn });
+    imageUrls = opts.imageUrls,
+  ) =>
+    answerConsultant(
+      ctx,
+      c,
+      { ...opts, imageUrls },
+      { ...a, bLocale, apiKey, pricelist, profile, docs, turn },
+    );
   if (!customer || !live) return answer(customer, { incoming, state }, null);
 
   // Один ход на диалог: сообщение встаёт в очередь, ход идёт под арендой (core/consultant/burst).
-  const own = photos || Boolean(opts.story?.storyId || opts.story?.mediaUrl);
-  const joined = await joinTurn(ctx, customer, { id: opts.messageId, text: incoming, own });
+  // Фото по ссылке может ответить любой ход — ссылки едут в очереди; публикацию
+  // и уже скачанные фото Telegram — только своя функция.
+  const own = Boolean(opts.images?.length) || Boolean(opts.story?.storyId || opts.story?.mediaUrl);
+  const joined = await joinTurn(ctx, customer, {
+    id: opts.messageId,
+    text: incoming,
+    own,
+    images: opts.imageUrls,
+  });
   if (!joined.lead && joined.why === "busy") {
     // Чужой ход завис дольше ожидания: молча ждать следующего сообщения
     // покупателя нельзя — его может не быть. Реплика — в историю, диалог —
@@ -662,17 +683,34 @@ export async function runConsultant(
     };
   }
   if (!joined.lead) return { reply: "", handoff: null, usage: NO_USAGE, skipped: joined.why };
-  const fresh = joined.customer;
-  const turn: OpenTurn = { id: joined.turnId, items: joined.items, closed: false };
+  // Фото приходят пачкой (одно касание — вебхук на каждое фото, подпись — ещё
+  // одним): ход с фото ждёт соседей и отвечает на всю пачку одним сообщением.
+  const settled = photos
+    ? await settleTurn(ctx, joined).catch((e: unknown) => {
+        console.error(`[consultant:${ctx.tenant.id}] очередь диалога не перечитана`, e);
+        return joined;
+      })
+    : joined;
+  const fresh = settled.customer;
+  const turn: OpenTurn = { id: settled.turnId, items: settled.items, closed: false };
   try {
     // Пока ждали, соседний ход передал диалог менеджеру — молчим, реплики в историю.
     if (isPaused(fresh)) return { reply: "", handoff: null, usage: NO_USAGE, skipped: "paused" };
     // Своё сообщение — целиком (с пометкой публикации), соседей — из очереди.
-    const together = joined.items
-      .map((i) => (i.id === joined.ownId ? incoming : i.text))
+    const together = settled.items
+      .map((i) => (i.id === settled.ownId ? incoming : i.text))
       .filter((t) => t.trim())
       .join("\n\n");
-    return await answer(fresh, { incoming: together || incoming, state: stateOf(fresh) }, turn);
+    // Фото всех сообщений хода: свои — как пришли, соседей — ссылками из очереди.
+    const imageUrls = settled.items.flatMap((i) =>
+      i.id === settled.ownId ? (opts.imageUrls ?? []) : (i.images ?? []),
+    );
+    return await answer(
+      fresh,
+      { incoming: together || incoming, state: stateOf(fresh) },
+      turn,
+      imageUrls.length ? imageUrls : undefined,
+    );
   } finally {
     // Ход закрылся без ответа модели (предел, сбой): реплики — в историю, аренда — соседям.
     if (!turn.closed)

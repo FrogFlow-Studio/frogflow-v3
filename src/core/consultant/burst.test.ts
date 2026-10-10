@@ -8,6 +8,7 @@ import {
   isStaleIncoming,
   joinTurn,
   releaseUnanswered,
+  settleTurn,
   type JoinedTurn,
 } from "./burst";
 
@@ -198,5 +199,41 @@ describe("сообщение, доставленное с опозданием",
     expect(isStaleIncoming("2026-10-08T11:50:00Z", now)).toBe(false);
     expect(isStaleIncoming(null, now)).toBe(false);
     expect(isStaleIncoming("не дата", now)).toBe(false);
+  });
+
+  it("пачка фото (BOVI 10.10, tolkin8): ход ждёт соседей и забирает все фото со ссылками одним ходом", async () => {
+    const { ctx, customer, current } = setup();
+    BURST.settleMs = 60;
+    const photo = (k: number) => ({ id: `p${k}`, text: "", images: [`https://cdn.test/${k}.jpg`] });
+    const first = joinTurn(ctx, customer, photo(1));
+    await new Promise((r) => setTimeout(r, 5));
+    const rest = [2, 3].map((k) => joinTurn(ctx, customer, photo(k)));
+    const lead = await settleTurn(ctx, asLead(await first));
+    expect(lead.items.map((i) => i.id)).toEqual(["p1", "p2", "p3"]);
+    expect(lead.items.flatMap((i) => i.images ?? [])).toEqual([
+      "https://cdn.test/1.jpg",
+      "https://cdn.test/2.jpg",
+      "https://cdn.test/3.jpg",
+    ]);
+    await close(ctx, lead, "Похоже на Uchino.");
+    expect(await Promise.all(rest)).toEqual([
+      { lead: false, why: "folded" },
+      { lead: false, why: "folded" },
+    ]);
+    expect(current().inbox).toBeUndefined();
+  });
+
+  it("публикация (own) в чужой ход не уходит и после ожидания", async () => {
+    const { ctx, customer } = setup();
+    BURST.settleMs = 30;
+    const first = asLead(
+      await joinTurn(ctx, customer, { id: "a", text: "", images: ["https://cdn.test/a.jpg"] }),
+    );
+    const story = joinTurn(ctx, customer, { id: "s", text: "Цена?", own: true });
+    const lead = await settleTurn(ctx, first);
+    expect(lead.items.map((i) => i.id)).toEqual(["a"]);
+    await close(ctx, lead, "Ответ");
+    const second = asLead(await story);
+    expect(second.items.map((i) => i.id)).toEqual(["s"]);
   });
 });
