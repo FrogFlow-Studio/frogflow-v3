@@ -22,6 +22,7 @@ import { NotesCard } from "@/app/operator/client/notes";
 import { HealthCard, MessageCard } from "@/app/operator/client/health";
 import { ReceiptAuditCard } from "@/app/operator/client/receipt-audit";
 import { AiBalanceCard } from "@/app/operator/client/ai-balance";
+import { ApipayCard } from "@/app/operator/client/kaspi";
 import { ConfirmName } from "@/app/operator/client/ConfirmName";
 import { CLIENT_TABS, parseTab, type ClientTab } from "@/app/operator/client/confirm-name";
 import { StatusBadge } from "./operator._authed.index";
@@ -174,6 +175,7 @@ function ClientPage() {
           <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-2">
             <PlanCard c={c} onDone={refresh} />
             <BillingCard c={c} />
+            <ApipayCard c={c} />
             <InvitesCard c={c} />
             <CommissionStartCard c={c} start={c.commissionStart} billed={c.commissionBilled} />
             <AiBalanceCard c={c} ai={ai} onDone={refresh} />

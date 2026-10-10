@@ -53,6 +53,11 @@ export type TenantSettings = {
    * Группу ставит только оператор (core/tenant/shop-group).
    */
   multi_bot?: { group?: string };
+  /**
+   * Организация продавца в ApiPay (оплата Kaspi, core/payments/apipay-partner):
+   * заводит оператор партнёрским ключом платформы.
+   */
+  apipay?: { org_id?: string };
   /** VIP-бот (модуль vip): второй токен тем же шифрованием, что bots.bot_token. */
   vip?: {
     token_enc?: string;
