@@ -1843,6 +1843,40 @@ export const SCENARIOS: Scenario[] = [
     ],
   },
   {
+    id: "receipt-how-to-after-paid-ig-ru",
+    title: "«Не знаю как» после «пришлите чек» — бот объясняет, как приложить скриншот",
+    origin:
+      "заказ #72 Копилки русоведа 10.10 (_tatyana_tarasenko1820): «Я оплатила» → «Пришлите чек», «Не знаю как» → бот молчит",
+    channel: "instagram",
+    locale: "ru",
+    full: true,
+    products: [{ id: P1, name: "Палитра средств выразительности" }],
+    state: {},
+    steps: [
+      {
+        say: { button: `PROD:${P1}`, title: "Купить" },
+        expect: { says: ["К оплате"], state: { mode: "awaiting_proof" } },
+      },
+      {
+        say: { text: "Я оплатила" },
+        expect: { count: 1, says: [(c) => c.sendReceiptPrompt] },
+      },
+      {
+        say: { text: "Не знаю как" },
+        expect: {
+          count: 1,
+          says: [(c) => c.receiptHowTo],
+          notSays: [(c) => c.sendReceiptPrompt],
+          state: { mode: "awaiting_proof" },
+        },
+      },
+      {
+        say: { text: "А куда скинуть чек?" },
+        expect: { count: 1, says: [(c) => c.receiptHowTo] },
+      },
+    ],
+  },
+  {
     id: "prodamus-link-no-buttons-ig-ru",
     title: "кнопки канал не принял — ссылка на оплату приходит текстом",
     origin: "заказ #15 Копилки Русоведа, 09.10",

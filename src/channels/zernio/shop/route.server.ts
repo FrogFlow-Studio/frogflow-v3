@@ -59,6 +59,7 @@ import {
   isCancel,
   isPaymentComplaint,
   isPayTrouble,
+  isReceiptHowQuestion,
   matchCountry,
   matchDeliveryLangChoice,
   matchLoyaltyPointsChoice,
@@ -640,6 +641,12 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
     case "choose_pay":
     case "awaiting_payment": {
       if (isPaymentComplaint(text)) return "question";
+      // «Не знаю как», «как отправить чек»: объяснить, как приложить скриншот,
+      // а не молчать (строгий режим) и не повторять «пришлите чек» (#72, 10.10).
+      if (mode === "awaiting_proof" && isReceiptHowQuestion(text)) {
+        await reply(s, s.m.receiptHowTo, { force: true });
+        return "handled";
+      }
       // «Не смогла оплатить», «я из России, можно по номеру»: не «пришлите
       // чек» (заказ #46 Копилки, 09.10) — реквизиты для России, если они
       // заведены, иначе честно: вопрос у продавца, он напишет здесь.

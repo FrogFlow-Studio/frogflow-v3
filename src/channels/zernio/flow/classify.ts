@@ -39,6 +39,23 @@ export function isPayTrouble(text: string): boolean {
   return PAY_TROUBLE_MARKERS.test(t) || ABROAD_MARKERS.test(t);
 }
 
+/**
+ * «Как прислать чек?» после реквизитов: «Не знаю как», «как отправить чек»,
+ * «куда скинуть скрин» (заказ #72 Копилки, 10.10 — бот промолчал).
+ * Только на шаге «жду чек» (route): там голое «не знаю как» — про чек.
+ */
+const RECEIPT_HOW =
+  /((как|куда|каким\s*образом)\s*(мне\s*|вам\s*)?(его\s*|её\s*|ее\s*)?(отправ|присл|присыл|скин|скид|прикреп|загруз|выслат|высыл|кинут|переслат|сбросит)\p{L}*(\s*(вам|сюда|тут|здесь))?(\s*(его|её|ее|чек\p{L}*|скрин\p{L}*|фото\p{L}*|квитанц\p{L}*|pdf))?\s*[?.!)]*$|(как|куда)\s*(мне\s*)?(чек|скрин|квитанц|фото\s*чек)|не\s*(получается|могу|выходит|умею)\s*(отправ|присл|прикреп|скин|загруз)\p{L}*\s*(чек|скрин|фото|квитанц)|(чек|скрин)\p{L}*\s*(қалай|qanday)|(қалай|qanday)\s*(жібер|yubor)|how\s*(do\s*i|to|can\s*i)\s*(send|attach|upload)|where\s*(do\s*i|to|can\s*i)\s*send)/iu;
+
+const BARE_DONT_KNOW =
+  /^[\s(]*(а|но|я)?\s*(не\s*знаю|не\s*понимаю|не\s*поняла?|не\s*разобрал[аи]?с[ья]|білмеймін|түсінбедім|bilmayman|tushunmadim|i\s*don['’]?t\s*know|don['’]?t\s*know)\s*(как|қалай|qanday|how)?[\s.!?)(:]*$/iu;
+
+export function isReceiptHowQuestion(text: string): boolean {
+  const t = text.trim();
+  if (!t || t.length > 160) return false;
+  return RECEIPT_HOW.test(t) || BARE_DONT_KNOW.test(t);
+}
+
 /** Оплатил и не получил, требует деньги назад — единственный случай, когда бот зовёт человека немедленно. */
 export function isPaymentComplaint(text: string): boolean {
   const value = text.trim();
