@@ -5,8 +5,7 @@ import { logEvent } from "./client-log.server";
 
 /**
  * Курс Продамуса продавца (₸ за 1 ₽) из карточки клиента: по нему бот
- * показывает рубли рядом с тенге («1700 ₸ / ≈476 ₽») и считает рублёвые
- * заказы для формы *.kz. Раньше его ставил только продавец в «Настройки →
+ * считает рублёвые заказы для формы *.kz. Раньше его ставил только продавец в «Настройки →
  * Оплата»; у Копилки висел устаревший 5,23 (Яков, 10.10).
  */
 export type ProdamusRateState = {
@@ -32,7 +31,7 @@ export async function prodamusRateState(botId: string): Promise<ProdamusRateStat
   };
 }
 
-/** Пустое значение стирает курс: тогда рубли рядом с тенге не показываются. */
+/** Пустое значение стирает курс. */
 export async function setProdamusRate(botId: string, raw: string, actor: string): Promise<void> {
   const tenant = await requireTenant({ by: "id", value: botId });
   // Клиента прежней платформы v2 не трогает: его заказы идут через v1.

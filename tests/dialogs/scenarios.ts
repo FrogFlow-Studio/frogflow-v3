@@ -663,7 +663,8 @@ export const SCENARIOS: Scenario[] = [
   },
   {
     id: "pay-amount-rub-by-rate-ig-ru",
-    title: "без рублёвой цены — рубли по курсу Продамуса: «1700 ₸ / ≈476 ₽»",
+    title:
+      "без рублёвой цены у товара — только тенге, по курсу Продамуса не пересчитываем (Яков, 10.10)",
     origin:
       "Копилка русоведа 10.10 09:32: «где «к оплате 1700» добавить через слеш сумму в рублях — некоторые думают, что это в рублях»",
     channel: "instagram",
@@ -682,7 +683,12 @@ export const SCENARIOS: Scenario[] = [
     steps: [
       {
         say: { button: `PROD:${P1}`, title: "Купить" },
-        expect: { count: 1, says: ["К оплате: 1700 ₸ / ≈476 ₽"], state: { mode: "choose_pay" } },
+        expect: {
+          count: 1,
+          says: ["К оплате: 1700 ₸\n"],
+          notSays: ["₽"],
+          state: { mode: "choose_pay" },
+        },
       },
     ],
   },
@@ -1944,7 +1950,7 @@ export const SCENARIOS: Scenario[] = [
   // ───── «Карта РФ / СБП» в Instagram: бот молчал (заказ #15 Копилки Русоведа, 09.10) ─────
   {
     id: "prodamus-link-rub-ig-ru",
-    title: "ссылка на Продамус в тенге — рядом рубли по курсу продавца: «150 ₸ / ≈42 ₽»",
+    title: "ссылка на Продамус без рублёвой цены — только тенге, курс продавца не подставляется",
     origin: "заказ #85 Копилки Русоведа, Яков 10.10 09:45: «цена всё равно только в тенге»",
     channel: "instagram",
     locale: "ru",
@@ -1959,7 +1965,8 @@ export const SCENARIOS: Scenario[] = [
         say: { button: "PAY:pdm" },
         expect: {
           count: 1,
-          says: ["К оплате: 150 ₸ / ≈42 ₽"],
+          says: ["К оплате: 150 ₸\n"],
+          notSays: ["₽"],
           state: { mode: "awaiting_payment" },
         },
       },
