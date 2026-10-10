@@ -995,7 +995,13 @@ export async function choosePayment(
       email: order.customer_email,
     });
     if (!link) return;
-    const sum = prodamusSum(s.m, link, due, order.currency);
+    // Форма в тенге: рядом рубли, иначе 1700 принимают за рубли (Копилка, 10.10).
+    const sum = withRub(
+      prodamusSum(s.m, link, due, order.currency),
+      link.currency.toUpperCase() === "KZT"
+        ? await rubEquivalent(s.ctx, cfg, { id: order.id, due, currency: order.currency })
+        : null,
+    );
     const url = link.url;
     const copy = prodamusCopy(s.m, link.currency, order.currency);
     // Форма в тенге, покупатель из России: карта РФ подходит, банк спишет рубли.

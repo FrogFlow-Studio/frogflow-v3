@@ -153,7 +153,14 @@ export async function payButton(b: Bot, customer: Customer, data: string): Promi
       email: order.customer_email,
     });
     if (!link) return;
-    const sum = prodamusSum(b.m, link, due, order.currency);
+    const { rubEquivalent, withRub } = await import("@/core/payments/rub-equivalent");
+    // Форма в тенге: рядом рубли, иначе 1700 принимают за рубли (Копилка, 10.10).
+    const sum = withRub(
+      prodamusSum(b.m, link, due, order.currency),
+      link.currency.toUpperCase() === "KZT"
+        ? await rubEquivalent(ctx, cfg, { id: order.id, due, currency: order.currency })
+        : null,
+    );
     b.customer = await setState(ctx, customer, {
       ...customer.state,
       mode: "awaiting_payment",
