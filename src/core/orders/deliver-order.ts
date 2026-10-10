@@ -190,6 +190,52 @@ async function finalizeDelivery(
 }
 
 /**
+ * Продавец сам выдал заказ (подтвердил чек, «Выдать») — деньги получены:
+ * заказ считается оплаченным целиком, в журнале — платёж с суммой. Раньше у
+ * ручных подтверждений paid_amount оставался 0, и выручка занижалась (Копилка,
+ * AATeach, 10.10). Автоматическая выдача (actor «bot») идёт из «оплачен»: сумму
+ * уже записали чек или шлюз. Условие — на прежний paid_amount: оплата шлюзом
+ * в ту же секунду не запишется второй раз.
+ */
+async function recordManualConfirmation(
+  ctx: TenantContext,
+  order: OrderWithItems,
+  actor: string | undefined,
+): Promise<void> {
+  if (!actor || actor === "bot" || actor === "system") return;
+  const total = Number(order.total) || 0;
+  const before = Number(order.paid_amount) || 0;
+  const amount = Math.round((total - before) * 100) / 100;
+  if (amount <= 0.01) return;
+  const { data, error } = await ctx.db
+    .from("orders")
+    .update({ paid_amount: total })
+    .eq("id", order.id)
+    .eq("paid_amount", order.paid_amount ?? 0)
+    .select("id");
+  if (error) {
+    console.error(
+      `[orders] сумма ручного подтверждения #${order.id} не записана: ${error.message}`,
+    );
+    return;
+  }
+  if (!data?.length) return;
+  order.paid_amount = total;
+  await recordOrderEvent(
+    ctx,
+    order.id,
+    "payment",
+    {
+      amount,
+      currency: order.currency,
+      source: "manual",
+      ...(order.payment_proof_hash ? { ref: order.payment_proof_hash } : {}),
+    },
+    actor,
+  ).catch((e) => console.error(`[orders] платёж #${order.id} не записан в журнал: ${String(e)}`));
+}
+
+/**
  * Выдача цифрового заказа. Канал приносит функцию отправки; ядро отвечает
  * за захват, порядок, статусы, delivery_index (сколько позиций уже ушло —
  * повторная выдача продолжает, а не дублирует) и языки: выбранный до
@@ -206,6 +252,7 @@ export async function deliverOrder(
   const order = await claimOrderForDelivery(ctx, orderId, opts.actor);
   if (!order)
     return { ok: true, alreadyDelivered: true, sent: 0, failed: 0, pending: 0, pointsEarned: 0 };
+  await recordManualConfirmation(ctx, order, opts.actor);
   const multi = ctx.tenant.modules.multi_language;
   const choice =
     multi && isDeliveryLangChoice(order.delivery_lang_choice) ? order.delivery_lang_choice : null;
