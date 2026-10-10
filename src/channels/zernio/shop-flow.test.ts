@@ -9,6 +9,7 @@ import {
   isLocalePickEcho,
   isPaymentComplaint,
   isPayTrouble,
+  isFromRussia,
   isReceiptHowQuestion,
   LOCALE_PICK_ECHO_MS,
   matchCountry,
@@ -609,5 +610,28 @@ describe("isReceiptHowQuestion: как прислать чек (заказ #72 �
       "Спасибо",
     ])
       expect(isReceiptHowQuestion(t), t).toBe(false);
+  });
+});
+
+describe("isPayTrouble/isFromRussia: города и регионы (заказы #65, #76 Копилки, 10.10)", () => {
+  it("город Узбекистана — не из Казахстана, Россия — по региону", () => {
+    expect(isPayTrouble("Я из Нукуса")).toBe(true);
+    expect(isPayTrouble("я с Ташкента")).toBe(true);
+    expect(isPayTrouble("Я с Дагестана")).toBe(true);
+    expect(isFromRussia("Я с Дагестана")).toBe(true);
+    expect(isFromRussia("из Москвы")).toBe(true);
+    expect(isFromRussia("Я из Нукуса")).toBe(false);
+    expect(isFromRussia("из Самарканда")).toBe(false);
+    expect(isFromRussia("я из Перми")).toBe(true);
+  });
+  it("Казахстан и обычные слова не путает", () => {
+    for (const t of [
+      "Я из Алматы",
+      "из Казахстана",
+      "в Астане",
+      "с удовольствием",
+      "в пермаментном",
+    ])
+      expect(isPayTrouble(t), t).toBe(false);
   });
 });
