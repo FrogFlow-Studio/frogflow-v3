@@ -448,6 +448,10 @@ export const ru = {
     "Если заказ из бота, Instagram или WhatsApp не оплачен, бот один раз напомнит покупателю сумму и реквизиты. В Instagram и WhatsApp — только если покупатель писал магазину в последние сутки.",
   "settings.payRemind.off": "Не напоминать",
   "settings.payRemind.after": "Через {n} ч после оформления",
+  "settings.emailAsk.title": "Почта после оплаты (Instagram)",
+  "settings.emailAsk.intro":
+    "Материалы всегда приходят в переписку. Включено — после чека бот спрашивает почту и шлёт туда копию. Выключено — не спрашивает; если покупатель сам попросит «на почту», бот спросит адрес и отправит письмо.",
+  "settings.emailAsk.label": "Спрашивать почту после чека",
   "settings.ocr.intro":
     "Чек, присланный в бот, читается автоматически: если сумма и признаки оплаты сошлись — файлы уходят покупателю сразу, без вашего участия; сомнительный чек попадает к вам с причиной; скрин без оплаты бот просит прислать заново. Тариф — $2 за 1000 распознаваний.",
   "settings.ocr.noKey":
@@ -959,6 +963,10 @@ export const kk: SectionDict<typeof ru> = {
     "Боттағы, Instagram немесе WhatsApp-тағы тапсырыс төленбесе, бот сатып алушыға соманы мен деректемелерді бір рет еске салады. Instagram мен WhatsApp-та — сатып алушы соңғы тәулікте дүкенге жазған болса ғана.",
   "settings.payRemind.off": "Еске салмау",
   "settings.payRemind.after": "Рәсімдегеннен кейін {n} сағ",
+  "settings.emailAsk.title": "Төлемнен кейін пошта (Instagram)",
+  "settings.emailAsk.intro":
+    "Материалдар әрдайым хат алмасуға келеді. Қосулы — чектен кейін бот поштаны сұрап, көшірмесін соған жібереді. Өшірулі — сұрамайды; сатып алушы өзі «поштаға» десе, бот мекенжайды сұрап, хат жібереді.",
+  "settings.emailAsk.label": "Чектен кейін поштаны сұрау",
   "settings.ocr.intro":
     "Ботқа жіберілген чек автоматты түрде оқылады: сома мен төлем белгілері сәйкес келсе — файлдар сізге қатыссыз бірден сатып алушыға кетеді; күмәнді чек себебімен сізге түседі; төлемсіз скринді бот қайта жіберуді сұрайды. Тариф — 1000 тануға $2.",
   "settings.ocr.noKey":
@@ -1465,6 +1473,10 @@ export const en: SectionDict<typeof ru> = {
     "If an order from the bot, Instagram or WhatsApp is not paid, the bot reminds the buyer once of the amount and payment details. In Instagram and WhatsApp only if the buyer wrote to the shop within the last day.",
   "settings.payRemind.off": "Don't remind",
   "settings.payRemind.after": "{n} h after checkout",
+  "settings.emailAsk.title": "Email after payment (Instagram)",
+  "settings.emailAsk.intro":
+    "Materials always arrive in the chat. On — after the receipt the bot asks for an email and sends a copy there. Off — it does not ask; if the buyer asks for email, the bot asks for the address and sends it.",
+  "settings.emailAsk.label": "Ask for email after the receipt",
   "settings.ocr.intro":
     "A receipt sent to the bot is read automatically: if the amount and payment markers match, the files go to the customer right away without you; a doubtful receipt comes to you with the reason; a screenshot without payment is asked to be resent. Rate — $2 per 1,000 recognitions.",
   "settings.ocr.noKey":
@@ -1978,6 +1990,10 @@ export const uz: SectionDict<typeof ru> = {
     "Botdagi, Instagram yoki WhatsApp’dagi buyurtma to‘lanmasa, bot xaridorga summa va rekvizitlarni bir marta eslatadi. Instagram va WhatsApp’da — faqat xaridor so‘nggi sutkada do‘konga yozgan bo‘lsa.",
   "settings.payRemind.off": "Eslatmaslik",
   "settings.payRemind.after": "Rasmiylashtirilgandan {n} soat keyin",
+  "settings.emailAsk.title": "To‘lovdan keyin pochta (Instagram)",
+  "settings.emailAsk.intro":
+    "Materiallar har doim yozishmaga keladi. Yoqilgan — chekdan keyin bot pochtani so‘raydi va nusxasini yuboradi. O‘chirilgan — so‘ramaydi; xaridor o‘zi «pochtaga» desa, bot manzilni so‘rab, xat yuboradi.",
+  "settings.emailAsk.label": "Chekdan keyin pochtani so‘rash",
   "settings.ocr.intro":
     "Botga yuborilgan chek avtomatik o‘qiladi: summa va to‘lov belgilari mos kelsa — fayllar sizning ishtirokingizsiz darhol xaridorga ketadi; shubhali chek sababi bilan sizga tushadi; to‘lovsiz skrinni bot qayta yuborishni so‘raydi. Tarif — 1000 ta aniqlash uchun $2.",
   "settings.ocr.noKey":

@@ -197,6 +197,13 @@ export const SETTINGS_REGISTRY: readonly SettingsEntry[] = [
     keys: ["chat_pay_reminder_hours"],
   }),
   E({
+    id: "email-ask",
+    sellsOnly: true,
+    theme: "payment",
+    title: "settings.emailAsk.title",
+    keys: ["chat_email_ask"],
+  }),
+  E({
     id: "stars",
     sellsOnly: true,
     theme: "payment",

@@ -253,6 +253,8 @@ export interface Scenario {
   full?: boolean;
   /** Instagram/WhatsApp: почта платформы настроена, письма считаются (`mails`). */
   mail?: boolean;
+  /** Instagram/WhatsApp: фото чека скачивается — чек принимается. */
+  receipts?: boolean;
   /**
    * ИИ после оплаты (core/postpay): ответы инструмента decide по вызовам —
    * маршрут и исполнение настоящие, подменён только ответ API модели.
@@ -417,6 +419,55 @@ export const SCENARIOS: Scenario[] = [
       {
         say: { text: "А на почту отправите?" },
         expect: { count: 1, says: ["подтверд", "anna@mail.ru"], mails: [] },
+      },
+    ],
+  },
+  // ───── Почта после чека — настройка продавца (Кристина 10.10: «удобно, когда сразу в инстаграм») ─────
+  {
+    id: "receipt-asks-email-ig-ru",
+    title: "по умолчанию после чека бот спрашивает почту для копии материалов",
+    origin: "ожидание к receipt-no-email-ask-ig-ru",
+    channel: "instagram",
+    locale: "ru",
+    products: PRODUCTS,
+    mail: true,
+    receipts: true,
+    state: { mode: "awaiting_proof", pending_order_id: 82 },
+    arrange: paidOrder({ status: "awaiting_payment" }),
+    steps: [
+      {
+        say: { photo: true },
+        expect: {
+          says: [(c) => c.proofReceivedNeedEmail(82)],
+          state: { mode: "awaiting_order_email" },
+        },
+      },
+    ],
+  },
+  {
+    id: "receipt-no-email-ask-ig-ru",
+    title:
+      "продавец выключил «спрашивать почту»: после чека бот почту не спрашивает, материалы — в переписку",
+    origin:
+      "Кристина (Копилка) 10.10 11:03: «может с почтой не стоит заморачиваться? удобно, когда выдаёт материал сразу в инстаграм»",
+    channel: "instagram",
+    locale: "ru",
+    products: PRODUCTS,
+    mail: true,
+    receipts: true,
+    state: { mode: "awaiting_proof", pending_order_id: 82 },
+    arrange: (r) => {
+      paidOrder({ status: "awaiting_payment" })(r);
+      r.db.tables.app_settings!.push({ key: "chat_email_ask", value: "false" });
+    },
+    steps: [
+      {
+        say: { photo: true },
+        expect: {
+          says: [(c) => c.proofReceived(82)],
+          notSays: [(c) => c.proofReceivedNeedEmail(82)],
+          state: { mode: "idle" },
+        },
       },
     ],
   },

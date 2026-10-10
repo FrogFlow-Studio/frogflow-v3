@@ -1,3 +1,4 @@
+import { CHAT_EMAIL_ASK_KEY, emailAskOn } from "@/core/orders/email-ask";
 import { useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { saveSettingsFn, setPdfWatermarkFn } from "@/app/admin/settings.functions";
@@ -299,6 +300,33 @@ export function ServiceNoticesCard({ settings }: { settings: Record<string, stri
             <span className="text-sm">{t(r.label)}</span>
           </div>
         ))}
+      </div>
+      <ErrorBox error={toggle.error} />
+    </Card>
+  );
+}
+
+/** Спрашивать почту после чека в Instagram (core/orders/email-ask). */
+export function EmailAskCard({ settings }: { settings: Record<string, string> }) {
+  const router = useRouter();
+  const { shop } = settingsRoute.useRouteContext();
+  const t = adminT(shop.locale);
+  const on = emailAskOn(settings[CHAT_EMAIL_ASK_KEY], shop.botId);
+  const toggle = useAction(async (v: boolean) => {
+    await saveSettingsFn({ data: { [CHAT_EMAIL_ASK_KEY]: v ? "true" : "false" } });
+    await router.invalidate();
+  });
+  return (
+    <Card title={t("settings.emailAsk.title")}>
+      <p className="mb-3 text-sm text-muted">{t("settings.emailAsk.intro")}</p>
+      <div className="flex items-center gap-3">
+        <Switch
+          checked={on}
+          disabled={toggle.busy || !roleAllows(shop.role, "admin")}
+          onChange={(v) => void toggle.run(v).catch(() => {})}
+          label={t("settings.emailAsk.label")}
+        />
+        <span className="text-sm">{t("settings.emailAsk.label")}</span>
       </div>
       <ErrorBox error={toggle.error} />
     </Card>
