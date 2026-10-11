@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  buyButtonProductIds,
   commentOnRulePost,
   FALLBACK_MAX_AGE_MS,
   FALLBACK_MIN_AGE_MS,
+  productMentionedInCaption,
   STALE_PENDING_MS,
   annotateCommentStatus,
   buildAutomationBody,
@@ -432,5 +434,46 @@ describe("commentOnRulePost: под своим ли постом коммент�
     expect(commentOnRulePost({ postTitle: "Палитра" }, "p", "  ")).toBe("unknown");
     expect(commentOnRulePost({}, "p", "что угодно")).toBe(true);
     expect(commentOnRulePost({ platformPostId: null, postTitle: null }, null, null)).toBe(true);
+  });
+});
+
+describe("productMentionedInCaption — товар кнопки «Купить» и подпись поста", () => {
+  it("Копилка #126: «Спряжение глаголов» под постом «Папка профориентатора» — не упомянут", () => {
+    expect(
+      productMentionedInCaption(
+        "Спряжение глаголов",
+        "📂 Папка профориентатора: всё для классного часа…",
+      ),
+    ).toBe(false);
+  });
+
+  it("эмодзи, регистр, знаки и окончания не мешают", () => {
+    expect(productMentionedInCaption("Палитра", "🎨 ПАЛИТРА! Пишите «Палитра»")).toBe(true);
+    expect(productMentionedInCaption("Набор «Хлеб»", "Ко дню хлеба — набор")).toBe(true);
+    expect(productMentionedInCaption("Профориентационная папка", "📂 Папка профориентатора")).toBe(
+      true,
+    );
+    expect(productMentionedInCaption("Ёжик", "Пособие «Ежик» для малышей")).toBe(true);
+  });
+
+  it("служебные слова названия совпадением не считаются", () => {
+    expect(productMentionedInCaption("Карточки для чтения", "Шаблоны для учителя")).toBe(false);
+  });
+
+  it("подписи нет — сравнивать не с чем, предупреждения нет", () => {
+    expect(productMentionedInCaption("Палитра", "")).toBe(true);
+    expect(productMentionedInCaption("Палитра", "🎨✨")).toBe(true);
+  });
+});
+
+describe("buyButtonProductIds", () => {
+  it("берёт id только из postback-кнопок PROD:", () => {
+    expect(
+      buyButtonProductIds([
+        { type: "url", title: "Сайт", url: "https://x" },
+        { type: "postback", title: "Каталог", payload: "CATALOG" },
+        { type: "postback", title: "Купить", payload: "PROD:42" },
+      ]),
+    ).toEqual(["42"]);
   });
 });

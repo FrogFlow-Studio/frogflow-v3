@@ -114,6 +114,8 @@ export const ru = {
   "instagram.form.unresolvedPlaceholder": "Напишите нам в директ, и мы пришлём материалы 🙌",
   "instagram.form.saving": "Сохраняем…",
   "instagram.form.postChangeWarn": "Смена поста пересоздаёт правило — счётчики обнулятся.",
+  "instagram.form.productNotInPost":
+    "Товар «{product}» не упоминается в посте «{post}», проверьте. Сохранить всё равно можно.",
   // догоняющая рассылка
   "instagram.catchup.title": "Догоняющая рассылка по комментариям",
   "instagram.catchup.intro":
@@ -255,6 +257,8 @@ export const kk: SectionDict<typeof ru> = {
   "instagram.form.saving": "Сақталуда…",
   "instagram.form.postChangeWarn":
     "Постты ауыстыру ережені қайта жасайды — есептегіштер нөлденеді.",
+  "instagram.form.productNotInPost":
+    "«{product}» тауары «{post}» постында аталмайды, тексеріңіз. Бәрібір сақтауға болады.",
   "instagram.catchup.title": "Пікірлер бойынша қуып жететін жіберілім",
   "instagram.catchup.intro":
     "Пост астындағы ереже үнсіз қалса, мұнда DM кімге кетпегені көрінеді және оны қолмен жіберуге болады — бір жолы 25 адамға дейін.",
@@ -391,6 +395,8 @@ export const en: SectionDict<typeof ru> = {
   "instagram.form.unresolvedPlaceholder": "Message us in DM and we'll send the materials 🙌",
   "instagram.form.saving": "Saving…",
   "instagram.form.postChangeWarn": "Changing the post recreates the rule — counters will reset.",
+  "instagram.form.productNotInPost":
+    "The product “{product}” is not mentioned in the post “{post}” — please check. You can still save.",
   "instagram.catchup.title": "Catch-up sending by comments",
   "instagram.catchup.intro":
     "If the rule under a post went silent, here you can see who didn't get the DM and send it manually — up to 25 people at a time.",
@@ -530,6 +536,8 @@ export const uz: SectionDict<typeof ru> = {
   "instagram.form.saving": "Saqlanmoqda…",
   "instagram.form.postChangeWarn":
     "Postni o‘zgartirish qoidani qayta yaratadi — hisoblagichlar nolga tushadi.",
+  "instagram.form.productNotInPost":
+    "«{product}» mahsuloti «{post}» postida tilga olinmagan, tekshiring. Baribir saqlash mumkin.",
   "instagram.catchup.title": "Izohlar bo‘yicha quvib yetuvchi yuborish",
   "instagram.catchup.intro":
     "Post ostidagi qoida jim qolgan bo‘lsa, bu yerda DM kimga ketmagani ko‘rinadi va uni qo‘lda yuborish mumkin — bir safarda 25 kishigacha.",
