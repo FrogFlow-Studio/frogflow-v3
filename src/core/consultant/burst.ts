@@ -2,7 +2,6 @@ import { randomUUID } from "node:crypto";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import {
   claimStateSection,
-  getCustomer,
   updateStateSection,
   type Customer,
   type DialogState,
@@ -51,14 +50,31 @@ export const BURST = {
   /** Как часто ожидающий перечитывает состояние. Тесты ставят единицы мс. */
   pollMs: 1_500,
   /**
-   * Сколько ход ждёт после взятия аренды, прежде чем собрать очередь (BOVI
-   * 10.10, tolkin8): три фото одним касанием — три вебхука Zernio с разницей в
-   * доли секунды. Первый брал ход сразу и отвечал на одно фото, остальные —
-   * следующими ходами: три ответа подряд, каждый с «Здравствуйте». Ждёт
-   * только ход с фото (engine.server): пауза короче, чем покупатель ждёт
-   * ответа, и в аренду (50 с) укладывается.
+   * Сколько тишины ждёт ход с фото, прежде чем ответить (BOVI 10.10,
+   * tolkin8): фото одной пачки приходят отдельными вебхуками Zernio, ночью
+   * 11.10 — с разрывом 4–12 с. Прежние 2,5 с от взятия хода ловили только
+   * первое фото: остальные получали отдельные ответы. Теперь ход ждёт, пока
+   * в очереди диалога 12 с не появится нового сообщения, — каждое новое фото
+   * или подпись продлевает ожидание (не дольше settleMaxMs). Текст без фото
+   * отвечается сразу (engine.server).
    */
-  settleMs: 2_500,
+  settleMs: 12_000,
+  /**
+   * Фото Telegram уже скачаны в память своей функции (own): чужой ход их не
+   * заберёт, долгая тишина ничего не склеит — ждём только подпись следом.
+   */
+  settleShortMs: 2_500,
+  /**
+   * Потолок ожидания пачки: дольше покупатель не ждёт ответа на первое фото.
+   * Плюс ход (аренда 50 с) — меньше 120 с функции.
+   */
+  settleMaxMs: 30_000,
+  /**
+   * Сколько из 120 с функции отдано сообщению целиком: ожидание за чужим
+   * ходом, тишина пачки и свой ход. Тишина кончается не позже budgetMs −
+   * leaseMs от прихода сообщения.
+   */
+  budgetMs: 110_000,
 };
 
 /**
@@ -239,24 +255,45 @@ export async function joinTurn(
 }
 
 /**
- * Ход взят — подождать BURST.settleMs и собрать очередь заново: сообщения и
+ * Ход взят — ждать тишины в очереди диалога и собрать её заново: сообщения и
  * фото, пришедшие следом за первым, уходят в этот же ход, а не в следующий.
- * Аренда за это время ушла (не должно быть: она втрое дольше) — ход как был.
+ * Тишина — `quietMs` без нового сообщения в очереди (время `at` последнего);
+ * каждое новое продлевает ожидание, но не дальше `until` и BURST.settleMaxMs.
+ * В конце аренда продлевается той же условной записью, что собирает очередь:
+ * сообщение, вставшее после неё, ждёт за полной арендой и не уходит менеджеру
+ * как «занято». Аренда за время ожидания ушла (не должно быть: она дольше
+ * потолка) — ход как был.
  */
 export async function settleTurn(
   ctx: TenantContext,
   turn: Extract<JoinedTurn, { lead: true }>,
+  opts: { quietMs?: number; until?: number } = {},
 ): Promise<Extract<JoinedTurn, { lead: true }>> {
-  if (BURST.settleMs <= 0) return turn;
-  await sleep(BURST.settleMs);
-  const fresh = await getCustomer(ctx, turn.customer.userKey);
+  const quietMs = opts.quietMs ?? BURST.settleMs;
+  if (quietMs <= 0) return turn;
+  const started = Date.now();
+  const until = Math.min(started + BURST.settleMaxMs, opts.until ?? Infinity);
+  if (until <= started) return turn;
+  for (;;) {
+    const now = Date.now();
+    if (now >= until) break;
+    await sleep(Math.min(BURST.pollMs, until - now));
+    const cur = await readConsultant(ctx, turn.customer);
+    if (leaseOf(cur)?.id !== turn.turnId) return turn;
+    const last = takeable(inboxOf(cur), turn.ownId).reduce(
+      (m, i) => Math.max(m, Date.parse(i.at) || 0),
+      started,
+    );
+    if (Date.now() - last >= quietMs) break;
+  }
+  let items: InboxItem[] = [];
+  const fresh = await claimStateSection(ctx, turn.customer, "consultant", (cur) => {
+    if (leaseOf(cur)?.id !== turn.turnId) return null;
+    items = takeable(inboxOf(cur), turn.ownId);
+    if (!items.some((i) => i.id === turn.ownId)) return null;
+    return withLease(cur, turn.turnId, Date.now());
+  });
   if (!fresh) return turn;
-  const raw = (fresh.state as DialogState).consultant;
-  const cur =
-    raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
-  if (leaseOf(cur)?.id !== turn.turnId) return turn;
-  const items = takeable(inboxOf(cur), turn.ownId);
-  if (!items.some((i) => i.id === turn.ownId)) return turn;
   return { ...turn, customer: fresh, items };
 }
 

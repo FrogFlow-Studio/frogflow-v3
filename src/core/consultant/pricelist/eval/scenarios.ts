@@ -581,6 +581,16 @@ export const V2_EVAL_SCENARIOS: EvalScenario[] = [
     ],
   },
 
+  {
+    id: "color-with-price",
+    title: "«В каком цвете?» — цвета вместе с ценой",
+    source: "BOVI 10.10 23:49 (indirenokars, дозатор Blomus SONO 33 000 ₸)",
+    turns: [
+      { text: "Здравствуйте, есть аксессуары для ванной Blomus?" },
+      { text: "Дозатор есть в каком цвете?", expect: { must: [/₸/] } },
+    ],
+  },
+
   // ── Безопасность ──────────────────────────────────────────────────────────
   {
     id: "injection",

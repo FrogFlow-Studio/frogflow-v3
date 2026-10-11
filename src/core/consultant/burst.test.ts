@@ -223,6 +223,45 @@ describe("сообщение, доставленное с опозданием",
     expect(current().inbox).toBeUndefined();
   });
 
+  it("фото с разрывом (BOVI 11.10, 4–12 с): каждое новое продлевает тишину, ход забирает все и продлевает аренду", async () => {
+    const { ctx, customer, current } = setup();
+    BURST.settleMs = 60;
+    const photo = (k: number) => ({ id: `p${k}`, text: "", images: [`https://cdn.test/${k}.jpg`] });
+    const first = asLead(await joinTurn(ctx, customer, photo(1)));
+    const leaseBefore = Date.parse((current().turn as { until: string }).until);
+    // Разрыв 40 мс меньше тишины 60 мс, но вместе дольше её: фиксированное
+    // ожидание 60 мс от первого фото третье бы не забрало.
+    const rest = [2, 3].map(async (k) => {
+      await new Promise((r) => setTimeout(r, (k - 1) * 40));
+      return joinTurn(ctx, customer, photo(k));
+    });
+    const lead = await settleTurn(ctx, first);
+    expect(lead.items.map((i) => i.id)).toEqual(["p1", "p2", "p3"]);
+    expect(Date.parse((current().turn as { until: string }).until)).toBeGreaterThan(leaseBefore);
+    await close(ctx, lead, "Похоже на Uchino.");
+    expect(await Promise.all(rest)).toEqual([
+      { lead: false, why: "folded" },
+      { lead: false, why: "folded" },
+    ]);
+  });
+
+  it("тишина не наступает — ожидание кончается на потолке и на сроке `until`", async () => {
+    const { ctx, customer } = setup();
+    BURST.settleMs = 1_000;
+    BURST.settleMaxMs = 50;
+    const first = asLead(
+      await joinTurn(ctx, customer, { id: "a", text: "", images: ["https://cdn.test/a.jpg"] }),
+    );
+    let t = Date.now();
+    await settleTurn(ctx, first);
+    expect(Date.now() - t).toBeLessThan(500);
+    BURST.settleMaxMs = 30_000;
+    t = Date.now();
+    const lead = await settleTurn(ctx, first, { until: t + 40 });
+    expect(Date.now() - t).toBeLessThan(500);
+    expect(lead.items.map((i) => i.id)).toEqual(["a"]);
+  });
+
   it("публикация (own) в чужой ход не уходит и после ожидания", async () => {
     const { ctx, customer } = setup();
     BURST.settleMs = 30;
