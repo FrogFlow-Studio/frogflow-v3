@@ -61,7 +61,6 @@ import {
   isPayTrouble,
   isFromRussia,
   isReceiptHowQuestion,
-  matchCountry,
   matchDeliveryLangChoice,
   matchLoyaltyPointsChoice,
   matchDirectCommand,
@@ -137,6 +136,7 @@ import {
   startQuiz,
 } from "./checkout.server";
 import { receiveProof, showOrders, showPoints } from "./receipt.server";
+import { countryAnswer, countryFromChat } from "./country.server";
 
 export async function handleShopMessage(
   ctx: TenantContext,
@@ -387,12 +387,15 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
   // сразу после вопроса, а дальше реплика остаётся продавцу.
   const paymentStep =
     mode === "awaiting_proof" || mode === "choose_pay" || mode === "awaiting_payment";
+  // Страна словами («Я из России», «Махачкала») — понимает модель, а не только
+  // номер из списка: иначе список приходил второй раз (AATeach, ночь 11.10).
+  const countryPick = mode === "awaiting_country" ? await countryAnswer(s, text) : null;
   if (
     strict(s) &&
     mode &&
     mode !== "idle" &&
     !paymentStep &&
-    !(await stepAnswerFits(s, mode, text))
+    !(mode === "awaiting_country" ? countryPick : await stepAnswerFits(s, mode, text))
   ) {
     if (!mayHint(s)) return "question";
     // Почта необязательна: сразу после вопроса не адрес — к оплате без почты.
@@ -440,11 +443,7 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
       return "handled";
     }
     case "awaiting_country": {
-      const methods = await listActivePaymentMethods(s.ctx);
-      const picked = matchCountry(
-        text,
-        methods.map((x) => ({ code: x.country_code, name: x.country_name })),
-      );
+      const picked = countryPick;
       if (!picked)
         return askCountry(s, s.customer.state.placing_order === true).then(
           () => "handled" as const,
@@ -711,6 +710,13 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
     }
     default:
       break;
+  }
+
+  // Страна в обычной переписке — ответ на первое сообщение правила: запомнить,
+  // чтобы «Купить» не спрашивал её второй раз, и не молчать до утра.
+  if (!mode || mode === "idle") {
+    const answered = await countryFromChat(s, msg, text);
+    if (answered) return answered;
   }
 
   const remove = parseRemoveCommand(text);

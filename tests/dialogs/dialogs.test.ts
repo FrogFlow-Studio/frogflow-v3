@@ -182,6 +182,13 @@ describe("золотые диалоги", () => {
           { type: "tool_use", id: "t1", name: "decide", input: { email: "", ...d } },
         ]);
       }
+      if (s.countryAi) {
+        // Страна из слов: настоящий вызов через SDK, ответ инструмента country — из сценария.
+        setEnvForTests({ ANTHROPIC_API_KEY: "sk-test" });
+        modelRounds.list = s.countryAi.map((d) => [
+          { type: "tool_use", id: "t1", name: "country", input: d },
+        ]);
+      }
       const r = room(
         s.pricelist
           ? {

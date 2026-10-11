@@ -11,6 +11,7 @@ import type { Json } from "@/core/db-types";
 import { COPY } from "@/channels/telegram/copy";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { servedByV2 } from "@/core/tenant/directory";
+import { secondStepAsText, secondStepFailureText, textFallbackAllowed } from "./second-step-text";
 import { getSetting, setSetting } from "@/core/settings/settings";
 import {
   DEFAULT_REPLY_PROMPT,
@@ -59,7 +60,7 @@ import {
   type DmButton,
 } from "./api.server";
 import type { ZernioInboxMessage } from "./inbox-types";
-import { ZernioApiError, classifyZernioFailure } from "./errors";
+import { ZernioApiError, classifyZernioFailure, type ZernioFailure } from "./errors";
 import { serverFailure } from "@/lib/server-failure";
 import { pageAll } from "@/core/db/page";
 import { toJson } from "@/core/json";
@@ -841,6 +842,17 @@ async function sendSecondStep(
   if (knownErr) console.error(`[zernio] переписка покупателя не прочитана: ${knownErr.message}`);
   let ok = false;
   let error: string | undefined = "ждём ответа покупателя в Direct";
+  let failure: ZernioFailure | undefined;
+  // Выбор текстом уже уходил (повтор вебхука, крон) — второй раз не шлём.
+  const { data: before, error: beforeErr } = await ctx.db
+    .from("zernio_logs")
+    .select("payload")
+    .eq("event_id", key)
+    .maybeSingle();
+  if (beforeErr)
+    console.error(`[zernio] журнал второго сообщения не прочитан: ${beforeErr.message}`);
+  const textSentBefore = (before?.payload as { textSentAt?: string } | null)?.textSentAt;
+  let textSentAt: string | undefined = textSentBefore;
   if (known?.zernio_conversation_id) {
     const claim = await claimConversationSecondStep(ctx, known.zernio_conversation_id, key);
     if (claim.result === "taken") {
@@ -861,7 +873,25 @@ async function sendSecondStep(
       });
       ok = r.ok;
       error = r.error;
-      if (!ok) await claim.release();
+      if (!ok) {
+        await claim.release();
+        // Старая переписка: Instagram отказал. Не «проверьте подключение», а
+        // что было, и тот же выбор текстом — только после точного отказа.
+        failure = r.failure;
+        let text: "sent" | "failed" | "skipped" = textSentBefore ? "sent" : "skipped";
+        if (!textSentBefore && !beforeErr && textFallbackAllowed(r.failure)) {
+          const locale = ctx.tenant.settings.default_locale ?? "ru";
+          const t = await api.inbox(
+            known.zernio_conversation_id,
+            p.accountId,
+            secondStepAsText(locale, p.secondText, buttons),
+            { platform: "instagram", idempotencyScope: `${key}:text` },
+          );
+          text = t.ok ? "sent" : "failed";
+          if (t.ok) textSentAt = new Date().toISOString();
+        }
+        error = secondStepFailureText(r.failure, text);
+      }
     }
   }
   await upsertLog(ctx, key, {
@@ -877,6 +907,8 @@ async function sendSecondStep(
       secondText: p.secondText,
       buttons: toJson(buttons),
       ...(p.noExpress ? { noExpress: true } : {}),
+      ...(textSentAt ? { textSentAt } : {}),
+      ...(failure ? { failure: toJson(failure) } : {}),
       createdAt: new Date().toISOString(),
     },
   });
@@ -1377,6 +1409,51 @@ export async function twoStepJustDelivered(
     const sentAt = Date.parse(pl.sent_at);
     return sentAt >= since && typedAt < sentAt;
   });
+}
+
+/** Сколько назад ушедшая кнопка «Купить» ещё считается «в сообщении выше». */
+export const BUY_BUTTON_RECENT_MS = 24 * 60 * 60_000;
+
+/**
+ * Кнопка «Купить» правила, ушедшая этому покупателю за последние сутки: её
+ * заголовок. Ответ страной под таким постом — «нажмите «Купить» выше», а не
+ * «продавец ответит» (AATeach, ночь 11.10). Свой — по имени или id автора.
+ */
+export async function recentBuyButton(
+  ctx: TenantContext,
+  who: { username?: string | null; senderId?: string | null },
+  now = Date.now(),
+): Promise<string | null> {
+  const username = who.username?.toLowerCase() ?? "";
+  if (!username && !who.senderId) return null;
+  const data = await pageAll(
+    (from, to) =>
+      ctx.db
+        .from("zernio_logs")
+        .select("payload")
+        .eq("event_type", "two_step_dm_sent")
+        .like("event_id", "two-step-dm:%")
+        .eq("status", "processed")
+        .gte("created_at", new Date(now - BUY_BUTTON_RECENT_MS).toISOString())
+        .order("created_at", { ascending: false })
+        .order("id")
+        .range(from, to),
+    "[zernio] отправки вторых сообщений не прочитаны",
+  );
+  for (const l of data) {
+    const pl = l.payload as { username?: string; authorId?: string; buttons?: DmButton[] } | null;
+    const own =
+      (typeof pl?.username === "string" && pl.username.toLowerCase() === username) ||
+      (Boolean(who.senderId) && pl?.authorId === who.senderId);
+    if (!own) continue;
+    const buttons = Array.isArray(pl?.buttons) ? pl.buttons : [];
+    const buy = buttons.find(
+      (b) =>
+        b?.type === "postback" && typeof b.payload === "string" && b.payload.startsWith("PROD:"),
+    );
+    if (buy?.title) return buy.title;
+  }
+  return null;
 }
 
 /** Сколько после первого сообщения правила «+» ещё отдаёт второе по переписке. */

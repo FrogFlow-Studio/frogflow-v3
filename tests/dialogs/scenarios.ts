@@ -93,6 +93,19 @@ const errorSettingRead =
     };
   };
 
+/** Две страны оплаты, как у AATeach: Казахстан и Россия. */
+const twoCountries = (r: Room): void => {
+  r.db.tables.payment_methods!.push({
+    id: "pm-ru",
+    bot_id: r.db.tables.payment_methods![0]!.bot_id,
+    is_active: true,
+    sort_order: 2,
+    country_code: "RU",
+    country_name: "🇷🇺 Россия",
+    currency: "RUB",
+  });
+};
+
 /** Копилка с рублями: Россия вторым способом оплаты, цены по странам и «цены во всех валютах». */
 const allPrices = (r: Room): void => {
   r.db.tables.payment_methods!.push({
@@ -288,6 +301,12 @@ export interface Scenario {
    * маршрут и исполнение настоящие, подменён только ответ API модели.
    */
   postpay?: Array<{ action: "pass" | "status" | "resend"; email?: string }>;
+  /**
+   * Страна из слов покупателя (core/country): ответы инструмента country по
+   * вызовам — маршрут настоящий, подменён только ответ API модели. Не задано —
+   * ключа ИИ нет, работает запасной разбор по названиям.
+   */
+  countryAi?: Array<{ country: string; answer_only: boolean }>;
   /** Instagram/WhatsApp: ник покупателя во входящем. */
   username?: string;
   /** Instagram (только `full`): правила комментариев Zernio клиента (список /comment-automations). */
@@ -2647,6 +2666,181 @@ export const SCENARIOS: Scenario[] = [
       });
     },
     steps: [{ say: { button: "cat:root" }, expect: { says: [(c) => c.chooseCountry] } }],
+  },
+  // ───── Страна словами (AATeach, ночь 11.10) ─────
+  {
+    id: "country-words-at-step-ig-ru",
+    title:
+      "на вопрос о стране ответ словами «Я из России» — страна Россия, список второй раз не приходит",
+    origin:
+      "AATeach 11.10 00:09 rizamagomedova1: «Я из России» → список снова → «1» → Казахстан и цена в тенге",
+    channel: "instagram",
+    locale: "ru",
+    products: PRODUCTS,
+    state: { country_code: null, country_name: null },
+    arrange: twoCountries,
+    countryAi: [{ country: "RU", answer_only: true }],
+    steps: [
+      {
+        say: { text: "каталог" },
+        expect: { says: [(c) => c.chooseCountry], state: { mode: "awaiting_country" } },
+      },
+      {
+        say: { text: "Я из России" },
+        expect: {
+          says: ["Россия", "018. Прописи"],
+          notSays: [(c) => c.chooseCountry],
+          state: { country_code: "RU", mode: "idle" },
+        },
+      },
+    ],
+  },
+  {
+    id: "country-words-no-ai-ig-ru",
+    title: "модели нет — «Здравствуйте, из России» всё равно Россия (запасной разбор)",
+    origin: "AATeach 11.10 valya.falling: «Здравствуйте, из России» → список → «2»",
+    channel: "instagram",
+    locale: "ru",
+    products: PRODUCTS,
+    state: { country_code: null, country_name: null },
+    arrange: twoCountries,
+    steps: [
+      { say: { text: "каталог" }, expect: { says: [(c) => c.chooseCountry] } },
+      {
+        say: { text: "Здравствуйте, из России" },
+        expect: { notSays: [(c) => c.chooseCountry], state: { country_code: "RU" } },
+      },
+    ],
+  },
+  {
+    id: "country-reply-no-button-ig-ru",
+    title:
+      "ответ страной на первое сообщение правила без кнопки — бот записал страну и ответил один раз, сообщение осталось продавцу",
+    origin:
+      "AATeach ночь 11.10: kolesova5863 трижды «Россия»/«РФ» под «Домик», «Нужно», «Улитка» — тишина до утра",
+    channel: "instagram",
+    locale: "ru",
+    full: true,
+    modules: { manager_chat: true },
+    products: PRODUCTS,
+    state: { country_code: null, country_name: null },
+    arrange: twoCountries,
+    countryAi: [
+      { country: "RU", answer_only: true },
+      { country: "RU", answer_only: true },
+    ],
+    steps: [
+      {
+        say: { text: "Россия" },
+        expect: {
+          count: 1,
+          says: ["Записал страну: 🇷🇺 Россия", "Продавец ответит здесь", "откройте каталог"],
+          buttons: [COPY.ru.catalog.replace(/<[^>]+>/g, "")],
+          state: { country_code: "RU" },
+        },
+      },
+      { say: { text: "РФ" }, expect: { silent: true, state: { country_code: "RU" } } },
+    ],
+  },
+  {
+    id: "country-reply-race-ig-ru",
+    title: "два «Россия» одновременно (двойная отправка) — ответ про страну один",
+    origin: "гонка к country-reply-no-button-ig-ru (CLAUDE.md: «один раз» — условная запись)",
+    channel: "instagram",
+    locale: "ru",
+    full: true,
+    modules: { manager_chat: true },
+    products: PRODUCTS,
+    state: { country_code: null, country_name: null },
+    arrange: twoCountries,
+    countryAi: [
+      { country: "RU", answer_only: true },
+      { country: "RU", answer_only: true },
+    ],
+    steps: [
+      {
+        say: { burst: ["Россия", "Россия!"] },
+        expect: { count: 1, says: ["Записал страну"], state: { country_code: "RU" } },
+      },
+    ],
+  },
+  {
+    id: "country-reply-no-button-ig-kk",
+    title: "то же по-казахски: «Ресей» — ел жазылды, жауап бір рет",
+    origin: "AATeach ночь 11.10, ожидание к country-reply-no-button-ig-ru",
+    channel: "instagram",
+    locale: "kk",
+    full: true,
+    modules: { manager_chat: true },
+    products: PRODUCTS,
+    state: { country_code: null, country_name: null },
+    arrange: twoCountries,
+    countryAi: [{ country: "RU", answer_only: true }],
+    steps: [
+      {
+        say: { text: "Ресей" },
+        expect: { count: 1, says: ["Елді жазып алдым"], state: { country_code: "RU" } },
+      },
+    ],
+  },
+  {
+    id: "country-reply-buy-button-ig-ru",
+    title:
+      "страна после кнопки «Купить» правила — «нажмите «Купить» выше»; по нажатию страну не спрашивают второй раз",
+    origin:
+      "AATeach 11.10: vikabagutskaya «Беларусь» → список стран → «4»; «Купить» спрашивал страну заново",
+    channel: "instagram",
+    locale: "ru",
+    products: PRODUCTS,
+    state: { country_code: null, country_name: null },
+    arrange: (r) => {
+      twoCountries(r);
+      r.db.tables.zernio_logs!.push({
+        id: "log-2step",
+        bot_id: r.db.tables.payment_methods![0]!.bot_id,
+        event_id: "two-step-dm:c1",
+        event_type: "two_step_dm_sent",
+        status: "processed",
+        created_at: new Date().toISOString(),
+        payload: {
+          username: "someone",
+          authorId: "1",
+          buttons: [{ type: "postback", title: "Купить", payload: `PROD:${P1}` }],
+        },
+      });
+    },
+    countryAi: [{ country: "RU", answer_only: true }],
+    steps: [
+      {
+        say: { text: "Я из России" },
+        expect: {
+          count: 1,
+          says: ["Записал страну: 🇷🇺 Россия", "Нажмите «Купить» в сообщении выше"],
+          state: { country_code: "RU" },
+        },
+      },
+      {
+        say: { button: `PROD:${P1}`, title: "Купить" },
+        expect: { notSays: [(c) => c.chooseCountry], state: { country_code: "RU" } },
+      },
+    ],
+  },
+  {
+    id: "country-with-question-stays-seller-ig-ru",
+    title: "«Я из России, как оплатить?» — страну запомнили, но отвечать за продавца бот не стал",
+    origin: "ожидание к country-reply-no-button-ig-ru",
+    channel: "instagram",
+    locale: "ru",
+    products: PRODUCTS,
+    state: { country_code: null, country_name: null },
+    arrange: twoCountries,
+    countryAi: [{ country: "RU", answer_only: false }],
+    steps: [
+      {
+        say: { text: "Я из России, как оплатить?" },
+        expect: { notSays: ["Записал страну"], state: { country_code: "RU" } },
+      },
+    ],
   },
   {
     id: "dm-section-name-not-rule-keyword-ig-ru",
