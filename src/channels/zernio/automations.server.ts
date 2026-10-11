@@ -48,6 +48,9 @@ import {
   stalePendingAction,
   stripReplyPrompt,
   withReplyPrompt,
+  REPEAT_COOLDOWN_HOURS,
+  REPEAT_POLICY,
+  repeatPolicyOk,
   type AutomationButton,
   type AutomationInput,
   type MatchMode,
@@ -86,6 +89,8 @@ export type CommentAutomation = {
   linkTracking?: boolean;
   clickTag?: string;
   isActive?: boolean;
+  /** Повтор первого сообщения одному человеку (Zernio): once | every_comment (+ cooldownHours). */
+  repeatPolicy?: { mode?: string; cooldownHours?: number } | null;
   createdAt?: string;
   stats?: {
     triggered?: number;
@@ -116,6 +121,12 @@ export type AutomationMeta = {
    * ответа покупателя второе сообщение с кнопками не уйдёт. "" — без призыва.
    */
   replyPrompt?: string;
+  /**
+   * Повтор «не чаще раза в сутки» у Zernio: "ok" — поставлен, при чтении не
+   * трогаем, даже если Zernio не вернул поле в списке; время (ISO) — Zernio
+   * отказал, следующая попытка через сутки.
+   */
+  repeatPolicySetAt?: string;
 };
 
 export type InstagramComment = {
@@ -335,6 +346,7 @@ export async function listAutomations(
   const own = all.filter((a) => ownsZernioAccount(ctx, a.accountId));
   await upgradeLegacyButtons(ctx, own, meta, api);
   await upgradeReplyPrompt(ctx, own, meta, api);
+  await upgradeRepeatPolicy(ctx, own, meta, api);
   return own.map((a) => {
     const m = meta[automationId(a)];
     if (!m) return { ...a, firstMessage: a.dmMessage };
@@ -457,6 +469,62 @@ async function upgradeReplyPrompt(
   }
 }
 
+/**
+ * Одно первое сообщение на человека за сутки (решение Якова 11.10, 7): его шлёт
+ * Zernio своим правилом, а правило без `repeatPolicy` отвечало на каждый
+ * комментарий — vertsanova.svetlana под «Палитрой» за минуту получила два
+ * одинаковых. Правило, у которого повтор не ограничен, при чтении получает
+ * `every_comment` + 24 ч, без пересохранения продавцом; «один раз навсегда»
+ * (once) строже — не трогаем. Отметка в мете — чтобы не слать PATCH на каждом
+ * чтении, если Zernio не вернёт поле в списке; отказ Zernio — повтор через
+ * сутки. Ответ на историю (story_reply) не трогаем. Только клиенты v2.
+ */
+async function upgradeRepeatPolicy(
+  ctx: TenantContext,
+  rules: CommentAutomation[],
+  meta: Record<string, AutomationMeta>,
+  api: AutomationApi,
+  now: () => Date = () => new Date(),
+): Promise<void> {
+  if (!servedByV2(ctx.tenant)) return;
+  for (const a of rules) {
+    const id = automationId(a);
+    if (!id || a.trigger === "story_reply" || repeatPolicyOk(a.repeatPolicy)) continue;
+    const m = meta[id] ?? {};
+    if (m.repeatPolicySetAt === "ok") continue;
+    const failedAt = Date.parse(m.repeatPolicySetAt ?? "");
+    if (Number.isFinite(failedAt) && now().getTime() - failedAt < REPEAT_COOLDOWN_HOURS * 3_600_000)
+      continue;
+    const before = toJson(a.repeatPolicy ?? null);
+    let mark = "ok";
+    try {
+      await api.update(id, { repeatPolicy: REPEAT_POLICY });
+      a.repeatPolicy = { ...REPEAT_POLICY };
+    } catch (e) {
+      // Отказ Zernio — попробуем через сутки, не на каждом чтении.
+      mark = now().toISOString();
+      console.warn(
+        `[comment-dm] ${ctx.tenant.id}: правилу ${id} не поставлен повтор раз в сутки: ${e instanceof Error ? e.message : e}`,
+      );
+    }
+    try {
+      const next: AutomationMeta = { ...m, repeatPolicySetAt: mark };
+      await setAutomationMeta(ctx, id, next);
+      meta[id] = next;
+    } catch (e) {
+      console.warn(
+        `[comment-dm] ${ctx.tenant.id}: отметка повтора правила ${id} не записана: ${e instanceof Error ? e.message : e}`,
+      );
+    }
+    if (mark === "ok")
+      await upsertLog(ctx, `repeat-policy:${id}`, {
+        event_type: "comment_rule.repeat_policy",
+        status: "processed",
+        payload: { automationId: id, from: before, to: toJson(REPEAT_POLICY) },
+      }).catch(() => undefined);
+  }
+}
+
 export type SaveAutomationInput = AutomationInput & {
   id?: string;
   original?: { platformPostId?: string | null; postId?: string | null; trigger?: string };
@@ -509,12 +577,16 @@ export async function saveAutomation(
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : String(e) };
   }
+  // Одно первое сообщение на человека за сутки (upgradeRepeatPolicy).
+  const repeatLimited = (data.trigger || "comment") !== "story_reply";
+  if (repeatLimited) body.repeatPolicy = REPEAT_POLICY;
   const meta: AutomationMeta = {
     twoStepDm: twoStep,
     secondDmMessage: data.secondDmMessage?.trim() || undefined,
     secondDmButtons: twoStep ? (data.buttons ?? []) : undefined,
     unresolvedPrompt: data.unresolvedPrompt?.trim() || undefined,
     replyPrompt: twoStep ? replyPrompt : undefined,
+    ...(repeatLimited ? { repeatPolicySetAt: "ok" } : {}),
   };
   const norm = (v: string | null | undefined) => v || null;
   try {
@@ -991,6 +1063,25 @@ export async function handleCommentReceived(
     throw serverFailure(`[zernio] журнал второго сообщения не прочитан: ${existingErr2.message}`);
   if (existing?.status === "processed") return { note: "второе сообщение уже ушло" };
   if (existing?.status === "skipped") return { note: "второе сообщение уже закрыто" };
+
+  // Второй комментарий того же человека по тому же правилу за сутки: первое
+  // сообщение Zernio не повторит (repeatPolicy), и второе в очередь не ставим —
+  // одно на человека (решение Якова 11.10, 7; vertsanova.svetlana, Копилка).
+  const since = new Date(Date.now() - REPEAT_COOLDOWN_HOURS * 3_600_000).toISOString();
+  const { data: sameRule, error: sameErr } = await ctx.db
+    .from("zernio_logs")
+    .select("id")
+    .in("event_type", TWO_STEP_TYPES)
+    // «_» в имени Instagram — подстановочный знак LIKE: экранируем.
+    .ilike("payload->>username", username.replace(/[\\%_]/g, "\\$&"))
+    .eq("payload->>automationId", automationId(matched))
+    .gte("created_at", since)
+    .neq("event_id", `two-step-dm:${commentId}`)
+    .order("id")
+    .limit(1);
+  if (sameErr)
+    throw serverFailure(`[zernio] журнал второго сообщения не прочитан: ${sameErr.message}`);
+  if (sameRule?.length) return { note: `повторный комментарий @${username} — сообщение уже было` };
 
   // Пауза: даём Zernio и Meta доставить первое сообщение без кнопок.
   await sleep(opts.delayMs ?? 1500);

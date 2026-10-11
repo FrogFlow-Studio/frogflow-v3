@@ -790,9 +790,16 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
       await showCatalog(s, null, 0, true);
       return "handled";
     }
-    case "dismissal":
-      // Разговор закрыт — не начинать его заново приветствием.
+    case "dismissal": {
+      // Разговор закрыт — не начинать его заново приветствием. «Спасибо» после
+      // выдачи — один короткий ответ (решение Якова 11.10, 8б); что это
+      // благодарность, а не «нет», решает модель (core/postpay).
+      const { postPayAssist } = await import("./postpay.server");
+      await postPayAssist(s, text, { thanksOnly: true }).catch((e) =>
+        console.warn(`[postpay:${s.ctx.tenant.id}] благодарность: ${String(e)}`),
+      );
       return "handled";
+    }
     case "question": {
       if (await listWordsHint(s)) return "handled";
       // После оплаты: «отправьте на почту», «не пришло» — понимает модель (core/postpay).

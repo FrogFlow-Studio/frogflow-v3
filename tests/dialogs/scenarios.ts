@@ -318,7 +318,7 @@ export interface Scenario {
    * ИИ после оплаты (core/postpay): ответы инструмента decide по вызовам —
    * маршрут и исполнение настоящие, подменён только ответ API модели.
    */
-  postpay?: Array<{ action: "pass" | "status" | "resend"; email?: string }>;
+  postpay?: Array<{ action: "pass" | "status" | "resend" | "thanks"; email?: string }>;
   /**
    * Страна из слов покупателя (core/country): ответы инструмента country по
    * вызовам — маршрут настоящий, подменён только ответ API модели. Не задано —
@@ -488,6 +488,68 @@ export const SCENARIOS: Scenario[] = [
       {
         say: { text: "А на почту отправите?" },
         expect: { count: 1, says: ["подтверд", "anna@mail.ru"], mails: [] },
+      },
+    ],
+  },
+  {
+    id: "postpay-thanks-after-delivery-ig-ru",
+    title:
+      "«Благодарю! 🌹» после выдачи: бот один раз отвечает «Рада помочь», обращение не открывается и продавцу ничего не приходит; второе «спасибо» — тишина",
+    origin: "Копилка 11.10, срез 77: «Благодарю ! 🌹» после выдачи #132 открыло обращение #123",
+    channel: "instagram",
+    locale: "ru",
+    products: PRODUCTS,
+    full: true,
+    mail: true,
+    postpay: [{ action: "thanks" }, { action: "thanks" }],
+    arrange: paidOrder({ email: "anna@mail.ru" }),
+    steps: [
+      {
+        say: { text: "Благодарю ! 🌹" },
+        expect: {
+          count: 1,
+          says: [(c) => c.thanksReply],
+          mails: [],
+          sellerNotices: 0,
+        },
+      },
+      { say: { text: "Спасибо большое!" }, expect: { silent: true, sellerNotices: 0 } },
+    ],
+  },
+  ...everyLocale(() => ({
+    id: "postpay-thanks-plain-word",
+    title:
+      "короткое «спасибо» после выдачи (раньше молча закрывало разговор) — тот же один ответ «Рада помочь»",
+    origin: "Яков 11.10, решение 8б: на «спасибо/благодарю» после выдачи — «Рада помочь! Хороших уроков»",
+    channel: "instagram",
+    products: PRODUCTS,
+    full: true,
+    mail: true,
+    postpay: [{ action: "thanks" }],
+    arrange: paidOrder({ email: "anna@mail.ru" }),
+    steps: [
+      {
+        say: { text: "Спасибо" },
+        expect: { count: 1, says: [(c) => c.thanksReply], sellerNotices: 0 },
+      },
+    ],
+  })),
+  {
+    id: "postpay-thanks-before-delivery-ig-ru",
+    title:
+      "«спасибо» пока чек проверяют — бот не отвечает «Рада помочь» (материалов ещё нет), обращения нет",
+    origin: "ожидание к решению 8б Якова 11.10",
+    channel: "instagram",
+    locale: "ru",
+    products: PRODUCTS,
+    full: true,
+    mail: true,
+    postpay: [{ action: "thanks" }],
+    arrange: paidOrder({ email: "anna@mail.ru", status: "awaiting_confirmation" }),
+    steps: [
+      {
+        say: { text: "Спасибо" },
+        expect: { notSays: [(c) => c.thanksReply], sellerNotices: 0 },
       },
     ],
   },

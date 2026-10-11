@@ -53,7 +53,7 @@ export type PostPayFacts = {
 
 export type ChatLine = { sender: string; text: string; at: string };
 
-export type PostPayAction = "pass" | "status" | "resend";
+export type PostPayAction = "pass" | "status" | "resend" | "thanks";
 export type PostPayDecision = { action: PostPayAction; email: string | null };
 
 const STATUS_RU: Record<PostPayStatus, string> = {
@@ -68,7 +68,8 @@ export const POSTPAY_SYSTEM = `Ты помогаешь боту магазина
 Действия:
 - status — покупатель спрашивает о своих материалах или письме: просит прислать на почту, спрашивает, ушло ли письмо, куда отправили, где файлы, когда придут. Бот ответит по фактам заказа: куда и когда ушло письмо, или попросит почту, если её нет.
 - resend — покупатель прямо говорит, что письмо не пришло / не найти / ссылка не открывается, просит отправить ещё раз, или присылает почту (новую или исправленную) для материалов.
-- pass — всё остальное: новый вопрос о товаре или цене, новая покупка, жалоба, благодарность, приветствие, разговор с продавцом, непонятно. Сомневаешься — pass: тогда сообщение увидит продавец.
+- thanks — покупатель только благодарит или прощается («спасибо», «благодарю», «получила, спасибо», 🌹, ❤️) и ни о чём не спрашивает и не просит. Бот ответит коротким «рада помочь» один раз, продавца не тревожит.
+- pass — всё остальное: новый вопрос о товаре или цене, новая покупка, жалоба, благодарность вместе с вопросом или просьбой, приветствие, разговор с продавцом, непонятно. Сомневаешься — pass: тогда сообщение увидит продавец.
 
 email — адрес почты, только если покупатель написал его в последнем сообщении; иначе пустая строка.`;
 
@@ -78,7 +79,7 @@ export const DECIDE_TOOL = {
   input_schema: {
     type: "object" as const,
     properties: {
-      action: { type: "string", enum: ["pass", "status", "resend"] },
+      action: { type: "string", enum: ["pass", "status", "resend", "thanks"] },
       email: { type: "string" },
     },
     required: ["action", "email"],
@@ -139,7 +140,8 @@ export function emailIn(text: string): string | null {
  */
 export function parseDecision(input: unknown, buyerText: string): PostPayDecision {
   const v = (input && typeof input === "object" ? input : {}) as Record<string, unknown>;
-  const action: PostPayAction = v.action === "status" || v.action === "resend" ? v.action : "pass";
+  const action: PostPayAction =
+    v.action === "status" || v.action === "resend" || v.action === "thanks" ? v.action : "pass";
   const written = emailIn(buyerText);
   const claimed = typeof v.email === "string" ? emailIn(v.email) : null;
   const email = written && (!claimed || claimed === written) ? written : null;
@@ -174,6 +176,10 @@ export function parseSpend(raw: string | null | undefined): Spend {
  */
 export type PostPayStep =
   | { kind: "pass" }
+  /** Благодарность после выдачи: один короткий ответ, продавцу не передаём. */
+  | { kind: "thanks" }
+  /** Благодарность, пока материалов ещё нет: не отвечаем и продавцу не передаём. */
+  | { kind: "quiet" }
   | { kind: "ask_email" }
   | { kind: "told_sent"; email: string; at: string }
   | { kind: "send"; email: string; fresh: boolean }
@@ -183,6 +189,8 @@ export type PostPayStep =
 
 export function planStep(d: PostPayDecision, f: PostPayFacts): PostPayStep {
   if (d.action === "pass") return { kind: "pass" };
+  if (d.action === "thanks")
+    return f.status === "delivered" ? { kind: "thanks" } : { kind: "quiet" };
   const email = d.email ?? f.email;
   const newAddress = Boolean(d.email && d.email !== f.email?.trim().toLowerCase());
   if (f.status !== "delivered") {

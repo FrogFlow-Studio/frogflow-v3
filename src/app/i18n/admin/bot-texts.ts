@@ -48,6 +48,9 @@ export const ru = {
   "botTexts.key.email_ask.hint": "Когда бот спрашивает почту для материалов.",
   "botTexts.key.email_retry": "Это не почта",
   "botTexts.key.email_retry.hint": "Ответ на вопрос о почте не похож на адрес.",
+  "botTexts.key.thanks_reply": "Ответ на «спасибо»",
+  "botTexts.key.thanks_reply.hint":
+    "Покупатель поблагодарил после выдачи заказа. Бот отвечает один раз на заказ, обращение не открывается.",
   "botTexts.vars": "Можно вставить: {vars}",
   "botTexts.var.shop": "{shop} — название магазина",
   "botTexts.var.order": "{order} — номер заказа",
@@ -127,6 +130,9 @@ export const kk: SectionDict<typeof ru> = {
   "botTexts.key.email_ask.hint": "Бот материалдар үшін поштаны сұрағанда.",
   "botTexts.key.email_retry": "Бұл пошта емес",
   "botTexts.key.email_retry.hint": "Пошта туралы сұраққа жауап мекенжайға ұқсамайды.",
+  "botTexts.key.thanks_reply": "«Рақмет» сөзіне жауап",
+  "botTexts.key.thanks_reply.hint":
+    "Сатып алушы тапсырыс берілгеннен кейін алғыс айтты. Бот бір тапсырысқа бір рет жауап береді, өтініш ашылмайды.",
   "botTexts.vars": "Қоюға болады: {vars}",
   "botTexts.var.shop": "{shop} — дүкен атауы",
   "botTexts.var.order": "{order} — тапсырыс нөмірі",
@@ -208,6 +214,9 @@ export const en: SectionDict<typeof ru> = {
   "botTexts.key.email_retry": "Not an email",
   "botTexts.key.email_retry.hint":
     "The answer to the email question does not look like an address.",
+  "botTexts.key.thanks_reply": "Reply to “thank you”",
+  "botTexts.key.thanks_reply.hint":
+    "The buyer said thanks after the order was delivered. The bot replies once per order and opens no ticket.",
   "botTexts.vars": "You can insert: {vars}",
   "botTexts.var.shop": "{shop} — shop name",
   "botTexts.var.order": "{order} — order number",
@@ -289,6 +298,9 @@ export const uz: SectionDict<typeof ru> = {
   "botTexts.key.email_ask.hint": "Bot materiallar uchun pochtani soʻraganda.",
   "botTexts.key.email_retry": "Bu pochta emas",
   "botTexts.key.email_retry.hint": "Pochta haqidagi savolga javob manzilga oʻxshamaydi.",
+  "botTexts.key.thanks_reply": "«Rahmat»ga javob",
+  "botTexts.key.thanks_reply.hint":
+    "Xaridor buyurtma topshirilgandan keyin minnatdorchilik bildirdi. Bot bir buyurtmaga bir marta javob beradi, murojaat ochilmaydi.",
   "botTexts.vars": "Qoʻyish mumkin: {vars}",
   "botTexts.var.shop": "{shop} — doʻkon nomi",
   "botTexts.var.order": "{order} — buyurtma raqami",

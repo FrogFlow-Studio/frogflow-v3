@@ -347,6 +347,8 @@ export type Msg = {
   receiptPaymentFailed: (no: string) => string;
   receiptManualReview: (no: string) => string;
   receiptVerified: (no: string) => string;
+  /** Ответ на благодарность после выдачи заказа (Direct, ИИ после оплаты). */
+  thanksReply: string;
   smartSearchResults: (q: string, n: number) => string;
   rateBtn: (no: string) => string;
   chooseProductToRate: string;
@@ -472,6 +474,7 @@ const ru: Msg = {
   receiptManualReview: (no) =>
     `📨 Чек по заказу #${no} получен, но автоматическая проверка не прошла. Заказ отправлен продавцу на ручную проверку — файлы придут после подтверждения.`,
   receiptVerified: (no) => `✅ Спасибо! Чек проверен. Заказ #${no} — отправляю файлы…`,
+  thanksReply: "Рада помочь! Хороших уроков 🌷",
   smartSearchResults: (q, n) => `🤖 По смыслу запроса «${q}» подобрано: ${n}`,
   rateBtn: (no) => `⭐ Оценить (#${no})`,
   chooseProductToRate: "Какой товар из этого заказа оцениваете?",
@@ -1014,6 +1017,7 @@ const kk: Msg = {
   receiptManualReview: (no) =>
     `📨 #${no} тапсырысы бойынша чек алынды, бірақ автоматты тексеру өтпеді. Тапсырыс сатушыға қолмен тексеруге жіберілді — файлдар растаудан кейін келеді.`,
   receiptVerified: (no) => `✅ Рақмет! Чек тексерілді. Тапсырыс #${no} — файлдарды жіберудемін…`,
+  thanksReply: "Көмектескеніме қуаныштымын! Сабақтарыңыз сәтті өтсін 🌷",
   smartSearchResults: (q, n) => `🤖 «${q}» сұрауының мағынасы бойынша таңдалды: ${n}`,
   rateBtn: (no) => `⭐ Бағалау (#${no})`,
   chooseProductToRate: "Осы тапсырыстан қай тауарды бағалайсыз?",
@@ -1321,6 +1325,7 @@ const en: Msg = {
   receiptManualReview: (no) =>
     `📨 Receipt received for order #${no}, but automatic verification failed. The order was sent to the seller for manual review — files will arrive after confirmation.`,
   receiptVerified: (no) => `✅ Thank you! Receipt verified. Order #${no} — sending files…`,
+  thanksReply: "Happy to help! Have great lessons 🌷",
   smartSearchResults: (q, n) => `🤖 Picked by meaning for “${q}”: ${n}`,
   rateBtn: (no) => `⭐ Rate (#${no})`,
   chooseProductToRate: "Which product from this order are you rating?",
@@ -1677,6 +1682,7 @@ const uz: Msg = {
   receiptManualReview: (no) =>
     `📨 #${no} buyurtmasi uchun chek qabul qilindi, lekin avtomatik tekshiruv o‘tmadi. Buyurtma sotuvchiga qo‘lda tekshirish uchun yuborildi — fayllar tasdiqlangandan so‘ng keladi.`,
   receiptVerified: (no) => `✅ Rahmat! Chek tekshirildi. Buyurtma #${no} — fayllar yuborilmoqda…`,
+  thanksReply: "Yordam berganimdan xursandman! Darslaringiz yaxshi o‘tsin 🌷",
   smartSearchResults: (q, n) => `🤖 «${q}» so‘rovi ma’nosi bo‘yicha tanlandi: ${n}`,
   rateBtn: (no) => `⭐ Baholash (#${no})`,
   chooseProductToRate: "Ushbu buyurtmadan qaysi mahsulotni baholaysiz?",

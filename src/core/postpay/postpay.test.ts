@@ -125,3 +125,13 @@ describe("тексты и расход", () => {
     expect(parseCap("abc")).toBe(0.5);
   });
 });
+
+describe("благодарность после оплаты (решение Якова 11.10, 8б)", () => {
+  it("модель сказала thanks — после выдачи короткий ответ, до выдачи тишина", () => {
+    const d = parseDecision({ action: "thanks", email: "" }, "Благодарю ! 🌹");
+    expect(d).toEqual({ action: "thanks", email: null });
+    expect(planStep(d, facts({ status: "delivered" }))).toEqual({ kind: "thanks" });
+    expect(planStep(d, facts({ status: "awaiting_confirmation" }))).toEqual({ kind: "quiet" });
+    expect(planStep(d, facts({ status: "paid" }))).toEqual({ kind: "quiet" });
+  });
+});

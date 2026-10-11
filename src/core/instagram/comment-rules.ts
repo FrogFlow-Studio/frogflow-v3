@@ -503,6 +503,25 @@ export function stripReplyPrompt(dm: string, prompt: string | null | undefined):
   return base.endsWith(p) ? base.slice(0, -p.length).trimEnd() : dm;
 }
 
+/**
+ * Сколько первое сообщение правила не повторяется одному человеку. Два
+ * комментария подряд под одним постом («Палитра. Благодарю.», «Палитра.
+ * Спасибо! Жду» — Копилка 11.10) давали два одинаковых первых сообщения:
+ * первое шлёт Zernio своим правилом, повтор режет его `repeatPolicy`
+ * (решение Якова 11.10, 7: одно сообщение на человека за сутки).
+ */
+export const REPEAT_COOLDOWN_HOURS = 24;
+export const REPEAT_POLICY = {
+  mode: "every_comment",
+  cooldownHours: REPEAT_COOLDOWN_HOURS,
+} as const;
+
+/** У правила Zernio уже стоит повтор не чаще раза в сутки (или «один раз навсегда» — строже). */
+export function repeatPolicyOk(p: { mode?: string; cooldownHours?: number } | null | undefined) {
+  if (p?.mode === "once") return true;
+  return p?.mode === "every_comment" && (p.cooldownHours ?? 0) >= REPEAT_COOLDOWN_HOURS;
+}
+
 /** Текст второго сообщения по умолчанию (двухшаговый режим). */
 export const DEFAULT_SECOND_DM = "Для перехода в бот и получения материалов нажмите кнопку ниже 👇";
 
