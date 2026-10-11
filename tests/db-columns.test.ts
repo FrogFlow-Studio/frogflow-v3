@@ -209,7 +209,9 @@ describe("таблицы совместных акций (миграция 19-4)
  */
 describe("индексы партии 20 строятся на колонках схемы", () => {
   const dir = "migrations";
-  const files = readdirSync(dir).filter((f) => /^20-.*\.sql$/.test(f) && !f.endsWith(".down.sql"));
+  const files = readdirSync(dir).filter(
+    (f) => /^(20|24)-.*\.sql$/.test(f) && !f.endsWith(".down.sql"),
+  );
 
   it("миграции нашлись и у каждой есть откат", () => {
     expect(files.length).toBeGreaterThan(0);
