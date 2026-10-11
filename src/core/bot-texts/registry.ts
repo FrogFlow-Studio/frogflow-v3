@@ -26,6 +26,7 @@ export const BOT_TEXT_KEYS = [
   "receipt_verified",
   "email_ask",
   "email_retry",
+  "thanks_reply",
 ] as const;
 export type BotTextKey = (typeof BOT_TEXT_KEYS)[number];
 
@@ -48,6 +49,7 @@ export const DIRECT_KEYS = [
   "receipt_verified",
   "email_ask",
   "email_retry",
+  "thanks_reply",
 ] as const satisfies readonly BotTextKey[];
 
 /**
@@ -78,6 +80,7 @@ export const MSG_PROPS: Partial<Record<BotTextKey, readonly string[]>> = {
   receipt_verified: ["receiptVerified"],
   email_ask: ["emailAsk"],
   email_retry: ["emailHint"],
+  thanks_reply: ["thanksReply"],
 };
 
 /** Тексты про заказ: у консультанта без продаж их не показываем. */
@@ -100,6 +103,7 @@ export const BOT_TEXT_VARS: Record<BotTextKey, readonly string[]> = {
   receipt_verified: ["order"],
   email_ask: [],
   email_retry: [],
+  thanks_reply: [],
 };
 
 /**

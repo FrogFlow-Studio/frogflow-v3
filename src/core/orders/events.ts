@@ -30,6 +30,8 @@ export type OrderEventKind =
   | "email_failed"
   /** Покупатель попросил письмо ещё раз (ИИ после оплаты, core/postpay): одно на 10 минут. */
   | "email_resend"
+  /** Покупатель поблагодарил после выдачи, бот ответил (ИИ после оплаты): один раз на заказ. */
+  | "thanked"
   | "payment"
   /** Шлюз прислал деньги по закрытому заказу: в оплату не записаны, решает продавец. */
   | "payment_on_closed"
@@ -412,6 +414,11 @@ export function describeOrderEvent(e: Pick<OrderEvent, "kind" | "actor" | "paylo
     case "email_resend":
       return {
         text: `Покупатель попросил материалы на почту ${str(p.to)} — бот отправил ещё раз`,
+        tone: "neutral",
+      };
+    case "thanked":
+      return {
+        text: "Покупатель поблагодарил — бот ответил, обращение не открывалось",
         tone: "neutral",
       };
     case "notify_failed":

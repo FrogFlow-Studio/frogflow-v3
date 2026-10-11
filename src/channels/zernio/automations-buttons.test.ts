@@ -247,6 +247,7 @@ describe("Comment-to-DM: правило в старом формате (v1) пр
       twoStepDm: true,
       secondDmButtons: v1Rule.buttons,
       replyPrompt: DEFAULT_REPLY_PROMPT,
+      repeatPolicySetAt: "ok",
     });
     expect(listed[0]).toMatchObject({
       twoStepDm: true,
@@ -323,7 +324,16 @@ describe("Comment-to-DM: прежний призыв по умолчанию м�
         }),
       },
     ];
-    const rules = [{ id: "rule1", name: "Палитра", accountId: "acc-1", keywords: [], dmMessage }];
+    const rules = [
+      {
+        id: "rule1",
+        name: "Палитра",
+        accountId: "acc-1",
+        keywords: [],
+        dmMessage,
+        repeatPolicy: { mode: "every_comment", cooldownHours: 24 },
+      },
+    ];
     const update = vi.fn(async (id: string, body: Record<string, unknown>) => {
       const r = rules.find((x) => x.id === id)!;
       if (typeof body.dmMessage === "string") r.dmMessage = body.dmMessage;
@@ -622,6 +632,175 @@ describe("Comment-to-DM: пересохранение правила", () => {
     expect(update.mock.calls[1]![1]).toMatchObject({ dmMessage: "Держите ссылку", buttons: [] });
     await saveAutomation(ctx, { ...input, buttons: [], twoStepDm: false }, api);
     expect(update.mock.calls[2]![1]).toMatchObject({ dmMessage: "Держите ссылку", buttons: [] });
+  });
+});
+
+describe("Comment-to-DM: одно сообщение на человека за сутки (Копилка 11.10, vertsanova.svetlana)", () => {
+  function dupSetup() {
+    const { ctx, db, api, inbox } = setup();
+    db.tables.bot_users = [];
+    const comment = (id: string, text: string, username = "vertsanova.svetlana") => ({
+      account: { id: "acc-1" },
+      comment: { id, text, platformPostId: "ig-post-1", author: { id: "u-7", username } },
+    });
+    /** created_at в базе ставит default; в fakeDb у вставки его нет — проставляем. */
+    const stamp = (at = new Date().toISOString()) => {
+      for (const l of db.tables.zernio_logs!) l.created_at ??= at;
+    };
+    return { ctx, db, api, inbox, comment, stamp };
+  }
+
+  it("два комментария подряд под одним постом — одно второе сообщение в очереди", async () => {
+    const { ctx, db, api, comment, stamp } = dupSetup();
+    const a = await handleCommentReceived(ctx, comment("c-1", "Хочу. Благодарю."), api, {
+      delayMs: 0,
+    });
+    stamp();
+    const b = await handleCommentReceived(ctx, comment("c-2", "Хочу! Жду. Очень надо"), api, {
+      delayMs: 0,
+    });
+    expect(a.note).toBe("в очередь pending @vertsanova.svetlana");
+    expect(b.note).toBe("повторный комментарий @vertsanova.svetlana — сообщение уже было");
+    expect(secondSteps(db).map((l) => l.event_id)).toEqual(["two-step-dm:c-1"]);
+  });
+
+  it("имя с «_» и в другом регистре — тот же человек", async () => {
+    const { ctx, db, api, comment, stamp } = dupSetup();
+    await handleCommentReceived(ctx, comment("c-1", "хочу", "Anna_K"), api, { delayMs: 0 });
+    stamp();
+    await handleCommentReceived(ctx, comment("c-2", "хочу", "anna_k"), api, { delayMs: 0 });
+    await handleCommentReceived(ctx, comment("c-3", "хочу", "annaxk"), api, { delayMs: 0 });
+    expect(secondSteps(db).map((l) => l.event_id)).toEqual(["two-step-dm:c-1", "two-step-dm:c-3"]);
+  });
+
+  it("прошлый комментарий больше суток назад — сообщение снова", async () => {
+    const { ctx, db, api, comment, stamp } = dupSetup();
+    await handleCommentReceived(ctx, comment("c-1", "хочу"), api, { delayMs: 0 });
+    stamp(new Date(Date.now() - 25 * 60 * 60_000).toISOString());
+    await handleCommentReceived(ctx, comment("c-2", "хочу"), api, { delayMs: 0 });
+    expect(secondSteps(db).map((l) => l.event_id)).toEqual(["two-step-dm:c-1", "two-step-dm:c-2"]);
+  });
+
+  it("журнал не прочитан — ошибка наружу, а не второе сообщение вслепую", async () => {
+    const { ctx, db, api, comment, stamp } = dupSetup();
+    await handleCommentReceived(ctx, comment("c-1", "хочу"), api, { delayMs: 0 });
+    stamp();
+    const from = db.from.bind(db);
+    let reads = 0;
+    (db as unknown as { from: unknown }).from = (t: string) => {
+      const q = from(t);
+      if (t !== "zernio_logs") return q;
+      // Второе чтение журнала по этому комментарию — проверка «уже было».
+      const ilike = q.ilike?.bind(q);
+      if (ilike)
+        (q as unknown as { ilike: unknown }).ilike = (...args: unknown[]) => {
+          reads++;
+          return Object.assign(ilike(...(args as [string, string])), {
+            then: (res: (v: unknown) => unknown) =>
+              Promise.resolve({ data: null, error: { message: "timeout" } }).then(res),
+          });
+        };
+      return q;
+    };
+    await expect(
+      handleCommentReceived(ctx, comment("c-2", "хочу"), api, { delayMs: 0 }),
+    ).rejects.toThrow();
+    expect(reads).toBeGreaterThan(0);
+    expect(secondSteps(db).map((l) => l.event_id)).toEqual(["two-step-dm:c-1"]);
+  });
+});
+
+describe("Comment-to-DM: повтор первого сообщения у Zernio — не чаще раза в сутки", () => {
+  function policySetup(servedBy: "v1" | "v2", repeatPolicy?: Record<string, unknown>) {
+    const { ctx, db } = setup();
+    (ctx.tenant.settings as Record<string, unknown>).served_by = servedBy;
+    const rules = [
+      {
+        id: "rule1",
+        name: "Палитра",
+        accountId: "acc-1",
+        keywords: [],
+        dmMessage: "Привет",
+        ...(repeatPolicy ? { repeatPolicy } : {}),
+      },
+    ];
+    const update = vi.fn(async (id: string, body: Record<string, unknown>) => ({ id, ...body }));
+    const api = { list: async () => rules, update } as unknown as AutomationApi;
+    return { ctx, db, api, update };
+  }
+
+  it("правило без ограничения получает every_comment + 24 ч один раз, отметка в мете и журнале", async () => {
+    const { listAutomations, getAutomationsMeta } = await import("./automations.server");
+    const { ctx, db, api, update } = policySetup("v2");
+    await listAutomations(ctx, api);
+    await listAutomations(ctx, api);
+    expect(update).toHaveBeenCalledTimes(1);
+    expect(update).toHaveBeenCalledWith("rule1", {
+      repeatPolicy: { mode: "every_comment", cooldownHours: 24 },
+    });
+    expect((await getAutomationsMeta(ctx)).rule1).toMatchObject({
+      twoStepDm: true,
+      repeatPolicySetAt: "ok",
+    });
+    expect(
+      db.tables.zernio_logs!.filter((l) => l.event_type === "comment_rule.repeat_policy"),
+    ).toHaveLength(1);
+  });
+
+  it("every_comment без паузы — тоже приводим", async () => {
+    const { listAutomations } = await import("./automations.server");
+    const { ctx, api, update } = policySetup("v2", { mode: "every_comment" });
+    await listAutomations(ctx, api);
+    expect(update).toHaveBeenCalledTimes(1);
+  });
+
+  it("once (строже) и уже сутки — не трогаем", async () => {
+    const { listAutomations } = await import("./automations.server");
+    for (const p of [{ mode: "once" }, { mode: "every_comment", cooldownHours: 48 }]) {
+      const { ctx, api, update } = policySetup("v2", p);
+      await listAutomations(ctx, api);
+      expect(update).not.toHaveBeenCalled();
+    }
+  });
+
+  it("Zernio отказал — на следующем чтении не повторяем, правило работает как было", async () => {
+    const { listAutomations, getAutomationsMeta } = await import("./automations.server");
+    const { ctx, api, update } = policySetup("v2");
+    update.mockRejectedValueOnce(new Error("400 repeatPolicy"));
+    const listed = await listAutomations(ctx, api);
+    expect(listed).toHaveLength(1);
+    await listAutomations(ctx, api);
+    expect(update).toHaveBeenCalledTimes(1);
+    expect((await getAutomationsMeta(ctx)).rule1?.repeatPolicySetAt).not.toBe("ok");
+  });
+
+  it("клиент ещё на v1 — правило не трогаем", async () => {
+    const { listAutomations } = await import("./automations.server");
+    const { ctx, api, update } = policySetup("v1");
+    await listAutomations(ctx, api);
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("сохранение правила отдаёт Zernio повтор раз в сутки", async () => {
+    const { saveAutomation } = await import("./automations.server");
+    const { ctx, api, update } = policySetup("v2");
+    await saveAutomation(
+      ctx,
+      {
+        id: "rule1",
+        original: { platformPostId: null, postId: null, trigger: "comment" },
+        accountId: "acc-1",
+        profileId: "p-1",
+        name: "Хочу",
+        keywords: ["хочу"],
+        dmMessage: "Держите",
+      },
+      api,
+    );
+    expect(update).toHaveBeenCalledWith(
+      "rule1",
+      expect.objectContaining({ repeatPolicy: { mode: "every_comment", cooldownHours: 24 } }),
+    );
   });
 });
 
@@ -1095,7 +1274,8 @@ describe("Comment-to-DM: «+» раньше вебхука комментари�
       api,
       { delayMs: 0 },
     );
-    expect(r.note).toBe("второе сообщение @anya");
+    // Второе ушло на «+» по этому же правилу — комментарий второго не ставит.
+    expect(r.note).toBe("повторный комментарий @anya — сообщение уже было");
     expect(inbox).toHaveBeenCalledTimes(1);
   });
 

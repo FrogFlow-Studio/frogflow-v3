@@ -12,7 +12,11 @@ import { reply, setMode, type Shop, type ShopOutcome } from "./context.server";
 import { mentionsEmail } from "@/core/orders/email-ask";
 import { emailOptional, filesHereOnce } from "./evening.server";
 
-export async function postPayAssist(s: Shop, text: string): Promise<ShopOutcome | null> {
+export async function postPayAssist(
+  s: Shop,
+  text: string,
+  opts: { thanksOnly?: boolean } = {},
+): Promise<ShopOutcome | null> {
   const { decidePostPay, postpayFacts, postpayOrder } =
     await import("@/core/postpay/decide.server");
   const order = await postpayOrder(s.ctx, s.customer).catch((e) => {
@@ -20,14 +24,27 @@ export async function postPayAssist(s: Shop, text: string): Promise<ShopOutcome 
     return null;
   });
   if (!order) return null;
-  if (!(s.transport.mailReady ?? isMailConfigured)()) return null;
   const facts = await postpayFacts(s.ctx, order);
   const decision = await decidePostPay(s.ctx, { customer: s.customer, facts, text });
   const step = planStep(decision, facts);
   if (step.kind === "pass") return null;
+  // Без почты платформы — только благодарность: остальные шаги про письмо.
+  const mailFree = step.kind === "thanks" || step.kind === "quiet";
+  // Короткое «понятно/хорошо/нет»: из ответов модели берём только благодарность.
+  if (opts.thanksOnly && !mailFree) return null;
+  if (!mailFree && !(s.transport.mailReady ?? isMailConfigured)()) return null;
   s.why = `ИИ после оплаты (заказ №${facts.orderNo}): ${WHY[step.kind]}`;
   const t = POSTPAY_TEXT[s.locale];
   switch (step.kind) {
+    case "thanks": {
+      // Один ответ на заказ: отметка — до отправки, условной записью; второе
+      // «спасибо», повтор события — тишина и без обращения продавцу.
+      const won = await claimOrderEvent(s.ctx, order.id, "thanked", "reply");
+      if (won) await reply(s, s.m.thanksReply, { force: true });
+      return "handled";
+    }
+    case "quiet":
+      return "handled";
     case "ask_email":
       // Почта по желанию: «Отправьте материал, который оплатила» — это не
       // просьба о письме, почту не спрашиваем (AATeach 11.10, ryskul_kussainova).
@@ -58,6 +75,8 @@ export async function postPayAssist(s: Shop, text: string): Promise<ShopOutcome 
 
 const WHY: Record<PostPayStep["kind"], string> = {
   pass: "не про заказ",
+  thanks: "благодарность после выдачи — ответили один раз, продавцу не передаём",
+  quiet: "благодарность до выдачи — без ответа, продавцу не передаём",
   ask_email: "просит на почту, почты нет — спросили",
   told_sent: "письмо уже ушло — сказали куда",
   pending: "оплата ещё не подтверждена",
