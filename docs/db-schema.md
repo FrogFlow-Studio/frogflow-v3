@@ -169,7 +169,7 @@ CHECK `product_material_files_language_check`: **`language IN ('ru','kk','en','u
 |---|---|---|---|
 | `id` | BIGSERIAL | NN | **PK**, глобальная последовательность на всю базу |
 | `bot_id` | UUID | null | тенантный ключ |
-| `order_no` | BIGINT | NN | M03; номер в пределах бота, выдаёт триггер из `order_counters`. **Может перенумеровываться** `renumber_orders()` |
+| `order_no` | BIGINT | NN | M03; номер в пределах бота, выдаёт триггер из `order_counters`. **Может перенумеровываться** `renumber_orders()` (с 24-1 ночной крон этого не делает) |
 | `display_no` | BIGINT | null | M28; номер, показанный покупателю — **никогда не меняется** |
 | `telegram_id` | BIGINT | NN* | → `bot_users(telegram_id)`; NOT NULL снят PATCH-INSTAGRAM-ZERNIO |
 | `user_key` | TEXT | null | `tg_<id>` / `ig_<id>` — кросс-платформенный ключ покупателя |
@@ -413,12 +413,12 @@ M68: `conversation_id TEXT`, `zernio_account_id TEXT`, `outreach_error TEXT`.
 | `current_bot_id() → uuid` | `SELECT nullif(current_setting('request.jwt.claims',true)::json->>'bot_id','')::uuid`; `LANGUAGE sql STABLE` (M02/M03) — основа RLS |
 | `force_bot_id() → trigger` | BEFORE INSERT: если в JWT есть `bot_id`, принудительно ставит `NEW.bot_id` (M02) |
 | `touch_updated_at() → trigger` | `NEW.updated_at = now()` (COMPLETE-SETUP, переопределена M31) |
-| `assign_order_no() → trigger` | BEFORE INSERT на `orders`: инкремент `order_counters.last_no` → `NEW.order_no` (M03) |
+| `assign_order_no() → trigger` | BEFORE INSERT на `orders`: `order_counters.last_no := max(last_no, max(display_no) бота) + 1` → `NEW.order_no` (M03, 24-1: номер покупателя не повторяется) |
 | `freeze_display_no() → trigger` | BEFORE INSERT: `display_no := order_no`, если пусто (M28) |
 | `sync_subscription_expiry() → trigger` | AFTER INS/UPD/DEL на `subscription_payments` → `bots.subscription_expires_at = MAX(period_end)` (M09) |
 | `recompute_product_rating() → trigger` | AFTER на `product_reviews` → `products.rating_avg/rating_count` (M43) |
-| `renumber_orders(p_bot_id uuid) → void` | перенумеровывает `orders.order_no` в пределах бота по `created_at,id` и чинит `order_counters` (M23). REVOKE от `tenant_bot` |
-| `nightly_orders_maintenance() → void` | ночная чистка + перенумерация. **Актуальная версия — M61**: `DELETE FROM orders WHERE status IN ('awaiting_confirmation','awaiting_payment') AND created_at < now()-'7 days' AND (fulfillment_kind<>'physical' OR fulfillment_at IS NULL) AND platform<>'manual' AND payment_proof_path IS NULL AND COALESCE(paid_amount,0)=0`, затем `renumber_orders` только для «разъехавшихся» ботов. Переписывалась M23→24→35→49→50→55→57→61. Крон pg_cron `nightly-orders-maintenance` в `0 0 * * *` |
+| `renumber_orders(p_bot_id uuid) → void` | перенумеровывает `orders.order_no` в пределах бота по `created_at,id`; счётчик только растёт (24-1). REVOKE от `tenant_bot` |
+| `nightly_orders_maintenance() → void` | ночная чистка + перенумерация. **Актуальная версия — M61**: `DELETE FROM orders WHERE status IN ('awaiting_confirmation','awaiting_payment') AND created_at < now()-'7 days' AND (fulfillment_kind<>'physical' OR fulfillment_at IS NULL) AND platform<>'manual' AND payment_proof_path IS NULL AND COALESCE(paid_amount,0)=0`, до 24-1 затем `renumber_orders` для «разъехавшихся» ботов — счётчик откатывался, и новые заказы получали уже выданные display_no. С 24-1 крон только удаляет. Переписывалась M23→24→35→49→50→55→57→61→24-1 (v3). Крон pg_cron `nightly-orders-maintenance` в `0 0 * * *` |
 | `reset_orders_sequence() → void` | `SECURITY DEFINER`, `setval` на последовательность `orders.id`. **Больше не вызывается** (последовательность общая на всех арендаторов); права у `tenant_bot`/`anon`/`authenticated` отозваны (M10) |
 | ~~`search_products(search_query text)`~~ | **УДАЛЕНА** M19 (заводилась M07) |
 
