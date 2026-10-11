@@ -7,6 +7,7 @@ import { Card, ErrorBox, Field, PageTitle, useAction } from "@/app/ui";
 import {
   BOT_TEXT_CHANNELS,
   BOT_TEXT_MAX,
+  SALES_ONLY,
   fillText,
   sampleVars,
   unknownVars,
@@ -208,10 +209,10 @@ function BotTextsPage() {
   const t = adminT(shop.locale);
   const [channel, setChannel] = useState<BotTextChannel>("telegram");
   const [locale, setLocale] = useState<Locale>(data.locales[0]!);
-  // Консультант без продаж (BOVI): заказов нет — и «Спасибо за заказ» не показываем.
+  // Консультант без продаж (BOVI): заказов нет — и текстов про заказ не показываем.
   const sells = shop.sells !== false;
   const wired = (data.channels.find((c) => c.channel === channel)?.wired ?? []).filter(
-    (k) => sells || k !== "order_thanks",
+    (k) => sells || !SALES_ONLY.includes(k),
   );
   return (
     <>

@@ -61,11 +61,22 @@ describe("страница «Тексты бота»", () => {
     const view = await botTexts(ctx({ multi_language: true }));
     expect(view.locales).toEqual(["ru", "kk", "en", "uz"]);
     expect(view.channels.find((c) => c.channel === "telegram")!.wired).toHaveLength(4);
-    expect(view.channels.find((c) => c.channel === "instagram")!.wired).toEqual([]);
+    expect(view.channels.find((c) => c.channel === "instagram")!.wired).toContain("language_ask");
+    expect(view.channels.find((c) => c.channel === "whatsapp")!.wired).toEqual([]);
     for (const row of view.rows)
       for (const l of view.locales)
         expect(row.standard[l].length, `${row.key}/${l}`).toBeGreaterThan(5);
     expect(view.rows.find((r) => r.key === "order_thanks")!.optIn).toBe(true);
+  });
+
+  it("стандарт шага Instagram — фраза бота без HTML, с {подстановками} вместо значений", async () => {
+    const rows = (await botTexts(ctx())).rows;
+    expect(rows.find((r) => r.key === "language_ask")!.standard.ru).toBe(
+      "🌐 На каком языке нужны материалы?\n👇 В ответ отправьте только цифру. Текст писать не нужно.",
+    );
+    expect(rows.find((r) => r.key === "receipt_received_email")!.standard.ru).toBe(
+      "✅ Чек по заказу #{order} получен. После проверки пришлём материалы сюда и на {email}.",
+    );
   });
 
   it("без многоязычности — только язык магазина", async () => {
@@ -118,8 +129,20 @@ describe("сохранение", () => {
 
   it("канал, где текст не подключён (Instagram), не сохраняется: бот его не отправил бы", async () => {
     await saveBotText(ctx(), { key: "welcome", channel: "instagram", texts: { ru: "Привет" } });
+    await saveBotText(ctx(), { key: "language_ask", channel: "whatsapp", texts: { ru: "Язык?" } });
     expect(settings().bot_texts).toBeUndefined();
     expect(settings().rev).toBe(4);
+  });
+
+  it("шаг покупки в Instagram сохраняется", async () => {
+    await saveBotText(ctx(), {
+      key: "language_ask",
+      channel: "instagram",
+      texts: { ru: "На каком языке?\n👇 В ответ отправьте только цифру." },
+    });
+    expect(settings().bot_texts).toEqual({
+      language_ask: { instagram: { ru: "На каком языке?\n👇 В ответ отправьте только цифру." } },
+    });
   });
 
   it("длинный текст обрезается до предела, управляющие символы убираются", async () => {

@@ -1,6 +1,7 @@
 import type { ModuleKey } from "@/core/modules/registry";
 import type { VerticalKey } from "@/core/verticals/registry";
 import type { Locale } from "@/core/i18n/locale";
+import type { BotTextChannel, BotTextKey } from "@/core/bot-texts/registry";
 import type { ConsultantLimitsSetting } from "@/core/consultant/budget";
 import type { SmartSearchLimitsSetting } from "@/core/search/smart-pure";
 import type { WizardMap } from "./wizard-entry";
@@ -160,10 +161,7 @@ export type TenantSettings = {
    * продавца. null/нет — стандартный текст. Меняется страницей «Тексты бота».
    */
   bot_texts?: Partial<
-    Record<
-      "welcome" | "off_hours" | "order_thanks" | "not_understood",
-      Partial<Record<"telegram" | "instagram" | "whatsapp", Partial<Record<Locale, string>>>> | null
-    >
+    Record<BotTextKey, Partial<Record<BotTextChannel, Partial<Record<Locale, string>>>> | null>
   >;
   /** Рабочие часы по поясу магазина (0–24): вне них бот шлёт текст «вне часов работы». Нет — не шлёт. */
   work_hours?: { open: number; close: number } | null;
