@@ -20,14 +20,7 @@ export function MarketingCapCard({ cap }: { cap: string }) {
     await router.invalidate();
   });
   return (
-    <Card
-      title={
-        <span className="flex items-center gap-1.5">
-          {t("broadcasts.cap.title")}
-          <HelpTip article="broadcasts" anchor="cap" />
-        </span>
-      }
-    >
+    <Card title={t("broadcasts.cap.title")} help={<HelpTip article="broadcasts" anchor="cap" />}>
       <p className="mb-3 text-sm text-muted">{t("broadcasts.cap.intro")}</p>
       <form
         className="flex items-end gap-2"
@@ -66,14 +59,7 @@ export function CartReminderCard({ hours, stats }: { hours: string; stats?: Auto
     await router.invalidate();
   });
   return (
-    <Card
-      title={
-        <span className="flex items-center gap-1.5">
-          {t("broadcasts.cart.title")}
-          <HelpTip article="broadcasts" anchor="cart" />
-        </span>
-      }
-    >
+    <Card title={t("broadcasts.cart.title")} help={<HelpTip article="broadcasts" anchor="cart" />}>
       <p className="mb-3 text-sm text-muted">{t("broadcasts.cart.intro")}</p>
       <form
         className="flex items-end gap-2"

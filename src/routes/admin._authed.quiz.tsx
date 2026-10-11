@@ -70,14 +70,7 @@ function QuizPage() {
             void save.run().catch(() => {});
           }}
         >
-          <Card
-            title={
-              <span className="flex items-center gap-1.5">
-                {t("quiz.intro")}
-                <HelpTip article="quiz" anchor="intro" />
-              </span>
-            }
-          >
+          <Card title={t("quiz.intro")} help={<HelpTip article="quiz" anchor="intro" />}>
             <textarea
               className="input min-h-16"
               value={intro}
@@ -174,14 +167,7 @@ function QuizPage() {
           </div>
           <ErrorBox error={save.error} />
         </form>
-        <Card
-          title={
-            <span className="flex items-center gap-1.5">
-              {t("quiz.preview")}
-              <HelpTip article="quiz" anchor="preview" />
-            </span>
-          }
-        >
+        <Card title={t("quiz.preview")} help={<HelpTip article="quiz" anchor="preview" />}>
           <p className="mb-3 text-xs text-muted">{t("quiz.previewHint")}</p>
           <div className="space-y-2">
             {qs.map((q, i) => (

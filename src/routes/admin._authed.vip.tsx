@@ -73,12 +73,8 @@ function BotCard({ state, t }: { state: State; t: AdminT }) {
   const ok = state.bot.connected && state.bot.webhookOk;
   return (
     <Card
-      title={
-        <span className="flex items-center gap-1.5">
-          {t("vip.bot.title")}
-          <HelpTip article="vip" anchor="bot" />
-        </span>
-      }
+      title={t("vip.bot.title")}
+      help={<HelpTip article="vip" anchor="bot" />}
       actions={
         state.bot.connected ? (
           <Badge tone={ok ? "ok" : "warn"}>
@@ -170,14 +166,7 @@ function SettingsCard({ state, t }: { state: State; t: AdminT }) {
   });
   const unit = test ? t("vip.settings.unitMin") : t("vip.settings.unitDays");
   return (
-    <Card
-      title={
-        <span className="flex items-center gap-1.5">
-          {t("vip.settings.title")}
-          <HelpTip article="vip" anchor="settings" />
-        </span>
-      }
-    >
+    <Card title={t("vip.settings.title")} help={<HelpTip article="vip" anchor="settings" />}>
       <form
         className="space-y-3"
         onSubmit={(e) => {
@@ -297,12 +286,8 @@ function TariffsCard({ state, t }: { state: State; t: AdminT }) {
     state.bot.username ? `https://t.me/${state.bot.username}?start=t_${tariff.id}` : null;
   return (
     <Card
-      title={
-        <span className="flex items-center gap-1.5">
-          {t("vip.tariffs.title")}
-          <HelpTip article="vip" anchor="tariffs" />
-        </span>
-      }
+      title={t("vip.tariffs.title")}
+      help={<HelpTip article="vip" anchor="tariffs" />}
       actions={
         <button
           type="button"
@@ -556,12 +541,8 @@ function SubscribersCard({ state, t, locale }: { state: State; t: AdminT; locale
   const pending = state.subscriptions.filter((s) => s.status === "pending_payment").length;
   return (
     <Card
-      title={
-        <span className="flex items-center gap-1.5">
-          {t("vip.subs.title")}
-          <HelpTip article="vip" anchor="subscribers" />
-        </span>
-      }
+      title={t("vip.subs.title")}
+      help={<HelpTip article="vip" anchor="subscribers" />}
       actions={
         pending > 0 ? (
           <Badge tone="warn">{t("vip.subs.pendingCount", { n: pending })}</Badge>

@@ -19,12 +19,8 @@ export function ReferralCard({ percent, bot }: { percent: string; bot: string | 
   });
   return (
     <Card
-      title={
-        <span className="flex items-center gap-1.5">
-          {t("discounts.referral.title")}
-          <HelpTip article="discounts" anchor="referral" />
-        </span>
-      }
+      title={t("discounts.referral.title")}
+      help={<HelpTip article="discounts" anchor="referral" />}
     >
       <p className="mb-3 text-sm text-muted">
         {t("discounts.referral.intro", { link: bot ? ` (t.me/${bot}?start=ref_…)` : "" })}

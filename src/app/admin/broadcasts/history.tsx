@@ -61,12 +61,8 @@ export function History({
   const comparisonShownFor = new Set<string>();
   return (
     <Card
-      title={
-        <span className="flex items-center gap-1.5">
-          {t("broadcasts.history.title")}
-          <HelpTip article="broadcasts" anchor="history" />
-        </span>
-      }
+      title={t("broadcasts.history.title")}
+      help={<HelpTip article="broadcasts" anchor="history" />}
     >
       {broadcasts.length === 0 ? (
         <Empty>{t("broadcasts.history.empty")}</Empty>

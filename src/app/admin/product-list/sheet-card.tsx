@@ -79,12 +79,8 @@ export function SheetCard({
   const connected = Boolean(info?.config);
   return (
     <Card
-      title={
-        <span className="flex items-center gap-1.5">
-          {t("sheet.title")}
-          <HelpTip article="products" anchor="sheet" />
-        </span>
-      }
+      title={t("sheet.title")}
+      help={<HelpTip article="products" anchor="sheet" />}
       className="mb-4"
     >
       <p className="mb-3 text-sm text-muted">{t("sheet.intro")}</p>

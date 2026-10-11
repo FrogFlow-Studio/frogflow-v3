@@ -47,12 +47,8 @@ export function ImportCard({ t, onDone }: { t: AdminT; onDone: () => Promise<voi
   });
   return (
     <Card
-      title={
-        <span className="flex items-center gap-1.5">
-          {t("products.import.title")}
-          <HelpTip article="products" anchor="import" />
-        </span>
-      }
+      title={t("products.import.title")}
+      help={<HelpTip article="products" anchor="import" />}
       className="mb-4"
     >
       <div className="grid gap-4 md:grid-cols-2">

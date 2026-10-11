@@ -65,12 +65,8 @@ export function CatchupCard({ data }: { data: Data }) {
 
   return (
     <Card
-      title={
-        <span className="flex items-center gap-1.5">
-          {t("instagram.catchup.title")}
-          <HelpTip article="instagram" anchor="catchup" />
-        </span>
-      }
+      title={t("instagram.catchup.title")}
+      help={<HelpTip article="instagram" anchor="catchup" />}
     >
       <p className="mb-3 text-sm text-muted">{t("instagram.catchup.intro")}</p>
       <div className="flex flex-wrap gap-2">

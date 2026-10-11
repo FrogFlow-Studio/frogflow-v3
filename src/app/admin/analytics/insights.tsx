@@ -22,12 +22,8 @@ export function SpeedCard({ rows }: { rows: SpeedRow[] }) {
   const share = autoShare(all);
   return (
     <Card
-      title={
-        <span className="flex items-center gap-1.5">
-          {t("analytics.speed.title")}
-          <HelpTip article="analytics" anchor="speed" />
-        </span>
-      }
+      title={t("analytics.speed.title")}
+      help={<HelpTip article="analytics" anchor="speed" />}
       className="lg:col-span-2"
     >
       {all.placed === 0 ? (
@@ -79,12 +75,8 @@ export function ExplainCard({ days }: { days: 7 | 30 | 90 }) {
   });
   return (
     <Card
-      title={
-        <span className="flex items-center gap-1.5">
-          {t("analytics.explain.title")}
-          <HelpTip article="analytics" anchor="explain" />
-        </span>
-      }
+      title={t("analytics.explain.title")}
+      help={<HelpTip article="analytics" anchor="explain" />}
       className="lg:col-span-2"
     >
       <div className="flex flex-wrap items-center gap-3">

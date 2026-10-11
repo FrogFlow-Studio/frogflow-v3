@@ -101,12 +101,8 @@ export function StoriesCard({ t }: { t: AdminT }) {
   const money = (n: number | null) => (n != null ? ` · ${n.toLocaleString("ru-RU")}` : "");
   return (
     <Card
-      title={
-        <span className="flex items-center gap-1.5">
-          {t("consultant.stories.title")}
-          <HelpTip article="consultant" anchor="stories" />
-        </span>
-      }
+      title={t("consultant.stories.title")}
+      help={<HelpTip article="consultant" anchor="stories" />}
     >
       <p className="mb-3 text-sm text-muted">{t("consultant.stories.intro")}</p>
       <form

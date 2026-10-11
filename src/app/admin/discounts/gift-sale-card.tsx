@@ -32,12 +32,8 @@ export function GiftSaleCard({ sale }: { sale: GiftSale }) {
   });
   return (
     <Card
-      title={
-        <span className="flex items-center gap-1.5">
-          {t("discounts.gift.sale.title")}
-          <HelpTip article="discounts" anchor="gift-sale" />
-        </span>
-      }
+      title={t("discounts.gift.sale.title")}
+      help={<HelpTip article="discounts" anchor="gift-sale" />}
     >
       <form
         className="space-y-3"

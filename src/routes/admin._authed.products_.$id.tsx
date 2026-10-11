@@ -375,12 +375,8 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
             )}
 
             <Card
-              title={
-                <span className="flex items-center gap-1.5">
-                  {t("product.card.kind")}
-                  <HelpTip article="products" anchor="kind" />
-                </span>
-              }
+              title={t("product.card.kind")}
+              help={<HelpTip article="products" anchor="kind" />}
             >
               <div className="flex flex-wrap gap-4">
                 <label className="flex items-center gap-2 text-sm">
@@ -423,12 +419,8 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
             )}
             {kind === "digital" && (
               <Card
-                title={
-                  <span className="flex items-center gap-1.5">
-                    {t("product.card.files")}
-                    <HelpTip article="products" anchor="files" />
-                  </span>
-                }
+                title={t("product.card.files")}
+                help={<HelpTip article="products" anchor="files" />}
                 actions={
                   materials.length === 0 && isCourse && shop.modules.courses ? (
                     <Badge>{t("product.filesOptional")}</Badge>
@@ -714,12 +706,8 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
               <SectionHeading id="photos">{t("product.tab.photos")}</SectionHeading>
             )}
             <Card
-              title={
-                <span className="flex items-center gap-1.5">
-                  {t("product.card.photos")}
-                  <HelpTip article="products" anchor="photos" />
-                </span>
-              }
+              title={t("product.card.photos")}
+              help={<HelpTip article="products" anchor="photos" />}
             >
               <div className="grid grid-cols-3 gap-2">
                 {images.map((img, i) => (
@@ -784,12 +772,8 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
               <SectionHeading id="variants">{t("product.tab.variants")}</SectionHeading>
             )}
             <Card
-              title={
-                <span className="flex items-center gap-1.5">
-                  {t(school ? "product.variantsCourse" : "product.card.variants")}
-                  <HelpTip article="products" anchor="variants" />
-                </span>
-              }
+              title={t(school ? "product.variantsCourse" : "product.card.variants")}
+              help={<HelpTip article="products" anchor="variants" />}
             >
               <div>
                 <p className="mb-2 text-sm text-muted">

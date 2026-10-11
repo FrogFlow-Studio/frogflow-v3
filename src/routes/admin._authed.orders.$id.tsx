@@ -259,14 +259,7 @@ function OrderPage() {
             editable={editable}
             onDone={setMsg}
           />
-          <Card
-            title={
-              <span className="flex items-center gap-1.5">
-                {t("order.items")}
-                <HelpTip article="orders" anchor="items" />
-              </span>
-            }
-          >
+          <Card title={t("order.items")} help={<HelpTip article="orders" anchor="items" />}>
             <table className="table">
               <tbody>
                 {(o.order_items ?? []).map((i) => (
@@ -345,14 +338,7 @@ function OrderPage() {
               onDone={setMsg}
             />
           )}
-          <Card
-            title={
-              <span className="flex items-center gap-1.5">
-                {t("order.history")}
-                <HelpTip article="orders" anchor="history" />
-              </span>
-            }
-          >
+          <Card title={t("order.history")} help={<HelpTip article="orders" anchor="history" />}>
             {events.length === 0 ? (
               <p className="text-sm text-muted">{t("order.noEvents")}</p>
             ) : (
@@ -396,14 +382,7 @@ function OrderPage() {
           </Card>
         </div>
         <div className="space-y-4">
-          <Card
-            title={
-              <span className="flex items-center gap-1.5">
-                {t("order.customer")}
-                <HelpTip article="orders" anchor="customer" />
-              </span>
-            }
-          >
+          <Card title={t("order.customer")} help={<HelpTip article="orders" anchor="customer" />}>
             <dl className="grid grid-cols-[96px_1fr] gap-y-1 text-sm">
               <dt className="text-muted">{t("order.name")}</dt>
               <dd className="min-w-0 break-words">
@@ -452,12 +431,8 @@ function OrderPage() {
             o.fulfillment_type !== "pickup" &&
             (o.status === "ready" || o.status === "delivered") && (
               <Card
-                title={
-                  <span className="flex items-center gap-1.5">
-                    {t("order.track.title")}
-                    <HelpTip article="orders" anchor="track" />
-                  </span>
-                }
+                title={t("order.track.title")}
+                help={<HelpTip article="orders" anchor="track" />}
               >
                 <form
                   className="space-y-2"
@@ -484,14 +459,7 @@ function OrderPage() {
               </Card>
             )}
           {blocks.note && (
-            <Card
-              title={
-                <span className="flex items-center gap-1.5">
-                  {t("order.note")}
-                  <HelpTip article="orders" anchor="note" />
-                </span>
-              }
-            >
+            <Card title={t("order.note")} help={<HelpTip article="orders" anchor="note" />}>
               <form
                 className="space-y-2"
                 onSubmit={(e) => {

@@ -42,14 +42,7 @@ export function RateCard({
   });
   const rate = data.rate;
   return (
-    <Card
-      title={
-        <span className="flex items-center gap-1.5">
-          {t("pricelist.rate.title")}
-          <HelpTip article="pricelist" anchor="rate" />
-        </span>
-      }
-    >
+    <Card title={t("pricelist.rate.title")} help={<HelpTip article="pricelist" anchor="rate" />}>
       {rate ? (
         <>
           <p className="text-lg font-semibold">

@@ -7,11 +7,14 @@ import { reportBrowserFailure } from "./report-client";
 
 export function Card({
   title,
+  help,
   children,
   actions,
   className = "",
 }: {
   title?: ReactNode;
+  /** Рядом с заголовком, но не внутри него: в админке — «?» со статьёй «Помощи». */
+  help?: ReactNode;
   children: ReactNode;
   actions?: ReactNode;
   className?: string;
@@ -20,7 +23,14 @@ export function Card({
     <section className={`card ${className}`}>
       {(title || actions) && (
         <header className="flex items-center justify-between gap-3 border-b border-line px-4 py-3">
-          <h2 className="text-sm font-semibold">{title}</h2>
+          {help ? (
+            <div className="flex items-center gap-1.5">
+              <h2 className="text-sm font-semibold">{title}</h2>
+              {help}
+            </div>
+          ) : (
+            <h2 className="text-sm font-semibold">{title}</h2>
+          )}
           {actions}
         </header>
       )}
@@ -41,19 +51,20 @@ export function Field({
   help?: ReactNode;
   children: ReactNode;
 }) {
-  return (
+  const field = (
     <label className="block">
-      {help ? (
-        <span className="label flex items-center gap-1.5">
-          {label}
-          {help}
-        </span>
-      ) : (
-        <span className="label">{label}</span>
-      )}
+      <span className="label">{label}</span>
       {children}
       {hint && <span className="mt-1 block text-xs text-muted">{hint}</span>}
     </label>
+  );
+  if (!help) return field;
+  // «?» — вне <label>: подпись поля остаётся его именем, клик по «?» не трогает поле.
+  return (
+    <div className="relative">
+      {field}
+      <span className="absolute top-0 right-0">{help}</span>
+    </div>
   );
 }
 

@@ -44,14 +44,7 @@ export function TasksCard({
     return t(KNOWN_REASONS.includes(r) ? key : "pricelist.tasks.reason.other");
   };
   return (
-    <Card
-      title={
-        <span className="flex items-center gap-1.5">
-          {t("pricelist.tasks.title")}
-          <HelpTip article="pricelist" anchor="tasks" />
-        </span>
-      }
-    >
+    <Card title={t("pricelist.tasks.title")} help={<HelpTip article="pricelist" anchor="tasks" />}>
       <p className="mb-3 text-sm text-muted">{t("pricelist.tasks.hint")}</p>
       {list && list.tasks.length === 0 && <p className="text-sm">{t("pricelist.tasks.empty")}</p>}
       {list && list.tasks.length > 0 && (

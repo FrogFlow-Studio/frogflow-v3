@@ -134,11 +134,23 @@ export function HelpPanelProvider({
  */
 export function HelpTip({ article, anchor }: { article: string; anchor?: string }) {
   const ctx = useContext(Ctx);
+  const ref = useRef<HTMLButtonElement>(null);
+  // Внутри подписи (<label>) или заголовка «?» не должен становиться частью их имени
+  // («Название Подсказка»): там он только для мыши, а статья доступна по «?» у заголовка страницы.
+  useEffect(() => {
+    const el = ref.current;
+    if (el?.parentElement?.closest("label,h1,h2,h3,h4,legend")) {
+      el.setAttribute("aria-hidden", "true");
+      el.tabIndex = -1;
+    }
+  }, []);
   if (!ctx) return null;
   return (
     <button
+      ref={ref}
       type="button"
-      className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-line text-xs text-muted hover:border-accent hover:text-accent"
+      // «?» — рисунком (::before), не текстом: подпись рядом остаётся своим текстом без «?».
+      className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-line text-xs text-muted before:content-['?'] hover:border-accent hover:text-accent"
       aria-label={ctx.tip}
       title={ctx.tip}
       data-help={anchor ? `${article}#${anchor}` : article}
@@ -148,9 +160,7 @@ export function HelpTip({ article, anchor }: { article: string; anchor?: string 
         e.stopPropagation();
         ctx.open({ slug: article, anchor });
       }}
-    >
-      ?
-    </button>
+    />
   );
 }
 

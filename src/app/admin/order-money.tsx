@@ -54,14 +54,7 @@ export function MoneyBlock({
     });
   const rowLabel = (r: MoneyRow) => t(`money.kind.${r.kind}` as Parameters<typeof t>[0]);
   return (
-    <Card
-      title={
-        <span className="flex items-center gap-1.5">
-          {t("money.title")}
-          <HelpTip article="orders" anchor="money" />
-        </span>
-      }
-    >
+    <Card title={t("money.title")} help={<HelpTip article="orders" anchor="money" />}>
       <dl className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1 text-sm">
         <dt className="text-muted">{t("money.total")}</dt>
         <dd className="text-right font-medium tabular-nums" data-testid="money-total">

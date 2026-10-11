@@ -40,12 +40,8 @@ export function PromoCard({ promos }: { promos: Promo[] }) {
   const cur = editing === "new" ? null : editing;
   return (
     <Card
-      title={
-        <span className="flex items-center gap-1.5">
-          {t("discounts.promo.title")}
-          <HelpTip article="discounts" anchor="promo" />
-        </span>
-      }
+      title={t("discounts.promo.title")}
+      help={<HelpTip article="discounts" anchor="promo" />}
       actions={
         <button className="btn-secondary text-xs" onClick={() => setEditing("new")}>
           {t("discounts.promo.new")}

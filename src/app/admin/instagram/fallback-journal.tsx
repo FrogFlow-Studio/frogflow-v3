@@ -9,12 +9,8 @@ export function FallbackJournal({ rows }: { rows: Data["fallbackSends"] }) {
   if (rows.length === 0) return null;
   return (
     <Card
-      title={
-        <span className="flex items-center gap-1.5">
-          {t("instagram.fallback.title")}
-          <HelpTip article="instagram" anchor="fallback-journal" />
-        </span>
-      }
+      title={t("instagram.fallback.title")}
+      help={<HelpTip article="instagram" anchor="fallback-journal" />}
     >
       <p className="mb-2 text-xs text-muted">{t("instagram.fallback.intro")}</p>
       <ul className="divide-y divide-line text-xs">

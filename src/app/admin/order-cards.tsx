@@ -55,14 +55,7 @@ export function ApprovalCard({
     await router.invalidate();
   });
   return (
-    <Card
-      title={
-        <span className="flex items-center gap-1.5">
-          {t("approval.title")}
-          <HelpTip article="orders" anchor="approval" />
-        </span>
-      }
-    >
+    <Card title={t("approval.title")} help={<HelpTip article="orders" anchor="approval" />}>
       {approval.status !== "none" && (
         <div className="mb-3 space-y-2">
           {photoUrl && (
@@ -156,14 +149,7 @@ export function RefundCard({
     await router.invalidate();
   });
   return (
-    <Card
-      title={
-        <span className="flex items-center gap-1.5">
-          {t("refund.title")}
-          <HelpTip article="orders" anchor="refund" />
-        </span>
-      }
-    >
+    <Card title={t("refund.title")} help={<HelpTip article="orders" anchor="refund" />}>
       {refunded > 0 && (
         <p className="mb-2 text-sm">
           {t("refund.done", { sum: formatMoney(refunded, o.currency) })}
@@ -271,14 +257,7 @@ export function PaymentCard({
   });
   const closed = o.status === "rejected" || o.status === "cancelled";
   return (
-    <Card
-      title={
-        <span className="flex items-center gap-1.5">
-          {t("physical.payTitle")}
-          <HelpTip article="orders" anchor="payment" />
-        </span>
-      }
-    >
+    <Card title={t("physical.payTitle")} help={<HelpTip article="orders" anchor="payment" />}>
       {balanceProofUrl && (
         <div className="mb-3 space-y-2 rounded-md bg-surface-2 p-3 text-sm">
           <p className="flex items-start gap-1.5">
@@ -527,14 +506,7 @@ export function CourierCard({
     await router.invalidate();
   });
   return (
-    <Card
-      title={
-        <span className="flex items-center gap-1.5">
-          {t("courier.title")}
-          <HelpTip article="orders" anchor="courier" />
-        </span>
-      }
-    >
+    <Card title={t("courier.title")} help={<HelpTip article="orders" anchor="courier" />}>
       {courier && (
         <div className="mb-3 space-y-1 text-sm">
           <Badge tone="neutral">

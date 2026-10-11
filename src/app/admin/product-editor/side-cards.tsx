@@ -39,14 +39,7 @@ export function UpsellCard({ productId, t }: { productId: string; t: AdminT }) {
   });
   if (!loaded) return null;
   return (
-    <Card
-      title={
-        <span className="flex items-center gap-1.5">
-          {t("product.card.upsell")}
-          <HelpTip article="products" anchor="upsell" />
-        </span>
-      }
-    >
+    <Card title={t("product.card.upsell")} help={<HelpTip article="products" anchor="upsell" />}>
       <p className="mb-2 text-xs text-muted">{t("product.upsellHint")}</p>
       <ul className="mb-2 space-y-1 text-sm">
         {picked.map((x) => (
@@ -191,14 +184,7 @@ export function PreviewCard({
   });
   if (!keys) return null;
   return (
-    <Card
-      title={
-        <span className="flex items-center gap-1.5">
-          {t("product.card.preview")}
-          <HelpTip article="products" anchor="files" />
-        </span>
-      }
-    >
+    <Card title={t("product.card.preview")} help={<HelpTip article="products" anchor="files" />}>
       <p className="mb-2 text-xs text-muted">{t("product.previewHint")}</p>
       <div className="flex flex-wrap gap-2">
         {keys.map((k) => (

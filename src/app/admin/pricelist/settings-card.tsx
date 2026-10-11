@@ -25,12 +25,8 @@ export function SettingsCard({ t, data, canEdit, onDone }: CardProps) {
   });
   return (
     <Card
-      title={
-        <span className="flex items-center gap-1.5">
-          {t("pricelist.settings.title")}
-          <HelpTip article="pricelist" anchor="settings" />
-        </span>
-      }
+      title={t("pricelist.settings.title")}
+      help={<HelpTip article="pricelist" anchor="settings" />}
     >
       <div className="space-y-3">
         <Field label={t("pricelist.settings.synonyms")} hint={t("pricelist.settings.synonymsHint")}>

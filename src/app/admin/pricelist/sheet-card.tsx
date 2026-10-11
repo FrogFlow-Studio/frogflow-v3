@@ -61,14 +61,7 @@ export function SheetCard({
   const status = data.sheet?.status ?? null;
   const p = preview?.result;
   return (
-    <Card
-      title={
-        <span className="flex items-center gap-1.5">
-          {t("pricelist.sheet.title")}
-          <HelpTip article="pricelist" anchor="sheet" />
-        </span>
-      }
-    >
+    <Card title={t("pricelist.sheet.title")} help={<HelpTip article="pricelist" anchor="sheet" />}>
       <p className="mb-3 text-sm text-muted">{t("pricelist.sheet.hint")}</p>
       {data.sheet && (
         <div className="mb-3 space-y-1 text-sm">

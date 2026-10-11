@@ -107,12 +107,8 @@ export function WorkspaceSettings() {
           {shop.modules.instagram && <CommentReplyCard />}
           {shop.modules.instagram && <StoriesCard t={t} />}
           <Card
-            title={
-              <span className="flex items-center gap-1.5">
-                {t("pricelist.usage.title")}
-                <HelpTip article="consultant" anchor="usage" />
-              </span>
-            }
+            title={t("pricelist.usage.title")}
+            help={<HelpTip article="consultant" anchor="usage" />}
           >
             <p className="text-sm">
               {pl.usage.messages

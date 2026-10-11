@@ -109,12 +109,8 @@ export function GiveawaysCard({ t, locale }: { t: AdminT; locale: string }) {
   }, [wantsIg, igAccount]);
   return (
     <Card
-      title={
-        <span className="flex items-center gap-1.5">
-          {t("giveaways.title")}
-          <HelpTip article="broadcasts" anchor="giveaways" />
-        </span>
-      }
+      title={t("giveaways.title")}
+      help={<HelpTip article="broadcasts" anchor="giveaways" />}
       actions={
         !form && (
           <button

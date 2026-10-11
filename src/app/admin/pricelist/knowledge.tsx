@@ -26,14 +26,7 @@ export function KnowledgeCard({ t, data, canEdit, onDone }: CardProps) {
     setVersion((v) => v + 1);
   }, [data.articles, staleArticles]);
   return (
-    <Card
-      title={
-        <span className="flex items-center gap-1.5">
-          {t("pricelist.kb.title")}
-          <HelpTip article="pricelist" anchor="knowledge" />
-        </span>
-      }
-    >
+    <Card title={t("pricelist.kb.title")} help={<HelpTip article="pricelist" anchor="knowledge" />}>
       <p className="mb-3 text-sm text-muted">{t("pricelist.kb.hint")}</p>
       {canEdit && (
         <KnowledgeImport

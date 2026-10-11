@@ -35,14 +35,7 @@ export function FileCard({
     else await onDone();
   });
   return (
-    <Card
-      title={
-        <span className="flex items-center gap-1.5">
-          {t("pricelist.file.title")}
-          <HelpTip article="pricelist" anchor="file" />
-        </span>
-      }
-    >
+    <Card title={t("pricelist.file.title")} help={<HelpTip article="pricelist" anchor="file" />}>
       <p className="mb-3 text-sm text-muted">{t("pricelist.file.hint")}</p>
       {data.meta ? (
         <p className="text-sm">

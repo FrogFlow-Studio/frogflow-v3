@@ -47,12 +47,8 @@ export function RulesCard({
   });
   return (
     <Card
-      title={
-        <span className="flex items-center gap-1.5">
-          {t("instagram.rules.title")}
-          <HelpTip article="instagram" anchor="rules" />
-        </span>
-      }
+      title={t("instagram.rules.title")}
+      help={<HelpTip article="instagram" anchor="rules" />}
       actions={
         <button className="btn-primary text-xs" onClick={onNew}>
           {t("instagram.rules.new")}

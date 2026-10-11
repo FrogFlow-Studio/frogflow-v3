@@ -31,14 +31,7 @@ export function TiersCard({ tiers }: { tiers: { name: string; from: number; perc
     await router.invalidate();
   });
   return (
-    <Card
-      title={
-        <span className="flex items-center gap-1.5">
-          {t("discounts.tiers.title")}
-          <HelpTip article="discounts" anchor="tiers" />
-        </span>
-      }
-    >
+    <Card title={t("discounts.tiers.title")} help={<HelpTip article="discounts" anchor="tiers" />}>
       <p className="mb-3 text-sm text-muted">{t("discounts.tiers.intro")}</p>
       {rows.length === 0 && <p className="mb-3 text-sm text-muted">{t("discounts.tiers.empty")}</p>}
       <form

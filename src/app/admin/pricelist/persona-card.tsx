@@ -23,12 +23,8 @@ export function PersonaCard({ t, data, canEdit, onDone }: CardProps) {
   const left = (k: keyof typeof persona) => lim[k] - persona[k].length;
   return (
     <Card
-      title={
-        <span className="flex items-center gap-1.5">
-          {t("pricelist.persona.title")}
-          <HelpTip article="pricelist" anchor="persona" />
-        </span>
-      }
+      title={t("pricelist.persona.title")}
+      help={<HelpTip article="pricelist" anchor="persona" />}
     >
       <p className="mb-3 text-sm text-muted">{t("pricelist.persona.hint")}</p>
       <div className="space-y-3">

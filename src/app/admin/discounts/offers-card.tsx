@@ -130,12 +130,8 @@ export function OffersCard() {
     new Date(iso).toLocaleString(loc, { dateStyle: "short", timeStyle: "short", timeZone: tz });
   return (
     <Card
-      title={
-        <span className="flex items-center gap-1.5">
-          {t("discounts.offers.title")}
-          <HelpTip article="discounts" anchor="offers" />
-        </span>
-      }
+      title={t("discounts.offers.title")}
+      help={<HelpTip article="discounts" anchor="offers" />}
       className="lg:col-span-2"
     >
       <p className="mb-3 text-sm text-muted">{t("discounts.offers.intro")}</p>

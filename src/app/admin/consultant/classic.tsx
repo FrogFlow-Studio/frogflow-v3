@@ -62,12 +62,8 @@ export function ConsultantClassic() {
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
         <div className="min-w-0 space-y-4">
           <Card
-            title={
-              <span className="flex items-center gap-1.5">
-                {t("consultant.profile.title")}
-                <HelpTip article="consultant" anchor="profile" />
-              </span>
-            }
+            title={t("consultant.profile.title")}
+            help={<HelpTip article="consultant" anchor="profile" />}
           >
             <div className="mb-4 flex items-center gap-3">
               <Switch checked={enabled} onChange={setEnabled} label={t("consultant.enable")} />
@@ -258,12 +254,8 @@ export function ConsultantClassic() {
                 </div>
               )}
               <Card
-                title={
-                  <span className="flex items-center gap-1.5">
-                    {t("consultant.knowledge.title")}
-                    <HelpTip article="consultant" anchor="knowledge" />
-                  </span>
-                }
+                title={t("consultant.knowledge.title")}
+                help={<HelpTip article="consultant" anchor="knowledge" />}
                 actions={
                   <button
                     type="button"
@@ -334,12 +326,8 @@ export function ConsultantClassic() {
           <TestChat configured={data.configured} t={t} />
           {shop.modules.instagram && <StoriesCard t={t} />}
           <Card
-            title={
-              <span className="flex items-center gap-1.5">
-                {t("consultant.usage.title")}
-                <HelpTip article="consultant" anchor="usage" />
-              </span>
-            }
+            title={t("consultant.usage.title")}
+            help={<HelpTip article="consultant" anchor="usage" />}
           >
             <dl className="grid grid-cols-2 gap-2 text-sm">
               <dt className="text-muted">{t("consultant.usage.count")}</dt>

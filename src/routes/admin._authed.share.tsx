@@ -99,12 +99,8 @@ function SharePage() {
           </div>
         </Card>
         <Card
-          title={
-            <span className="flex items-center gap-1.5">
-              {t("share.byChannel")}
-              <HelpTip article="share" anchor="channels" />
-            </span>
-          }
+          title={t("share.byChannel")}
+          help={<HelpTip article="share" anchor="channels" />}
           className="lg:col-span-2"
         >
           <p className="mb-3 text-sm text-muted">{t("share.byChannelHint")}</p>

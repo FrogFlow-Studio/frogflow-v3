@@ -56,12 +56,8 @@ export function TemplatesCard({ wa }: { wa: WhatsApp }) {
 
   return (
     <Card
-      title={
-        <span className="flex items-center gap-1.5">
-          {t("broadcasts.templates.title")}
-          <HelpTip article="broadcasts" anchor="templates" />
-        </span>
-      }
+      title={t("broadcasts.templates.title")}
+      help={<HelpTip article="broadcasts" anchor="templates" />}
       actions={
         wa.accounts.length > 0 ? (
           <div className="flex gap-2">
@@ -258,12 +254,8 @@ export function ExcludedPhonesCard({ phones }: { phones: string }) {
   });
   return (
     <Card
-      title={
-        <span className="flex items-center gap-1.5">
-          {t("broadcasts.excluded.title")}
-          <HelpTip article="broadcasts" anchor="templates" />
-        </span>
-      }
+      title={t("broadcasts.excluded.title")}
+      help={<HelpTip article="broadcasts" anchor="templates" />}
     >
       <p className="mb-3 text-sm text-muted">{t("broadcasts.excluded.intro")}</p>
       <form

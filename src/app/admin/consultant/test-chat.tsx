@@ -25,14 +25,7 @@ export function TestChat({ configured, t }: { configured: boolean; t: AdminT }) 
     setQ("");
   });
   return (
-    <Card
-      title={
-        <span className="flex items-center gap-1.5">
-          {t("consultant.test.title")}
-          <HelpTip article="consultant" anchor="test" />
-        </span>
-      }
-    >
+    <Card title={t("consultant.test.title")} help={<HelpTip article="consultant" anchor="test" />}>
       <p className="mb-3 text-sm text-muted">{t("consultant.test.intro")}</p>
       <div className="mb-3 max-h-80 space-y-3 overflow-auto">
         {log.map((m, i) => (

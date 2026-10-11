@@ -54,14 +54,7 @@ export function MediaCard({
     await onDone();
   });
   return (
-    <Card
-      title={
-        <span className="flex items-center gap-1.5">
-          {t("pricelist.media.title")}
-          <HelpTip article="pricelist" anchor="media" />
-        </span>
-      }
-    >
+    <Card title={t("pricelist.media.title")} help={<HelpTip article="pricelist" anchor="media" />}>
       <p className="mb-3 text-sm text-muted">{t("pricelist.media.hint")}</p>
       {data.media.length === 0 ? (
         <p className="text-sm">{t("pricelist.media.empty")}</p>
