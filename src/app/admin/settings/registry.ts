@@ -344,6 +344,7 @@ export const SETTINGS_REGISTRY: readonly SettingsEntry[] = [
     to: "/admin/consultant",
     keys: [
       "consultant_enabled",
+      "consultant_comment_reply",
       "consultant_profile",
       "consultant_knowledge",
       "consultant_usage",

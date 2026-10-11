@@ -23,9 +23,16 @@ export const consultantFn = createServerFn({ method: "GET" }).handler(async () =
   const { pricelistMode } = await import("@/core/consultant/pricelist/mode");
   const { KNOWLEDGE_KEY } = await import("@/core/consultant/pricelist/knowledge");
   const { CATALOG_META_KEY } = await import("@/core/consultant/pricelist/catalog.server");
+  const { COMMENT_REPLY_KEY, commentReplyOn } = await import("@/core/consultant/comment-reply");
   const [c, s] = await Promise.all([
     loadConsultant(ctx),
-    getSettings(ctx, [KEYS.usage, KEYS.lastError, KNOWLEDGE_KEY, CATALOG_META_KEY]),
+    getSettings(ctx, [
+      KEYS.usage,
+      KEYS.lastError,
+      KNOWLEDGE_KEY,
+      CATALOG_META_KEY,
+      COMMENT_REPLY_KEY,
+    ]),
   ]);
   let usage = { count: 0, inputTokens: 0, outputTokens: 0, usd: 0 };
   try {
@@ -40,6 +47,7 @@ export const consultantFn = createServerFn({ method: "GET" }).handler(async () =
     usage,
     lastError: s[KEYS.lastError] ?? "",
     pauseHours: pauseHours(ctx.tenant),
+    commentReply: commentReplyOn(s[COMMENT_REPLY_KEY], ctx.tenant.id),
     pricelist: {
       on: pricelistMode(ctx.tenant),
       articles: countArticles(s[KNOWLEDGE_KEY]),

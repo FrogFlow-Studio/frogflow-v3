@@ -35,6 +35,7 @@ export const SETTING_KEYS = [
   "chat_phone_reply",
   "receipt_ocr_usage",
   "consultant_enabled",
+  "consultant_comment_reply",
   "consultant_profile",
   "consultant_knowledge",
   "consultant_usage",

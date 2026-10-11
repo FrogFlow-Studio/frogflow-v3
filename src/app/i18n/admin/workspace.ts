@@ -157,6 +157,10 @@ export const ru = {
   "ws.settings.title": "Настройки бота",
   "ws.settings.subtitle": "Как консультант себя ведёт. Изменения действуют после сохранения.",
   "ws.settings.work": "Работа",
+  "ws.settings.commentReply.title": "Ответ на комментарии в Instagram",
+  "ws.settings.commentReply.intro":
+    "На комментарий под публикацией бот один раз отвечает в Direct: находит товар по комментарию и подписи публикации и называет цену из прайса. Если товар или цену не найти уверенно — пишет «Здравствуйте! Подскажу по цене, напишите мне здесь, что интересует». Под комментарием публично ничего не пишет. Если на комментарий срабатывает ваше правило автоответа, отвечает правило.",
+  "ws.settings.commentReply.label": "Отвечать на комментарии ценой",
   "ws.test.title": "Проверить консультанта",
   "ws.test.intro":
     "Переписка как у покупателя, с историей. Покупателям ничего не уходит; расход ИИ — как у обычного ответа.",
@@ -323,6 +327,10 @@ export const kk: SectionDict<typeof ru> = {
   "ws.settings.title": "Бот баптаулары",
   "ws.settings.subtitle": "Кеңесші өзін қалай ұстайды. Өзгерістер сақтағаннан кейін күшіне енеді.",
   "ws.settings.work": "Жұмыс",
+  "ws.settings.commentReply.title": "Instagram-дағы пікірлерге жауап",
+  "ws.settings.commentReply.intro":
+    "Жарияланымдағы пікірге бот Direct-ке бір рет жауап береді: пікір мен жарияланым жазбасы бойынша тауарды тауып, прайстағы бағасын айтады. Тауар не баға сенімді табылмаса — «Сәлеметсіз бе! Бағасын айтып беремін, осында не қызықтыратынын жазыңыз» деп жазады. Пікір астына жария түрде ештеңе жазбайды. Пікірге сіздің автожауап ережеңіз іске қосылса, ереже жауап береді.",
+  "ws.settings.commentReply.label": "Пікірлерге бағамен жауап беру",
   "ws.test.title": "Кеңесшіні тексеру",
   "ws.test.intro":
     "Сатып алушыдағыдай хат алмасу, тарихымен. Сатып алушыларға ештеңе кетпейді; ЖИ шығыны — қарапайым жауаптағыдай.",
@@ -488,6 +496,10 @@ export const en: SectionDict<typeof ru> = {
   "ws.settings.title": "Bot settings",
   "ws.settings.subtitle": "How the consultant behaves. Changes apply after saving.",
   "ws.settings.work": "Work",
+  "ws.settings.commentReply.title": "Replies to Instagram comments",
+  "ws.settings.commentReply.intro":
+    "The bot replies once in Direct to a comment under a post: it finds the product from the comment and the post caption and quotes the price from the price list. If it cannot find the product or price with confidence, it writes «Hello! I'll help with the price, just write here what you're interested in». It never posts publicly under the comment. If your auto-reply rule fires on the comment, the rule replies instead.",
+  "ws.settings.commentReply.label": "Reply to comments with the price",
   "ws.test.title": "Test the consultant",
   "ws.test.intro":
     "A conversation like a customer's, with history. Nothing goes to customers; AI spend is the same as for a normal reply.",
@@ -656,6 +668,10 @@ export const uz: SectionDict<typeof ru> = {
   "ws.settings.subtitle":
     "Maslahatchi o‘zini qanday tutadi. O‘zgarishlar saqlangandan keyin kuchga kiradi.",
   "ws.settings.work": "Ish",
+  "ws.settings.commentReply.title": "Instagram izohlariga javob",
+  "ws.settings.commentReply.intro":
+    "Post ostidagi izohga bot Direct’da bir marta javob beradi: izoh va post matni bo‘yicha mahsulotni topib, narxlar ro‘yxatidagi narxni aytadi. Mahsulot yoki narx aniq topilmasa — «Assalomu alaykum! Narxini aytib beraman, nima qiziqtirayotganini shu yerga yozing» deb yozadi. Izoh ostiga ochiq hech narsa yozmaydi. Izohga sizning avtojavob qoidangiz ishlasa, qoida javob beradi.",
+  "ws.settings.commentReply.label": "Izohlarga narx bilan javob berish",
   "ws.test.title": "Maslahatchini tekshirish",
   "ws.test.intro":
     "Xaridordagidek yozishma, tarixi bilan. Xaridorlarga hech narsa ketmaydi; SI xarajati — oddiy javobdagidek.",
