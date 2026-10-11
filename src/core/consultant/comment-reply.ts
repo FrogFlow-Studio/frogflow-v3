@@ -42,7 +42,7 @@ export function commentNote(): string {
 }
 
 /** В ответе есть сумма в тенге или рублях — значит, консультант нашёл товар и цену. */
-const PRICE_RE = /\d[\d\s .,]*\s?(₸|тг(?![а-яё])|тенге|₽|руб)/i;
+const PRICE_RE = /\d[\d\s\u00a0.,]*\s?(₸|тг(?![а-яё])|тенге|₽|руб)/i;
 const PHOTO_RE = /фото|сурет|photo|rasm/i;
 
 export type CommentAnswerInput = {
