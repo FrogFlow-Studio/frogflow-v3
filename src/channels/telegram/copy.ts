@@ -293,6 +293,8 @@ export type Msg = {
   emailAskOptional: string;
   emailSkipBtn: string;
   emailHint: string;
+  /** Ответ на фото или скриншот вместо адреса почты (AATeach 11.10). */
+  emailTextOnly: string;
   emailSaved: (email: string) => string;
   emailSaveFailed: string;
   proofReceivedEmail: (no: number, email: string) => string;
@@ -450,17 +452,19 @@ const ru: Msg = {
     `❌ Чек на остаток по заказу #${no} продавец не принял. Оплатите остаток ещё раз или пришлите другой чек; вопросы — продавцу.`,
   emailSaveFailed: "Не получилось сохранить почту. Пришлите адрес ещё раз, пожалуйста.",
   emailAsk:
-    "На какую почту прислать материалы после оплаты? Файлы придут и сюда, и письмом.\n\nПроверьте адрес: без лишних пробелов и ошибок, например anna@mail.ru",
+    "На какую почту прислать материалы после оплаты? Файлы придут и сюда, и письмом.\n\nПроверьте адрес: без лишних пробелов и ошибок, например anna@mail.ru\n\n‼️ Почту пишите только текстом: фото и скриншоты с адресом не принимаются.",
   emailAskOptional:
     "Прислать материалы ещё и на почту? Напишите адрес, например anna@mail.ru, или нажмите «Без почты».",
   emailSkipBtn: "Без почты",
   emailHint:
     "Это не похоже на адрес почты. Напишите его целиком, например anna@mail.ru\n\nЧтобы выйти, напишите «отмена».",
+  emailTextOnly:
+    "‼️ Почту нужно написать текстом, например anna@mail.ru. Фото и скриншоты с адресом не принимаются.",
   emailSaved: (email) => `Записал: ${email}. Материалы придут на этот адрес после проверки оплаты.`,
   proofReceivedEmail: (no, email) =>
     `✅ Чек по заказу #${no} получен. После проверки пришлём материалы сюда и на ${email}.`,
   proofReceivedNeedEmail: (no) =>
-    `✅ Чек по заказу #${no} получен.\n\nНа какую почту прислать материалы? Файлы придут и сюда, и письмом. Проверьте адрес перед отправкой.`,
+    `✅ Чек по заказу #${no} получен.\n\nНа какую почту прислать материалы? Файлы придут и сюда, и письмом. Проверьте адрес перед отправкой.\n\n‼️ Почту пишите только текстом: фото и скриншоты с адресом не принимаются.`,
   notReceiptLike: (no) =>
     `⚠️ Это не похоже на чек оплаты.\n\nПришлите, пожалуйста, скриншот перевода / чека с суммой заказа #${no}.`,
   receiptPaymentFailed: (no) =>
@@ -949,18 +953,20 @@ const kk: Msg = {
   payReminderLink: (url) => `Төлеуге және чекті жіберуге тапсырыс бетінде болады:\n${url}`,
   emailSaveFailed: "Поштаны сақтау мүмкін болмады. Мекенжайды қайта жіберіңізші.",
   emailAsk:
-    "Төлемнен кейін материалдарды қай поштаға жіберейік? Файлдар осында да, хатпен де келеді.\n\nМекенжайды тексеріңіз: артық бос орынсыз және қатесіз, мысалы anna@mail.ru",
+    "Төлемнен кейін материалдарды қай поштаға жіберейік? Файлдар осында да, хатпен де келеді.\n\nМекенжайды тексеріңіз: артық бос орынсыз және қатесіз, мысалы anna@mail.ru\n\n‼️ Поштаны тек мәтінмен жазыңыз: мекенжайы бар фото мен скриншот қабылданбайды.",
   emailAskOptional:
     "Материалдарды поштаға да жіберейік пе? Мекенжайды жазыңыз, мысалы anna@mail.ru, немесе «Поштасыз» түймесін басыңыз.",
   emailSkipBtn: "Поштасыз",
   emailHint:
     "Бұл пошта мекенжайына ұқсамайды. Толық жазыңыз, мысалы anna@mail.ru\n\nШығу үшін «болдырмау» деп жазыңыз.",
+  emailTextOnly:
+    "‼️ Поштаны мәтінмен жазу керек, мысалы anna@mail.ru. Мекенжайы бар фото мен скриншот қабылданбайды.",
   emailSaved: (email) =>
     `Жаздым: ${email}. Төлем тексерілген соң материалдар осы мекенжайға келеді.`,
   proofReceivedEmail: (no, email) =>
     `✅ #${no} тапсырыстың чегі алынды. Тексерістен кейін материалдарды осында және ${email} мекенжайына жібереміз.`,
   proofReceivedNeedEmail: (no) =>
-    `✅ #${no} тапсырыстың чегі алынды.\n\nМатериалдарды қай поштаға жіберейік? Файлдар осында да, хатпен де келеді. Жібермес бұрын мекенжайды тексеріңіз.`,
+    `✅ #${no} тапсырыстың чегі алынды.\n\nМатериалдарды қай поштаға жіберейік? Файлдар осында да, хатпен де келеді. Жібермес бұрын мекенжайды тексеріңіз.\n\n‼️ Поштаны тек мәтінмен жазыңыз: мекенжайы бар фото мен скриншот қабылданбайды.`,
   waitlistBtn: "🔔 Түскенде хабарлау",
   upsellHeader: "✨ Мұнымен бірге жиі алады:",
   quizBtn: "🧩 Тауар таңдау",
@@ -1253,18 +1259,20 @@ const en: Msg = {
   payReminderLink: (url) => `You can pay and send the receipt on the order page:\n${url}`,
   emailSaveFailed: "Couldn't save the email. Please send the address again.",
   emailAsk:
-    "Which email should we send the materials to after payment? Files will come here and by email.\n\nPlease check the address: no extra spaces or typos, e.g. anna@mail.ru",
+    "Which email should we send the materials to after payment? Files will come here and by email.\n\nPlease check the address: no extra spaces or typos, e.g. anna@mail.ru\n\n‼️ Please type your email as text: photos and screenshots of the address are not accepted.",
   emailAskOptional:
     "Send the materials to your email as well? Type the address, e.g. anna@mail.ru, or tap “No email”.",
   emailSkipBtn: "No email",
   emailHint:
     "That doesn't look like an email address. Please type it in full, e.g. anna@mail.ru\n\nTo exit, type “cancel”.",
+  emailTextOnly:
+    "‼️ Please type your email as text, e.g. anna@mail.ru. Photos and screenshots of the address are not accepted.",
   emailSaved: (email) =>
     `Saved: ${email}. The materials will go to this address once payment is checked.`,
   proofReceivedEmail: (no, email) =>
     `✅ Receipt for order #${no} received. After checking we'll send the materials here and to ${email}.`,
   proofReceivedNeedEmail: (no) =>
-    `✅ Receipt for order #${no} received.\n\nWhich email should we send the materials to? Files will come here and by email. Please check the address before sending.`,
+    `✅ Receipt for order #${no} received.\n\nWhich email should we send the materials to? Files will come here and by email. Please check the address before sending.\n\n‼️ Please type your email as text: photos and screenshots of the address are not accepted.`,
   waitlistBtn: "🔔 Notify me when available",
   upsellHeader: "✨ Often bought together:",
   quizBtn: "🧩 Find a product",
@@ -1609,18 +1617,20 @@ const uz: Msg = {
   payReminderLink: (url) => `To‘lash va chekni yuborish buyurtma sahifasida:\n${url}`,
   emailSaveFailed: "Pochtani saqlab bo‘lmadi. Iltimos, manzilni qayta yuboring.",
   emailAsk:
-    "To‘lovdan keyin materiallarni qaysi pochtaga yuboraylik? Fayllar shu yerga ham, xat orqali ham keladi.\n\nManzilni tekshiring: ortiqcha bo‘shliq va xatosiz, masalan anna@mail.ru",
+    "To‘lovdan keyin materiallarni qaysi pochtaga yuboraylik? Fayllar shu yerga ham, xat orqali ham keladi.\n\nManzilni tekshiring: ortiqcha bo‘shliq va xatosiz, masalan anna@mail.ru\n\n‼️ Pochtani faqat matn bilan yozing: manzil yozilgan rasm va skrinshotlar qabul qilinmaydi.",
   emailAskOptional:
     "Materiallarni pochtaga ham yuboraylikmi? Manzilni yozing, masalan anna@mail.ru, yoki «Pochtasiz» tugmasini bosing.",
   emailSkipBtn: "Pochtasiz",
   emailHint:
     "Bu pochta manziliga o‘xshamaydi. To‘liq yozing, masalan anna@mail.ru\n\nChiqish uchun «bekor» deb yozing.",
+  emailTextOnly:
+    "‼️ Pochtani matn bilan yozish kerak, masalan anna@mail.ru. Manzil yozilgan rasm va skrinshotlar qabul qilinmaydi.",
   emailSaved: (email) =>
     `Yozib oldim: ${email}. To‘lov tekshirilgach materiallar shu manzilga keladi.`,
   proofReceivedEmail: (no, email) =>
     `✅ #${no} buyurtma cheki qabul qilindi. Tekshirgach materiallarni shu yerga va ${email} manziliga yuboramiz.`,
   proofReceivedNeedEmail: (no) =>
-    `✅ #${no} buyurtma cheki qabul qilindi.\n\nMateriallarni qaysi pochtaga yuboraylik? Fayllar shu yerga ham, xat orqali ham keladi. Yuborishdan oldin manzilni tekshiring.`,
+    `✅ #${no} buyurtma cheki qabul qilindi.\n\nMateriallarni qaysi pochtaga yuboraylik? Fayllar shu yerga ham, xat orqali ham keladi. Yuborishdan oldin manzilni tekshiring.\n\n‼️ Pochtani faqat matn bilan yozing: manzil yozilgan rasm va skrinshotlar qabul qilinmaydi.`,
   waitlistBtn: "🔔 Kelganda xabar berish",
   upsellHeader: "✨ Bu bilan ko‘pincha olishadi:",
   quizBtn: "🧩 Mahsulot tanlash",

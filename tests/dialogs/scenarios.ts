@@ -540,6 +540,39 @@ export const SCENARIOS: Scenario[] = [
       },
     ],
   },
+  {
+    id: "email-as-photo-ig-ru",
+    title:
+      "на вопрос о почте покупатель шлёт скриншот с адресом: бот один раз просит написать почту текстом и ждёт адрес дальше",
+    origin:
+      "Анастасия (AATeach) 11.10 20:32: «Фотографии, скриншоты и изображения с адресом электронной почты НЕ ПРИНИМАЮТСЯ»; kalieva6631 #1417 прислала скриншот почты, бот промолчал",
+    channel: "instagram",
+    locale: "ru",
+    products: PRODUCTS,
+    mail: true,
+    receipts: true,
+    state: { mode: "awaiting_proof", pending_order_id: 82 },
+    arrange: paidOrder({ status: "awaiting_payment" }),
+    steps: [
+      {
+        say: { photo: true },
+        expect: {
+          says: [(c) => c.proofReceivedNeedEmail(82)],
+          state: { mode: "awaiting_order_email" },
+        },
+      },
+      {
+        say: { photo: true },
+        expect: {
+          count: 1,
+          says: [(c) => c.emailTextOnly],
+          sellerNotices: 0,
+          state: { mode: "awaiting_order_email" },
+        },
+      },
+      { say: { photo: true }, expect: { silent: true, sellerNotices: 0 } },
+    ],
+  },
   // ───── Телефон не коды товаров (Б2, скрин Якова 04.10) ─────
   ...everyLocale(
     () => ({

@@ -291,6 +291,16 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
       await receiveProof(s, url, orderId, again);
       return "handled";
     }
+    // Скриншот с адресом на вопрос о почте: один раз просим написать текстом и
+    // ждём адрес дальше, а не молчим (AATeach 11.10, kalieva6631 #1417).
+    if (
+      !text &&
+      (mode === "awaiting_email" || mode === "awaiting_order_email") &&
+      nonTextKind(msg.attachments) === "photo"
+    ) {
+      if (await claimNonTextReply(s)) await reply(s, s.m.emailTextOnly, { force: true });
+      return "handled";
+    }
     // Не чек (голосовое, видео, стикер) на шаге оплаты — продавцу, а не «пришлите
     // чек»: это чаще вопрос (AATeach 11.10).
     if (orderId && !text) return "question";
