@@ -119,6 +119,19 @@ const ASK_CONTACT_RESULT = {
   note: "Заказ ещё не передан. Спросите одним сообщением телефон и как забрать: город доставки или самовывоз из бутика. Ответит — запомните (remember_customer) и передайте. Менеджера в этом ответе не обещайте.",
 };
 
+/**
+ * Заказ в Instagram и WhatsApp передаётся сразу, без телефона: сам диалог —
+ * связь с покупателем (ссылка в задаче). BOVI 11.10: Musi (fokkiuo77)
+ * ответила «Да» на «Оформляем?», бот попросил телефон, она замолчала — и у
+ * Нурдина не было ни задачи, ни уведомления. Телефон бот просит в том же
+ * ответе; пришлёт позже — допишется в задачу (addContactToOpenTask).
+ */
+const PURCHASE_HANDED_NO_PHONE_NOTE =
+  "Заказ передан менеджеру, она напишет покупателю здесь, в этом чате. Одним сообщением скажите это и попросите телефон и как забрать: город и адрес доставки или самовывоз из бутика. Способ оплаты не называйте, если его нет в базе знаний: его пришлёт менеджер.";
+
+/** Каналы, где диалог сам — связь с покупателем: заказ не ждёт телефона. */
+const CHANNELS_WITH_DIALOG_LINK = new Set(["instagram", "whatsapp"]);
+
 /** Статья базы подкладывается к вопросу при таком совпадении и не длиннее этого (v1). */
 const KNOWLEDGE_ATTACH_MIN_SCORE = 3;
 const KNOWLEDGE_ATTACH_MAX_CHARS = 8000;
@@ -252,6 +265,8 @@ export type PricelistInput = {
   onToolCall?: (name: string, input: Record<string, unknown>) => void;
   /** Подмена скачивания картинок в тестах. */
   fetchImage?: (url: string) => Promise<V2Image | null>;
+  /** Канал диалога (telegram, instagram, whatsapp): в Instagram и WhatsApp заказ не ждёт телефона. */
+  channel?: string;
 };
 
 export type PricelistHandoff = { reason: V2HandoffReason; summary: string; phone?: string };
@@ -638,7 +653,15 @@ async function decide(data: PricelistData, input: PricelistInput): Promise<Price
           phoneIn(text) ||
           undefined;
         const askedBefore = state.contact_asked ?? state.v2_contact_asked;
-        if (reason === "purchase" && !phone && !profile?.phone && !askedBefore && !contactAsked) {
+        const dialogIsContact = CHANNELS_WITH_DIALOG_LINK.has(input.channel ?? "");
+        if (
+          reason === "purchase" &&
+          !dialogIsContact &&
+          !phone &&
+          !profile?.phone &&
+          !askedBefore &&
+          !contactAsked
+        ) {
           contactAsked = true;
           toolsUsed.push("ask_contact");
           result = ASK_CONTACT_RESULT;
@@ -648,12 +671,16 @@ async function decide(data: PricelistData, input: PricelistInput): Promise<Price
             summary: typeof args.summary === "string" ? args.summary.trim() : "",
             phone,
           };
+          const noPhone = reason === "purchase" && !phone && !profile?.phone;
+          if (noPhone && dialogIsContact) toolsUsed.push("handoff_without_phone");
           result = {
             ok: true,
             note:
               reason === "wholesale"
                 ? "Передано менеджеру с пометкой «опт». Напишите покупателю одной фразой, что условия пришлёт менеджер; если он не сказал, что и сколько нужно, — попросите написать."
-                : "Менеджер подключится. Напишите покупателю одну короткую фразу об этом.",
+                : noPhone && dialogIsContact
+                  ? PURCHASE_HANDED_NO_PHONE_NOTE
+                  : "Менеджер подключится. Напишите покупателю одну короткую фразу об этом.",
           };
         }
       } else {

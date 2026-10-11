@@ -74,6 +74,7 @@ type Opts = {
   rate?: PricelistData["rate"];
   hours?: PricelistData["hours"];
   persona?: PricelistData["persona"];
+  channel?: string;
 };
 
 function dataOf(o: Opts): PricelistData {
@@ -106,6 +107,7 @@ async function decide(text: string, state: PricelistState = {}, o: Opts = {}) {
       : undefined,
     fetchImage: o.fetchImage ?? (async () => null),
     onToolCall: o.onToolCall,
+    channel: o.channel,
     call: async (req) => {
       requests.push(JSON.parse(JSON.stringify(req)) as Sent);
       const next = responses.shift();
@@ -430,6 +432,60 @@ describe("консультант по прайсу", () => {
     expect(turn.reply).toContain("телефон");
     expect(turn.patch).toMatchObject({ contact_asked: true });
     expect(turn.tools).toContain("ask_contact");
+  });
+
+  it("заказ без телефона в Instagram — передача сразу, телефон бот просит в том же ответе (BOVI 11.10, Musi)", async () => {
+    responses.push(
+      reply([
+        {
+          type: "tool_use",
+          id: "t1",
+          name: "handoff_to_manager",
+          input: { reason: "purchase", summary: "Москва, Uchino 50х100, оплата в рублях" },
+        },
+      ]),
+      reply([
+        {
+          type: "text",
+          text: "Способ оплаты пришлёт менеджер в этом чате. Напишите, пожалуйста, телефон и адрес доставки.",
+        },
+      ]),
+    );
+    const { turn } = await decide("Да, как можно оплатить в рублях?", {}, { channel: "instagram" });
+    expect(turn.handoff?.reason).toBe("purchase");
+    expect(turn.handoff?.kind).toBe("lead");
+    expect(turn.tools).toContain("handoff_without_phone");
+    expect(turn.tools).not.toContain("ask_contact");
+    // Модель знает, что заказ уже передан, и просит телефон, не обещая способ оплаты.
+    expect(lastMessage(1)).toContain("Заказ передан менеджеру");
+    expect(lastMessage(1)).toContain("Способ оплаты не называйте");
+    expect(turn.reply).toContain("телефон");
+  });
+
+  it("в Telegram заказ без телефона по-прежнему сначала спрашивает телефон", async () => {
+    responses.push(
+      reply([
+        {
+          type: "tool_use",
+          id: "t1",
+          name: "handoff_to_manager",
+          input: { reason: "purchase", summary: "Uchino 50х100" },
+        },
+      ]),
+      reply([{ type: "text", text: "Напишите, пожалуйста, телефон и город доставки." }]),
+    );
+    const { turn } = await decide("Беру", {}, { channel: "telegram" });
+    expect(turn.handoff).toBeNull();
+    expect(turn.tools).toContain("ask_contact");
+  });
+
+  it("подсказка: способ оплаты — только из базы знаний, иначе «пришлёт менеджер» (BOVI 11.10)", async () => {
+    responses.push(reply([{ type: "text", text: "Здравствуйте. Что подсказать?" }]));
+    await decide("Здравствуйте");
+    const system = requests[0]!.system[0]!.text;
+    expect(system).toContain("в этой подсказке способов оплаты нет");
+    expect(system).toContain("Способ оплаты пришлёт менеджер в этом чате");
+    expect(system).toContain("Передавайте сразу, не дожидаясь телефона");
   });
 
   it("телефон в сообщении — передача сразу, номер в контакты задачи", async () => {

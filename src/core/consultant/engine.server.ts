@@ -1067,6 +1067,7 @@ async function answerConsultant(
         story: opts.story,
         imageUrls: opts.imageUrls,
         images: opts.images,
+        channel: opts.platform,
       });
       toolsUsed.push(...out.tools);
       return await finish(out);
