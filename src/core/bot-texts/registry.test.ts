@@ -4,6 +4,8 @@ import {
   BOT_TEXT_KEYS,
   BOT_TEXT_MAX,
   BOT_TEXT_VARS,
+  DIRECT_KEYS,
+  MSG_PROPS,
   STANDARD,
   WIRED,
   cleanBotText,
@@ -33,13 +35,17 @@ describe("стандартные тексты на четырёх языках",
         expect(unknownVars(key, STANDARD[key]![l]), `${key}/${l}`).toEqual([]);
   });
 
-  it("каждый ключ описан и в WIRED подключён к Telegram", () => {
-    expect([...WIRED.telegram]).toEqual([...BOT_TEXT_KEYS]);
-    for (const key of BOT_TEXT_KEYS) expect(BOT_TEXT_VARS[key]).toBeDefined();
+  it("каждый ключ описан и подключён хотя бы к одному каналу", () => {
+    expect([...WIRED.telegram]).toEqual(["welcome", "off_hours", "order_thanks", "not_understood"]);
+    for (const key of BOT_TEXT_KEYS) {
+      expect(BOT_TEXT_VARS[key]).toBeDefined();
+      expect(WIRED.telegram.includes(key) || WIRED.instagram.includes(key), key).toBe(true);
+    }
   });
 
-  it("Instagram и WhatsApp пока не подключены: сохранять нечего", () => {
-    expect(WIRED.instagram).toEqual([]);
+  it("Instagram — шаги покупки в Direct, у каждого есть фраза словаря; WhatsApp пока не подключён", () => {
+    expect([...WIRED.instagram]).toEqual([...DIRECT_KEYS]);
+    for (const key of DIRECT_KEYS) expect(MSG_PROPS[key]?.length, key).toBeGreaterThan(0);
     expect(WIRED.whatsapp).toEqual([]);
   });
 });

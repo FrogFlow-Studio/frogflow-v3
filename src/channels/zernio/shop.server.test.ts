@@ -64,6 +64,7 @@ function setup(
     state?: Record<string, unknown>;
     modules?: Record<string, boolean>;
     loyaltyPoints?: number;
+    settings?: Record<string, unknown>;
   } = {},
 ) {
   const db = fakeDb();
@@ -75,7 +76,7 @@ function setup(
   db.tables.cart_items = [];
   db.tables.orders = [];
   const ctx = {
-    tenant: { id: BOT, modules: opts.modules ?? {}, settings: {} },
+    tenant: { id: BOT, modules: opts.modules ?? {}, settings: opts.settings ?? {} },
     db: {
       from: (t: string) => {
         tables.push(t);
@@ -320,6 +321,39 @@ describe("чек из Instagram: просроченная ссылка CDN", () 
     await send(receipt);
     expect(download).toHaveBeenCalledTimes(1);
     expect(sent.at(-1)?.text).toMatch(/чек/i);
+  });
+
+  it("свой текст «Чек получен» со страницы «Тексты бота» уходит в Instagram с номером заказа", async () => {
+    const { send, download, db, sent } = setup({
+      platform: "instagram",
+      state: waiting,
+      settings: {
+        bot_texts: {
+          receipt_received: { instagram: { ru: "Чек к №{order} у нас <3 Ждите файлы" } },
+        },
+      },
+    });
+    db.tables.orders = [awaitingOrder()];
+    db.tables.order_items = [];
+    download.mockImplementation((async () => ({
+      bytes: JPEG,
+      mime: "image/jpeg",
+    })) as unknown as () => Promise<null>);
+    await send({ ...receipt, attachments: [receipt.attachments[1]!] });
+    expect(db.tables.orders![0]).toMatchObject({ status: "awaiting_confirmation" });
+    expect(sent.at(-1)?.text).toBe("Чек к №107 у нас <3 Ждите файлы");
+  });
+
+  it("«как отправить чек?» — свой ответ продавца в Instagram, стандартный в WhatsApp", async () => {
+    const settings = {
+      bot_texts: { receipt_how_to: { instagram: { ru: "Скриншот перевода сюда 👇" } } },
+    };
+    const ig = setup({ platform: "instagram", state: waiting, settings });
+    await ig.send({ text: "как отправить чек?" });
+    expect(ig.sent.at(-1)?.text).toBe("Скриншот перевода сюда 👇");
+    const wa = setup({ platform: "whatsapp", state: waiting, settings });
+    await wa.send({ text: "как отправить чек?" });
+    expect(wa.sent.at(-1)?.text).toBe(COPY.ru.receiptHowTo);
   });
 
   it("без id сообщения у Meta перечитывать нечем — сразу просим чек заново", async () => {
