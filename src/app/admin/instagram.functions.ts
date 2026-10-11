@@ -1,6 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { UserError } from "@/core/i18n/user-error";
+import type { AutomationButton } from "@/core/instagram/comment-rules";
+import type { TenantContext } from "@/core/tenant/resolve.server";
 import { buttonSchema, postTitleSchema } from "./instagram-input";
 
 /**
@@ -33,6 +35,30 @@ async function zernioReadError(e: unknown): Promise<UserError> {
       );
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Названия товаров кнопок «Купить» — форме правила, чтобы предупредить, если
+ * товар не упомянут в подписи поста. Подсказка, а не запрет: при сбое чтения
+ * страница открывается без неё (сбой в журнале), правила остаются видны.
+ */
+async function buyProductNames(
+  ctx: TenantContext,
+  buttons: AutomationButton[],
+): Promise<Record<string, string>> {
+  const { buyButtonProductIds } = await import("@/core/instagram/comment-rules");
+  const ids = buyButtonProductIds(buttons).filter((id) => UUID_RE.test(id));
+  if (!ids.length) return {};
+  const { productsByIds } = await import("@/core/catalog/picker");
+  try {
+    const found = await productsByIds(ctx, ids);
+    return Object.fromEntries(found.map((p) => [p.id, p.name]));
+  } catch (e) {
+    console.error(`[instagram] названия товаров правил не прочитаны: ${String(e)}`);
+    return {};
+  }
+}
+
 export const instagramFn = createServerFn({ method: "GET" }).handler(async () => {
   const ctx = await ig();
   const a = await import("@/channels/zernio/automations.server");
@@ -50,6 +76,10 @@ export const instagramFn = createServerFn({ method: "GET" }).handler(async () =>
       : Promise.resolve([]),
     a.listFallbackSends(ctx, 30),
   ]);
+  const productNames = await buyProductNames(
+    ctx,
+    automations.flatMap((x) => x.buttons ?? []),
+  );
   return {
     configured,
     accounts,
@@ -80,6 +110,7 @@ export const instagramFn = createServerFn({ method: "GET" }).handler(async () =>
       },
     })),
     fallbackSends,
+    productNames,
     telegramUsername: ctx.tenant.settings.telegram?.username ?? null,
   };
 });

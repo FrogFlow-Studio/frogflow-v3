@@ -15,7 +15,12 @@ import {
   type RuleTarget,
 } from "@/app/admin/instagram-rule-form";
 import { Card, ErrorBox, Field, Switch, useAction } from "@/app/ui";
-import { DM_LIMIT_PLAIN, withReplyPrompt } from "@/core/instagram/comment-rules";
+import {
+  buyButtonProductIds,
+  DM_LIMIT_PLAIN,
+  productMentionedInCaption,
+  withReplyPrompt,
+} from "@/core/instagram/comment-rules";
 import { type Button, type Data, type Editing, type Post, useAdminI18n } from "./shared";
 
 /** Форма правила: выбор поста, кнопки, тексты. */
@@ -128,10 +133,12 @@ function PostPicker({
 function ButtonsEditor({
   buttons,
   onChange,
+  onProductPicked,
   telegramUsername,
 }: {
   buttons: Button[];
   onChange: (b: Button[]) => void;
+  onProductPicked: (p: { id: string; name: string }) => void;
   telegramUsername: string | null;
 }) {
   const { t } = useAdminI18n();
@@ -237,6 +244,7 @@ function ButtonsEditor({
             t={t}
             autoFocus
             onPick={(p) => {
+              onProductPicked(p);
               onChange([
                 ...buttons,
                 {
@@ -293,6 +301,8 @@ export function RuleForm({
   const [secondDmMessage, setSecondDmMessage] = useState(init.secondDmMessage);
   const [unresolvedPrompt, setUnresolvedPrompt] = useState(init.unresolvedPrompt);
   const [replyPrompt, setReplyPrompt] = useState(init.replyPrompt);
+  // Названия товаров кнопок «Купить»: сохранённых правил — с сервера, новых — из поиска.
+  const [productNames, setProductNames] = useState<Record<string, string>>(data.productNames);
   // Порядок полей — как в ruleFormValues: сравнение идёт по JSON.
   const current: RuleFormValues = {
     accountId,
@@ -320,6 +330,20 @@ export function RuleForm({
   const limit = DM_LIMIT_PLAIN;
   // Предел — у первого сообщения целиком, вместе с призывом ответить.
   const firstLength = (twoStepOn ? withReplyPrompt(dmMessage, replyPrompt) : dmMessage).length;
+  // Товар «Купить» не упомянут в подписи поста — скорее всего, выбран не тот (Копилка, #126).
+  const productWarnings =
+    trigger === "comment" && target?.title
+      ? buyButtonProductIds(buttons)
+          .map((id) => productNames[id])
+          .filter((n): n is string => Boolean(n))
+          .filter((n) => !productMentionedInCaption(n, target.title))
+          .map((n) =>
+            t("instagram.form.productNotInPost", {
+              product: n,
+              post: target.title.length > 60 ? `${target.title.slice(0, 60)}…` : target.title,
+            }),
+          )
+      : [];
   const save = useAction(async () => {
     const saved = await saveAutomationFn({
       data: {
@@ -478,6 +502,7 @@ export function RuleForm({
           <ButtonsEditor
             buttons={buttons}
             onChange={setButtons}
+            onProductPicked={(p) => setProductNames((m) => ({ ...m, [p.id]: p.name }))}
             telegramUsername={data.telegramUsername}
           />
         </div>
@@ -562,6 +587,11 @@ export function RuleForm({
             placeholder={t("instagram.form.unresolvedPlaceholder")}
           />
         </Field>
+        {productWarnings.map((w) => (
+          <p key={w} className="text-sm text-warn" role="status">
+            {w}
+          </p>
+        ))}
         <div className="flex items-center gap-3">
           <button className="btn-primary" disabled={save.busy || !dmMessage.trim() || !name.trim()}>
             {save.busy ? t("instagram.form.saving") : t("common.save")}
