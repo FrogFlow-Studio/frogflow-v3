@@ -1870,6 +1870,64 @@ export const SCENARIOS: Scenario[] = [
       },
     ],
   },
+  {
+    id: "pricelist-purchase-no-phone-task-ig-ru",
+    title:
+      "«Да» на «Оформляем?» в Direct — задача менеджеру сразу, без телефона; телефон следом дописывается в задачу",
+    origin:
+      "BOVI 11.10, fokkiuo77 (Musi): бот попросил телефон, она замолчала — у Нурдина ни задачи, ни уведомления",
+    channel: "instagram",
+    locale: "ru",
+    full: true,
+    vertical: "consultant",
+    modules: { shop: true },
+    username: "fokkiuo77",
+    pricelist: {
+      catalog: PL_CATALOG,
+      rounds: [
+        [
+          {
+            type: "tool_use",
+            id: "h1",
+            name: "handoff_to_manager",
+            input: {
+              reason: "purchase",
+              summary: "Москва, берёт Uchino 50х100, спрашивает оплату в рублях",
+            },
+          },
+        ],
+        said(
+          "Способ оплаты пришлёт менеджер в этом чате. Напишите, пожалуйста, телефон и адрес доставки.",
+        ),
+      ],
+    },
+    steps: [
+      {
+        say: { text: "Да, как можно оплатить в рублях?" },
+        expect: {
+          says: ["Способ оплаты пришлёт менеджер в этом чате"],
+          count: 1,
+          sellerNotices: 1,
+          paused: true,
+          tasks: [
+            {
+              reason: "purchase",
+              channel: "instagram",
+              done: false,
+              text: expect.stringContaining("оплату в рублях"),
+            },
+          ],
+        },
+      },
+      {
+        say: { text: "+7 916 123 45 67, Москва, ул. Тверская 1" },
+        expect: {
+          silent: true,
+          tasks: [{ reason: "purchase", contact: expect.stringContaining("+7 916 123 45 67") }],
+        },
+      },
+    ],
+  },
   // ───── Задача закрывается сама, когда менеджер ответил (BOVI, партия 3.1) ─────
   ...(["instagram", "whatsapp"] as const).map((channel, i): Scenario => ({
     id: `pricelist-task-closes-on-app-reply-${channel === "instagram" ? "ig-ru" : "wa-kk"}`,

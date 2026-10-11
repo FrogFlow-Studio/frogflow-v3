@@ -27,17 +27,22 @@ const INPUT: V2PromptInput = {
 };
 const sha = (s: string) => createHash("sha256").update(s).digest("hex");
 
-/** Отпечаток подсказки v2.22 (v2.21 + на вопрос о цвете или размере — и цена; тот же INPUT). */
-const BOVI_PROMPT_SHA = "8b63e873965d68df1d80da23fbf14134c6013becb86c15e3fed2d52aa4149ed3";
+/**
+ * Отпечаток подсказки v2.23 (v2.22 + способ оплаты — только из базы знаний, иначе
+ * «пришлёт менеджер»; заказ передаётся сразу, без ожидания телефона; тот же INPUT).
+ */
+const BOVI_PROMPT_SHA = "886c3e649c56a69fd4b58dcdbace5862fec1c877d474e494fb0dd4c4796e5b00";
 
 describe("образ консультанта по прайсу", () => {
   it("без настройки — подсказка BOVI слово в слово прежняя", () => {
     const prompt = buildV2SystemPrompt(INPUT);
-    expect(prompt.length).toBe(11242);
+    expect(prompt.length).toBe(12048);
     expect(sha(prompt)).toBe(BOVI_PROMPT_SHA);
     expect(prompt).not.toContain(SELLER_TEXT_OPEN);
     // BOVI 10.10 23:49, indirenokars: на «в каком цвете?» — цвета без цены.
     expect(prompt).toContain("ответьте и назовите цену найденного");
+    // BOVI 11.10, fokkiuo77: «Оплатить можно картой в рублях» — выдумано.
+    expect(prompt).toContain("Не нашли — не придумывайте и не угадывайте ни карту, ни перевод");
   });
 
   it("текст по умолчанию в форме — тот же BOVI: сохранённый без правок не меняет подсказку", () => {
