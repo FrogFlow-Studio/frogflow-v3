@@ -9,7 +9,7 @@ Bu yerda botning o‘zi aytadigan so‘zlarini o‘zgartirasiz: salomlashish, is
 
 ## Kanal va til {#channel}
 
-Yuqorida kanalni tanlang: «Telegram», «Instagram» yoki «WhatsApp». Hozircha o‘z matnlaringiz faqat Telegram’da ishlaydi: Instagram va WhatsApp’da bot hozircha standart so‘zlar bilan gapiradi.
+Yuqorida kanalni tanlang: «Telegram», «Instagram» yoki «WhatsApp». Telegram’da barcha matnlar o‘zgaradi. Instagram’da — Direct’dagi xarid xabarlari: mamlakat va material tili haqidagi savollar, «to‘lovdan keyin chek yuboring», chekni qanday yuborish, chekka javoblar va pochta haqidagi savol. WhatsApp’da bot hozircha standart so‘zlar bilan gapiradi.
 
 Til tanlash «Ko‘p tillilik» moduli bo‘lganda paydo bo‘ladi: shunda matn xaridorning har bir tili uchun alohida beriladi. Biror til uchun maydon bo‘sh bo‘lsa, o‘sha tildagi xaridor standart matnni oladi.
 

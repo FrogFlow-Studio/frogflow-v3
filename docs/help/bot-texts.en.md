@@ -9,7 +9,7 @@ Here you change what the bot says on its own: the greeting, the reply outside wo
 
 ## Channel and language {#channel}
 
-At the top, choose the channel: "Telegram", "Instagram" or "WhatsApp". For now your own texts work only in Telegram: in Instagram and WhatsApp the bot still uses the standard words.
+At the top, choose the channel: "Telegram", "Instagram" or "WhatsApp". In Telegram all texts can be changed. In Instagram, the purchase messages in Direct: the questions about country and material language, "send the receipt after paying", how to send the receipt, replies to the receipt and the email question. In WhatsApp the bot still uses the standard words.
 
 The language choice appears with the "Multi-language" module: then the text is set separately for each buyer language. If the field is empty for some language, a buyer with that language gets the standard text.
 
