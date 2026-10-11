@@ -9,6 +9,8 @@ import { claimOrderEvent } from "@/core/orders/events";
 import { getOrder } from "@/core/orders/orders";
 import { POSTPAY_TEXT, RESEND_BUCKET_MS, planStep, type PostPayStep } from "@/core/postpay/postpay";
 import { reply, setMode, type Shop, type ShopOutcome } from "./context.server";
+import { mentionsEmail } from "@/core/orders/email-ask";
+import { emailOptional, filesHereOnce } from "./evening.server";
 
 export async function postPayAssist(
   s: Shop,
@@ -44,6 +46,12 @@ export async function postPayAssist(
     case "quiet":
       return "handled";
     case "ask_email":
+      // Почта по желанию: «Отправьте материал, который оплатила» — это не
+      // просьба о письме, почту не спрашиваем (AATeach 11.10, ryskul_kussainova).
+      if (!mentionsEmail(text) && (await emailOptional(s))) {
+        if (facts.status === "delivered") return null;
+        return (await filesHereOnce(s)) ? "handled" : "question";
+      }
       await setMode(s, { mode: "awaiting_order_email", pending_order_id: order.id });
       await reply(s, t.askEmail(facts.orderNo), { force: true });
       return "handled";

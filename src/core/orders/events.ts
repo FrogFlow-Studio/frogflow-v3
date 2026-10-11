@@ -275,7 +275,9 @@ export function describeOrderEvent(e: Pick<OrderEvent, "kind" | "actor" | "paylo
         tone: "danger",
       };
     case "proof":
-      return { text: "Чек получен", tone: "neutral" };
+      return p.text
+        ? { text: `Чек получен текстом: «${str(p.text)}»`, tone: "neutral" }
+        : { text: "Чек получен", tone: "neutral" };
     case "delivery_started":
       return { text: `Выдача начата${who}`, tone: "neutral" };
     case "item_sent":

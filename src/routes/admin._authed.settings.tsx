@@ -53,6 +53,7 @@ import {
   LegalCard,
   PayReminderCard,
   EmailAskCard,
+  ReceiptTextCard,
   SmartSearchCard,
   WatermarkCard,
   WeeklyReportCard,
@@ -610,6 +611,9 @@ function SettingsPage() {
               </SettingsSection>
               <SettingsSection id="email-ask">
                 <EmailAskCard settings={settings} />
+              </SettingsSection>
+              <SettingsSection id="receipt-text">
+                <ReceiptTextCard settings={settings} />
               </SettingsSection>
               {shop.modules.legal_docs && (
                 <SettingsSection id="legal">

@@ -43,6 +43,8 @@ export async function notifyAdminNewOrder(
     reviewReason?: string;
     /** Чек пришёл ссылкой (Instagram/WhatsApp), а не файлом Telegram. */
     proofUrl?: string;
+    /** Чек пришёл текстом (Kaspi не даёт скриншот): текст покупателя. */
+    proofText?: string;
   } = {},
 ): Promise<void> {
   // Остаток после этого заказа — отдельное сообщение, независимо от матрицы «новый заказ».
@@ -90,6 +92,7 @@ export async function notifyAdminNewOrder(
         : "") +
     fulfillmentLine(order, await fulfillmentSlots(ctx)) +
     giftText +
+    (opts.proofText ? `🧾 Чек текстом: «${escapeHtml(opts.proofText.slice(0, 600))}»\n` : "") +
     (opts.proofUrl ? `🧾 Чек: ${escapeHtml(opts.proofUrl)}\n` : "") +
     `👤 ${escapeHtml(order.display_name ?? "")}${order.username ? ` (@${escapeHtml(order.username)})` : ""}\n` +
     `📞 ${escapeHtml(order.contact ?? "—")}\n` +

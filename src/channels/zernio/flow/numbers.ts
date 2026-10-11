@@ -137,5 +137,46 @@ export function matchLocalePick(text: string): Locale | null {
     if (name === needle) return locale;
     if (needle.length >= 3 && name.startsWith(needle)) return locale;
   }
-  return null;
+  return localeFromWords(raw);
+}
+
+/** Основа названия языка в любом падеже и на любом из четырёх языков. */
+const LANG_STEMS: Array<[Locale, RegExp]> = [
+  ["ru", /^(рус|орыс|rus)/],
+  ["kk", /^(казах|казак|қазақ|kaz|qozoq|qazaq)/],
+  ["en", /^(англ|ағылшын|english|eng|ingliz)/],
+  ["uz", /^(узбек|ўзбек|өзбек|o[‘'`ʻ]?zbek|uzbek)/],
+];
+/** Предлоги и слова вокруг названия: «на русском», «по-казахски», «in English», «o‘zbek tilida». */
+const LANG_FILLER = new Set([
+  "на",
+  "по",
+  "в",
+  "in",
+  "тілінде",
+  "тілі",
+  "tilida",
+  "tili",
+  "язык",
+  "языке",
+]);
+
+/**
+ * Язык словами: «На русском», «по-казахски», «русский пожалуйста» не короче
+ * трёх слов (AATeach 11.10: dubovets.oksana «На русском» → вопрос повторён).
+ */
+export function localeFromWords(text: string): Locale | null {
+  const words = text
+    .toLowerCase()
+    .replace(/[^\p{L}‘'`ʻ\s-]+/gu, " ")
+    .split(/[\s-]+/)
+    .filter(Boolean);
+  if (words.length === 0 || words.length > 3) return null;
+  const found = new Set<Locale>();
+  for (const w of words) {
+    if (LANG_FILLER.has(w)) continue;
+    const hit = LANG_STEMS.find(([, re]) => re.test(w));
+    if (hit) found.add(hit[0]);
+  }
+  return found.size === 1 ? [...found][0]! : null;
 }

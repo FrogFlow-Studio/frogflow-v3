@@ -2,6 +2,7 @@ import { orderChannel } from "@/core/orders/pure";
 import { formatMoney } from "@/core/money/money";
 import {
   attachPaymentProof,
+  attachTextProof,
   markProofVerified,
   PROOF_SWAPPED_NOTE,
   deliverOrder,
@@ -26,6 +27,7 @@ import { zernioMaterialSender } from "../deliver";
 import { plain } from "../shop-flow";
 import { BTN, type Shop, reply, setMode } from "./context.server";
 import { askOrderEmailIfMissing } from "./checkout.server";
+import { EVENING_COPY } from "./evening-copy";
 
 // ── чек и выдача ──────────────────────────────────────────────────────
 
@@ -64,17 +66,7 @@ export async function receiveProof(
           : "bin";
   const res = await attachPaymentProof(s.ctx, orderId, { bytes: file.bytes, mime, ext });
   if (!res.ok) {
-    const text =
-      res.reason === "duplicate"
-        ? s.m.proofDuplicate
-        : res.reason === "closed" || res.reason === "not_found"
-          ? s.m.proofOrderClosed
-          : res.reason === "invalid_file"
-            ? s.m.proofBadFile
-            : res.reason === "file_too_large"
-              ? s.m.proofTooLarge
-              : s.m.proofFailed;
-    await reply(s, text, { force: true });
+    await reply(s, proofErrorText(s, res.reason), { force: true });
     return;
   }
   const no = displayNo(res.order);
@@ -171,6 +163,50 @@ export async function receiveProof(
     buttons: [BTN.orders(s.m), BTN.catalog(s.m)],
   });
   await notifyAdmin(res.order);
+}
+
+function proofErrorText(
+  s: Shop,
+  reason: Extract<Awaited<ReturnType<typeof attachPaymentProof>>, { ok: false }>["reason"],
+): string {
+  return reason === "duplicate"
+    ? s.m.proofDuplicate
+    : reason === "closed" || reason === "not_found"
+      ? s.m.proofOrderClosed
+      : reason === "invalid_file"
+        ? s.m.proofBadFile
+        : reason === "file_too_large"
+          ? s.m.proofTooLarge
+          : s.m.proofFailed;
+}
+
+/**
+ * Чек текстом (shop/evening.server): заказ — продавцу на проверку, как фото,
+ * без автопроверки (она читает картинку). Продавцу — текст чека в уведомлении.
+ */
+export async function receiveTextProof(
+  s: Shop,
+  orderId: number,
+  text: string,
+  operationNo: string | null,
+) {
+  const res = await attachTextProof(s.ctx, orderId, text, operationNo);
+  if (!res.ok) {
+    await reply(s, proofErrorText(s, res.reason), { force: true });
+    return;
+  }
+  const no = displayNo(res.order);
+  await setMode(s, { mode: "idle" });
+  await reply(s, EVENING_COPY[s.locale].textReceiptTaken(no), { force: true });
+  if (await askOrderEmailIfMissing(s, res.order)) await reply(s, s.m.emailAsk, { force: true });
+  const api = adminTelegramApi(s.ctx);
+  if (api) {
+    const { notifyAdminNewOrder } = await import("@/channels/telegram/admin-notify");
+    await notifyAdminNewOrder(s.ctx, api, res.order, null, {
+      proofText: text,
+      proofUrl: `${s.ctx.appUrl}/admin/orders/${res.order.id}`,
+    });
+  }
 }
 
 /** Выдача цифрового заказа ссылками в эту же переписку. */

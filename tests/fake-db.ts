@@ -434,7 +434,11 @@ class Query implements PromiseLike<Result> {
       const list = Array.isArray(this.payload) ? this.payload : [this.payload];
       const added: Row[] = [];
       for (const r of list) {
-        const row = { id: `row-${++seq}`, ...r };
+        // Заказы в базе — с числовым id (bigserial): по нему бот ищет заказ из состояния.
+        const row =
+          this.table === "orders"
+            ? { id: 100_000 + ++seq, created_at: new Date().toISOString(), ...r }
+            : { id: `row-${++seq}`, ...r };
         if (this.conflict(row))
           return {
             data: null,

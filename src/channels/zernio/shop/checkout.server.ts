@@ -834,38 +834,49 @@ async function resumePendingPayChoice(s: Shop): Promise<boolean> {
 
 /**
  * Быстрая покупка того же товара, когда его заказ уже ждёт оплаты (двойное
- * нажатие «Купить», повторный «+»): тот же заказ с оплатой, а не второй
- * заказ. true — показали.
+ * нажатие «Купить», повторный «+»): тот же заказ, а не второй. Первый повтор —
+ * «Заказ #N уже оформлен», дальше полчаса тишина (shop/evening.server:
+ * zuxra6163 нажала 8 раз и получила 8 одинаковых сообщений, AATeach 11.10).
+ * true — ответили или промолчали.
  */
 export async function resumeExpressOrder(s: Shop, productId: string): Promise<boolean> {
   const mode = s.customer.state.mode;
-  if (mode !== "choose_pay" && mode !== "awaiting_proof") return false;
+  if (mode !== "choose_pay" && mode !== "awaiting_proof" && mode !== "awaiting_payment")
+    return false;
   const orderId = Number(s.customer.state.pending_order_id);
   const order = orderId ? await getOrder(s.ctx, orderId) : null;
   if (!order || order.telegram_id !== s.customer.telegramId || order.status !== "awaiting_payment")
     return false;
   const items = order.order_items ?? [];
   if (items.length !== 1 || items[0]!.product_id !== productId) return false;
-  if (mode === "choose_pay") return resumePendingPayChoice(s);
-  const method = (await listActivePaymentMethods(s.ctx)).find(
-    (x) => x.country_code === order.country_code,
-  );
-  const physical = order.fulfillment_kind === "physical";
-  const due = await amountDueNow(s.ctx, {
-    total: Number(order.total),
-    fulfillment_kind: order.fulfillment_kind,
+  const no = displayNo(order);
+  const { repeatBuy } = await import("./evening.server");
+  return repeatBuy(s, order.id, no, async () => {
+    if (mode === "choose_pay") return resumePendingPayChoice(s);
+    if (mode === "awaiting_payment") {
+      const { EVENING_COPY } = await import("./evening-copy");
+      await reply(s, EVENING_COPY[s.locale].alreadyPlacedLink(no), { force: true });
+      return true;
+    }
+    const method = (await listActivePaymentMethods(s.ctx)).find(
+      (x) => x.country_code === order.country_code,
+    );
+    const due = await amountDueNow(s.ctx, {
+      total: Number(order.total),
+      fulfillment_kind: order.fulfillment_kind,
+    });
+    await sendManualInstructions(s, {
+      no,
+      due,
+      currency: order.currency,
+      instructions: method?.instructions ?? null,
+      qr: method?.qr_code_path ?? null,
+      physical: order.fulfillment_kind === "physical",
+      depositLine: "",
+      items: items.map((i) => i.name_snapshot),
+    });
+    return true;
   });
-  await sendManualInstructions(s, {
-    no: displayNo(order),
-    due,
-    currency: order.currency,
-    instructions: method?.instructions ?? null,
-    qr: method?.qr_code_path ?? null,
-    physical,
-    depositLine: "",
-    items: items.map((i) => i.name_snapshot),
-  });
-  return true;
 }
 
 async function sendManualInstructions(

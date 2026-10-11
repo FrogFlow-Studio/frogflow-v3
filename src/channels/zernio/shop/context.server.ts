@@ -51,6 +51,10 @@ type DirectMemory = {
   after_country?: string;
   /** Когда в последний раз отвечали на голосовое/стикер/фото вне оплаты (Б6). */
   nontext_at?: string;
+  /** Когда ответили «файлы придут сюда, почта по желанию» (shop/evening.server). */
+  files_here_at?: string;
+  /** Повторное «Купить» по заказу: когда ответили «уже оформлен» (shop/evening.server). */
+  repeat_buy?: { order: number; at: string };
   /** Последний ответ бота — подсказка на нераспознанный ответ шага (строгий режим). */
   hinted?: boolean;
   /**

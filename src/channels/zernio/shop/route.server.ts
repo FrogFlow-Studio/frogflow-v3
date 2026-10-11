@@ -138,6 +138,8 @@ import {
   startQuiz,
 } from "./checkout.server";
 import { receiveProof, showOrders, showPoints } from "./receipt.server";
+import { cancelFreshOrder, emailOptional, filesHereOnce, textReceipt } from "./evening.server";
+import { looksLikeEmailAttempt, wantsFilesHere } from "@/core/orders/email-ask";
 import { countryAnswer, countryFromChat } from "./country.server";
 
 export async function handleShopMessage(
@@ -313,6 +315,10 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
   const loginNonce = nonceFromMessage(text);
   if (loginNonce) return handleLoginCode(s, loginNonce);
 
+  // Текст чека из Kaspi («Оплата совершена 800 ₸ … № чека QR…»): скриншот
+  // приложение не даёт — чек принимается текстом (AATeach 11.10, #1391).
+  if (await textReceipt(s, mode, text)) return "handled";
+
   // Просьба об оценке (core/reviews/ask): цифра 1–5 в окне ответа — оценка, любой
   // другой текст — обычная переписка, шаг снимается. Раньше шага «устарел»: просьба
   // уходит кроном и «последнюю реплику бота» не обновляет.
@@ -337,6 +343,8 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
   const startCall = idleNow && !inDialog(s) && text.trim().toLowerCase() === "/start";
   if (isCancel(text) && !startCall) {
     if (idleNow && !inDialog(s)) return "question";
+    // Сразу после оформления «отмена» — про заказ, а не про шаг (AATeach 11.10, #1396).
+    if (await cancelFreshOrder(s)) return "handled";
     await setMode(s, { mode: "idle" });
     await reply(s, `${plain(s.m.useMenu)}\n\n${hint(s)}`, {
       force: true,
@@ -398,8 +406,17 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
   // можно?», код товара «212») — шаг снимается, реплика разбирается как обычная.
   // «Это не похоже на почту» трижды не давало купить ещё (AATeach 11.10, #1380).
   if (mode === "awaiting_order_email" && !extractEmail(text) && !text.includes("@")) {
+    // «anna mail.ru» — опечатка в адресе, а не отказ: подсказка с примером.
+    if (looksLikeEmailAttempt(text)) {
+      await reply(s, s.m.emailHint, { force: true });
+      return "handled";
+    }
     await setMode(s, { mode: "idle" });
     mode = "idle";
+    // «Вацап отправте», «а в инстаграм можно?» — почта по желанию: файлы придут
+    // сюда, почту больше не спрашиваем (AATeach 11.10, kalieva6631 #1417).
+    if (wantsFilesHere(text) && (await emailOptional(s)))
+      return (await filesHereOnce(s)) ? "handled" : "question";
   }
 
   // Строгий режим: на вопрос бота — только похожий ответ; иначе одна подсказка

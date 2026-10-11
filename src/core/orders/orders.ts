@@ -33,6 +33,8 @@ export {
   type ProofFile,
   type AttachProofResult,
   attachPaymentProof,
+  attachTextProof,
+  TEXT_PROOF_PATH,
   markProofVerified,
   PROOF_SWAPPED_NOTE,
   reopenForResend,

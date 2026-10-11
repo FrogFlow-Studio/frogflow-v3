@@ -5,6 +5,7 @@
  */
 import { expect } from "vitest";
 import { COPY, type Msg } from "@/channels/telegram/copy";
+import { EVENING_COPY } from "@/channels/zernio/shop/evening-copy";
 import type { Locale } from "@/core/i18n/locale";
 import type { Channel, Input, Product, Room } from "./harness";
 import { BOTS_20 } from "./scenarios-bots";
@@ -276,6 +277,8 @@ export interface Expect {
   modelImages?: number[];
   /** Консультант по прайсу: это было в сообщении, которое видела модель (с пометками). */
   modelSees?: Says[];
+  /** Заказы после реплики: id → подмножество полей строки orders. */
+  orders?: Record<number, Record<string, unknown>>;
 }
 
 export interface Scenario {
@@ -636,6 +639,182 @@ export const SCENARIOS: Scenario[] = [
       { say: { photo: true }, expect: { silent: true, sellerNotices: 0 } },
     ],
   },
+  // ───── Вечерний срез AATeach 11.10: почта по желанию, чек текстом ─────
+  {
+    id: "email-optional-whatsapp-ig-ru",
+    title:
+      "на вопрос о почте «Вацап отправте»: бот один раз говорит, что файлы придут сюда, и почту больше не спрашивает",
+    origin:
+      "AATeach 11.10 вечер: kalieva6631 #1417 «Вацап отправте» → «Напишите почту» дважды; olga2562524 #1402, ryskul_kussainova #1400 «А в инстаграм можно отправить?»",
+    channel: "instagram",
+    locale: "ru",
+    products: PRODUCTS,
+    mail: true,
+    receipts: true,
+    postpay: [{ action: "status" }],
+    state: { mode: "awaiting_proof", pending_order_id: 82 },
+    arrange: paidOrder({ status: "awaiting_payment" }),
+    steps: [
+      {
+        say: { photo: true },
+        expect: {
+          says: [(c) => c.proofReceivedNeedEmail(82)],
+          state: { mode: "awaiting_order_email" },
+        },
+      },
+      {
+        say: { text: "Вацап отправте" },
+        expect: {
+          count: 1,
+          says: [EVENING_COPY.ru.filesHere],
+          notSays: [(c) => c.emailHint],
+          state: { mode: "idle" },
+        },
+      },
+      {
+        say: { text: "Отправьте материал, который оплатила" },
+        expect: { notSays: [EVENING_COPY.ru.filesHere, "почт"] },
+      },
+    ],
+  },
+  {
+    id: "email-optional-off-ig-ru",
+    title: "продавец выключил «Почта по желанию»: на «вацап» бот не обещает файлы в переписке",
+    origin: "переключатель к email-optional-whatsapp-ig-ru (Яков 11.10: «1 и 2 — переключатели»)",
+    channel: "instagram",
+    locale: "ru",
+    products: PRODUCTS,
+    mail: true,
+    receipts: true,
+    state: { mode: "awaiting_proof", pending_order_id: 82 },
+    arrange: (r) => {
+      paidOrder({ status: "awaiting_payment" })(r);
+      r.db.tables.app_settings!.push({ key: "chat_email_optional", value: "false" });
+    },
+    steps: [
+      { say: { photo: true }, expect: { state: { mode: "awaiting_order_email" } } },
+      {
+        say: { text: "Вацап отправте" },
+        expect: { notSays: [EVENING_COPY.ru.filesHere], state: { mode: "idle" } },
+      },
+    ],
+  },
+  {
+    id: "email-typo-ig-ru",
+    title: "почта без «@» («anna mail.ru») на вопрос о почте — подсказка с примером, а не тишина",
+    origin: "AATeach 11.10 вечер: адрес с опечаткой — бот промолчал (Яков, пункт 4в)",
+    channel: "instagram",
+    locale: "ru",
+    products: PRODUCTS,
+    mail: true,
+    receipts: true,
+    state: { mode: "awaiting_proof", pending_order_id: 82 },
+    arrange: paidOrder({ status: "awaiting_payment" }),
+    steps: [
+      { say: { photo: true }, expect: { state: { mode: "awaiting_order_email" } } },
+      {
+        say: { text: "anna mail.ru" },
+        expect: {
+          count: 1,
+          says: [(c) => c.emailHint],
+          state: { mode: "awaiting_order_email" },
+        },
+      },
+      {
+        say: { text: "anna@mail.ru" },
+        expect: { says: ["anna@mail.ru"], state: { mode: "idle" } },
+      },
+    ],
+  },
+  {
+    id: "receipt-as-text-ig-ru",
+    title:
+      "Kaspi не даёт скриншот, покупатель вставляет текст чека: «Принял чек, передаю на проверку», заказ — продавцу",
+    origin:
+      "AATeach 11.10: lastochkina_olga73 #1391 «скрин каспи не даёт сделать» + «Оплата совершена 800 ₸ … № чека QR18040511543» — бот молчал, заказ висел",
+    channel: "instagram",
+    locale: "ru",
+    products: PRODUCTS,
+    state: { mode: "awaiting_proof", pending_order_id: 82 },
+    arrange: paidOrder({ status: "awaiting_payment" }),
+    steps: [
+      {
+        say: {
+          text: "Оплата совершена\n800 ₸\nПолучатель: ИП Анастасия\n№ чека QR18040511543\n11.10.2026 11:49",
+        },
+        expect: {
+          says: [EVENING_COPY.ru.textReceiptTaken(82)],
+          state: { mode: "idle" },
+          orders: {
+            82: {
+              status: "awaiting_confirmation",
+              payment_proof_path: "Чек текстом",
+              admin_note: expect.stringContaining("QR18040511543"),
+            },
+          },
+        },
+      },
+    ],
+  },
+  {
+    id: "receipt-as-text-off-ig-ru",
+    title: "продавец выключил «Принимать чек текстом»: текст чека — не чек, бот его не принимает",
+    origin: "переключатель к receipt-as-text-ig-ru (Яков 11.10: «1 и 2 — переключатели»)",
+    channel: "instagram",
+    locale: "ru",
+    products: PRODUCTS,
+    state: { mode: "awaiting_proof", pending_order_id: 82 },
+    arrange: (r) => {
+      paidOrder({ status: "awaiting_payment" })(r);
+      r.db.tables.app_settings!.push({ key: "chat_receipt_text", value: "false" });
+    },
+    steps: [
+      {
+        say: {
+          text: "Оплата совершена\n800 ₸\nПолучатель: ИП Анастасия\n№ чека QR18040511543\n11.10.2026 11:49",
+        },
+        expect: {
+          notSays: [EVENING_COPY.ru.textReceiptTaken(82)],
+          state: { mode: "awaiting_proof" },
+          orders: { 82: { status: "awaiting_payment" } },
+        },
+      },
+    ],
+  },
+  {
+    id: "paid-report-not-text-receipt-ig-ru",
+    title: "«Я оплатила 800 тг» — рассказ, а не чек: бот по-прежнему просит скриншот",
+    origin: "граница к receipt-as-text-ig-ru",
+    channel: "instagram",
+    locale: "ru",
+    products: PRODUCTS,
+    state: { mode: "awaiting_proof", pending_order_id: 82 },
+    arrange: paidOrder({ status: "awaiting_payment" }),
+    steps: [
+      {
+        say: { text: "Я оплатила 800 тг" },
+        expect: {
+          notSays: [EVENING_COPY.ru.textReceiptTaken(82)],
+          state: { mode: "awaiting_proof" },
+        },
+      },
+    ],
+  },
+  {
+    id: "locale-in-words-ig-ru",
+    title: "на вопрос о языке «На русском» — выбор языка, а не повтор вопроса",
+    origin: "AATeach 11.10 вечер: dubovets.oksana «На русском» → вопрос о языке повторён",
+    channel: "instagram",
+    locale: "ru",
+    products: PRODUCTS,
+    state: { mode: "awaiting_locale", direct: { last_reply_at: new Date().toISOString() } },
+    steps: [
+      {
+        say: { text: "На русском" },
+        expect: { says: [(c) => c.languageSaved], state: { mode: "idle", locale: "ru" } },
+      },
+    ],
+  },
   // ───── Телефон не коды товаров (Б2, скрин Якова 04.10) ─────
   ...everyLocale(
     () => ({
@@ -781,7 +960,7 @@ export const SCENARIOS: Scenario[] = [
   {
     id: "two-step-buy-express-ig-ru",
     title:
-      "«Купить» из автоматизации — сразу заказ: одно сообщение с товаром, суммой и способом оплаты, без корзины; повторное нажатие — тот же заказ",
+      "«Купить» из автоматизации — сразу заказ: одно сообщение с товаром, суммой и способом оплаты, без корзины; повторное нажатие — «уже оформлен» один раз, дальше тишина; «Отмена» сразу после — заказ отменён",
     origin:
       "Копилка русоведа 09.10 17:05: «Купить» → корзина → «Оформить заказ» → оплата; ~80 обращений, ни одной оплаты, «они путаются» (в BotHelp было два шага)",
     channel: "instagram",
@@ -806,11 +985,41 @@ export const SCENARIOS: Scenario[] = [
         say: { button: `PROD:${P1}`, title: "Купить" },
         expect: {
           count: 1,
-          says: ["К оплате"],
-          notSays: ["Ваша корзина"],
+          says: [/Заказ #\d+ уже оформлен — реквизиты в сообщении выше/],
+          notSays: ["Ваша корзина", "К оплате"],
           cart: 0,
           state: { mode: "awaiting_proof" },
         },
+      },
+      // zuxra6163 нажала «Купить» 8 раз за 3 минуты и получила 8 «Заказ #1415 оформлен» (AATeach 11.10).
+      { say: { button: `PROD:${P1}`, title: "Купить" }, expect: { silent: true } },
+      { say: { button: `PROD:${P1}`, title: "Купить" }, expect: { silent: true } },
+      {
+        say: { text: "Отмена" },
+        expect: { count: 1, says: [/Заказ #\d+ отменён/], state: { mode: "idle" } },
+      },
+    ],
+  },
+  {
+    id: "repeat-buy-concurrent-ig-ru",
+    title:
+      "«Купить» нажато четыре раза одновременно по уже оформленному заказу — один ответ «уже оформлен»",
+    origin:
+      "AATeach 11.10 18:03–18:06: zuxra6163, 8 нажатий «Купить» → 8 сообщений «Заказ #1415 оформлен»",
+    channel: "instagram",
+    locale: "ru",
+    full: true,
+    modules: { helpdesk: true, manager_chat: true },
+    products: [{ id: P1, name: "Комплект ко Дню хлеба" }],
+    state: {},
+    steps: [
+      {
+        say: { button: `PROD:${P1}`, title: "Купить" },
+        expect: { count: 1, says: ["К оплате"], state: { mode: "awaiting_proof" } },
+      },
+      {
+        say: { clicks: 4, button: `PROD:${P1}`, title: "Купить" },
+        expect: { count: 1, says: ["уже оформлен"], notSays: ["К оплате"] },
       },
     ],
   },

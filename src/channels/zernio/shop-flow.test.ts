@@ -190,6 +190,23 @@ describe("выбор языка по слову «язык»", () => {
   });
 });
 
+describe("язык словами (AATeach 11.10, «На русском»)", () => {
+  it("«На русском», «по-казахски», «in English», «o‘zbek tilida» — выбор языка", () => {
+    expect(matchLocalePick("На русском")).toBe("ru");
+    expect(matchLocalePick("по-казахски")).toBe("kk");
+    expect(matchLocalePick("in English")).toBe("en");
+    expect(matchLocalePick("o‘zbek tilida")).toBe("uz");
+    expect(matchDeliveryLangChoice("На русском", ["ru", "kk"])).toBe("ru");
+    expect(matchDeliveryLangChoice("на казахском", ["ru", "kk"])).toBe("kk");
+  });
+
+  it("длинная фраза и два языка сразу — не выбор", () => {
+    expect(matchLocalePick("я из России, пишу на русском языке")).toBeNull();
+    expect(matchLocalePick("русский и казахский")).toBeNull();
+    expect(matchDeliveryLangChoice("на английском", ["ru", "kk"])).toBeNull();
+  });
+});
+
 describe("matchLocalePick / echo", () => {
   it("номер, код и родное название", () => {
     expect(matchLocalePick("1")).toBe("ru");
