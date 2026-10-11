@@ -106,6 +106,24 @@ const twoCountries = (r: Room): void => {
   });
 };
 
+/** Две страны и кнопка «Купить» правила, ушедшая этому покупателю в Direct. */
+const twoCountriesBuySent = (r: Room): void => {
+  twoCountries(r);
+  r.db.tables.zernio_logs!.push({
+    id: "log-2step",
+    bot_id: r.db.tables.payment_methods![0]!.bot_id,
+    event_id: "two-step-dm:c1",
+    event_type: "two_step_dm_sent",
+    status: "processed",
+    created_at: new Date().toISOString(),
+    payload: {
+      username: "someone",
+      authorId: "1",
+      buttons: [{ type: "postback", title: "Купить", payload: `PROD:${P1}` }],
+    },
+  });
+};
+
 /** Копилка с рублями: Россия вторым способом оплаты, цены по странам и «цены во всех валютах». */
 const allPrices = (r: Room): void => {
   r.db.tables.payment_methods!.push({
@@ -2715,9 +2733,9 @@ export const SCENARIOS: Scenario[] = [
   {
     id: "country-reply-no-button-ig-ru",
     title:
-      "ответ страной на первое сообщение правила без кнопки — бот записал страну и ответил один раз, сообщение осталось продавцу",
+      "ответ страной на первое сообщение правила без кнопки — бот страну запомнил молча, сообщение осталось продавцу",
     origin:
-      "AATeach ночь 11.10: kolesova5863 трижды «Россия»/«РФ» под «Домик», «Нужно», «Улитка» — тишина до утра",
+      "AATeach 11.10 07:47: sidorova2765 «РФ» под «ПАДЕЖИ» (первое сообщение само спрашивает страну) → «Записал страну… Продавец ответит» — «бот опять реагирует на страны»",
     channel: "instagram",
     locale: "ru",
     full: true,
@@ -2732,12 +2750,7 @@ export const SCENARIOS: Scenario[] = [
     steps: [
       {
         say: { text: "Россия" },
-        expect: {
-          count: 1,
-          says: ["Записал страну: 🇷🇺 Россия", "Продавец ответит здесь", "откройте каталог"],
-          buttons: [COPY.ru.catalog.replace(/<[^>]+>/g, "")],
-          state: { country_code: "RU" },
-        },
+        expect: { silent: true, state: { country_code: "RU" } },
       },
       { say: { text: "РФ" }, expect: { silent: true, state: { country_code: "RU" } } },
     ],
@@ -2745,14 +2758,14 @@ export const SCENARIOS: Scenario[] = [
   {
     id: "country-reply-race-ig-ru",
     title: "два «Россия» одновременно (двойная отправка) — ответ про страну один",
-    origin: "гонка к country-reply-no-button-ig-ru (CLAUDE.md: «один раз» — условная запись)",
+    origin: "гонка к country-reply-buy-button-ig-ru (CLAUDE.md: «один раз» — условная запись)",
     channel: "instagram",
     locale: "ru",
     full: true,
     modules: { manager_chat: true },
     products: PRODUCTS,
     state: { country_code: null, country_name: null },
-    arrange: twoCountries,
+    arrange: twoCountriesBuySent,
     countryAi: [
       { country: "RU", answer_only: true },
       { country: "RU", answer_only: true },
@@ -2765,16 +2778,16 @@ export const SCENARIOS: Scenario[] = [
     ],
   },
   {
-    id: "country-reply-no-button-ig-kk",
-    title: "то же по-казахски: «Ресей» — ел жазылды, жауап бір рет",
-    origin: "AATeach ночь 11.10, ожидание к country-reply-no-button-ig-ru",
+    id: "country-reply-buy-button-ig-kk",
+    title: "то же по-казахски под «Купить»: «Ресей» — ел жазылды, жауап бір рет",
+    origin: "AATeach ночь 11.10, ожидание к country-reply-buy-button-ig-ru",
     channel: "instagram",
     locale: "kk",
     full: true,
     modules: { manager_chat: true },
     products: PRODUCTS,
     state: { country_code: null, country_name: null },
-    arrange: twoCountries,
+    arrange: twoCountriesBuySent,
     countryAi: [{ country: "RU", answer_only: true }],
     steps: [
       {
@@ -2793,22 +2806,7 @@ export const SCENARIOS: Scenario[] = [
     locale: "ru",
     products: PRODUCTS,
     state: { country_code: null, country_name: null },
-    arrange: (r) => {
-      twoCountries(r);
-      r.db.tables.zernio_logs!.push({
-        id: "log-2step",
-        bot_id: r.db.tables.payment_methods![0]!.bot_id,
-        event_id: "two-step-dm:c1",
-        event_type: "two_step_dm_sent",
-        status: "processed",
-        created_at: new Date().toISOString(),
-        payload: {
-          username: "someone",
-          authorId: "1",
-          buttons: [{ type: "postback", title: "Купить", payload: `PROD:${P1}` }],
-        },
-      });
-    },
+    arrange: twoCountriesBuySent,
     countryAi: [{ country: "RU", answer_only: true }],
     steps: [
       {

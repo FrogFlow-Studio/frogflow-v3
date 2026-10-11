@@ -700,14 +700,15 @@ describe("бот просыпается только по делу (Educational 
     file_path: `${BOT}/${id}.pdf`,
   });
 
-  // Ответ страной (на первое сообщение правила) больше не тишина: страна записана,
-  // один ответ, вопрос остаётся продавцу; язык не спрашивает (AATeach, ночь 11.10).
-  it("новый покупатель пишет «Россия» продавцу — страна записана, язык не спрашивает", async () => {
+  // Ответ страной на первое сообщение правила без «Купить»: страна записана
+  // молча, сообщение остаётся продавцу — реквизиты шлёт он; язык не спрашивает
+  // (AATeach 11.10: «бот опять реагирует на страны»).
+  it("новый покупатель пишет «Россия» продавцу — страна записана молча, язык не спрашивает", async () => {
     const { send, sent, db } = setup({ platform: "instagram", state: {} });
     db.tables.payment_methods = methods;
     const r = await send({ text: "Россия" });
     expect(r.outcome).toBe("question");
-    expect(sent.map((x) => x.text)).toEqual([expect.stringContaining("Записал страну: Россия")]);
+    expect(sent).toEqual([]);
     expect((db.tables.bot_users![0]!.state as { country_code?: string }).country_code).toBe("RU");
     expect((db.tables.bot_users![0]!.state as { mode?: string }).mode).toBeUndefined();
   });

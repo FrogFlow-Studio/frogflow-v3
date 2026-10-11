@@ -3,7 +3,7 @@
  * первое сообщение правила спрашивало страну, покупатели отвечали «Я из
  * России», «Беларусь», а бот присылал нумерованный список ещё раз; на «1»
  * покупательнице из России поставил Казахстан. Под постами без кнопки
- * ответ страной оставался без ответа до утра. Понимает модель
+ * страну бот запоминает молча — реквизиты шлёт продавец. Понимает модель
  * (core/country), правила — только запасной путь.
  */
 import type { Locale } from "@/core/i18n/locale";
@@ -14,7 +14,7 @@ import { claimStateSection } from "@/core/customers/customers";
 import { sellerWroteWithin } from "../manager-guard";
 import type { ParsedZernioMessage } from "../message";
 import { matchCountry, plain, type CountryOption } from "../shop-flow";
-import { BTN, memory, reply, setMode, type Shop, type ShopOutcome } from "./context.server";
+import { memory, reply, setMode, type Shop, type ShopOutcome } from "./context.server";
 
 /** Отвечаем на страну не чаще, чем раз в это время на одну и ту же страну. */
 export const COUNTRY_ACK_MS = 6 * 60 * 60_000;
@@ -68,25 +68,13 @@ const PRESS_BUY: Record<Locale, (button: string) => string> = {
   en: (b) => `Tap “${b}” in the message above and I’ll send the total and how to pay.`,
   uz: (b) => `Yuqoridagi xabarda «${b}» tugmasini bosing — summa va to‘lov usulini yuboraman.`,
 };
-const SELLER_WILL_ANSWER: Record<Locale, string> = {
-  ru: "Продавец ответит здесь, как оплатить.",
-  kk: "Сатушы осында қалай төлеу керектігін жазады.",
-  en: "The seller will reply here with how to pay.",
-  uz: "Sotuvchi shu yerda qanday to‘lashni yozadi.",
-};
-const OR_CATALOG: Record<Locale, string> = {
-  ru: "Чтобы оформить сразу, откройте каталог.",
-  kk: "Бірден рәсімдеу үшін каталогты ашыңыз.",
-  en: "To order right away, open the catalog.",
-  uz: "Darhol buyurtma berish uchun katalogni oching.",
-};
 
 /**
  * Страна в обычной переписке — ответ на первое сообщение правила или просто
  * «я из России». Запоминаем её: «Купить» потом не спросит страну второй раз.
- * Сообщение — только страна: бот отвечает один раз (условная запись до
- * отправки), с кнопкой «Купить» выше — зовёт нажать её, без кнопки — честно:
- * продавец пришлёт оплату, а сразу можно через каталог. null — не про страну.
+ * Сообщение — только страна: с кнопкой «Купить» выше бот один раз
+ * (условная запись до отправки) зовёт нажать её; без кнопки молчит, и
+ * сообщение остаётся продавцу. null — не про страну.
  */
 export async function countryFromChat(
   s: Shop,
@@ -110,6 +98,16 @@ export async function countryFromChat(
     s.why = `страна из текста: ${picked.name}`;
   }
   if (!r.onlyCountry) return null;
+  // Под постом без кнопки «Купить» первое сообщение правила само спрашивает
+  // страну, и реквизиты продавец шлёт сам: бот страну запоминает молча, ответ
+  // за продавца покупатель принимал за сбой (AATeach 11.10: «бот опять
+  // реагирует на страны», sidorova2765 «РФ» → «Записал страну…»).
+  const { recentBuyButton } = await import("../automations.server");
+  const buy =
+    s.platform === "instagram"
+      ? await recentBuyButton(s.ctx, { username: msg.senderUsername, senderId: msg.senderId })
+      : null;
+  if (!buy) return "question";
   // Консультант ответит сам и страну увидит в переписке; продавец пишет — не мешаем.
   const { consultantEnabled } = await import("@/core/consultant/engine.server");
   if (await consultantEnabled(s.ctx)) return null;
@@ -122,24 +120,8 @@ export async function countryFromChat(
   });
   if (!claimed) return "handled";
   s.customer = claimed;
-  const { recentBuyButton } = await import("../automations.server");
-  const buy =
-    s.platform === "instagram"
-      ? await recentBuyButton(s.ctx, { username: msg.senderUsername, senderId: msg.senderId })
-      : null;
-  const name = plain(picked.name);
-  if (buy) {
-    await reply(s, `${NOTED[s.locale](name)}\n${PRESS_BUY[s.locale](buy)}`, { force: true });
-    return "handled";
-  }
-  const catalog = s.bot.features.catalog;
-  await reply(
-    s,
-    [NOTED[s.locale](name), SELLER_WILL_ANSWER[s.locale], catalog ? OR_CATALOG[s.locale] : ""]
-      .filter(Boolean)
-      .join("\n"),
-    { force: true, buttons: catalog ? [BTN.catalog(s.m)] : undefined },
-  );
-  // Оплату под постом без кнопки пришлёт продавец: сообщение остаётся ему.
-  return "question";
+  await reply(s, `${NOTED[s.locale](plain(picked.name))}\n${PRESS_BUY[s.locale](buy)}`, {
+    force: true,
+  });
+  return "handled";
 }
