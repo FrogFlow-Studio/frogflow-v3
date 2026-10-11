@@ -72,7 +72,7 @@ describe("страница «Тексты бота»", () => {
   it("стандарт шага Instagram — фраза бота без HTML, с {подстановками} вместо значений", async () => {
     const rows = (await botTexts(ctx())).rows;
     expect(rows.find((r) => r.key === "language_ask")!.standard.ru).toBe(
-      "🌐 На каком языке нужны материалы?",
+      "🌐 На каком языке нужны материалы?\n👇 В ответ отправьте только цифру. Текст писать не нужно.",
     );
     expect(rows.find((r) => r.key === "receipt_received_email")!.standard.ru).toBe(
       "✅ Чек по заказу #{order} получен. После проверки пришлём материалы сюда и на {email}.",

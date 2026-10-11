@@ -1,13 +1,19 @@
 import { describe, expect, it } from "vitest";
 import { COPY } from "@/channels/telegram/copy";
 import { BOT_TEXT_VARS, DIRECT_KEYS, MSG_PROPS } from "@/core/bot-texts/registry";
-import { directCopy } from "./copy";
+import { DIGIT_HINT, directCopy } from "./copy";
 
 const tenant = (bot_texts?: Record<string, unknown>) => ({ settings: { bot_texts } }) as never;
 
 describe("словарь Direct со своими текстами продавца", () => {
-  it("без своих текстов — стандартный словарь", () => {
-    expect(directCopy(tenant(), "instagram", "ru")).toBe(COPY.ru);
+  it("без своих текстов: WhatsApp — стандартный словарь, Instagram — с подсказкой «только цифру»", () => {
+    expect(directCopy(tenant(), "whatsapp", "ru")).toBe(COPY.ru);
+    const ig = directCopy(tenant(), "instagram", "ru");
+    for (const prop of ["chooseCountry", "choosePayCountry", "chooseDeliveryLanguage"] as const)
+      expect(ig[prop]).toBe(`${COPY.ru[prop]}\n${DIGIT_HINT.ru}`);
+    expect(DIGIT_HINT.ru).toBe("👇 В ответ отправьте только цифру. Текст писать не нужно.");
+    expect(new Set(Object.values(DIGIT_HINT)).size).toBe(4);
+    expect(ig.emailAsk).toBe(COPY.ru.emailAsk);
   });
 
   it("строка «В ответ отправьте только цифру» в вопросах о стране и языке (AATeach, 11.10)", () => {

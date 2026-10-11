@@ -4,6 +4,7 @@ import { SUPPORTED_LOCALES, type Locale } from "@/core/i18n/locale";
 import { verticalDef } from "@/core/verticals/registry";
 import { COPY } from "@/channels/telegram/copy";
 import { plain } from "@/channels/zernio/flow/classify";
+import { directBase } from "@/channels/zernio/shop/copy";
 import {
   BOT_TEXT_CHANNELS,
   BOT_TEXT_KEYS,
@@ -53,7 +54,8 @@ function standardOf(key: BotTextKey, shopName: string, vertical: string): Record
     } else if (key === "not_understood") out[l] = COPY[l].useMenu;
     else if (MSG_PROPS[key]) {
       // Фраза словаря бота; у фразы-функции вместо значений — {подстановки} ключа.
-      const std = (COPY[l] as Record<string, unknown>)[MSG_PROPS[key][0]!];
+      // Подключены только к Instagram: стандарт — каким он уходит там.
+      const std = (directBase("instagram", l) as Record<string, unknown>)[MSG_PROPS[key][0]!];
       out[l] = plain(
         typeof std === "function"
           ? (std as (...a: string[]) => string)(...BOT_TEXT_VARS[key].map((v) => `{${v}}`))
