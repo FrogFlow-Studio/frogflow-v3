@@ -121,10 +121,10 @@ describe("аналитика", () => {
     // 1 $ = 500 ₸ = 80 ₽: 20 $ → 10 000 ₸, 800 ₽ → 5 000 ₸.
     setFxProvider(async () => ({ USD: 1, KZT: 500, RUB: 80 }));
     const db = dataset();
-    db.tables.orders.push(
+    db.tables.orders!.push(
       order({ created_at: ago(1), total: 800, currency: "RUB", telegram_id: 16 }),
     );
-    db.tables.order_items.push(
+    db.tables.order_items!.push(
       { order_id: 3, product_id: "p3", name_snapshot: "Курс", price_snapshot: 20, quantity: 1 },
       { order_id: 8, product_id: "p1", name_snapshot: "Торт", price_snapshot: 800, quantity: 1 },
     );
