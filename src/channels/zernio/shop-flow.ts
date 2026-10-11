@@ -37,6 +37,7 @@ export { type DirectCommand, matchDirectCommand } from "./flow/commands";
 export {
   isPaymentComplaint,
   isPayTrouble,
+  isPaidReport,
   isFromRussia,
   isReceiptHowQuestion,
   type IncomingKind,
