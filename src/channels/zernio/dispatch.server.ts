@@ -67,6 +67,24 @@ export async function dispatchZernioEvent(
           accountUsername: c.account?.username,
         }).catch((e: unknown) => console.error("[comment-reply] правило не отработало", e));
       }
+      // Консультант отвечает на комментарий ценой одним личным сообщением
+      // (core/consultant/comment-reply; включается продавцу, BOVI — по умолчанию).
+      let consultantNote: string | null = null;
+      if (ctx.tenant.modules.instagram) {
+        const { replyToCommentByConsultant } = await import("./comment-consultant.server");
+        consultantNote = await runWithZernioEvent(eventId, () =>
+          replyToCommentByConsultant(
+            ctx,
+            payload as import("./automations.server").CommentReceivedPayload,
+          ),
+        )
+          .then((x) => x.note)
+          .catch(async (e: unknown) => {
+            const { reportError } = await import("@/lib/errors");
+            await reportError(e, { where: "zernio.comment-consultant", botId: ctx.tenant.id });
+            return `ответ консультанта на комментарий упал: ${e instanceof Error ? e.message : String(e)}`;
+          });
+      }
       // Розыгрыш: комментарий под постом со словом — участие и ответ в Direct (модуль giveaways).
       if (ctx.tenant.modules.giveaways) {
         const { handleGiveawayComment } = await import("./giveaway-comments.server");
@@ -78,7 +96,10 @@ export async function dispatchZernioEvent(
           await reportError(e, { where: "zernio.giveaway-comment", botId: ctx.tenant.id });
         });
       }
-      return { status: "processed", note: r.note };
+      return {
+        status: "processed",
+        note: consultantNote ? `${r.note}; ${consultantNote}` : r.note,
+      };
     }
     if (payload.event === "whatsapp.template.status_updated") {
       const { handleTemplateStatus } = await import("./templates.server");

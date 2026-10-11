@@ -1,12 +1,14 @@
 import { useRouter, getRouteApi } from "@tanstack/react-router";
 import { useState } from "react";
 import { saveConsultantFn } from "@/app/admin/consultant-settings.functions";
+import { saveSettingsFn } from "@/app/admin/settings.functions";
+import { COMMENT_REPLY_KEY } from "@/core/consultant/comment-reply";
 import { Card, ErrorBox, Field, PageTitle, Switch, useAction } from "@/app/ui";
 import { adminT, intlLocale, type AdminKey } from "@/app/i18n/admin";
 import { PAUSE_CHOICES, type PauseHours } from "@/core/consultant/pause";
 import { PersonaCard, SettingsCard } from "@/app/admin/pricelist-cards";
 import { WorkspaceTestChat } from "@/app/admin/workspace-test-chat";
-import { canEdit } from "@/core/auth/roles";
+import { canEdit, roleAllows } from "@/core/auth/roles";
 import { StoriesCard } from "./stories";
 
 /** Данные и контекст страницы консультанта: компонент вынесен из файла маршрута. */
@@ -96,6 +98,7 @@ export function WorkspaceSettings() {
         </div>
         <div className="space-y-4">
           <WorkspaceTestChat configured={data.configured} t={t} />
+          {shop.modules.instagram && <CommentReplyCard />}
           {shop.modules.instagram && <StoriesCard t={t} />}
           <Card title={t("pricelist.usage.title")}>
             <p className="text-sm">
@@ -121,5 +124,32 @@ export function WorkspaceSettings() {
         </div>
       </div>
     </>
+  );
+}
+
+/** Ответ консультанта на комментарии в Instagram (core/consultant/comment-reply). */
+function CommentReplyCard() {
+  const data = Route.useLoaderData();
+  const { shop } = Route.useRouteContext();
+  const t = adminT(shop.locale);
+  const router = useRouter();
+  const toggle = useAction(async (v: boolean) => {
+    await saveSettingsFn({ data: { [COMMENT_REPLY_KEY]: v ? "true" : "false" } });
+    await router.invalidate();
+  });
+  return (
+    <Card title={t("ws.settings.commentReply.title")}>
+      <p className="mb-3 text-sm text-muted">{t("ws.settings.commentReply.intro")}</p>
+      <div className="flex items-center gap-3">
+        <Switch
+          checked={data.commentReply}
+          disabled={toggle.busy || !roleAllows(shop.role, "admin")}
+          onChange={(v) => void toggle.run(v).catch(() => {})}
+          label={t("ws.settings.commentReply.label")}
+        />
+        <span className="text-sm">{t("ws.settings.commentReply.label")}</span>
+      </div>
+      <ErrorBox error={toggle.error} />
+    </Card>
   );
 }

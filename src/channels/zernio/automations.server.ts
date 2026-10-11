@@ -1020,6 +1020,27 @@ export async function handleCommentReceived(
   return { note: ok ? `второе сообщение @${username}` : `в очередь pending @${username}` };
 }
 
+/**
+ * Активное правило Zernio этого аккаунта сработает на комментарий: первое
+ * личное сообщение по нему шлёт Zernio, а Instagram разрешает на комментарий
+ * только одно — консультант тогда не отвечает (comment-consultant.server).
+ */
+export async function zernioRuleCoversComment(
+  ctx: TenantContext,
+  p: { accountId: string; text: string; postId: string; caption?: string | null },
+  api: AutomationApi = liveAutomationApi,
+): Promise<boolean> {
+  const text = p.text.trim().toLowerCase();
+  const rules = (await listAutomations(ctx, api)).filter(
+    (a) => a.isActive !== false && a.accountId === p.accountId,
+  );
+  return rules.some(
+    (a) =>
+      commentOnRulePost(a, p.postId, p.caption ?? undefined) !== false &&
+      commentMatchesAutomation(text, a.keywords, a.matchMode),
+  );
+}
+
 /** Сколько после первого сообщения «ничего нет» под постом получает подсказку про «Запросы». */
 export const NOT_RECEIVED_WINDOW_MS = 24 * 60 * 60_000;
 
