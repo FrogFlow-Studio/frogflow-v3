@@ -11,6 +11,7 @@ import { NOTIFY_KINDS, URGENT_KINDS, type NotifyPrefs } from "@/core/notify/pref
 import { adminT } from "@/app/i18n/admin";
 import { settingsRoute } from "./route";
 import { roleAllows } from "@/core/auth/roles";
+import { HelpTip } from "@/app/admin/help-panel";
 
 /**
  * Уведомления продавцу: что и куда приходит, тихие часы, утренний дайджест.
@@ -73,7 +74,10 @@ export function NotifyCard() {
         <table className="table">
           <thead>
             <tr>
-              <th>{t("settings.notify.col.event")}</th>
+              <th>
+                {t("settings.notify.col.event")}{" "}
+                <HelpTip article="settings-bots" anchor="notify-kinds" />
+              </th>
               <th className="text-center">Telegram</th>
               <th className="text-center">
                 {t("settings.notify.col.email")}
@@ -120,6 +124,7 @@ export function NotifyCard() {
         <div className="grid gap-3 sm:grid-cols-2">
           <Field
             label={t("settings.notify.email")}
+            help={<HelpTip article="settings-bots" anchor="notify-email" />}
             hint={data.mail ? t("settings.notify.emailHint") : t("settings.notify.noMail")}
           >
             <input
@@ -132,6 +137,7 @@ export function NotifyCard() {
           </Field>
           <Field
             label={t("settings.notify.quiet")}
+            help={<HelpTip article="settings-bots" anchor="notify-quiet" />}
             hint={t("settings.notify.quietHint", { tz: data.timezone })}
           >
             <div className="flex items-center gap-2 text-sm">
@@ -159,7 +165,11 @@ export function NotifyCard() {
             </div>
           </Field>
         </div>
-        <Field label={t("settings.notify.digest")} hint={t("settings.notify.digestHint")}>
+        <Field
+          label={t("settings.notify.digest")}
+          help={<HelpTip article="settings-bots" anchor="notify-digest" />}
+          hint={t("settings.notify.digestHint")}
+        >
           <div className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
@@ -205,6 +215,7 @@ export function NotifyCard() {
           >
             {runCheck.busy ? t("settings.notify.checking") : t("settings.notify.check")}
           </button>
+          <HelpTip article="settings-bots" anchor="notify-check" />
           <ErrorBox error={runCheck.error} />
           {check && (
             <ul className="space-y-1 text-sm">
@@ -261,7 +272,11 @@ export function LowStockCard() {
         }}
       >
         <p className="text-sm text-muted">{t("settings.lowStock.intro")}</p>
-        <Field label={t("settings.lowStock.label")} hint={t("settings.lowStock.hint")}>
+        <Field
+          label={t("settings.lowStock.label")}
+          help={<HelpTip article="settings-bots" anchor="low-stock" />}
+          hint={t("settings.lowStock.hint")}
+        >
           <input
             className="input w-32"
             type="number"
@@ -281,7 +296,8 @@ export function LowStockCard() {
             onChange={(e) => setShowBuyer(e.target.checked)}
           />
           <span>
-            {t("settings.lowStock.showBuyer")}
+            {t("settings.lowStock.showBuyer")}{" "}
+            <HelpTip article="settings-bots" anchor="low-stock" />
             <span className="block text-xs text-muted">{t("settings.lowStock.showBuyerHint")}</span>
           </span>
         </label>

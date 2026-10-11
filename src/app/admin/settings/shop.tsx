@@ -19,6 +19,7 @@ import {
 } from "@/core/orders/pay-remind-settings";
 import { settingsRoute } from "./route";
 import { roleAllows } from "@/core/auth/roles";
+import { HelpTip } from "@/app/admin/help-panel";
 
 export function LegalCard({ settings }: { settings: Record<string, string> }) {
   const router = useRouter();
@@ -133,6 +134,7 @@ export function SmartSearchCard({
           label={t("settings.ss.enable")}
         />
         <span className="text-sm">{enabled ? t("settings.ss.on") : t("settings.ss.off")}</span>
+        <HelpTip article="settings-shop" anchor="smart-search" />
       </div>
       <dl className="mt-4 grid grid-cols-2 gap-2 text-sm">
         <dt className="text-muted">{t("settings.ss.todayCalls")}</dt>
@@ -178,6 +180,7 @@ export function WatermarkCard({ enabled }: { enabled: boolean }) {
         <span className="text-sm">
           {enabled ? t("settings.watermark.on") : t("settings.watermark.off")}
         </span>
+        <HelpTip article="settings-shop" anchor="watermark" />
       </div>
       <ErrorBox error={toggle.error} />
     </Card>
@@ -216,6 +219,7 @@ export function WeeklyReportCard({ settings }: { settings: Record<string, string
         <span className="text-sm">
           {enabled ? t("settings.weekly.on") : t("settings.weekly.off")}
         </span>
+        <HelpTip article="settings-shop" anchor="weekly" />
       </div>
       <ErrorBox error={toggle.error} />
       <fieldset className="mt-4" disabled={pick.busy || !roleAllows(shop.role, "admin")}>
@@ -263,6 +267,7 @@ export function AutoMessagesCard({ settings }: { settings: Record<string, string
         <span className="text-sm">
           {enabled ? t("settings.autoV3.on") : t("settings.autoV3.off")}
         </span>
+        <HelpTip article="settings-shop" anchor="auto-v3" />
       </div>
       <ErrorBox error={toggle.error} />
     </Card>
@@ -298,6 +303,7 @@ export function ServiceNoticesCard({ settings }: { settings: Record<string, stri
               label={t(r.label)}
             />
             <span className="text-sm">{t(r.label)}</span>
+            <HelpTip article="settings-shop" anchor="service-notices" />
           </div>
         ))}
       </div>
@@ -327,6 +333,7 @@ export function EmailAskCard({ settings }: { settings: Record<string, string> })
           label={t("settings.emailAsk.label")}
         />
         <span className="text-sm">{t("settings.emailAsk.label")}</span>
+        <HelpTip article="settings-payment" anchor="email-ask" />
       </div>
       <ErrorBox error={toggle.error} />
     </Card>

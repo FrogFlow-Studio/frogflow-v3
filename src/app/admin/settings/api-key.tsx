@@ -3,6 +3,7 @@ import { Card, ErrorBox, useAction } from "@/app/ui";
 import { apiKeyStatusFn, createApiKeyFn, revokeApiKeyFn } from "@/app/admin/api-key.functions";
 import { adminT, intlLocale } from "@/app/i18n/admin";
 import { settingsRoute } from "./route";
+import { HelpTip } from "@/app/admin/help-panel";
 
 /** Ключ публичного API (core/api/public-api): создать, сменить, отозвать; показ один раз. */
 export function ApiKeyCard() {
@@ -71,7 +72,7 @@ export function ApiKeyCard() {
         </pre>
         <p className="text-xs text-muted">{t("settings.api.webhooks")}</p>
         <label className="block text-xs text-muted">
-          {t("settings.api.scope")}
+          {t("settings.api.scope")} <HelpTip article="settings-advanced" anchor="api" />
           <select
             className="input mt-1 block"
             value={scope}

@@ -26,14 +26,20 @@ describe("меню админки", () => {
     expect(on).toContain("/admin/broadcasts#giveaways");
   });
 
-  it("группы: продажи, каталог, маркетинг, аналитика, настройки; пустые не рисуются", () => {
+  it("группы: продажи, каталог, маркетинг, аналитика, помощь, настройки; пустые не рисуются", () => {
     const n = buildAdminNav(shop({ modules: { dashboard: true } }));
     expect(n.groups.map((g) => g.id)).toEqual([
       "sales",
       "catalog",
       "marketing",
       "analytics",
+      "help",
       "settings",
+    ]);
+    expect(n.groups.find((g) => g.id === "help")!.items.map((i) => i.to)).toEqual([
+      "/admin/help/start",
+      "/admin/help/guide",
+      "/admin/help/trouble",
     ]);
     const bare = buildAdminNav(shop({ role: "manager" }));
     expect(bare.groups.map((g) => g.id)).not.toContain("analytics");

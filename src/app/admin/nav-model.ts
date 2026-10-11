@@ -248,13 +248,23 @@ export function buildAdminNav(shop: NavShop): AdminNav {
             ? { value: shop.supportUnread!, tone: "accent" }
             : undefined,
       },
-      { to: "/admin/help", label: "help.nav" },
       {
         to: "/admin/news",
         label: "news.nav",
         badge: (shop.newsUnread ?? 0) > 0 ? { value: shop.newsUnread!, tone: "accent" } : undefined,
       },
     ]),
+  };
+
+  // «Помощь» — перед «Настройками»: быстрый старт, справочник по разделам, «что делать, если».
+  const help: NavGroup = {
+    id: "help",
+    label: "help.nav",
+    items: [
+      { to: "/admin/help/start", label: "help.start" },
+      { to: "/admin/help/guide", label: "help.guide" },
+      { to: "/admin/help/trouble", label: "help.trouble" },
+    ],
   };
 
   if (consultantWorkspace(shop)) {
@@ -286,14 +296,14 @@ export function buildAdminNav(shop: NavShop): AdminNav {
     });
     const groups = [
       workspace,
-      ...[sales, catalog, learning, marketing, analytics, settings].map(without),
+      ...[sales, catalog, learning, marketing, analytics, help, settings].map(without),
     ].filter((g) => g.items.length > 0);
     const primary = compact<NavItem>([overview, tasks, dialogs, price, knowledge]).slice(0, 4);
     return { overview, groups, primary, pinned: workspace.items.map((i) => i.to) };
   }
 
   const groups = (school ? [sales, learning, catalog] : [sales, catalog, learning])
-    .concat([marketing, analytics, settings])
+    .concat([marketing, analytics, help, settings])
     .filter((g) => g.items.length > 0);
   const fourth = m.manager_chat ? chat : customers;
   if (!sells) {

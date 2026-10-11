@@ -9,6 +9,7 @@ import { adminT } from "@/app/i18n/admin";
 import { AsBuyerButton } from "./as-buyer";
 import { settingsRoute } from "./route";
 import { roleAllows } from "@/core/auth/roles";
+import { HelpTip } from "@/app/admin/help-panel";
 
 type View = Awaited<ReturnType<typeof marketplaceFn>>;
 
@@ -60,7 +61,7 @@ export function MarketplaceCard() {
               disabled={locked}
               onChange={(e) => setListed(e.currentTarget.checked)}
             />
-            {t("settings.market.on")}
+            {t("settings.market.on")} <HelpTip article="settings-shop" anchor="marketplace" />
           </label>
           <Field label={t("settings.market.category", { def: view?.defaultCategory ?? "" })}>
             <input

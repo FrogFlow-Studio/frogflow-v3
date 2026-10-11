@@ -4,6 +4,7 @@ import { minOrderFn, saveMinOrderFn } from "@/app/admin/min-order.functions";
 import { adminT } from "@/app/i18n/admin";
 import { settingsRoute } from "./route";
 import { roleAllows } from "@/core/auth/roles";
+import { HelpTip } from "@/app/admin/help-panel";
 
 /**
  * Минимальная сумма заказа в валюте магазина: бот, сайт и Instagram/WhatsApp не
@@ -40,6 +41,7 @@ export function MinOrderCard() {
         <p className="text-sm text-muted">{t("settings.minOrder.intro")}</p>
         <Field
           label={t("settings.minOrder.label", { cur: currency })}
+          help={<HelpTip article="settings-payment" anchor="min-order" />}
           hint={t("settings.minOrder.hint")}
         >
           <input

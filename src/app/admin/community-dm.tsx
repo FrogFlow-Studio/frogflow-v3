@@ -10,6 +10,7 @@ import {
 } from "@/app/admin/community-dm.functions";
 import type { AdminT } from "@/app/i18n/admin";
 import { Card, Empty, ErrorBox, useAction } from "@/app/ui";
+import { HelpTip } from "@/app/admin/help-panel";
 
 type Inbox = Extract<Awaited<ReturnType<typeof communityInboxFn>>, { soon: false }>;
 type Thread = Extract<Awaited<ReturnType<typeof communityDmThreadFn>>, { soon: false }>;
@@ -71,7 +72,7 @@ export function CommunityDm({ canWrite, loc, t }: { canWrite: boolean; loc: stri
             onChange={(e) => void setOff.run(e.target.checked).catch(() => {})}
           />
           <span>
-            {t("community.dm.off")}
+            {t("community.dm.off")} <HelpTip article="community" anchor="dm-off" />
             <span className="block text-xs text-muted">{t("community.dm.offHint")}</span>
           </span>
         </label>

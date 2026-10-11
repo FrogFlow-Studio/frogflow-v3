@@ -18,6 +18,7 @@ import {
   useT,
 } from "./shared";
 import { AudiencePicker, useAudienceCount } from "./audience";
+import { HelpTip } from "@/app/admin/help-panel";
 
 /** Поиск и переход страницы рассылок: компонент вынесен из файла маршрута. */
 const Route = getRouteApi("/admin/_authed/broadcasts");
@@ -161,6 +162,7 @@ export function Composer({
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={abOn} onChange={(e) => setAbOn(e.target.checked)} />
           {t("broadcasts.ab.toggle")}
+          <HelpTip article="broadcasts" anchor="ab" />
         </label>
         {abOn && (
           <Field label={t("broadcasts.ab.textB")} hint={t("broadcasts.ab.hint")}>
@@ -211,7 +213,10 @@ export function Composer({
         </div>
 
         <div hidden={!sells && !shop.modules.giveaways}>
-          <span className="label">{t("broadcasts.compose.buttons")}</span>
+          <span className="label flex items-center gap-1.5">
+            {t("broadcasts.compose.buttons")}
+            <HelpTip article="broadcasts" anchor="buttons" />
+          </span>
           {sells && (
             <div className="flex items-center gap-3 py-1">
               <Switch
@@ -220,6 +225,7 @@ export function Composer({
                 label={t("broadcasts.compose.catalogSwitch")}
               />
               <span className="text-sm">{t("broadcasts.compose.catalogButton")}</span>
+              <HelpTip article="broadcasts" anchor="buttons" />
             </div>
           )}
           {shop.modules.giveaways && (
@@ -297,6 +303,7 @@ export function Composer({
           <div className="flex flex-wrap items-center gap-3">
             <Switch checked={later} onChange={setLater} label={t("broadcasts.schedule.later")} />
             <span className="text-sm">{t("broadcasts.schedule.later")}</span>
+            <HelpTip article="broadcasts" anchor="schedule" />
             {later && (
               <input
                 type="datetime-local"
@@ -391,7 +398,10 @@ export function WhatsAppComposer({
       ) : (
         <div className="space-y-4">
           {wa.accounts.length > 1 && (
-            <Field label={t("broadcasts.compose.fromNumber")}>
+            <Field
+              label={t("broadcasts.compose.fromNumber")}
+              help={<HelpTip article="broadcasts" anchor="whatsapp" />}
+            >
               <select
                 className="input"
                 value={accountId}
@@ -411,6 +421,7 @@ export function WhatsAppComposer({
           )}
           <Field
             label={t("broadcasts.compose.template")}
+            help={<HelpTip article="broadcasts" anchor="whatsapp" />}
             hint={forAccount.length === 0 ? t("broadcasts.compose.noApproved") : undefined}
           >
             <select

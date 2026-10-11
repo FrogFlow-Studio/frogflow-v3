@@ -1,3 +1,4 @@
+import { HelpTip } from "@/app/admin/help-panel";
 import { canEdit } from "@/core/auth/roles";
 import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
@@ -193,6 +194,9 @@ function ProductsPage() {
             <button className="btn-secondary" onClick={() => setImportOpen((v) => !v)}>
               {t("products.importExport")}
             </button>
+            <span className="self-center">
+              <HelpTip article="products" anchor="import" />
+            </span>
             {shop.modules.instagram && canEdit(shop.role) && (
               <Link to="/admin/ig-import" className="btn-secondary">
                 {t("igImport.button")}
@@ -258,6 +262,7 @@ function ProductsPage() {
           />{" "}
           {t("products.onlyHidden")}
         </label>
+        <HelpTip article="products" anchor="filters" />
         <select
           className="input w-48"
           aria-label={t("products.sort.label")}
@@ -270,6 +275,7 @@ function ProductsPage() {
             </option>
           ))}
         </select>
+        <HelpTip article="products" anchor="lang-filter" />
         <select
           className="input w-48"
           aria-label={t("products.lang.label")}
@@ -416,10 +422,22 @@ function ProductsPage() {
                 <th className="text-right">{t("products.col.price")}</th>
                 <th className="text-right">{t("products.col.stock")}</th>
                 <th>{t("products.col.ready")}</th>
-                {shop.modules.stock && <th className="text-right">{t("products.col.daysLeft")}</th>}
+                {shop.modules.stock && (
+                  <th className="text-right">
+                    <span className="inline-flex items-center gap-1.5">
+                      {t("products.col.daysLeft")}
+                      <HelpTip article="products" anchor="list" />
+                    </span>
+                  </th>
+                )}
                 <th>{t("products.col.files")}</th>
                 <th>{t("products.col.added")}</th>
-                <th>{t("products.col.onSale")}</th>
+                <th>
+                  <span className="flex items-center gap-1.5">
+                    {t("products.col.onSale")}
+                    <HelpTip article="products" anchor="on-sale" />
+                  </span>
+                </th>
               </tr>
             </thead>
             <tbody>

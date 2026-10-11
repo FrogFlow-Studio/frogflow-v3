@@ -13,6 +13,7 @@ import { Badge, Card, Empty, ErrorBox, PageTitle, useAction } from "@/app/ui";
 import { canEdit } from "@/core/auth/roles";
 import { suggestHelp } from "@/core/help/articles";
 import { SUPPORT_BODY_MAX, type ThreadStatus } from "@/core/support/support";
+import { HelpTip } from "@/app/admin/help-panel";
 
 export const Route = createFileRoute("/admin/_authed/support")({
   // `from` — страница админки, с которой нажали «Поддержка» (кнопка в углу каждой страницы).
@@ -109,6 +110,7 @@ function SupportPage() {
         >
           {t("support.refresh")}
         </button>
+        <HelpTip article="support" anchor="status" />
       </div>
       <Card>
         <div className="max-h-[60vh] space-y-3 overflow-y-auto p-4" aria-label={t("support.title")}>

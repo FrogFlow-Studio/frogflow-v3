@@ -1,3 +1,4 @@
+import { HelpTip } from "@/app/admin/help-panel";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useState } from "react";
 import { CostEditor } from "@/app/admin/cost-editor";
@@ -48,6 +49,7 @@ function CostPage() {
             onChange={(e) => setOnlyMissing(e.target.checked)}
           />
           {t("cost.onlyMissing")}
+          <HelpTip article="cost" anchor="only-missing" />
         </label>
         <Badge tone={missing ? "warn" : "ok"}>
           {t("cost.missing", { n: missing, total: rows.length })}

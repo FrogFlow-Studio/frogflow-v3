@@ -1,3 +1,4 @@
+import { HelpTip } from "@/app/admin/help-panel";
 import { Badge, Card } from "@/app/ui";
 import { type Data, useAdminI18n } from "./shared";
 
@@ -7,7 +8,10 @@ export function FallbackJournal({ rows }: { rows: Data["fallbackSends"] }) {
   const { t, intl } = useAdminI18n();
   if (rows.length === 0) return null;
   return (
-    <Card title={t("instagram.fallback.title")}>
+    <Card
+      title={t("instagram.fallback.title")}
+      help={<HelpTip article="instagram" anchor="fallback-journal" />}
+    >
       <p className="mb-2 text-xs text-muted">{t("instagram.fallback.intro")}</p>
       <ul className="divide-y divide-line text-xs">
         {rows.map((r) => (

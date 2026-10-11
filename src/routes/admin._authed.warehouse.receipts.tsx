@@ -1,3 +1,4 @@
+import { HelpTip } from "@/app/admin/help-panel";
 import { canEdit } from "@/core/auth/roles";
 import { createFileRoute, Link, redirect, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
@@ -339,6 +340,7 @@ function ReceiptEditor({
             />
             <span>
               {t("receipts.updateCost")}
+              <HelpTip article="warehouse" anchor="update-cost" />
               <span className="block text-xs text-muted">{t("receipts.updateCostHint")}</span>
             </span>
           </label>

@@ -1,3 +1,4 @@
+import { HelpTip } from "@/app/admin/help-panel";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { centerReportFn, reportKindsFn } from "@/app/admin/reports.functions";
 import { adminT, type AdminKey } from "@/app/i18n/admin";
@@ -57,7 +58,8 @@ function ReportsPage() {
             </>
           }
         />
-        <div className="mb-3 flex flex-wrap gap-2" role="tablist">
+        <div className="mb-3 flex flex-wrap items-center gap-2" role="tablist">
+          <HelpTip article="reports" anchor="kinds" />
           {kinds.map((k) => (
             <button
               key={k}

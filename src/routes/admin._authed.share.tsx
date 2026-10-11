@@ -7,6 +7,7 @@ import { Card, Field, PageTitle } from "@/app/ui";
 import { SOURCE_TAG_MAX, sourceTag } from "@/core/analytics/source-links";
 import { SUPPORTED_LOCALES, type Locale } from "@/core/i18n/locale";
 import { SHARE_CHANNELS, mainLink, plainLinks, shareLinks } from "@/core/share/share";
+import { HelpTip } from "@/app/admin/help-panel";
 
 export const Route = createFileRoute("/admin/_authed/share")({
   loader: () => shareFn(),
@@ -77,7 +78,7 @@ function SharePage() {
           </div>
         </Card>
         <Card title={t("share.texts")}>
-          <Field label={t("share.textLang")}>
+          <Field label={t("share.textLang")} help={<HelpTip article="share" anchor="texts" />}>
             <select
               name="share-lang"
               className="input w-full max-w-xs"
@@ -97,7 +98,11 @@ function SharePage() {
             <CopyRow label={channelName("whatsapp")} value={text("whatsapp")} t={t} multiline />
           </div>
         </Card>
-        <Card title={t("share.byChannel")} className="lg:col-span-2">
+        <Card
+          title={t("share.byChannel")}
+          help={<HelpTip article="share" anchor="channels" />}
+          className="lg:col-span-2"
+        >
           <p className="mb-3 text-sm text-muted">{t("share.byChannelHint")}</p>
           <div className="space-y-4">
             {SHARE_CHANNELS.map((c) => {
@@ -111,7 +116,7 @@ function SharePage() {
               );
             })}
             <div className="space-y-2 rounded-md border border-line p-3">
-              <Field label={t("share.custom")}>
+              <Field label={t("share.custom")} help={<HelpTip article="share" anchor="custom" />}>
                 <input
                   className="input w-full max-w-sm"
                   name="share-tag"

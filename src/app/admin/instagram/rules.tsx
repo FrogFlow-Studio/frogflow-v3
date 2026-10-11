@@ -6,6 +6,7 @@ import {
   toggleAutomationFn,
 } from "@/app/admin/instagram.functions";
 import { type AdminT } from "@/app/i18n/admin";
+import { HelpTip } from "@/app/admin/help-panel";
 import { Badge, Card, Empty, ErrorBox, Switch, useAction } from "@/app/ui";
 import { type Automation, type Data, ruleAnchor, useAdminI18n } from "./shared";
 
@@ -47,6 +48,7 @@ export function RulesCard({
   return (
     <Card
       title={t("instagram.rules.title")}
+      help={<HelpTip article="instagram" anchor="rules" />}
       actions={
         <button className="btn-primary text-xs" onClick={onNew}>
           {t("instagram.rules.new")}
@@ -107,11 +109,14 @@ export function RulesCard({
                   </p>
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-1">
-                  <Switch
-                    checked={a.isActive}
-                    onChange={() => void toggle.run(a).catch(() => {})}
-                    label={t("instagram.rules.enabled")}
-                  />
+                  <div className="flex items-center gap-1.5">
+                    <Switch
+                      checked={a.isActive}
+                      onChange={() => void toggle.run(a).catch(() => {})}
+                      label={t("instagram.rules.enabled")}
+                    />
+                    <HelpTip article="instagram" anchor="enabled" />
+                  </div>
                   <button className="btn-ghost text-xs" onClick={() => onEdit(a)}>
                     {t("common.edit")}
                   </button>
@@ -161,9 +166,12 @@ function LogsDisclosure({ id }: { id: string }) {
   }, [open, onlyFailed, id]);
   return (
     <div className="mt-2">
-      <button className="btn-ghost text-xs" onClick={() => setOpen((v) => !v)}>
-        {open ? t("instagram.logs.hide") : t("instagram.logs.show")}
-      </button>
+      <div className="flex items-center gap-1.5">
+        <button className="btn-ghost text-xs" onClick={() => setOpen((v) => !v)}>
+          {open ? t("instagram.logs.hide") : t("instagram.logs.show")}
+        </button>
+        <HelpTip article="instagram" anchor="history" />
+      </div>
       {open && (
         <div className="mt-2 rounded-md border border-line p-2 text-xs">
           <label className="mb-2 flex items-center gap-2">
@@ -173,6 +181,7 @@ function LogsDisclosure({ id }: { id: string }) {
               onChange={(e) => setOnlyFailed(e.target.checked)}
             />
             {t("instagram.logs.onlyFailed")}
+            <HelpTip article="instagram" anchor="history" />
           </label>
           <ErrorBox error={error} />
           {logs === null ? (

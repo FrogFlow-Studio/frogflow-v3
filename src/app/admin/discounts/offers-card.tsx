@@ -12,6 +12,7 @@ import {
 import { adminT, intlLocale } from "@/app/i18n/admin";
 import { Badge, Card, ErrorBox, useAction } from "@/app/ui";
 import { utcToZonedLocal } from "@/core/export/csv";
+import { HelpTip } from "@/app/admin/help-panel";
 
 /** Контекст и поиск страницы скидок: компонент вынесен из файла маршрута. */
 const Route = getRouteApi("/admin/_authed/discounts");
@@ -128,7 +129,11 @@ export function OffersCard() {
   const when = (iso: string) =>
     new Date(iso).toLocaleString(loc, { dateStyle: "short", timeStyle: "short", timeZone: tz });
   return (
-    <Card title={t("discounts.offers.title")} className="lg:col-span-2">
+    <Card
+      title={t("discounts.offers.title")}
+      help={<HelpTip article="discounts" anchor="offers" />}
+      className="lg:col-span-2"
+    >
       <p className="mb-3 text-sm text-muted">{t("discounts.offers.intro")}</p>
       {queue.length > 0 && (
         <p className="mb-3 rounded border border-line bg-surface-2 p-2 text-sm">

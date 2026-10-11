@@ -8,6 +8,7 @@ import {
 import { adminT } from "@/app/i18n/admin";
 import { Badge, Card, Empty, ErrorBox, Field, useAction } from "@/app/ui";
 import { formatMoney } from "@/core/money/money";
+import { HelpTip } from "@/app/admin/help-panel";
 
 /** Подарочные сертификаты. */
 
@@ -42,7 +43,7 @@ export function GiftCard({ gifts, currency }: { gifts: Gift[]; currency: string 
     cancelled: t("discounts.gift.status.cancelled"),
   } as const;
   return (
-    <Card title={t("discounts.gift.title")}>
+    <Card title={t("discounts.gift.title")} help={<HelpTip article="discounts" anchor="gift" />}>
       <form
         className="mb-4 grid gap-3 sm:grid-cols-[1fr_100px_1fr_auto]"
         onSubmit={(e) => {

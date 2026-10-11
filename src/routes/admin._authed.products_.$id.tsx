@@ -1,3 +1,4 @@
+import { HelpTip } from "@/app/admin/help-panel";
 import { createFileRoute, Link, useBlocker, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { ReadinessCard } from "@/app/admin/product-readiness";
@@ -320,7 +321,10 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
             )}
             <Card title={t("product.card.description")}>
               <div className="space-y-3">
-                <Field label={t("product.name")}>
+                <Field
+                  label={t("product.name")}
+                  help={<HelpTip article="products" anchor="name" />}
+                >
                   <input
                     className="input"
                     name="name"
@@ -338,7 +342,11 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
                   />
                 </Field>
                 <DescriptionAssist t={t} kind={kind} currency={p?.currency ?? shop.currency} />
-                <Field label={t("product.keywords")} hint={t("product.keywordsHint")}>
+                <Field
+                  label={t("product.keywords")}
+                  hint={t("product.keywordsHint")}
+                  help={<HelpTip article="products" anchor="name" />}
+                >
                   <input
                     className="input"
                     name="keywords"
@@ -350,7 +358,10 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
                   initial={splitKeywords(p?.keywords).topics}
                   existing={shopTopics}
                 />
-                <Field label={t("product.categories")}>
+                <Field
+                  label={t("product.categories")}
+                  help={<HelpTip article="products" anchor="name" />}
+                >
                   <CategoryPicker
                     categories={categories}
                     selected={Array.isArray(p?.category_ids) ? (p.category_ids as string[]) : []}
@@ -363,7 +374,10 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
               <CourseCard productId={p.id} t={t} />
             )}
 
-            <Card title={t("product.card.kind")}>
+            <Card
+              title={t("product.card.kind")}
+              help={<HelpTip article="products" anchor="kind" />}
+            >
               <div className="flex flex-wrap gap-4">
                 <label className="flex items-center gap-2 text-sm">
                   <input
@@ -395,7 +409,10 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
                   onChange={(e) => setIsCourse(e.target.checked)}
                 />
                 <span>
-                  {t("product.isCourse")}
+                  <span className="inline-flex items-center gap-1.5">
+                    {t("product.isCourse")}
+                    <HelpTip article="products" anchor="is-course" />
+                  </span>
                   <span className="block text-xs text-muted">{t("product.isCourseHint")}</span>
                 </span>
               </label>
@@ -403,6 +420,7 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
             {kind === "digital" && (
               <Card
                 title={t("product.card.files")}
+                help={<HelpTip article="products" anchor="files" />}
                 actions={
                   materials.length === 0 && isCourse && shop.modules.courses ? (
                     <Badge>{t("product.filesOptional")}</Badge>
@@ -478,7 +496,10 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
             )}
             <Card title={t("product.card.price")}>
               <div className="grid gap-3 sm:grid-cols-3">
-                <Field label={t("product.basePrice")}>
+                <Field
+                  label={t("product.basePrice")}
+                  help={<HelpTip article="products" anchor="price" />}
+                >
                   <input
                     className="input"
                     name="price"
@@ -489,7 +510,10 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
                     required
                   />
                 </Field>
-                <Field label={t("product.currency")}>
+                <Field
+                  label={t("product.currency")}
+                  help={<HelpTip article="products" anchor="price" />}
+                >
                   <input
                     className="input"
                     name="currency"
@@ -497,7 +521,10 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
                     maxLength={3}
                   />
                 </Field>
-                <Field label={t("product.sortOrder")}>
+                <Field
+                  label={t("product.sortOrder")}
+                  help={<HelpTip article="products" anchor="price" />}
+                >
                   <input
                     className="input"
                     name="sortOrder"
@@ -508,7 +535,11 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
               </div>
               {ruCardPrice && (
                 <div className="mt-4 max-w-xs">
-                  <Field label={t("product.ruCardPrice")} hint={t("product.ruCardPriceHint")}>
+                  <Field
+                    label={t("product.ruCardPrice")}
+                    hint={t("product.ruCardPriceHint")}
+                    help={<HelpTip article="products" anchor="ru-price" />}
+                  >
                     <input
                       className="input"
                       name="cp_RU"
@@ -530,7 +561,10 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
               )}
               {shop.modules.multi_currency && countries.length > 0 && (
                 <div className="mt-4">
-                  <div className="label">{t("product.countryPrices")}</div>
+                  <div className="label flex items-center gap-1.5">
+                    {t("product.countryPrices")}
+                    <HelpTip article="products" anchor="country-prices" />
+                  </div>
                   <div className="grid gap-2 sm:grid-cols-3">
                     {countries.map((c) => (
                       <Field key={c.code} label={`${c.name}, ${c.currency}`}>
@@ -569,6 +603,7 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
               <div className="mt-3 grid gap-3 sm:grid-cols-3">
                 <Field
                   label={t("product.stock")}
+                  help={<HelpTip article="products" anchor="stock" />}
                   hint={[
                     t("product.stockHint"),
                     waiting == null
@@ -601,6 +636,7 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
                 {shop.modules.stock && (
                   <Field
                     label={t("product.lowStock")}
+                    help={<HelpTip article="products" anchor="low-stock" />}
                     hint={t("product.lowStockHint", { n: lowStock.shop })}
                   >
                     <input
@@ -613,7 +649,10 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
                   </Field>
                 )}
                 {kind === "physical" && (
-                  <Field label={t("product.leadTime")}>
+                  <Field
+                    label={t("product.leadTime")}
+                    help={<HelpTip article="products" anchor="lead-time" />}
+                  >
                     <input
                       className="input"
                       name="leadTimeDays"
@@ -626,6 +665,7 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
                 <label className="flex items-center gap-2 self-end pb-2 text-sm">
                   <input type="checkbox" name="isActive" defaultChecked={p?.is_active ?? true} />{" "}
                   {t("product.onSale")}
+                  <HelpTip article="products" anchor="on-sale" />
                 </label>
               </div>
               {shop.modules.stock && kind === "physical" && (
@@ -633,12 +673,17 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
                   <label className="flex items-center gap-2 text-sm">
                     <input type="checkbox" name="preorderOn" defaultChecked={Boolean(preorder)} />{" "}
                     {t("product.preorder")}
+                    <HelpTip article="products" anchor="preorder" />
                   </label>
                   <p className="text-xs text-muted">{t("product.preorderHint")}</p>
                   {preorderPast && (
                     <p className="text-xs text-danger">{t("product.preorderPast")}</p>
                   )}
-                  <Field label={t("product.preorderFrom")} hint={t("product.preorderFromHint")}>
+                  <Field
+                    label={t("product.preorderFrom")}
+                    hint={t("product.preorderFromHint")}
+                    help={<HelpTip article="products" anchor="preorder" />}
+                  >
                     <input
                       className="input sm:w-48"
                       name="preorderFrom"
@@ -660,7 +705,10 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
             {tabs.includes("photos") && (
               <SectionHeading id="photos">{t("product.tab.photos")}</SectionHeading>
             )}
-            <Card title={t("product.card.photos")}>
+            <Card
+              title={t("product.card.photos")}
+              help={<HelpTip article="products" anchor="photos" />}
+            >
               <div className="grid grid-cols-3 gap-2">
                 {images.map((img, i) => (
                   <div key={img.key} className="group relative">
@@ -723,7 +771,10 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
             {tabs.includes("variants") && (
               <SectionHeading id="variants">{t("product.tab.variants")}</SectionHeading>
             )}
-            <Card title={t(school ? "product.variantsCourse" : "product.card.variants")}>
+            <Card
+              title={t(school ? "product.variantsCourse" : "product.card.variants")}
+              help={<HelpTip article="products" anchor="variants" />}
+            >
               <div>
                 <p className="mb-2 text-sm text-muted">
                   {t(school ? "product.variantsCourse" : "product.variants")}

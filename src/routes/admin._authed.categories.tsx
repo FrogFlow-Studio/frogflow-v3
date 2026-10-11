@@ -1,3 +1,4 @@
+import { HelpTip } from "@/app/admin/help-panel";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import {
@@ -118,7 +119,12 @@ function CategoriesPage() {
                 <tr>
                   <th>{t("categories.col.name")}</th>
                   <th>{t("categories.col.order")}</th>
-                  <th>{t("categories.col.visible")}</th>
+                  <th>
+                    <span className="inline-flex items-center gap-1">
+                      {t("categories.col.visible")}
+                      <HelpTip article="categories" anchor="visible" />
+                    </span>
+                  </th>
                   <th></th>
                 </tr>
               </thead>
@@ -190,7 +196,10 @@ function CategoriesPage() {
                 />
               </label>
               <label className="block">
-                <span className="label">{t("categories.parent")}</span>
+                <span className="label inline-flex items-center gap-1">
+                  {t("categories.parent")}
+                  <HelpTip article="categories" anchor="form" />
+                </span>
                 <select className="input" name="parentId" defaultValue={current?.parent_id ?? ""}>
                   <option value="">{t("categories.root")}</option>
                   {rows
@@ -219,6 +228,7 @@ function CategoriesPage() {
                   defaultChecked={current?.is_visible ?? true}
                 />{" "}
                 {t("categories.showToCustomers")}
+                <HelpTip article="categories" anchor="visible" />
               </label>
               <ErrorBox error={save.error} />
               <div className="flex gap-2">
@@ -270,7 +280,9 @@ function LayoutCard({
   return (
     <div className="mt-4 max-w-xl">
       <Card title={t("categories.layout.title")}>
-        <p className="mb-3 text-sm text-muted">{t("categories.layout.hint")}</p>
+        <p className="mb-3 text-sm text-muted">
+          {t("categories.layout.hint")} <HelpTip article="categories" anchor="top-row" />
+        </p>
         <div className="space-y-1.5">
           {CATALOG_LAYOUTS.map((k) => (
             <label key={k} className="flex items-center gap-2 text-sm">

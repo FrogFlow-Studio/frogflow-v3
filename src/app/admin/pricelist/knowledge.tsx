@@ -8,6 +8,7 @@ import { Badge, Card, ErrorBox, Field, useAction } from "@/app/ui";
 import { type AdminT } from "@/app/i18n/admin";
 import { KNOWLEDGE_FILE_MAX_MB } from "@/core/consultant/pricelist/knowledge-import";
 import { type CardProps, type Data } from "./shared";
+import { HelpTip } from "@/app/admin/help-panel";
 
 /** База знаний: статьи и импорт. */
 
@@ -25,7 +26,7 @@ export function KnowledgeCard({ t, data, canEdit, onDone }: CardProps) {
     setVersion((v) => v + 1);
   }, [data.articles, staleArticles]);
   return (
-    <Card title={t("pricelist.kb.title")}>
+    <Card title={t("pricelist.kb.title")} help={<HelpTip article="pricelist" anchor="knowledge" />}>
       <p className="mb-3 text-sm text-muted">{t("pricelist.kb.hint")}</p>
       {canEdit && (
         <KnowledgeImport
@@ -189,7 +190,10 @@ export function KnowledgeImport({
   const count = chosen.filter(Boolean).length;
   return (
     <div className="mb-4 rounded-md border border-line p-3">
-      <div className="mb-1 text-sm font-medium">{t("pricelist.kb.import.title")}</div>
+      <div className="mb-1 flex items-center gap-1.5 text-sm font-medium">
+        {t("pricelist.kb.import.title")}
+        <HelpTip article="knowledge" anchor="import" />
+      </div>
       <p className="mb-3 text-xs text-muted">
         {t("pricelist.kb.import.hint", { mb: KNOWLEDGE_FILE_MAX_MB })}
       </p>

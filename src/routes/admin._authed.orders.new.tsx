@@ -1,3 +1,4 @@
+import { HelpTip } from "@/app/admin/help-panel";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { createManualOrderFn, manualOrderFormFn } from "@/app/admin/orders.functions";
@@ -96,7 +97,11 @@ function ManualOrderPage() {
               <Field label={t("manual.name")}>
                 <input className="input" name="name" required maxLength={120} />
               </Field>
-              <Field label={t("manual.phone")} hint={t("manual.phoneHint")}>
+              <Field
+                label={t("manual.phone")}
+                hint={t("manual.phoneHint")}
+                help={<HelpTip article="orders" anchor="manual-order" />}
+              >
                 <input className="input" name="phone" inputMode="tel" maxLength={40} />
               </Field>
             </div>
@@ -237,7 +242,11 @@ function ManualOrderPage() {
             <Field label={t("physical.comment")}>
               <input className="input" name="note" maxLength={500} />
             </Field>
-            <Field label={t("manual.paid")} hint={t("manual.paidHint")}>
+            <Field
+              label={t("manual.paid")}
+              hint={t("manual.paidHint")}
+              help={<HelpTip article="orders" anchor="manual-paid" />}
+            >
               <input
                 className="input w-40"
                 inputMode="decimal"

@@ -1,6 +1,8 @@
 # How to connect Instagram
 
 keywords: instagram, insta, direct, dm, connect account, whatsapp, messenger, authorization, reconnect
+group: start
+order: 2
 
 The bot answers buyers in Direct, runs the catalog and orders, and passes hard questions to you in "Chat".
 

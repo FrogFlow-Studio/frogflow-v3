@@ -1,3 +1,4 @@
+import { HelpTip } from "@/app/admin/help-panel";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import {
@@ -90,7 +91,10 @@ export function CustomerSegments({
   const label = (s: CustomerSegment) => (PRESET_NAME[s.id] ? t(PRESET_NAME[s.id]!) : s.name);
   return (
     <section className="mb-4" aria-label={t("seg.title")}>
-      <h2 className="mb-1 text-sm font-medium text-muted">{t("seg.title")}</h2>
+      <h2 className="mb-1 flex items-center gap-1.5 text-sm font-medium text-muted">
+        {t("seg.title")}
+        <HelpTip article="customers" anchor="segments" />
+      </h2>
       <div className="mb-2 flex flex-wrap items-center gap-2">
         {all.map((s) => (
           <span key={s.id} className="inline-flex items-center">
@@ -141,6 +145,7 @@ export function CustomerSegments({
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
+          <HelpTip article="customers" anchor="segment-custom" />
           <select
             className="input w-auto"
             aria-label={t("seg.kind.orders_min")}

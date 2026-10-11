@@ -12,6 +12,7 @@ import { uploadFile } from "@/app/admin/upload-client";
 import { RECEIPT_SNO, RECEIPT_TAX } from "@/core/payments/receipt";
 import { imagePath } from "@/core/catalog/image-url";
 import { settingsRoute } from "./route";
+import { HelpTip } from "@/app/admin/help-panel";
 
 type Method = Awaited<ReturnType<typeof settingsFn>>["methods"][number];
 
@@ -114,7 +115,10 @@ export function PaymentMethods({
           label={t("settings.pay.allPrices")}
         />
         <div>
-          <div className="text-sm">{t("settings.pay.allPrices")}</div>
+          <div className="flex items-center gap-2 text-sm">
+            {t("settings.pay.allPrices")}
+            <HelpTip article="settings-money" anchor="all-prices" />
+          </div>
           <p className="text-xs text-muted">{t("settings.pay.allPricesHint")}</p>
         </div>
       </div>
@@ -203,7 +207,8 @@ export function PaymentMethods({
           <div className="flex items-center gap-4">
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" name="isActive" defaultChecked={cur?.is_active ?? true} />{" "}
-              {t("settings.pay.active")}
+              {t("settings.pay.active")}{" "}
+              <HelpTip article="settings-money" anchor="payment-methods" />
             </label>
             <label className="flex items-center gap-2 text-sm">
               {t("settings.order")}{" "}
@@ -253,7 +258,11 @@ export function StarsCard({ settings }: { settings: Record<string, string> }) {
         }}
       >
         <p className="text-sm text-muted">{t("settings.stars.intro")}</p>
-        <Field label={t("settings.stars.rate", { currency })} hint={t("settings.stars.rateHint")}>
+        <Field
+          label={t("settings.stars.rate", { currency })}
+          help={<HelpTip article="settings-payment" anchor="stars" />}
+          hint={t("settings.stars.rateHint")}
+        >
           <input
             className="input w-40"
             name="rate"
@@ -336,7 +345,7 @@ export function RobokassaCard({ settings }: { settings: Record<string, string> }
               name="enabled"
               defaultChecked={settings.robokassa_enabled === "true"}
             />{" "}
-            {t("settings.rk.enable")}
+            {t("settings.rk.enable")} <HelpTip article="settings-payment" anchor="robokassa" />
           </label>
           <label className="flex items-center gap-2">
             <input
@@ -344,7 +353,7 @@ export function RobokassaCard({ settings }: { settings: Record<string, string> }
               name="test"
               defaultChecked={settings.robokassa_test_mode === "true"}
             />{" "}
-            {t("settings.rk.test")}
+            {t("settings.rk.test")} <HelpTip article="settings-payment" anchor="robokassa" />
           </label>
         </div>
         <Field label={t("settings.rk.region")}>
@@ -367,7 +376,7 @@ export function RobokassaCard({ settings }: { settings: Record<string, string> }
                 name="receipt"
                 defaultChecked={settings.robokassa_receipt === "true"}
               />
-              {t("settings.rk.receipt")}
+              {t("settings.rk.receipt")} <HelpTip article="settings-payment" anchor="robokassa" />
             </label>
             <Field label={t("settings.rk.sno")}>
               <select className="input" name="sno" defaultValue={settings.robokassa_sno ?? ""}>
@@ -486,6 +495,7 @@ export function ReceiptOcrCard({
           label={t("settings.ocr.auto")}
         />
         <span className="text-sm">{enabled ? t("settings.ocr.on") : t("settings.ocr.off")}</span>
+        <HelpTip article="settings-payment" anchor="receipt-ocr" />
       </div>
       <dl className="mt-4 grid grid-cols-2 gap-2 text-sm">
         <dt className="text-muted">{t("settings.ocr.month")}</dt>
@@ -538,7 +548,7 @@ export function CryptoCard({ settings }: { settings: Record<string, string> }) {
             name="enabled"
             defaultChecked={settings.crypto_enabled === "true"}
           />
-          {t("settings.crypto.enabled")}
+          {t("settings.crypto.enabled")} <HelpTip article="settings-payment" anchor="crypto" />
         </label>
         <Field label={t("settings.crypto.apiKey")}>
           <input
@@ -609,7 +619,7 @@ export function KaspiCard({ settings }: { settings: Record<string, string> }) {
             name="enabled"
             defaultChecked={settings.kaspi_apipay_enabled === "true"}
           />
-          {t("settings.kaspi.enabled")}
+          {t("settings.kaspi.enabled")} <HelpTip article="settings-payment" anchor="kaspi" />
         </label>
         <Field label={t("settings.kaspi.apiKey")}>
           <input
@@ -633,7 +643,7 @@ export function KaspiCard({ settings }: { settings: Record<string, string> }) {
             name="testMode"
             defaultChecked={settings.kaspi_apipay_test_mode === "true"}
           />
-          {t("settings.kaspi.testMode")}
+          {t("settings.kaspi.testMode")} <HelpTip article="settings-payment" anchor="kaspi" />
         </label>
         <div className="flex items-center gap-3 sm:col-span-2">
           <button className="btn-primary" disabled={save.busy}>
@@ -686,7 +696,7 @@ export function StripeCard({ settings }: { settings: Record<string, string> }) {
             name="enabled"
             defaultChecked={settings.stripe_enabled === "true"}
           />
-          {t("settings.stripe.enabled")}
+          {t("settings.stripe.enabled")} <HelpTip article="settings-payment" anchor="stripe" />
         </label>
         <Field label={t("settings.stripe.secretKey")}>
           <input
@@ -757,7 +767,7 @@ export function ProdamusCard({ settings }: { settings: Record<string, string> })
             name="enabled"
             defaultChecked={settings.prodamus_enabled === "true"}
           />
-          {t("settings.prodamus.enabled")}
+          {t("settings.prodamus.enabled")} <HelpTip article="settings-payment" anchor="prodamus" />
         </label>
         <Field label={t("settings.prodamus.formUrl")}>
           <input
@@ -776,7 +786,10 @@ export function ProdamusCard({ settings }: { settings: Record<string, string> })
             defaultValue={settings.prodamus_secret_key ?? ""}
           />
         </Field>
-        <Field label={t("settings.prodamus.currency")}>
+        <Field
+          label={t("settings.prodamus.currency")}
+          help={<HelpTip article="settings-payment" anchor="prodamus" />}
+        >
           <select
             className="input"
             name="currency"
@@ -789,7 +802,10 @@ export function ProdamusCard({ settings }: { settings: Record<string, string> })
             ))}
           </select>
         </Field>
-        <Field label={t("settings.prodamus.rate")}>
+        <Field
+          label={t("settings.prodamus.rate")}
+          help={<HelpTip article="settings-payment" anchor="prodamus" />}
+        >
           <input
             className="input"
             name="rate"

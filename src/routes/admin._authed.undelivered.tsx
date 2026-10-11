@@ -1,3 +1,4 @@
+import { HelpTip } from "@/app/admin/help-panel";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { outboxActionFn, undeliveredFn } from "@/app/admin/orders.functions";
 import { adminT, intlLocale, type AdminKey } from "@/app/i18n/admin";
@@ -47,8 +48,15 @@ function UndeliveredPage() {
                 <th>{t("outbox.col.when")}</th>
                 <th>{t("outbox.col.to")}</th>
                 <th>{t("outbox.col.what")}</th>
-                <th>{t("outbox.col.state")}</th>
-                <th></th>
+                <th>
+                  <span className="flex items-center gap-1.5">
+                    {t("outbox.col.state")}
+                    <HelpTip article="undelivered" anchor="auto-retry" />
+                  </span>
+                </th>
+                <th className="text-right">
+                  <HelpTip article="undelivered" anchor="retry" />
+                </th>
               </tr>
             </thead>
             <tbody>

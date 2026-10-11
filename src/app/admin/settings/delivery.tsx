@@ -16,6 +16,7 @@ import {
   serializeClosedDates,
   unparsedClosedDates,
 } from "@/core/fulfillment/closed-days";
+import { HelpTip } from "@/app/admin/help-panel";
 
 export function FulfillmentCard({ settings }: { settings: Record<string, string> }) {
   const router = useRouter();
@@ -63,7 +64,7 @@ export function FulfillmentCard({ settings }: { settings: Record<string, string>
               name="pickup"
               defaultChecked={settings.fulfillment_pickup_enabled !== "false"}
             />{" "}
-            {t("settings.ful.pickup")}
+            {t("settings.ful.pickup")} <HelpTip article="settings-payment" anchor="ful-pickup" />
           </label>
           <label className="flex items-center gap-2">
             <input
@@ -71,10 +72,13 @@ export function FulfillmentCard({ settings }: { settings: Record<string, string>
               name="delivery"
               defaultChecked={settings.fulfillment_delivery_enabled !== "false"}
             />{" "}
-            {t("settings.ful.delivery")}
+            {t("settings.ful.delivery")} <HelpTip article="settings-payment" anchor="ful-pickup" />
           </label>
         </div>
-        <Field label={t("settings.ful.paymentMode")}>
+        <Field
+          label={t("settings.ful.paymentMode")}
+          help={<HelpTip article="settings-payment" anchor="ful-payment" />}
+        >
           <select
             className="input"
             name="payment_mode"
@@ -98,7 +102,11 @@ export function FulfillmentCard({ settings }: { settings: Record<string, string>
             />
           </Field>
         )}
-        <Field label={t("settings.ful.slots")} hint={t("settings.ful.slotsHint")}>
+        <Field
+          label={t("settings.ful.slots")}
+          help={<HelpTip article="settings-payment" anchor="ful-calendar" />}
+          hint={t("settings.ful.slotsHint")}
+        >
           <textarea
             className="input"
             name="slots"
@@ -107,7 +115,10 @@ export function FulfillmentCard({ settings }: { settings: Record<string, string>
             defaultValue={settings.fulfillment_slots ?? ""}
           />
         </Field>
-        <Field label={t("settings.ful.closedWeekdays")}>
+        <Field
+          label={t("settings.ful.closedWeekdays")}
+          help={<HelpTip article="settings-payment" anchor="ful-calendar" />}
+        >
           <div className="flex flex-wrap gap-3 text-sm">
             {[1, 2, 3, 4, 5, 6, 7].map((d) => (
               <label key={d} className="flex items-center gap-1">
@@ -123,7 +134,11 @@ export function FulfillmentCard({ settings }: { settings: Record<string, string>
             ))}
           </div>
         </Field>
-        <Field label={t("settings.ful.closedDates")} hint={t("settings.ful.closedDatesHint")}>
+        <Field
+          label={t("settings.ful.closedDates")}
+          help={<HelpTip article="settings-payment" anchor="ful-calendar" />}
+          hint={t("settings.ful.closedDatesHint")}
+        >
           <textarea
             className="input"
             name="closed_dates"
@@ -133,7 +148,11 @@ export function FulfillmentCard({ settings }: { settings: Record<string, string>
           />
         </Field>
         <div className="grid gap-3 sm:grid-cols-2">
-          <Field label={t("settings.ful.dayLimit")} hint={t("settings.ful.limitHint")}>
+          <Field
+            label={t("settings.ful.dayLimit")}
+            help={<HelpTip article="settings-payment" anchor="ful-calendar" />}
+            hint={t("settings.ful.limitHint")}
+          >
             <input
               className="input w-32"
               name="day_limit"
@@ -144,7 +163,10 @@ export function FulfillmentCard({ settings }: { settings: Record<string, string>
               defaultValue={settings.fulfillment_day_limit ?? ""}
             />
           </Field>
-          <Field label={t("settings.ful.slotLimit")}>
+          <Field
+            label={t("settings.ful.slotLimit")}
+            help={<HelpTip article="settings-payment" anchor="ful-calendar" />}
+          >
             <input
               className="input w-32"
               name="slot_limit"

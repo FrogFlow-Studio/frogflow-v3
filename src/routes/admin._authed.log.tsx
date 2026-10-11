@@ -4,6 +4,7 @@ import { shopAuditFn } from "@/app/admin/audit.functions";
 import { auditActionLabel, auditDetailsText } from "@/app/admin/audit-labels";
 import { adminT, intlLocale } from "@/app/i18n/admin";
 import { Empty, PageTitle } from "@/app/ui";
+import { HelpTip } from "@/app/admin/help-panel";
 
 export const Route = createFileRoute("/admin/_authed/log")({
   validateSearch: z.object({ who: z.string().optional() }),
@@ -26,7 +27,8 @@ function AuditPage() {
     <>
       <PageTitle title={t("audit.title")} subtitle={t("audit.subtitle")} />
       <label className="mb-3 flex items-center gap-2 text-sm">
-        <span className="text-muted">{t("audit.filter.who")}</span>
+        <span className="text-muted">{t("audit.filter.who")}</span>{" "}
+        <HelpTip article="log" anchor="who" />
         <select
           className="input h-9 w-auto"
           value={who ?? ""}

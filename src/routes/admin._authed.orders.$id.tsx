@@ -1,3 +1,4 @@
+import { HelpTip } from "@/app/admin/help-panel";
 import { canEdit } from "@/core/auth/roles";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
@@ -157,6 +158,18 @@ function OrderPage() {
               {t(main.label)}
             </button>
           )}
+          {main && (
+            <HelpTip
+              article="orders"
+              anchor={
+                main.action === "next"
+                  ? "next-step"
+                  : physical
+                    ? "accept-physical"
+                    : "confirm-deliver"
+              }
+            />
+          )}
           <details className="relative">
             <summary
               className="btn-secondary cursor-pointer list-none"
@@ -246,7 +259,7 @@ function OrderPage() {
             editable={editable}
             onDone={setMsg}
           />
-          <Card title={t("order.items")}>
+          <Card title={t("order.items")} help={<HelpTip article="orders" anchor="items" />}>
             <table className="table">
               <tbody>
                 {(o.order_items ?? []).map((i) => (
@@ -325,7 +338,7 @@ function OrderPage() {
               onDone={setMsg}
             />
           )}
-          <Card title={t("order.history")}>
+          <Card title={t("order.history")} help={<HelpTip article="orders" anchor="history" />}>
             {events.length === 0 ? (
               <p className="text-sm text-muted">{t("order.noEvents")}</p>
             ) : (
@@ -369,7 +382,7 @@ function OrderPage() {
           </Card>
         </div>
         <div className="space-y-4">
-          <Card title={t("order.customer")}>
+          <Card title={t("order.customer")} help={<HelpTip article="orders" anchor="customer" />}>
             <dl className="grid grid-cols-[96px_1fr] gap-y-1 text-sm">
               <dt className="text-muted">{t("order.name")}</dt>
               <dd className="min-w-0 break-words">
@@ -417,7 +430,10 @@ function OrderPage() {
             physical &&
             o.fulfillment_type !== "pickup" &&
             (o.status === "ready" || o.status === "delivered") && (
-              <Card title={t("order.track.title")}>
+              <Card
+                title={t("order.track.title")}
+                help={<HelpTip article="orders" anchor="track" />}
+              >
                 <form
                   className="space-y-2"
                   data-testid="order-track-form"
@@ -443,7 +459,7 @@ function OrderPage() {
               </Card>
             )}
           {blocks.note && (
-            <Card title={t("order.note")}>
+            <Card title={t("order.note")} help={<HelpTip article="orders" anchor="note" />}>
               <form
                 className="space-y-2"
                 onSubmit={(e) => {

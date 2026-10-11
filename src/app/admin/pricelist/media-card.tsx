@@ -4,6 +4,7 @@ import { Card, ErrorBox, Field, useAction } from "@/app/ui";
 import { mediaMatchesProduct } from "@/core/consultant/pricelist/media";
 import type { ConsultantProduct } from "@/core/consultant/pricelist/catalog";
 import { type CardProps } from "./shared";
+import { HelpTip } from "@/app/admin/help-panel";
 
 /** Фото и видео к позициям прайса. */
 
@@ -53,7 +54,7 @@ export function MediaCard({
     await onDone();
   });
   return (
-    <Card title={t("pricelist.media.title")}>
+    <Card title={t("pricelist.media.title")} help={<HelpTip article="pricelist" anchor="media" />}>
       <p className="mb-3 text-sm text-muted">{t("pricelist.media.hint")}</p>
       {data.media.length === 0 ? (
         <p className="text-sm">{t("pricelist.media.empty")}</p>

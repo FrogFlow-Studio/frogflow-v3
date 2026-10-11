@@ -5,6 +5,7 @@ import { AutoStatsBlock } from "@/app/admin/auto-stats";
 import { AutoPreview } from "@/app/admin/auto-preview";
 import type { AutoStats } from "@/core/automsg/stats";
 import { Card, ErrorBox, Field, Switch, useAction } from "@/app/ui";
+import { HelpTip } from "@/app/admin/help-panel";
 
 /** «Похожие материалы»: через N дней после покупки — товары из тех же категорий. */
 export function SimilarCard({ t, stats }: { t: AdminT; stats?: AutoStats }) {
@@ -23,11 +24,14 @@ export function SimilarCard({ t, stats }: { t: AdminT; stats?: AutoStats }) {
     <Card
       title={t("similar.title")}
       actions={
-        <Switch
-          checked={c.enabled}
-          onChange={(on) => setC({ ...c, enabled: on })}
-          label={t("similar.enabled")}
-        />
+        <div className="flex items-center gap-1.5">
+          <Switch
+            checked={c.enabled}
+            onChange={(on) => setC({ ...c, enabled: on })}
+            label={t("similar.enabled")}
+          />
+          <HelpTip article="broadcasts" anchor="similar" />
+        </div>
       }
     >
       <form

@@ -8,6 +8,7 @@ import {
 import { type AdminT } from "@/app/i18n/admin";
 import { Badge, Card, Empty, ErrorBox, Field, useAction } from "@/app/ui";
 import { LANGUAGES, TEMPLATE_STATUS, type Template, type WhatsApp, useT } from "./shared";
+import { HelpTip } from "@/app/admin/help-panel";
 
 export function TemplatesCard({ wa }: { wa: WhatsApp }) {
   const t = useT();
@@ -56,6 +57,7 @@ export function TemplatesCard({ wa }: { wa: WhatsApp }) {
   return (
     <Card
       title={t("broadcasts.templates.title")}
+      help={<HelpTip article="broadcasts" anchor="templates" />}
       actions={
         wa.accounts.length > 0 ? (
           <div className="flex gap-2">
@@ -125,6 +127,7 @@ export function TemplatesCard({ wa }: { wa: WhatsApp }) {
             </Field>
             <Field
               label={t("broadcasts.templates.category")}
+              help={<HelpTip article="broadcasts" anchor="templates" />}
               hint={t("broadcasts.templates.categoryHint")}
             >
               <select
@@ -250,7 +253,10 @@ export function ExcludedPhonesCard({ phones }: { phones: string }) {
     await router.invalidate();
   });
   return (
-    <Card title={t("broadcasts.excluded.title")}>
+    <Card
+      title={t("broadcasts.excluded.title")}
+      help={<HelpTip article="broadcasts" anchor="templates" />}
+    >
       <p className="mb-3 text-sm text-muted">{t("broadcasts.excluded.intro")}</p>
       <form
         className="space-y-2"

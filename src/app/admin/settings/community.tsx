@@ -6,6 +6,7 @@ import { adminT } from "@/app/i18n/admin";
 import { CommunityRecommend } from "./community-recommend";
 import { settingsRoute } from "./route";
 import { roleAllows } from "@/core/auth/roles";
+import { HelpTip } from "@/app/admin/help-panel";
 
 type View = Awaited<ReturnType<typeof communityProfileFn>>;
 
@@ -87,7 +88,7 @@ export function CommunityCard() {
             disabled={locked}
             onChange={(e) => setOn(e.target.checked)}
           />
-          {t("settings.community.on")}
+          {t("settings.community.on")} <HelpTip article="settings-shop" anchor="community" />
         </label>
         <Field label={t("settings.community.name")}>
           <input

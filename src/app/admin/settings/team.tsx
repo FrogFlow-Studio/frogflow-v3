@@ -10,6 +10,7 @@ import {
 import { Badge, Card, ErrorBox, Field, useAction } from "@/app/ui";
 import { adminT, intlLocale } from "@/app/i18n/admin";
 import { settingsRoute } from "./route";
+import { HelpTip } from "@/app/admin/help-panel";
 
 type Member = Awaited<ReturnType<typeof teamFn>>[number];
 type Invite = Awaited<ReturnType<typeof staffInvitesFn>>[number];
@@ -170,7 +171,10 @@ export function TeamCard() {
           <Field label={t("settings.team.name")}>
             <input className="input" name="name" maxLength={80} />
           </Field>
-          <Field label={t("settings.team.role")}>
+          <Field
+            label={t("settings.team.role")}
+            help={<HelpTip article="settings-team" anchor="team" />}
+          >
             <select className="input" name="role" defaultValue="manager">
               <option value="admin">{t("settings.team.roleAdmin")}</option>
               <option value="manager">{t("settings.team.roleManager")}</option>
@@ -243,7 +247,10 @@ export function TeamCard() {
               maxLength={80}
             />
           </Field>
-          <Field label={t("settings.team.role")}>
+          <Field
+            label={t("settings.team.role")}
+            help={<HelpTip article="settings-team" anchor="team" />}
+          >
             <select className="input" name="role" defaultValue={current?.role ?? "manager"}>
               <option value="admin">{t("settings.team.roleAdmin")}</option>
               <option value="manager">{t("settings.team.roleManager")}</option>

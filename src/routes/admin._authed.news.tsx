@@ -4,6 +4,7 @@ import { newsFn, newsReadFn, voteNewsFn } from "@/app/admin/news.functions";
 import { adminT, intlLocale } from "@/app/i18n/admin";
 import { Badge, Card, Empty, ErrorBox, PageTitle, useAction } from "@/app/ui";
 import { canEdit } from "@/core/auth/roles";
+import { HelpTip } from "@/app/admin/help-panel";
 
 export const Route = createFileRoute("/admin/_authed/news")({
   loader: () => newsFn(),
@@ -74,7 +75,9 @@ function NewsPage() {
                 <p className="whitespace-pre-wrap text-sm">{n.body}</p>
                 {n.poll && (
                   <div className="space-y-2 rounded-md border border-line p-3">
-                    <p className="text-sm font-medium">{t("news.poll.title")}</p>
+                    <p className="text-sm font-medium">
+                      {t("news.poll.title")} <HelpTip article="news" anchor="poll" />
+                    </p>
                     {n.poll.myVote !== null ? (
                       <p className="text-sm">
                         {t("news.poll.voted", { option: n.poll.options[n.poll.myVote] ?? "" })}

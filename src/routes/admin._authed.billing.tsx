@@ -4,6 +4,7 @@ import { billingHistoryFn } from "@/app/admin/plan.functions";
 import { adminT, intlLocale, type AdminT } from "@/app/i18n/admin";
 import { Badge, Card, ErrorBox, PageTitle, useAction } from "@/app/ui";
 import { formatMoney } from "@/core/money/money";
+import { HelpTip } from "@/app/admin/help-panel";
 
 export const Route = createFileRoute("/admin/_authed/billing")({
   loader: async () => ({
@@ -104,7 +105,7 @@ function BillingPage() {
         <Pager data={payments} t={t} busy={pay.busy} go={(p) => void pay.run(p).catch(() => {})} />
         <ErrorBox error={pay.error} />
       </Card>
-      <Card title={t("billing.invoices")}>
+      <Card title={t("billing.invoices")} actions={<HelpTip article="billing" anchor="invoices" />}>
         {invoices.rows.length === 0 ? (
           <p className="text-sm text-muted">{t("billing.emptyInvoices")}</p>
         ) : (

@@ -3,6 +3,7 @@ import { useState } from "react";
 import { previewQuizFn, quizFn, saveQuizFn } from "@/app/admin/quiz.functions";
 import { adminT } from "@/app/i18n/admin";
 import { Card, ErrorBox, Field, PageTitle, useAction } from "@/app/ui";
+import { HelpTip } from "@/app/admin/help-panel";
 
 export const Route = createFileRoute("/admin/_authed/quiz")({
   loader: () => quizFn(),
@@ -69,7 +70,7 @@ function QuizPage() {
             void save.run().catch(() => {});
           }}
         >
-          <Card title={t("quiz.intro")}>
+          <Card title={t("quiz.intro")} help={<HelpTip article="quiz" anchor="intro" />}>
             <textarea
               className="input min-h-16"
               value={intro}
@@ -134,7 +135,10 @@ function QuizPage() {
               )}
             </Card>
           ))}
-          <p className="text-xs text-muted">{t("quiz.tagsHint")}</p>
+          <p className="flex items-center gap-1.5 text-xs text-muted">
+            {t("quiz.tagsHint")}
+            <HelpTip article="quiz" anchor="tags" />
+          </p>
           <div className="flex flex-wrap items-center gap-3">
             {qs.length < 5 && (
               <button
@@ -163,7 +167,7 @@ function QuizPage() {
           </div>
           <ErrorBox error={save.error} />
         </form>
-        <Card title={t("quiz.preview")}>
+        <Card title={t("quiz.preview")} help={<HelpTip article="quiz" anchor="preview" />}>
           <p className="mb-3 text-xs text-muted">{t("quiz.previewHint")}</p>
           <div className="space-y-2">
             {qs.map((q, i) => (

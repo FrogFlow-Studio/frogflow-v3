@@ -3,6 +3,7 @@ import { useState } from "react";
 import { giftSaleFn, saveGiftSaleFn } from "@/app/admin/promos.functions";
 import { adminT } from "@/app/i18n/admin";
 import { Card, ErrorBox, Field, useAction } from "@/app/ui";
+import { HelpTip } from "@/app/admin/help-panel";
 
 /** Продажа подарочных сертификатов. */
 
@@ -30,7 +31,10 @@ export function GiftSaleCard({ sale }: { sale: GiftSale }) {
     await router.invalidate();
   });
   return (
-    <Card title={t("discounts.gift.sale.title")}>
+    <Card
+      title={t("discounts.gift.sale.title")}
+      help={<HelpTip article="discounts" anchor="gift-sale" />}
+    >
       <form
         className="space-y-3"
         onSubmit={(e) => {
@@ -41,6 +45,7 @@ export function GiftSaleCard({ sale }: { sale: GiftSale }) {
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" name="enabled" defaultChecked={sale.enabled} />
           {t("discounts.gift.sale.enabled")}
+          <HelpTip article="discounts" anchor="gift-sale" />
         </label>
         <div className="grid gap-3 sm:grid-cols-[1fr_100px]">
           <Field label={t("discounts.gift.sale.amounts")}>

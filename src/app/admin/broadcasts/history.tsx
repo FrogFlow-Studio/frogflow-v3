@@ -7,6 +7,7 @@ import { formatMoney } from "@/core/money/money";
 import { progressPercent } from "@/core/broadcasts/pure";
 import { abCompareState, abVerdict, type AbMoneySide } from "@/core/broadcasts/ab";
 import { AUDIENCES, type Broadcast, type Channel, STATUS } from "./shared";
+import { HelpTip } from "@/app/admin/help-panel";
 
 /** Поиск и переход страницы рассылок: компонент вынесен из файла маршрута. */
 const Route = getRouteApi("/admin/_authed/broadcasts");
@@ -59,7 +60,10 @@ export function History({
   }
   const comparisonShownFor = new Set<string>();
   return (
-    <Card title={t("broadcasts.history.title")}>
+    <Card
+      title={t("broadcasts.history.title")}
+      help={<HelpTip article="broadcasts" anchor="history" />}
+    >
       {broadcasts.length === 0 ? (
         <Empty>{t("broadcasts.history.empty")}</Empty>
       ) : (

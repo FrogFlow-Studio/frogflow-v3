@@ -14,6 +14,7 @@ import {
   type BotTextChannel,
 } from "@/core/bot-texts/registry";
 import { localeFlags, localeNames, type Locale } from "@/core/i18n/locale";
+import { HelpTip } from "@/app/admin/help-panel";
 
 export const Route = createFileRoute("/admin/_authed/bot-texts")({
   loader: () => botTextsFn(),
@@ -61,6 +62,7 @@ function TextEditor({
     <div className="grid gap-3 md:grid-cols-2">
       <Field
         label={`${t("botTexts.custom")} · ${localeFlags[locale]} ${localeNames[locale]}`}
+        help={<HelpTip article="bot-texts" anchor="custom" />}
         hint={
           row.vars.length
             ? t("botTexts.vars", {
@@ -157,7 +159,10 @@ function HoursCard({
         </div>
       )}
       <div className="flex flex-wrap items-end gap-3">
-        <Field label={t("botTexts.hours.open")}>
+        <Field
+          label={t("botTexts.hours.open")}
+          help={<HelpTip article="bot-texts" anchor="hours" />}
+        >
           <select
             className="input"
             value={open}
@@ -227,6 +232,7 @@ function BotTextsPage() {
             {t(`botTexts.channel.${c}`)}
           </button>
         ))}
+        <HelpTip article="bot-texts" anchor="channel" />
       </div>
       {data.locales.length > 1 && (
         <div className="mb-4 flex flex-wrap gap-2">

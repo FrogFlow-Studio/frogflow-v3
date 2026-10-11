@@ -12,6 +12,20 @@ export const ru = {
   "help.stillStuck": "Не нашли ответ?",
   "help.writeUs": "Написать в поддержку",
   "help.maybe": "Возможно, вам поможет:",
+  "help.start": "Быстрый старт",
+  "help.guide": "Справочник по разделам",
+  "help.trouble": "Что делать, если",
+  "help.startSub":
+    "С нуля до первого оплаченного заказа: Instagram, правило с кнопкой «Купить», заказ, чек.",
+  "help.guideSub": "Каждый пункт меню: что на странице и что делает каждый переключатель.",
+  "help.troubleSub": "Частые затруднения продавцов и что с ними делать по шагам.",
+  "help.searchAll": "Поиск по всей помощи",
+  "help.tip": "Подсказка",
+  "help.pageTip": "Помощь по этой странице",
+  "help.close": "Закрыть",
+  "help.openFull": "Открыть в разделе «Помощь»",
+  "help.noPage": "Отдельной статьи про эту страницу нет. Вот справочник по разделам:",
+  "help.loading": "Загружаем…",
 };
 
 export const kk: SectionDict<typeof ru> = {
@@ -26,6 +40,20 @@ export const kk: SectionDict<typeof ru> = {
   "help.stillStuck": "Жауап таппадыңыз ба?",
   "help.writeUs": "Қолдауға жазу",
   "help.maybe": "Мүмкін, мына мақала көмектеседі:",
+  "help.start": "Жылдам бастау",
+  "help.guide": "Бөлімдер анықтамалығы",
+  "help.trouble": "Егер… не істеу керек",
+  "help.startSub":
+    "Нөлден бірінші төленген тапсырысқа дейін: Instagram, «Сатып алу» батырмасы бар ереже, тапсырыс, чек.",
+  "help.guideSub": "Мәзірдің әр тармағы: бетте не бар және әр ауыстырғыш не істейді.",
+  "help.troubleSub": "Сатушылардың жиі кездесетін қиындықтары және оларды қадам бойынша шешу.",
+  "help.searchAll": "Бүкіл анықтамадан іздеу",
+  "help.tip": "Кеңес",
+  "help.pageTip": "Осы бет бойынша анықтама",
+  "help.close": "Жабу",
+  "help.openFull": "«Анықтама» бөлімінде ашу",
+  "help.noPage": "Бұл бет туралы жеке мақала жоқ. Міне, бөлімдер анықтамалығы:",
+  "help.loading": "Жүктелуде…",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -39,6 +67,20 @@ export const en: SectionDict<typeof ru> = {
   "help.stillStuck": "Did not find the answer?",
   "help.writeUs": "Write to support",
   "help.maybe": "This may help:",
+  "help.start": "Quick start",
+  "help.guide": "Section guide",
+  "help.trouble": "What to do if",
+  "help.startSub":
+    "From zero to the first paid order: Instagram, a rule with a «Buy» button, an order, a receipt.",
+  "help.guideSub": "Every menu item: what is on the page and what each switch does.",
+  "help.troubleSub": "Common seller problems and how to solve them step by step.",
+  "help.searchAll": "Search all help",
+  "help.tip": "Hint",
+  "help.pageTip": "Help for this page",
+  "help.close": "Close",
+  "help.openFull": "Open in Help",
+  "help.noPage": "There is no separate article for this page. Here is the section guide:",
+  "help.loading": "Loading…",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -52,4 +94,19 @@ export const uz: SectionDict<typeof ru> = {
   "help.stillStuck": "Javob topolmadingizmi?",
   "help.writeUs": "Yordamga yozish",
   "help.maybe": "Bu yordam berishi mumkin:",
+  "help.start": "Tez boshlash",
+  "help.guide": "Bo‘limlar ma’lumotnomasi",
+  "help.trouble": "Agar… nima qilish kerak",
+  "help.startSub":
+    "Noldan birinchi to‘langan buyurtmagacha: Instagram, «Sotib olish» tugmali qoida, buyurtma, chek.",
+  "help.guideSub": "Menyuning har bir bandi: sahifada nima bor va har bir kalit nima qiladi.",
+  "help.troubleSub":
+    "Sotuvchilarning tez-tez uchraydigan muammolari va ularni bosqichma-bosqich hal qilish.",
+  "help.searchAll": "Butun yordamdan qidirish",
+  "help.tip": "Maslahat",
+  "help.pageTip": "Shu sahifa bo‘yicha yordam",
+  "help.close": "Yopish",
+  "help.openFull": "«Yordam» bo‘limida ochish",
+  "help.noPage": "Bu sahifa haqida alohida maqola yo‘q. Mana bo‘limlar ma’lumotnomasi:",
+  "help.loading": "Yuklanmoqda…",
 };

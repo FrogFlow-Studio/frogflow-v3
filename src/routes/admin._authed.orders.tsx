@@ -1,3 +1,4 @@
+import { HelpTip } from "@/app/admin/help-panel";
 import { canEdit } from "@/core/auth/roles";
 import {
   createFileRoute,
@@ -266,7 +267,12 @@ function OrdersPage() {
             )}
             {/* В заказах имена и телефоны: роль «просмотр» выгружает только «Оплаты» (сервер тоже). */}
             {shop.modules.excel_export && (
-              <ExportButton paymentsOnly={!canEdit(shop.role) && shop.role !== "accountant"} />
+              <>
+                <ExportButton paymentsOnly={!canEdit(shop.role) && shop.role !== "accountant"} />
+                <span className="self-center">
+                  <HelpTip article="orders" anchor="export" />
+                </span>
+              </>
             )}
           </div>
         }
@@ -293,6 +299,7 @@ function OrdersPage() {
           {physical && (
             <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
               <span className="text-muted">{t("physical.pickupLabel")}</span>
+              <HelpTip article="orders" anchor="pickup" />
               {PICKUP_KEYS.map((k) => (
                 <Link
                   key={k}
@@ -351,6 +358,7 @@ function OrdersPage() {
                 {t("physical.unpaid")}
                 {counts.unpaid ? ` · ${counts.unpaid}` : ""}
               </Link>
+              <HelpTip article="orders" anchor="unpaid" />
             </div>
           )}
         </aside>
@@ -372,6 +380,9 @@ function OrdersPage() {
               onChange={(e) => setQuery(e.target.value)}
             />
             <button className="btn-secondary">{t("common.search")}</button>
+            <span className="self-center">
+              <HelpTip article="orders" anchor="list-limit" />
+            </span>
           </form>
           {(picked.length > 0 || allMode) && (
             <div
@@ -380,6 +391,7 @@ function OrdersPage() {
               className="card sticky top-2 z-10 mb-3 flex flex-wrap items-center gap-2 p-3 text-sm"
             >
               <span className="font-medium">{t("orders.batch.selected", { n: total })}</span>
+              <HelpTip article="orders" anchor="assemble" />
               {!allMode && pageAllPicked && matching !== null && matching > pageIds.length && (
                 <button
                   type="button"
@@ -469,6 +481,7 @@ function OrdersPage() {
                   onChange={togglePage}
                 />
                 {t("orders.batch.pickAll")}
+                <HelpTip article="orders" anchor="batch" />
               </label>
               <ul className="space-y-2" data-testid="orders-list">
                 {orders.map((o) => (

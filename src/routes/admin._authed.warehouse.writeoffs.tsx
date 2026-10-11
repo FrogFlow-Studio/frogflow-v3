@@ -1,3 +1,4 @@
+import { HelpTip } from "@/app/admin/help-panel";
 import { canEdit } from "@/core/auth/roles";
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useState } from "react";
@@ -121,7 +122,10 @@ function WriteoffsPage() {
                   onChange={(e) => setQty(e.target.value)}
                 />
               </Field>
-              <Field label={t("writeoff.reason")}>
+              <Field
+                label={t("writeoff.reason")}
+                help={<HelpTip article="warehouse" anchor="writeoffs" />}
+              >
                 <select
                   className="input"
                   value={reason}

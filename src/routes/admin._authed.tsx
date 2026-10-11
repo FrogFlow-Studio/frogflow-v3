@@ -8,7 +8,8 @@ import {
   switchShopFn,
 } from "@/app/admin/shop.functions";
 import { ADMIN_LOCALE_LABELS, adminT } from "@/app/i18n/admin";
-import { Badge, Shell, ThemeToggle } from "@/app/ui";
+import { Badge, PageTitleAddon, Shell, ThemeToggle } from "@/app/ui";
+import { HelpPanelProvider, PageHelp } from "@/app/admin/help-panel";
 import { AdminBottomBar, AdminNavLinks } from "@/app/admin/admin-nav";
 import { buildAdminNav } from "@/app/admin/nav-model";
 import { DeletionBanner } from "@/app/admin/deletion-ui";
@@ -127,7 +128,11 @@ function Layout() {
         <SubscriptionBanner locale={shop.locale} sub={shop.subscription} owner={owner} />
       )}
       <div className="pb-16 md:pb-0">
-        <Outlet />
+        <HelpPanelProvider locale={shop.locale} t={t}>
+          <PageTitleAddon.Provider value={<PageHelp />}>
+            <Outlet />
+          </PageTitleAddon.Provider>
+        </HelpPanelProvider>
       </div>
       <button
         type="button"

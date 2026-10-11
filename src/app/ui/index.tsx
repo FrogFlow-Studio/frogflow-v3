@@ -1,5 +1,5 @@
 import { Link, type LinkProps } from "@tanstack/react-router";
-import { useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { claimStaleReload, isStaleChunkError, retryText, screenErrorText } from "@/lib/shown-error";
 import { reportBrowserFailure } from "./report-client";
 
@@ -7,11 +7,14 @@ import { reportBrowserFailure } from "./report-client";
 
 export function Card({
   title,
+  help,
   children,
   actions,
   className = "",
 }: {
   title?: ReactNode;
+  /** Рядом с заголовком, но не внутри него: в админке — «?» со статьёй «Помощи». */
+  help?: ReactNode;
   children: ReactNode;
   actions?: ReactNode;
   className?: string;
@@ -20,7 +23,14 @@ export function Card({
     <section className={`card ${className}`}>
       {(title || actions) && (
         <header className="flex items-center justify-between gap-3 border-b border-line px-4 py-3">
-          <h2 className="text-sm font-semibold">{title}</h2>
+          {help ? (
+            <div className="flex items-center gap-1.5">
+              <h2 className="text-sm font-semibold">{title}</h2>
+              {help}
+            </div>
+          ) : (
+            <h2 className="text-sm font-semibold">{title}</h2>
+          )}
           {actions}
         </header>
       )}
@@ -32,18 +42,29 @@ export function Card({
 export function Field({
   label,
   hint,
+  help,
   children,
 }: {
   label: string;
   hint?: ReactNode;
+  /** Рядом с подписью: в админке — «?» со статьёй «Помощи». */
+  help?: ReactNode;
   children: ReactNode;
 }) {
-  return (
+  const field = (
     <label className="block">
       <span className="label">{label}</span>
       {children}
       {hint && <span className="mt-1 block text-xs text-muted">{hint}</span>}
     </label>
+  );
+  if (!help) return field;
+  // «?» — вне <label>: подпись поля остаётся его именем, клик по «?» не трогает поле.
+  return (
+    <div className="relative">
+      {field}
+      <span className="absolute top-0 right-0">{help}</span>
+    </div>
   );
 }
 
@@ -264,6 +285,12 @@ export function Shell({
   );
 }
 
+/**
+ * Что панель ставит рядом с заголовком каждой страницы (в админке — «?»,
+ * открывающий статью «Помощи» про эту страницу). Страницы об этом не знают.
+ */
+export const PageTitleAddon = createContext<ReactNode>(null);
+
 export function PageTitle({
   title,
   subtitle,
@@ -273,10 +300,14 @@ export function PageTitle({
   subtitle?: ReactNode;
   actions?: ReactNode;
 }) {
+  const addon = useContext(PageTitleAddon);
   return (
     <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
       <div>
-        <h1 className="text-xl font-semibold">{title}</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-xl font-semibold">{title}</h1>
+          {addon}
+        </div>
         {subtitle && <p className="mt-1 text-sm text-muted">{subtitle}</p>}
       </div>
       {actions && <div className="flex gap-2">{actions}</div>}

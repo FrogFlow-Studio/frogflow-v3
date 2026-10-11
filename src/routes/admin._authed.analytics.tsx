@@ -1,3 +1,4 @@
+import { HelpTip } from "@/app/admin/help-panel";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { z } from "zod";
 import { analyticsFn } from "@/app/admin/sales-analytics.functions";
@@ -126,7 +127,12 @@ function AnalyticsPage() {
       <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2 [&>*]:min-w-0">
         <ChartCard
           className="lg:col-span-2"
-          title={t("analytics.funnel.title")}
+          title={
+            <span className="flex items-center gap-1.5">
+              {t("analytics.funnel.title")}
+              <HelpTip article="analytics" anchor="funnel" />
+            </span>
+          }
           chart={
             <>
               {funnel.empty ? (
@@ -168,7 +174,12 @@ function AnalyticsPage() {
           <>
             <ChartCard
               className="lg:col-span-2"
-              title={t("analytics.sources.title")}
+              title={
+                <span className="flex items-center gap-1.5">
+                  {t("analytics.sources.title")}
+                  <HelpTip article="analytics" anchor="sources" />
+                </span>
+              }
               chart={
                 <>
                   <BarList
