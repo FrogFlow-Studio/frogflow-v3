@@ -2904,4 +2904,117 @@ export const SCENARIOS: Scenario[] = [
       },
     ],
   },
+  {
+    id: "dm-section-name-emoji-brackets-ig-ru",
+    title: "название раздела без эмодзи и скобок открывает раздел каталога",
+    origin:
+      "AATeach 11.10 (дневной срез): «Начальная школа» ×4 и «Категоря начальная школа» после списка разделов → «Чтобы открыть, напишите номер»; раздел «🏫НАЧАЛЬНАЯ ШКОЛА (1-4 классы)»",
+    channel: "instagram",
+    locale: "ru",
+    full: true,
+    modules: { helpdesk: true, manager_chat: true },
+    username: "aateach_buyer",
+    tenantSettings: { zernio: { profile_id: "prof-1", account_ids: ["acc-1"] } },
+    products: [
+      { id: P1, name: "Карточки по чтению", price: 1400 },
+      { id: P2, name: "Комплект ко Дню хлеба", price: 1500 },
+    ],
+    arrange: (r) => {
+      const bot = r.db.tables.payment_methods![0]!.bot_id;
+      r.db.tables.categories = [
+        {
+          id: "c1",
+          bot_id: bot,
+          name: "🏫НАЧАЛЬНАЯ ШКОЛА (1-4 классы)",
+          parent_id: null,
+          is_visible: true,
+          sort_order: 1,
+        },
+        {
+          id: "c2",
+          bot_id: bot,
+          name: "🥨День ХЛЕБА",
+          parent_id: null,
+          is_visible: true,
+          sort_order: 2,
+        },
+      ];
+      r.db.tables.products![0]!.category_ids = ["c1"];
+      r.db.tables.products![1]!.category_ids = ["c2"];
+    },
+    steps: [
+      {
+        say: { button: "CATALOG", title: "📚 Каталог" },
+        expect: { says: ["НАЧАЛЬНАЯ ШКОЛА"] },
+      },
+      {
+        say: { text: "Начальная школа" },
+        expect: {
+          says: ["Карточки по чтению"],
+          notSays: ["напишите номер", "Комплект ко Дню хлеба"],
+        },
+      },
+    ],
+  },
+  {
+    id: "dm-rule-name-beats-similar-section-ig-ru",
+    title: "название правила в Direct остаётся правилом, хотя в списке есть похожий раздел",
+    origin:
+      "Копилка 11.10: раздел «Папки» и правило «Папка профориентатора» — неточное совпадение с разделом не должно отнимать кнопку «Купить» правила",
+    channel: "instagram",
+    locale: "ru",
+    full: true,
+    modules: { helpdesk: true, manager_chat: true },
+    username: "kopilka_buyer",
+    tenantSettings: { zernio: { profile_id: "prof-1", account_ids: ["acc-1"] } },
+    products: [
+      { id: P1, name: "Папка профориентатора", price: 2500 },
+      { id: P2, name: "Небосвод писателей", price: 150 },
+    ],
+    automations: [
+      {
+        id: "prof",
+        name: "Папка профориентатора",
+        accountId: "acc-1",
+        trigger: "comment",
+        keywords: [],
+        isActive: true,
+        postTitle: "Папка профориентатора: всё для классного часа о профессиях.",
+        dmMessage: "Готовая папка профориентатора — нажмите «Купить»",
+        buttons: [{ type: "postback", title: "Купить", payload: `PROD:${P1}` }],
+      },
+    ],
+    arrange: (r) => {
+      const bot = r.db.tables.payment_methods![0]!.bot_id;
+      r.db.tables.categories = [
+        { id: "c1", bot_id: bot, name: "Папки ", parent_id: null, is_visible: true, sort_order: 1 },
+        {
+          id: "c2",
+          bot_id: bot,
+          name: "Русоведам",
+          parent_id: null,
+          is_visible: true,
+          sort_order: 2,
+        },
+      ];
+      r.db.tables.products![0]!.category_ids = ["c1"];
+      r.db.tables.products![1]!.category_ids = ["c2"];
+    },
+    steps: [
+      {
+        say: { button: "CATALOG", title: "📚 Каталог" },
+        expect: { says: ["Русоведам"] },
+      },
+      {
+        // Сообщение правила уходит через Zernio (в сценарии без сети); магазин
+        // раздел «Папки» не открывает.
+        say: { text: "Папка профориентатора" },
+        expect: { silent: true },
+      },
+      {
+        say: { text: "Папки" },
+        expect: { says: ["Папка профориентатора — 2500"] },
+      },
+    ],
+  },
 ];
