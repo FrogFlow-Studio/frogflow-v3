@@ -3,10 +3,12 @@ import { getSetting } from "@/core/settings/settings";
 import { SUPPORTED_LOCALES, type Locale } from "@/core/i18n/locale";
 import { verticalDef } from "@/core/verticals/registry";
 import { COPY } from "@/channels/telegram/copy";
+import { plain } from "@/channels/zernio/flow/classify";
 import {
   BOT_TEXT_CHANNELS,
   BOT_TEXT_KEYS,
   BOT_TEXT_VARS,
+  MSG_PROPS,
   OPT_IN,
   STANDARD,
   WIRED,
@@ -49,7 +51,15 @@ function standardOf(key: BotTextKey, shopName: string, vertical: string): Record
       const v = verticalDef(vertical as never).locales[l];
       out[l] = `${shopName}\n${v.welcomeGreeting}\n\n→ ${v.welcomeCatalog}\n→ ${v.welcomePayment}`;
     } else if (key === "not_understood") out[l] = COPY[l].useMenu;
-    else out[l] = STANDARD[key]![l];
+    else if (MSG_PROPS[key]) {
+      // Фраза словаря бота; у фразы-функции вместо значений — {подстановки} ключа.
+      const std = (COPY[l] as Record<string, unknown>)[MSG_PROPS[key][0]!];
+      out[l] = plain(
+        typeof std === "function"
+          ? (std as (...a: string[]) => string)(...BOT_TEXT_VARS[key].map((v) => `{${v}}`))
+          : String(std),
+      );
+    } else out[l] = STANDARD[key]![l];
   }
   return out;
 }

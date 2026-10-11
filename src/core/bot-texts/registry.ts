@@ -3,12 +3,30 @@ import type { Tenant } from "@/core/tenant/types";
 import { isOffHours } from "@/core/consultant/pricelist/mode";
 
 /**
- * Тексты бота, которые продавец меняет на одной странице: приветствие, ответ
- * вне часов работы, «спасибо за заказ» и «не понял». Стандартные тексты на
- * четырёх языках лежат здесь же; свои — в bots.settings.bot_texts. Чистая
- * часть: без базы и без каналов.
+ * Тексты бота, которые продавец меняет на одной странице. Telegram:
+ * приветствие, ответ вне часов работы, «спасибо за заказ» и «не понял»
+ * (стандартные тексты — здесь и в экранах бота). Instagram Direct: шаги
+ * покупки — страна, язык материалов, «после оплаты пришлите чек», чек и
+ * почта (стандартные — фразы общего словаря бота, MSG_PROPS). Свои — в
+ * bots.settings.bot_texts. Чистая часть: без базы и без каналов.
  */
-export const BOT_TEXT_KEYS = ["welcome", "off_hours", "order_thanks", "not_understood"] as const;
+export const BOT_TEXT_KEYS = [
+  "welcome",
+  "off_hours",
+  "order_thanks",
+  "not_understood",
+  "country_ask",
+  "language_ask",
+  "pay_after",
+  "receipt_how_to",
+  "receipt_received",
+  "receipt_received_email",
+  "receipt_need_email",
+  "receipt_manual",
+  "receipt_verified",
+  "email_ask",
+  "email_retry",
+] as const;
 export type BotTextKey = (typeof BOT_TEXT_KEYS)[number];
 
 export const BOT_TEXT_CHANNELS = ["telegram", "instagram", "whatsapp"] as const;
@@ -17,16 +35,53 @@ export type BotTextChannel = (typeof BOT_TEXT_CHANNELS)[number];
 /** Длина своего текста: сообщение Telegram — 4096, оставляем запас на подстановки. */
 export const BOT_TEXT_MAX = 1000;
 
+/** Шаги покупки в Direct: их стандартный текст — фраза общего словаря бота. */
+export const DIRECT_KEYS = [
+  "country_ask",
+  "language_ask",
+  "pay_after",
+  "receipt_how_to",
+  "receipt_received",
+  "receipt_received_email",
+  "receipt_need_email",
+  "receipt_manual",
+  "receipt_verified",
+  "email_ask",
+  "email_retry",
+] as const satisfies readonly BotTextKey[];
+
 /**
- * Где текст уже подключён к канальному коду. Instagram и WhatsApp (Direct)
- * пока ни одного не используют: страница не даёт сохранить то, что бот не
- * отправит.
+ * Где текст уже подключён к канальному коду: страница не даёт сохранить то,
+ * что бот не отправит. Instagram — шаги покупки (channels/zernio/shop/copy);
+ * WhatsApp пока говорит стандартными словами.
  */
 export const WIRED: Record<BotTextChannel, readonly BotTextKey[]> = {
-  telegram: BOT_TEXT_KEYS,
-  instagram: [],
+  telegram: ["welcome", "off_hours", "order_thanks", "not_understood"],
+  instagram: DIRECT_KEYS,
   whatsapp: [],
 };
+
+/**
+ * Фразы общего словаря бота (COPY в channels/telegram/copy), которые
+ * заменяет свой текст ключа. Фраза-функция получает аргументы по порядку
+ * подстановок ключа: proofReceivedEmail(no, email) ↔ {order}, {email}.
+ */
+export const MSG_PROPS: Partial<Record<BotTextKey, readonly string[]>> = {
+  country_ask: ["choosePayCountry", "chooseCountry"],
+  language_ask: ["chooseDeliveryLanguage"],
+  pay_after: ["afterProofManual"],
+  receipt_how_to: ["receiptHowTo"],
+  receipt_received: ["proofReceived"],
+  receipt_received_email: ["proofReceivedEmail"],
+  receipt_need_email: ["proofReceivedNeedEmail"],
+  receipt_manual: ["receiptManualReview"],
+  receipt_verified: ["receiptVerified"],
+  email_ask: ["emailAsk"],
+  email_retry: ["emailHint"],
+};
+
+/** Тексты про заказ: у консультанта без продаж их не показываем. */
+export const SALES_ONLY: readonly BotTextKey[] = ["order_thanks", ...DIRECT_KEYS];
 
 /** Подстановки, которые понимает каждый текст. */
 export const BOT_TEXT_VARS: Record<BotTextKey, readonly string[]> = {
@@ -34,6 +89,17 @@ export const BOT_TEXT_VARS: Record<BotTextKey, readonly string[]> = {
   off_hours: ["from", "to"],
   order_thanks: ["order"],
   not_understood: [],
+  country_ask: [],
+  language_ask: [],
+  pay_after: [],
+  receipt_how_to: [],
+  receipt_received: ["order"],
+  receipt_received_email: ["order", "email"],
+  receipt_need_email: ["order"],
+  receipt_manual: ["order"],
+  receipt_verified: ["order"],
+  email_ask: [],
+  email_retry: [],
 };
 
 /**
@@ -140,6 +206,7 @@ export function sampleVars(shopName: string, hours: WorkHours | null): Record<st
   return {
     shop: shopName,
     order: "1234",
+    email: "anna@mail.ru",
     from: hhmm(hours?.open ?? 10),
     to: hhmm(hours?.close ?? 21),
   };

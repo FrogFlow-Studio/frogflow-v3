@@ -46,7 +46,8 @@ import { loadQuiz, quizAnswer } from "@/core/quiz/quiz";
 import { hasDeliveredPurchase, saveRating } from "@/core/reviews/reviews";
 import { REPLY_WINDOW_MS } from "@/core/chat/reply-window";
 import { cartLanguageChoices } from "@/core/cart/languages";
-import { COPY, escapeHtml, normalizePhone } from "@/channels/telegram/copy";
+import { escapeHtml, normalizePhone } from "@/channels/telegram/copy";
+import { directCopy } from "./copy";
 import { notifyAdminsHtml } from "@/channels/telegram/notify";
 import { liveTransport, type ZernioTransport } from "../api.server";
 import type { NativeOrder, ParsedZernioMessage } from "../message";
@@ -155,7 +156,7 @@ export async function handleShopMessage(
     accountId: msg.accountId!,
     platform: msg.platform,
     locale,
-    m: COPY[locale],
+    m: directCopy(ctx.tenant, msg.platform, locale),
     bot,
     inboundAt:
       msg.sentAt && Number.isFinite(Date.parse(msg.sentAt)) ? Date.parse(msg.sentAt) : null,
@@ -425,7 +426,7 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
         { mode: "idle", locale: picked, locale_misses: undefined },
       );
       s.locale = picked;
-      s.m = COPY[picked];
+      s.m = directCopy(s.ctx.tenant, s.platform, picked);
       await reply(s, s.m.languageSaved, { force: true });
       await showCatalog(s, null, 0, true);
       return "handled";
@@ -1035,7 +1036,7 @@ export async function expressFromAutomation(
     accountId: p.accountId,
     platform: "instagram",
     locale,
-    m: COPY[locale],
+    m: directCopy(ctx.tenant, "instagram", locale),
     bot,
     inboundAt: null,
     why: "быстрая покупка по автоматизации",
