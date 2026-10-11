@@ -576,3 +576,48 @@ export const REQUESTS_HINT: Record<HintLang, string> = {
   en: "The message is already in your Direct 📩 If it's not in your inbox, check the Requests folder and reply «+» to it.",
   uz: "Xabar allaqachon Direct’da 📩 Kiruvchilarda bo‘lmasa, «So‘rovlar» papkasini oching va unga «+» deb javob bering.",
 };
+
+/** Служебные слова не говорят, о каком товаре речь. */
+const MENTION_STOPWORDS = new Set(["для", "или", "про", "при", "без", "под", "and", "the", "for"]);
+
+/** Слова для сравнения названия товара с подписью: без регистра, «ё», эмодзи и знаков. */
+function mentionWords(text: string): string[] {
+  return text
+    .toLowerCase()
+    .replace(/ё/g, "е")
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter((w) => w.length >= 3 && !MENTION_STOPWORDS.has(w));
+}
+
+/**
+ * Одно слово в разных формах — общее начало: «хлеб»/«хлеба», «папка»/«папки»,
+ * «профориентатора»/«профориентационная» (у длинных слов хватает шести букв).
+ */
+function sameStem(a: string, b: string): boolean {
+  const n = Math.min(a.length, b.length);
+  const need = Math.min(n, Math.max(3, Math.min(n - 2, 6)));
+  return a.slice(0, need) === b.slice(0, need);
+}
+
+/**
+ * Упоминается ли товар кнопки «Купить» в подписи поста правила: хоть одно
+ * слово названия (не короче трёх букв) есть в подписи с точностью до окончания.
+ * Подсказка продавцу при сохранении, не запрет: правило «тестовый» под постом
+ * «Папка профориентатора» продавало «Спряжение глаголов» (Копилка, #126, 11.10).
+ * Подписи нет — сравнивать не с чем, считаем «упоминается».
+ */
+export function productMentionedInCaption(productName: string, caption: string): boolean {
+  const captionWords = mentionWords(caption);
+  if (!captionWords.length) return true;
+  const nameWords = mentionWords(productName);
+  if (!nameWords.length) return true;
+  return nameWords.some((w) => captionWords.some((c) => sameStem(w, c)));
+}
+
+/** id товара кнопки «Купить» (payload `PROD:<id>`), по порядку кнопок. */
+export function buyButtonProductIds(buttons: readonly AutomationButton[]): string[] {
+  return buttons
+    .filter((b) => b.type === "postback" && b.payload?.startsWith("PROD:"))
+    .map((b) => b.payload!.slice("PROD:".length).trim())
+    .filter(Boolean);
+}
