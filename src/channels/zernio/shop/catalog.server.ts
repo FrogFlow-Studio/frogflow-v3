@@ -1,4 +1,5 @@
 import { shownLeadDays } from "@/core/catalog/lead-time";
+import { matchSectionName, sectionWords, type SectionMatch } from "@/core/catalog/section-name";
 import type { Customer } from "@/core/customers/customers";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Json } from "@/core/db-types";
@@ -62,30 +63,22 @@ const OWN_PRODUCTS_LABEL: Record<Locale, string> = {
   uz: "Shu bo‘lim mahsulotlari",
 };
 
-function sectionKey(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/ё/g, "е")
-    .replace(/^\s*\d{1,3}\s*[.)]?\s*/, "")
-    .replace(/[^\p{L}\p{N}]+/gu, " ")
-    .trim();
-}
-
 /**
  * Покупатель ответил на свежий список разделов названием раздела, а не номером
  * («Оформление и праздники» вместо «2»): id пункта списка, иначе null. Раньше
  * такая реплика ловила кнопку «Купить» чужого правила (Копилка, заказ #127,
- * 11.10) или уходила продавцу. Не прочиталось — null: реплика идёт как обычно.
+ * 11.10) или уходила продавцу. Эмодзи, скобки и регистр не мешают: «Начальная
+ * школа» открывает «🏫НАЧАЛЬНАЯ ШКОЛА (1-4 классы)» (AATeach, 11.10). Не
+ * прочиталось — null: реплика идёт как обычно.
  */
 export async function listedSectionByName(
   ctx: TenantContext,
   customer: Customer,
   text: string,
-): Promise<string | null> {
+): Promise<SectionMatch | null> {
   const list = memory(customer).list;
   if (list?.kind !== "categories" || !(Date.now() - Date.parse(list.at) < LIST_TTL_MS)) return null;
-  const key = sectionKey(text);
-  if (key.length < 3) return null;
+  if (sectionWords(text).join(" ").length < 3) return null;
   const ids = list.ids.filter((id) => !id.startsWith(OWN_PRODUCTS_PREFIX));
   if (!ids.length) return null;
   let rows: Array<{ id: string; name: string }>;
@@ -99,14 +92,14 @@ export async function listedSectionByName(
     console.warn(`[zernio] разделы списка не прочитаны: ${(e as Error).message}`);
     return null;
   }
-  return rows.find((c) => sectionKey(c.name) === key)?.id ?? null;
+  return matchSectionName(text, rows);
 }
 
 /** Название раздела из свежего списка — открыть его, как по номеру. */
 export async function pickSectionByName(s: Shop, text: string): Promise<boolean> {
-  const id = await listedSectionByName(s.ctx, s.customer, text);
-  if (!id) return false;
-  await openEntry(s, id);
+  const found = await listedSectionByName(s.ctx, s.customer, text);
+  if (!found) return false;
+  await openEntry(s, found.id);
   return true;
 }
 
