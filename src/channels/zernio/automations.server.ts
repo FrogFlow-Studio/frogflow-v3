@@ -1671,7 +1671,7 @@ export const TWO_STEP_FROM_DM_MS = 30 * 60_000;
 
 const squash = (s: string) => s.replace(/\s+/g, " ").trim();
 
-/** Первое сообщение какого двухшагового правила лежит в переписке: точный текст, иначе единственный призыв. */
+/** Первое сообщение какого двухшагового правила лежит в переписке: точный текст, иначе тот же текст продавца с прежним призывом. */
 function ruleOfFirstDm(text: string, rules: CommentAutomation[]): CommentAutomation | null {
   const t = squash(text);
   const exact = rules.find((a) =>
@@ -1680,11 +1680,30 @@ function ruleOfFirstDm(text: string, rules: CommentAutomation[]): CommentAutomat
     ),
   );
   if (exact) return exact;
-  // Призыв по умолчанию узнаём и в прежнем виде: первое сообщение могло уйти до замены.
-  const byPrompt = rules.filter((a) =>
-    replyPromptsOf(a.replyPrompt).some((p) => t.endsWith(squash(p))),
-  );
-  return byPrompt.length === 1 ? byPrompt[0]! : null;
+  // Первое сообщение могло уйти до замены призыва: узнаём его по тексту
+  // продавца без призыва. Один призыв в конце правило не называет — чужое
+  // сообщение с тем же «ответьте «+»» (материал «Зори» под бесплатным постом)
+  // оформляло «Палитру» (Копилка, 12.10, заказ #144).
+  const byBody = rules.filter((a) => {
+    const prompts = [...replyPromptsOf(a.replyPrompt), ...KNOWN_PROMPTS];
+    const body = withoutPrompt(t, prompts);
+    if (body === t || !body) return false;
+    return [a.firstMessage ?? a.dmMessage, ...(a.dmMessageVariations ?? [])].some(
+      (v) => v && withoutPrompt(squash(v), prompts) === body,
+    );
+  });
+  return byBody.length === 1 ? byBody[0]! : null;
+}
+
+const KNOWN_PROMPTS: readonly string[] = [DEFAULT_REPLY_PROMPT, ...LEGACY_REPLY_PROMPTS];
+
+/** Текст без призыва в конце (если он кончается одним из `prompts`). */
+function withoutPrompt(t: string, prompts: readonly string[]): string {
+  for (const p of prompts) {
+    const q = squash(p);
+    if (q && t.endsWith(q)) return t.slice(0, -q.length).trim();
+  }
+  return t;
 }
 
 /**
@@ -1786,6 +1805,60 @@ export async function deliverTwoStepFromDm(
     }
   }
   return deliverPendingTwoStepDm(ctx, p, api, now);
+}
+
+/**
+ * «+» ответом на сообщение с призывом, которое не узнано ни как первое
+ * сообщение правила (материал «Зори» под бесплатным постом, не наше правило):
+ * товар не угадываем — покупателю вопрос, какой материал нужен (Копилка,
+ * 12.10, заказ #144 «Палитра» вместо карточек). След в журнале — чтобы при
+ * разборе было видно, на какое сообщение ответили.
+ */
+export async function plusAnswersUnknownPrompt(
+  ctx: TenantContext,
+  p: TwoStepBuyer,
+  api: AutomationApi = liveAutomationApi,
+  now: () => Date = () => new Date(),
+): Promise<"ask" | "asked" | null> {
+  let tail: ZernioInboxMessage[];
+  try {
+    tail = await api.tail(p.accountId, p.conversationId);
+  } catch (e) {
+    console.warn(`[comment-dm] переписка не прочитана: ${e instanceof Error ? e.message : e}`);
+    return null;
+  }
+  const since = now().getTime() - TWO_STEP_FROM_DM_MS;
+  const last = tail
+    .filter(
+      (m) => m.direction === "outgoing" && m.message && Date.parse(m.createdAt ?? "") >= since,
+    )
+    .at(-1);
+  if (!last?.message) return null;
+  const t = squash(last.message);
+  const prompted = /[«"“]\s*\+\s*[»"”]/.test(t) || KNOWN_PROMPTS.some((q) => t.endsWith(squash(q)));
+  if (!prompted) return null;
+  const { error } = await ctx.db.from("zernio_logs").insert({
+    bot_id: ctx.tenant.id,
+    event_id: `plus-unmatched:${last.id ?? `${p.conversationId}:${Date.parse(last.createdAt ?? "")}`}`,
+    event_type: "two_step_dm_unmatched",
+    status: "skipped",
+    error_message: "«+» на сообщение, которое не первое сообщение правила — спросили, какой товар",
+    created_at: now().toISOString(),
+    payload: toJson({
+      username: p.username,
+      accountId: p.accountId,
+      conversationId: p.conversationId,
+      answered: last.message.slice(0, 300),
+    }),
+  });
+  // Повторный «+» на то же сообщение — вопрос уже задан, второй раз не спрашиваем.
+  if (error && /duplicate|unique/i.test(error.message)) return "asked";
+  // Не записали — не знаем, спрашивал ли соседний вебхук: «+» идёт дальше как раньше.
+  if (error) {
+    console.warn(`[comment-dm] след «+» без правила не записан: ${error.message}`);
+    return null;
+  }
+  return "ask";
 }
 
 /** Кодовое слово в Direct — короткая реплика, а не рассказ, где слово встретилось. */
