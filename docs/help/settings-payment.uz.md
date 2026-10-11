@@ -50,6 +50,14 @@ Botdan, Instagram yoki WhatsApp’dan kelgan buyurtma to‘lanmasa, bot tanlanga
 
 Materiallar har doim yozishmaga keladi. «Chekdan keyin pochtani so‘rash» yoqilgan — chekdan keyin bot pochtani so‘raydi va u yerga nusxasini yuboradi. O‘chirilgan — so‘ramaydi; xaridor pochtaga yuborishni o‘zi so‘rasa, bot manzilni so‘rab, xat yuboradi.
 
+## Pochta ixtiyoriy {#email-optional}
+
+Yoqilgan (standart) — pochta haqidagi savolga xaridor «vatsap», «shu yerga», «instagramga», «kerak emas» deb javob bersa, bot bir marta: «Fayllar chek tekshirilgach shu yerga, yozishmaga keladi. Pochta — ixtiyoriy» deb yozadi va pochtani boshqa so‘ramaydi. Manzilni baribir yozsa, u saqlanadi. Xatoli manzilga o‘xshash matnni («anna mail.ru») bot to‘liq yozishni so‘raydi. O‘chirilgan — bunday javoblar sizga savol sifatida keladi.
+
+## Chek matn bilan {#receipt-text}
+
+Kaspi ba’zan skrinshot qilishga ruxsat bermaydi va xaridor ilovadan chek matnini qo‘yadi: «Оплата совершена 800 ₸ … № чека QR…». Yoqilgan (standart) — matnda operatsiya raqami yoki chek so‘zlari («оплата совершена», «перевод выполнен», «получатель») bilan birga valyutali summa bo‘lsa, bot uni chek deb hisoblaydi. Xaridorga — «Chekni qabul qildim, tekshiruvga yuboraman», sizga — chek matni va «Подтвердить и выдать» tugmasi bilan buyurtma xabari. Boshqa buyurtma bo‘yicha o‘sha operatsiya raqami qabul qilinmaydi. Avtotekshiruv matnni o‘qimaydi: pul tushganini o‘zingiz tekshiring. «800 tg to‘ladim» — chek emas: bot skrinshot so‘raydi. O‘chirilgan — to‘lov bosqichidagi matn sizga savol sifatida keladi.
+
 ## Telegram Stars {#stars}
 
 «Telegram Stars orqali to‘lov» moduli bo‘lganda bor. Telegram-botda xaridor yulduzlar bilan bir bosishda, kartasiz va rekvizitsiz to‘laydi. Yulduzlar bot balansiga tushadi; ularni Fragment orqali yechib olish mumkin.

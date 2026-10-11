@@ -49,6 +49,11 @@ export type Input =
    * одной пачки и с разницей в секунды (BOVI 11.10, 4–12 с).
    */
   | { photos: number; caption?: string; gapMs?: number }
+  /**
+   * Instagram/WhatsApp (только `full`): одна кнопка нажата `clicks` раз подряд —
+   * вебхуки обрабатываются одновременно (zuxra6163, 8 нажатий «Купить», AATeach 11.10).
+   */
+  | { clicks: number; button: string; title?: string }
   /** Вложение, к которому Zernio не прислал ссылку (пересланная публикация, фото без адреса). */
   | { attachmentNoUrl: true }
   /** Сообщение, написанное `minutes` минут назад: канал доставил его с опозданием. */
@@ -404,7 +409,7 @@ function directRoom(o: RoomOptions): Room {
     if ("text" in i) return { text: i.text };
     if ("late" in i)
       return { text: i.late, sentAt: new Date(Date.now() - i.minutes * 60_000).toISOString() };
-    if ("burst" in i || "photos" in i) return {};
+    if ("burst" in i || "photos" in i || "clicks" in i) return {};
     if ("attachmentNoUrl" in i) return { attachments: [{ type: "share" }] as never };
     if ("stuck" in i) return { text: i.stuck };
     if ("button" in i) return { text: i.title ?? i.button, postbackPayload: i.button };
@@ -503,6 +508,14 @@ function directRoom(o: RoomOptions): Room {
         out.event = "message.sent";
         Object.assign(out.message, { direction: "outgoing", sentVia: null });
         await handleZernioMessage(ctx, out as never, transport);
+        current.state = db.tables.bot_users![0]!.state as Customer["state"];
+        return;
+      }
+      if (o.full && "clicks" in i) {
+        const hooks = Array.from({ length: i.clicks }, () =>
+          webhook({ text: i.title ?? i.button, postbackPayload: i.button }),
+        );
+        await Promise.all(hooks.map((h) => handleZernioMessage(ctx, h as never, transport)));
         current.state = db.tables.bot_users![0]!.state as Customer["state"];
         return;
       }

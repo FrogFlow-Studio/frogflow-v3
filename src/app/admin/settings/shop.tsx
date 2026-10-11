@@ -1,4 +1,10 @@
-import { CHAT_EMAIL_ASK_KEY, emailAskOn } from "@/core/orders/email-ask";
+import {
+  CHAT_EMAIL_ASK_KEY,
+  CHAT_EMAIL_OPTIONAL_KEY,
+  emailAskOn,
+  emailOptionalOn,
+} from "@/core/orders/email-ask";
+import { CHAT_RECEIPT_TEXT_KEY, receiptTextOn } from "@/core/receipts/text-receipt";
 import { useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { saveSettingsFn, setPdfWatermarkFn } from "@/app/admin/settings.functions";
@@ -312,28 +318,72 @@ export function ServiceNoticesCard({ settings }: { settings: Record<string, stri
   );
 }
 
-/** Спрашивать почту после чека в Instagram (core/orders/email-ask). */
+/**
+ * Почта после чека в Instagram (core/orders/email-ask): спрашивать ли её и
+ * переспрашивать ли, когда покупатель просит «вацап», «сюда».
+ */
 export function EmailAskCard({ settings }: { settings: Record<string, string> }) {
   const router = useRouter();
   const { shop } = settingsRoute.useRouteContext();
   const t = adminT(shop.locale);
   const on = emailAskOn(settings[CHAT_EMAIL_ASK_KEY], shop.botId);
-  const toggle = useAction(async (v: boolean) => {
-    await saveSettingsFn({ data: { [CHAT_EMAIL_ASK_KEY]: v ? "true" : "false" } });
+  const optional = emailOptionalOn(settings[CHAT_EMAIL_OPTIONAL_KEY]);
+  const toggle = useAction(async (key: string, v: boolean) => {
+    await saveSettingsFn({ data: { [key]: v ? "true" : "false" } });
     await router.invalidate();
   });
+  const readOnly = toggle.busy || !roleAllows(shop.role, "admin");
   return (
     <Card title={t("settings.emailAsk.title")}>
       <p className="mb-3 text-sm text-muted">{t("settings.emailAsk.intro")}</p>
       <div className="flex items-center gap-3">
         <Switch
           checked={on}
-          disabled={toggle.busy || !roleAllows(shop.role, "admin")}
-          onChange={(v) => void toggle.run(v).catch(() => {})}
+          disabled={readOnly}
+          onChange={(v) => void toggle.run(CHAT_EMAIL_ASK_KEY, v).catch(() => {})}
           label={t("settings.emailAsk.label")}
         />
         <span className="text-sm">{t("settings.emailAsk.label")}</span>
         <HelpTip article="settings-payment" anchor="email-ask" />
+      </div>
+      <div className="mt-3 flex items-center gap-3">
+        <Switch
+          checked={optional}
+          disabled={readOnly}
+          onChange={(v) => void toggle.run(CHAT_EMAIL_OPTIONAL_KEY, v).catch(() => {})}
+          label={t("settings.emailOptional.label")}
+        />
+        <span className="text-sm">{t("settings.emailOptional.label")}</span>
+        <HelpTip article="settings-payment" anchor="email-optional" />
+      </div>
+      <p className="mt-1 text-xs text-muted">{t("settings.emailOptional.hint")}</p>
+      <ErrorBox error={toggle.error} />
+    </Card>
+  );
+}
+
+/** Чек текстом в Instagram/WhatsApp (core/receipts/text-receipt). */
+export function ReceiptTextCard({ settings }: { settings: Record<string, string> }) {
+  const router = useRouter();
+  const { shop } = settingsRoute.useRouteContext();
+  const t = adminT(shop.locale);
+  const on = receiptTextOn(settings[CHAT_RECEIPT_TEXT_KEY]);
+  const toggle = useAction(async (v: boolean) => {
+    await saveSettingsFn({ data: { [CHAT_RECEIPT_TEXT_KEY]: v ? "true" : "false" } });
+    await router.invalidate();
+  });
+  return (
+    <Card title={t("settings.receiptText.title")}>
+      <p className="mb-3 text-sm text-muted">{t("settings.receiptText.intro")}</p>
+      <div className="flex items-center gap-3">
+        <Switch
+          checked={on}
+          disabled={toggle.busy || !roleAllows(shop.role, "admin")}
+          onChange={(v) => void toggle.run(v).catch(() => {})}
+          label={t("settings.receiptText.label")}
+        />
+        <span className="text-sm">{t("settings.receiptText.label")}</span>
+        <HelpTip article="settings-payment" anchor="receipt-text" />
       </div>
       <ErrorBox error={toggle.error} />
     </Card>
