@@ -42,7 +42,11 @@ export async function weeklyStats(
   const blank = (): Money => ({ revenue: 0, orders: 0, ids: [], scale: new Map() });
   const fromIso = w.from.toISOString();
   const { netOfRefunds, refundsSince } = await import("@/core/orders/refund");
-  const refunds = await refundsSince(ctx, w.prevFrom.toISOString());
+  const { loadShopFx } = await import("@/core/money/shop-fx");
+  const [refunds, fx] = await Promise.all([
+    refundsSince(ctx, w.prevFrom.toISOString()),
+    loadShopFx(ctx),
+  ]);
   await eachPage(
     (a, b) =>
       ctx.db
@@ -58,10 +62,12 @@ export async function weeklyStats(
       for (const o of rows) {
         if (!includeOrderInAnalytics(o)) continue;
         const map = new Date(o.created_at).toISOString() >= fromIso ? cur : prev;
-        const c = o.currency || "—";
+        // Другие валюты — в основной по курсу на сегодня; без курса — отдельно.
+        const k = fx.factor(o.currency);
+        const c = k == null ? o.currency || "—" : fx.base;
         const m = map.get(c) ?? blank();
         map.set(c, m);
-        const revenue = netOfRefunds(analyticsRevenue(o), refunds.get(o.id));
+        const revenue = netOfRefunds(analyticsRevenue(o), refunds.get(o.id)) * (k ?? 1);
         m.revenue += revenue;
         m.orders += 1;
         m.ids.push(o.id);
@@ -78,7 +84,7 @@ export async function weeklyStats(
       currency = c;
       best = m.orders;
     }
-  if (best < 0) currency = (await getSetting(ctx, "currency"))?.toUpperCase() || "KZT";
+  if (best < 0) currency = fx.base;
   const main = cur.get(currency) ?? blank();
   const before = prev.get(currency) ?? blank();
 

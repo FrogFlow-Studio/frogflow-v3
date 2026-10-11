@@ -26,10 +26,14 @@ export type { TopProduct };
 
 export type Analytics = {
   days: number;
-  /** Валюта с наибольшим числом заказов: в ней плитки, график, каналы и топ. */
+  /** Основная валюта магазина: в ней плитки, график, каналы и топ (другие — по курсу). */
   currency: string;
-  /** Выручка текущего периода по каждой валюте, основная первой. */
-  byCurrency: Array<{ currency: string; revenue: number; orders: number }>;
+  /**
+   * Выручка текущего периода в исходных валютах заказов, основная первой.
+   * `inBase` — та же сумма в основной валюте по курсу; null — курса нет,
+   * эта валюта в плитки не вошла.
+   */
+  byCurrency: Array<{ currency: string; revenue: number; orders: number; inBase: number | null }>;
   series: DayPoint[];
   current: PeriodTotals;
   previous: PeriodTotals;
@@ -41,8 +45,6 @@ export type Analytics = {
 
 type Money = { revenue: number; orders: number };
 type Acc = {
-  /** Засчитанных заказов в обоих периодах — по ним выбирается основная валюта. */
-  count: number;
   cur: Money;
   prev: Money;
   byDay: Map<string, Money>;
@@ -53,7 +55,6 @@ type Acc = {
 };
 
 const blankAcc = (): Acc => ({
-  count: 0,
   cur: { revenue: 0, orders: 0 },
   prev: { revenue: 0, orders: 0 },
   byDay: new Map(),
@@ -76,8 +77,9 @@ const add = (m: Map<string, Money>, k: string, revenue: number) => {
  * заказов текущего периода (для топа товаров).
  *
  * Как в v1: в выручку идут выданные заказы и физические в работе (с
- * внесённым задатком, paid_amount). Валюты не складываются: плитки, график,
- * каналы и топ — в основной валюте, остальные — отдельной разбивкой.
+ * внесённым задатком, paid_amount). Заказы в других валютах пересчитываются в
+ * основную валюту магазина по курсу на сегодня (core/money/shop-fx), исходные
+ * суммы видны разбивкой по валютам; валюта без курса в плитки не входит.
  */
 export async function analytics(ctx: TenantContext, days: number): Promise<Analytics> {
   const now = new Date();
@@ -92,7 +94,10 @@ export async function analytics(ctx: TenantContext, days: number): Promise<Analy
   const customers = { cur: 0, prev: 0, byDay: new Map<string, number>() };
   // Возвраты (core/orders/refund) уменьшают выручку заказа.
   const { netOfRefunds, refundsSince } = await import("@/core/orders/refund");
-  const refunds = await refundsSince(ctx, since);
+  const { loadShopFx } = await import("@/core/money/shop-fx");
+  const [refunds, fx] = await Promise.all([refundsSince(ctx, since), loadShopFx(ctx)]);
+  /** Текущий период в исходных валютах — для разбивки под плитками. */
+  const original = new Map<string, { revenue: number; orders: number; inBase: number | null }>();
 
   await Promise.all([
     eachPage(
@@ -113,13 +118,22 @@ export async function analytics(ctx: TenantContext, days: number): Promise<Analy
           const inCurrent = day >= firstDay;
           if (inCurrent) byStatus.set(o.status, (byStatus.get(o.status) ?? 0) + 1);
           if (!includeOrderInAnalytics(o)) continue;
-          const revenue = netOfRefunds(analyticsRevenue(o), refunds.get(o.id));
-          // Покупатель — в любой валюте; деньги и число заказов — по своей валюте.
+          const own = netOfRefunds(analyticsRevenue(o), refunds.get(o.id));
+          // Покупатель — в любой валюте; деньги — в основной по курсу, без курса — в своей.
           (inCurrent ? buyers.cur : buyers.prev).add(Number(o.telegram_id));
-          const cur = o.currency || "—";
+          const k = fx.factor(o.currency);
+          const revenue = own * (k ?? 1);
+          const cur = k == null ? o.currency || "—" : fx.base;
+          if (inCurrent) {
+            const ownCur = (o.currency || fx.base).toUpperCase();
+            const e = original.get(ownCur) ?? { revenue: 0, orders: 0, inBase: 0 };
+            e.revenue += own;
+            e.orders += 1;
+            e.inBase = k == null ? null : (e.inBase ?? 0) + revenue;
+            original.set(ownCur, e);
+          }
           const acc = accs.get(cur) ?? blankAcc();
           accs.set(cur, acc);
-          acc.count += 1;
           const bucket = inCurrent ? acc.cur : acc.prev;
           bucket.revenue += revenue;
           bucket.orders += 1;
@@ -154,14 +168,8 @@ export async function analytics(ctx: TenantContext, days: number): Promise<Analy
     ),
   ]);
 
-  // Основная валюта — с наибольшим числом засчитанных заказов (при равенстве — первая встреченная).
-  let currency = "KZT";
-  let best = 0;
-  for (const [c, acc] of accs)
-    if (acc.count > best) {
-      currency = c;
-      best = acc.count;
-    }
+  // Основная валюта — валюта магазина: в неё пересчитано всё, у чего есть курс.
+  const currency = fx.base;
   const main = accs.get(currency) ?? blankAcc();
 
   const series = emptySeries(keys);
@@ -183,7 +191,7 @@ export async function analytics(ctx: TenantContext, days: number): Promise<Analy
   const current = finish(main.cur, customers.cur, buyers.cur);
   const previous = finish(main.prev, customers.prev, buyers.prev);
   const summary: Record<string, { revenue: number; orders: number }> = {};
-  for (const [c, acc] of accs) if (acc.cur.orders) summary[c] = acc.cur;
+  for (const [c, e] of original) summary[c] = e;
 
   // Топ товаров — по снимкам позиций заказов текущего периода в основной валюте.
   // Кусками по 200 заказов и постранично: позиций у 200 заказов бывает больше 1000.
@@ -215,6 +223,7 @@ export async function analytics(ctx: TenantContext, days: number): Promise<Analy
       currency: c,
       revenue: Math.round(summary[c]!.revenue),
       orders: summary[c]!.orders,
+      inBase: original.get(c)!.inBase == null ? null : Math.round(original.get(c)!.inBase!),
     })),
     series,
     current,

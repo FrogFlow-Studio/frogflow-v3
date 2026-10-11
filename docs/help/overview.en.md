@@ -28,7 +28,7 @@ A tile is shown only if the matching section is connected. When everything is ha
 
 ## Numbers: revenue, products, customers {#stats}
 
-- "Revenue, last 24 hours", "Revenue, last 7 days", "Revenue, 30 days" — the total of paid orders: delivered digital ones and physical ones with an accepted deposit. Refunds are subtracted. It is counted in the shop's main currency; other currencies are not added up.
+- "Revenue, last 24 hours", "Revenue, last 7 days", "Revenue, 30 days" — the total of paid orders: delivered digital ones and physical ones with an accepted deposit. Refunds are subtracted. It is counted in the shop's main currency; orders in other currencies are converted at today's rate.
 - "Products on sale" — how many products are switched on now.
 - "Customers" — how many people are in your base.
 

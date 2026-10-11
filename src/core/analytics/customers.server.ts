@@ -17,7 +17,8 @@ export type CustomersBlock = Omit<CustomersReport, "top"> & {
 export async function readPurchases(ctx: TenantContext, now = new Date()): Promise<Purchase[]> {
   const since = new Date(now.getTime() - WINDOW_DAYS * 86_400_000).toISOString();
   const { netOfRefunds, refundsSince } = await import("@/core/orders/refund");
-  const refunds = await refundsSince(ctx, since);
+  const { loadShopFx, toBase } = await import("@/core/money/shop-fx");
+  const [refunds, fx] = await Promise.all([refundsSince(ctx, since), loadShopFx(ctx)]);
   const purchases: Purchase[] = [];
   await eachPage<{
     id: number;
@@ -44,11 +45,13 @@ export async function readPurchases(ctx: TenantContext, now = new Date()): Promi
     (rows) => {
       for (const o of rows) {
         if (!includeOrderInAnalytics(o)) continue;
+        // Другие валюты — в основной по курсу на сегодня; без курса — в своей.
+        const m = toBase(fx, netOfRefunds(analyticsRevenue(o), refunds.get(o.id)), o.currency);
         purchases.push({
           buyer: buyerKey(o.user_key, o.telegram_id),
           at: o.created_at,
-          amount: netOfRefunds(analyticsRevenue(o), refunds.get(o.id)),
-          currency: o.currency || "—",
+          amount: m.amount,
+          currency: m.currency,
         });
       }
     },

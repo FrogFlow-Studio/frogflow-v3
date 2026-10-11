@@ -15,7 +15,8 @@ export const ru = {
   "analytics.tile.newCustomers": "Новых покупателей",
   "analytics.tile.buyers": "Платили",
   "analytics.byCurrency":
-    "Выручка по валютам. Плитки и графики — в {currency}, другие валюты не складываются.",
+    "Выручка по валютам. Плитки и графики — в {currency}: другие валюты пересчитаны по курсу на сегодня.",
+  "analytics.byCurrency.noRate": "— без курса, в плитки не вошло",
   "analytics.chart.revenueByDay": "Выручка по дням",
   "analytics.chart.ordersByDay": "Оплаченные заказы по дням",
   "analytics.chart.customersByDay": "Новые покупатели по дням",
@@ -152,7 +153,8 @@ export const kk: SectionDict<typeof ru> = {
   "analytics.tile.newCustomers": "Жаңа сатып алушылар",
   "analytics.tile.buyers": "Төлегендер",
   "analytics.byCurrency":
-    "Валюта бойынша түсім. Плиткалар мен графиктер — {currency} бойынша, басқа валюталар қосылмайды.",
+    "Валюта бойынша түсім. Плиткалар мен графиктер — {currency} бойынша: басқа валюталар бүгінгі бағам бойынша қайта есептелді.",
+  "analytics.byCurrency.noRate": "— бағам жоқ, плиткаларға кірмеді",
   "analytics.chart.revenueByDay": "Күндер бойынша түсім",
   "analytics.chart.ordersByDay": "Күндер бойынша төленген тапсырыстар",
   "analytics.chart.customersByDay": "Күндер бойынша жаңа сатып алушылар",
@@ -289,7 +291,8 @@ export const en: SectionDict<typeof ru> = {
   "analytics.tile.newCustomers": "New customers",
   "analytics.tile.buyers": "Paying customers",
   "analytics.byCurrency":
-    "Revenue by currency. Tiles and charts are in {currency}; other currencies are not added up.",
+    "Revenue by currency. Tiles and charts are in {currency}: other currencies are converted at today's rate.",
+  "analytics.byCurrency.noRate": "— no rate, not in the tiles",
   "analytics.chart.revenueByDay": "Revenue by day",
   "analytics.chart.ordersByDay": "Paid orders by day",
   "analytics.chart.customersByDay": "New customers by day",
@@ -427,7 +430,8 @@ export const uz: SectionDict<typeof ru> = {
   "analytics.tile.newCustomers": "Yangi xaridorlar",
   "analytics.tile.buyers": "To‘laganlar",
   "analytics.byCurrency":
-    "Valyuta boʻyicha tushum. Plitkalar va grafiklar {currency}da, boshqa valyutalar qoʻshilmaydi.",
+    "Valyuta boʻyicha tushum. Plitkalar va grafiklar {currency}da: boshqa valyutalar bugungi kurs boʻyicha qayta hisoblangan.",
+  "analytics.byCurrency.noRate": "— kurs yoʻq, plitkalarga kirmadi",
   "analytics.chart.revenueByDay": "Kunlar bo‘yicha tushum",
   "analytics.chart.ordersByDay": "Kunlar bo‘yicha to‘langan buyurtmalar",
   "analytics.chart.customersByDay": "Kunlar bo‘yicha yangi xaridorlar",

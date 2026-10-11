@@ -3,7 +3,7 @@ import { awardPointsForOrder } from "@/core/discounts/discounts";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { OrderWithItems } from "./orders";
 import { serviceDb } from "@/core/db/client.server";
-import { eachPage } from "@/core/db/page";
+import { eachPage, pageAll } from "@/core/db/page";
 import { chunksOf } from "@/lib/in-chunks";
 import { isDeliverableStorageKey } from "@/core/storage/keys";
 import { isAuditableProofPath, proofPathCandidates } from "@/core/receipts/audit";
@@ -201,7 +201,9 @@ export async function orderCounts(ctx: TenantContext): Promise<OrderCounts> {
 /**
  * Выручка за `days` дней для главной админки — по тем же правилам, что
  * аналитика (core/analytics/pure): выданные заказы и физические в работе с
- * внесённым задатком; сумма — в основной валюте, другие не складываются.
+ * внесённым задатком. Заказы в других валютах пересчитываются в основную
+ * валюту магазина по курсу на сегодня (core/money/shop-fx); валюта без курса
+ * в общую сумму не входит.
  */
 export async function revenue(
   ctx: TenantContext,
@@ -209,21 +211,38 @@ export async function revenue(
 ): Promise<{ total: number; currency: string; orders: number }> {
   const { analyticsRevenue, dominantCurrency, includeOrderInAnalytics } =
     await import("@/core/analytics/pure");
+  const { loadShopFx, rowsInBase } = await import("@/core/money/shop-fx");
   const since = new Date(Date.now() - days * 86400_000).toISOString();
   const { netOfRefunds, refundsSince } = await import("./refund");
-  const refunds = await refundsSince(ctx, since);
-  const { data, error: dataError } = await ctx.db
-    .from("orders")
-    .select("id, total, paid_amount, currency, status, fulfillment_kind")
-    .in("status", ["delivered", "accepted", "in_production", "ready"])
-    .gte("created_at", since);
-  if (dataError) throw serverFailure(`Заказы: ${dataError.message}`);
-  const counted = (data ?? []).filter((o) => includeOrderInAnalytics(o));
-  const currency = dominantCurrency(counted) ?? "KZT";
+  const [rawRefunds, data, fx] = await Promise.all([
+    refundsSince(ctx, since),
+    pageAll<{
+      id: number;
+      total: number | string | null;
+      paid_amount: number | string | null;
+      currency: string | null;
+      status: string;
+      fulfillment_kind: string | null;
+    }>(
+      (from, to) =>
+        ctx.db
+          .from("orders")
+          .select("id, total, paid_amount, currency, status, fulfillment_kind")
+          .in("status", ["delivered", "accepted", "in_production", "ready"])
+          .gte("created_at", since)
+          .order("id")
+          .range(from, to),
+      "Заказы",
+    ),
+    loadShopFx(ctx),
+  ]);
+  const { rows, refunds } = rowsInBase(fx, data, rawRefunds);
+  const counted = rows.filter((o) => includeOrderInAnalytics(o));
+  const currency = dominantCurrency(counted) ?? fx.base;
   let total = 0;
   let orders = 0;
   for (const o of counted)
-    if ((o.currency || "—") === currency) {
+    if ((o.currency || fx.base) === currency) {
       total += netOfRefunds(analyticsRevenue(o), refunds.get(o.id));
       orders += 1;
     }

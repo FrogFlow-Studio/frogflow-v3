@@ -146,7 +146,8 @@ async function convertAmount(
   return rates ? (exact ? convertViaUsdExact : convertViaUsd)(amount, from, to, rates) : null;
 }
 
-async function fxRates(): Promise<Record<string, number> | null> {
+/** Таблица курсов к USD (тот же кеш, что у цен); null — курса нет и не было. */
+export async function fxRates(): Promise<Record<string, number> | null> {
   const now = Date.now();
   if (fxMemory && (now - fxMemory.ts <= FX_TTL_MS || now < fxRetryAt)) return fxMemory.rates;
   try {
