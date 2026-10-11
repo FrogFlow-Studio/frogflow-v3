@@ -59,6 +59,7 @@ import {
   isCancel,
   isPaymentComplaint,
   isPayTrouble,
+  isPaidReport,
   isFromRussia,
   isReceiptHowQuestion,
   matchDeliveryLangChoice,
@@ -289,9 +290,11 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
       await receiveProof(s, url, orderId, again);
       return "handled";
     }
-    if (orderId) {
-      await reply(s, s.m.dmReceiptPrompt);
-      return "handled";
+    // Не чек (голосовое, видео, стикер) на шаге оплаты — продавцу, а не «пришлите
+    // чек»: это чаще вопрос (AATeach 11.10).
+    if (orderId && !text) {
+      s.handoff = true;
+      return "question";
     }
     return text ? route(s, { ...msg, attachments: [] }) : handleNonText(s, msg);
   }
@@ -380,6 +383,14 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
   // вопрос о работе встречал клиента в WhatsApp (скрин Якова, BOVI 29.09).
   if (mode === "awaiting_locale" && matchLocalePick(text) === null) {
     await setMode(s, { mode: "idle", locale_misses: undefined });
+    mode = "idle";
+  }
+
+  // Вопрос о почте после оплаты тоже не держит: не адрес и без «@» («А на ватсап
+  // можно?», код товара «212») — шаг снимается, реплика разбирается как обычная.
+  // «Это не похоже на почту» трижды не давало купить ещё (AATeach 11.10, #1380).
+  if (mode === "awaiting_order_email" && !extractEmail(text) && !text.includes("@")) {
+    await setMode(s, { mode: "idle" });
     mode = "idle";
   }
 
@@ -690,9 +701,9 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
       }
       const rm = parseRemoveCommand(text);
       if (!rm && extractProductNumber(text) === null && !matchDirectCommand(text)) {
-        // Вопрос по ходу оплаты — человеку, но напомним про чек (строгий
-        // режим — один раз и только сразу после реквизитов).
-        if (mayHint(s)) {
+        // «Оплатила», «перевела на каспи» — сообщение об оплате: напомним про
+        // чек (строгий режим — один раз и только сразу после реквизитов).
+        if (isPaidReport(text) && mayHint(s)) {
           s.hint = strict(s);
           // Способ оплаты ещё не выбран — чек просить рано (заказ #76, 10.10).
           await reply(
@@ -703,7 +714,12 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
                 ? s.m.payLinkAboveHint
                 : s.m.dmReceiptPrompt,
           );
+          return "question";
         }
+        // Любой другой текст — вопрос продавцу: бот молчит, заказ ждёт оплаты,
+        // фото чека по-прежнему принимается (выше). «Пришлите чек» на «точно
+        // придёт? боюсь мошенников» и «вместе сколько?» отпугивало (AATeach 11.10).
+        s.handoff = true;
         return "question";
       }
       break;
