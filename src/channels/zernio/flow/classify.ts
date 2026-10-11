@@ -4,6 +4,7 @@ import {
   extractNumberList,
   extractPhoneDigits,
   extractProductNumber,
+  localeFromWords,
   taggedKeyword,
   taggedProductNumber,
 } from "./numbers";
@@ -185,5 +186,7 @@ export function matchDeliveryLangChoice(text: string, langs: Locale[]): Delivery
     if (name === needle) return locale;
     if (needle.length >= 3 && name.startsWith(needle)) return locale;
   }
-  return null;
+  // «На русском», «по-казахски» (AATeach 11.10).
+  const worded = localeFromWords(raw);
+  return worded && langs.includes(worded) ? worded : null;
 }

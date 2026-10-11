@@ -50,6 +50,14 @@ If an order from the bot, Instagram or WhatsApp is not paid, the bot reminds the
 
 Materials always come into the chat. "Ask for email after the receipt" on: after the receipt the bot asks for an email and sends a copy there. Off: it does not ask; if the buyer asks to get it by email, the bot asks for the address and sends the email.
 
+## Email is optional {#email-optional}
+
+On (the default): if the buyer answers the email question with “WhatsApp”, “here”, “to Instagram” or “no need”, the bot says once: “The files will come here, in this chat, once the receipt is checked. Email is optional” — and stops asking for an email. If they still send an address, it is saved. Text that looks like an address with a typo (“anna mail.ru”) gets a request to type it in full. Off: such replies come to you as a question.
+
+## Receipt as text {#receipt-text}
+
+Kaspi sometimes blocks screenshots, so the buyer pastes the receipt text from the app: “Оплата совершена 800 ₸ … № чека QR…”. On (the default): the bot treats text as a receipt when it has an operation number, or an amount with a currency together with receipt words (“оплата совершена”, “перевод выполнен”, “получатель”). The buyer gets “Got the receipt, passing it on for checking”, and you get the order notification with the receipt text and the «Подтвердить и выдать» button. The same operation number on another order is not accepted. Automatic checking does not read text: check the payment yourself. “I paid 800 tg” is not a receipt: the bot asks for a screenshot. Off: text at the payment step comes to you as a question.
+
 ## Telegram Stars {#stars}
 
 Available with the "Telegram Stars payments" module. In the Telegram bot the buyer pays with stars in one tap, without cards or payment details. Stars go to the bot's balance; you can withdraw them via Fragment.

@@ -237,6 +237,11 @@ describe("золотые диалоги", () => {
         if (e.mails) expect(mailbox.to.slice(mailsBefore), `${where}: письма`).toEqual(e.mails);
         if (e.cart !== undefined) expect(r.cart().length, `${where}: корзина`).toBe(e.cart);
         if (e.state) expect(r.state(), `${where}: состояние`).toMatchObject(e.state);
+        for (const [id, fields] of Object.entries(e.orders ?? {}))
+          expect(
+            r.db.tables.orders?.find((o) => o.id === Number(id)),
+            `${where}: заказ #${id}`,
+          ).toMatchObject(fields);
         const seen = r.sellerReplies().join("\n");
         for (const x of e.sellerSees ?? [])
           expect(has(seen, x), `${where}: продавцу нет «${String(x)}» в «${seen}»`).toBe(true);

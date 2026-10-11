@@ -1,5 +1,6 @@
 import { validateProofFile } from "./proof-file";
 import { proofHashes } from "./proof-hash";
+import { sha256Hex } from "@/lib/hash";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { recordOrderEvent } from "./events";
 import { serviceDb } from "@/core/db/client.server";
@@ -82,6 +83,56 @@ export async function attachPaymentProof(
     return { ok: false, reason: "closed" };
   }
   await recordOrderEvent(ctx, orderId, "proof", { path: key });
+  return { ok: true, order: updated as OrderWithItems, hash };
+}
+
+/** Отметка в payment_proof_path: чек пришёл текстом, файла в хранилище нет. */
+export const TEXT_PROOF_PATH = "Чек текстом";
+
+/**
+ * Чек текстом (core/receipts/text-receipt): заказ — на проверку продавцу, как
+ * с фото. Файла нет: в payment_proof_path — отметка, текст — в событии заказа
+ * и в заметке (если она пуста). Отпечаток — от номера операции, а без него от
+ * текста: тот же чек по другому заказу — «duplicate».
+ */
+export async function attachTextProof(
+  ctx: TenantContext,
+  orderId: number,
+  text: string,
+  operationNo: string | null,
+): Promise<AttachProofResult> {
+  const order = await getOrder(ctx, orderId);
+  if (!order) return { ok: false, reason: "not_found" };
+  if (!(PROOF_STATUSES as readonly string[]).includes(order.status))
+    return { ok: false, reason: "closed" };
+  const clean = text.replace(/\s+/g, " ").trim().slice(0, 1000);
+  const hash = `text:${sha256Hex(operationNo ?? clean.toLowerCase())}`;
+  const { data: dup, error: dupError } = await ctx.db
+    .from("orders")
+    .select("id")
+    .eq("payment_proof_hash", hash)
+    .neq("id", orderId)
+    .limit(1)
+    .maybeSingle();
+  if (dupError)
+    throw serverFailure(`Чек заказа #${orderId} не сверен с прежними: ${dupError.message}`);
+  if (dup) return { ok: false, reason: "duplicate" };
+  const note = `Чек текстом: ${clean}`.slice(0, 500);
+  const { data: updated, error } = await ctx.db
+    .from("orders")
+    .update({
+      payment_proof_path: TEXT_PROOF_PATH,
+      payment_proof_hash: hash,
+      status: "awaiting_confirmation",
+      ...(order.admin_note?.trim() ? {} : { admin_note: note }),
+    })
+    .eq("id", orderId)
+    .in("status", [...PROOF_STATUSES])
+    .select("*, order_items(*)")
+    .maybeSingle();
+  if (error) throw serverFailure(error.message);
+  if (!updated) return { ok: false, reason: "closed" };
+  await recordOrderEvent(ctx, orderId, "proof", { text: clean });
   return { ok: true, order: updated as OrderWithItems, hash };
 }
 

@@ -452,6 +452,13 @@ export const ru = {
   "settings.emailAsk.intro":
     "Материалы всегда приходят в переписку. Включено — после чека бот спрашивает почту и шлёт туда копию. Выключено — не спрашивает; если покупатель сам попросит «на почту», бот спросит адрес и отправит письмо.",
   "settings.emailAsk.label": "Спрашивать почту после чека",
+  "settings.emailOptional.label": "Почта по желанию",
+  "settings.emailOptional.hint":
+    "На вопрос о почте покупатель отвечает «вацап», «сюда», «в инстаграм», «не надо» — бот один раз пишет, что файлы придут в переписку после проверки чека, и больше почту не спрашивает. Если адрес всё же напишут, он сохранится.",
+  "settings.receiptText.title": "Чек текстом",
+  "settings.receiptText.intro":
+    "Kaspi иногда не даёт сделать скриншот, и покупатель вставляет текст чека: «Оплата совершена 800 ₸ … № чека QR…». Включено — бот принимает такой текст как чек: отвечает «Принял чек, передаю на проверку», а заказ приходит вам на подтверждение с текстом чека, как с фото. Автопроверка текст не читает: поступление денег проверьте сами.",
+  "settings.receiptText.label": "Принимать чек текстом",
   "settings.ocr.intro":
     "Чек, присланный в бот, читается автоматически: если сумма и признаки оплаты сошлись — файлы уходят покупателю сразу, без вашего участия; сомнительный чек попадает к вам с причиной; скрин без оплаты бот просит прислать заново. Тариф — $2 за 1000 распознаваний.",
   "settings.ocr.noKey":
@@ -967,6 +974,13 @@ export const kk: SectionDict<typeof ru> = {
   "settings.emailAsk.intro":
     "Материалдар әрдайым хат алмасуға келеді. Қосулы — чектен кейін бот поштаны сұрап, көшірмесін соған жібереді. Өшірулі — сұрамайды; сатып алушы өзі «поштаға» десе, бот мекенжайды сұрап, хат жібереді.",
   "settings.emailAsk.label": "Чектен кейін поштаны сұрау",
+  "settings.emailOptional.label": "Пошта қалауы бойынша",
+  "settings.emailOptional.hint":
+    "Пошта туралы сұраққа сатып алушы «вацап», «осында», «инстаграмға», «керек емес» деп жауап берсе — бот бір рет файлдар чек тексерілгеннен кейін хат алмасуға келетінін жазады да, поштаны қайта сұрамайды. Мекенжайды бәрібір жазса, ол сақталады.",
+  "settings.receiptText.title": "Мәтінмен чек",
+  "settings.receiptText.intro":
+    "Kaspi кейде скриншот жасатпайды, сонда сатып алушы чек мәтінін қояды: «Оплата совершена 800 ₸ … № чека QR…». Қосулы — бот мұндай мәтінді чек ретінде қабылдайды: «Чекті қабылдадым, тексеруге жіберемін» деп жауап береді, ал тапсырыс сізге чек мәтінімен расталуға келеді, фото сияқты. Автотексеру мәтінді оқымайды: ақшаның түскенін өзіңіз тексеріңіз.",
+  "settings.receiptText.label": "Чекті мәтінмен қабылдау",
   "settings.ocr.intro":
     "Ботқа жіберілген чек автоматты түрде оқылады: сома мен төлем белгілері сәйкес келсе — файлдар сізге қатыссыз бірден сатып алушыға кетеді; күмәнді чек себебімен сізге түседі; төлемсіз скринді бот қайта жіберуді сұрайды. Тариф — 1000 тануға $2.",
   "settings.ocr.noKey":
@@ -1477,6 +1491,13 @@ export const en: SectionDict<typeof ru> = {
   "settings.emailAsk.intro":
     "Materials always arrive in the chat. On — after the receipt the bot asks for an email and sends a copy there. Off — it does not ask; if the buyer asks for email, the bot asks for the address and sends it.",
   "settings.emailAsk.label": "Ask for email after the receipt",
+  "settings.emailOptional.label": "Email is optional",
+  "settings.emailOptional.hint":
+    "When the buyer answers the email question with “WhatsApp”, “here”, “to Instagram” or “no need”, the bot says once that the files will come to this chat after the receipt is checked, and stops asking for an email. If they still send an address, it is saved.",
+  "settings.receiptText.title": "Receipt as text",
+  "settings.receiptText.intro":
+    "Kaspi sometimes blocks screenshots, so the buyer pastes the receipt text: “Оплата совершена 800 ₸ … № чека QR…”. On: the bot accepts such text as a receipt, replies “Got the receipt, passing it on for checking”, and the order comes to you for confirmation with the receipt text, just like a photo. Automatic checking does not read text: check the payment yourself.",
+  "settings.receiptText.label": "Accept receipts as text",
   "settings.ocr.intro":
     "A receipt sent to the bot is read automatically: if the amount and payment markers match, the files go to the customer right away without you; a doubtful receipt comes to you with the reason; a screenshot without payment is asked to be resent. Rate — $2 per 1,000 recognitions.",
   "settings.ocr.noKey":
@@ -1994,6 +2015,13 @@ export const uz: SectionDict<typeof ru> = {
   "settings.emailAsk.intro":
     "Materiallar har doim yozishmaga keladi. Yoqilgan — chekdan keyin bot pochtani so‘raydi va nusxasini yuboradi. O‘chirilgan — so‘ramaydi; xaridor o‘zi «pochtaga» desa, bot manzilni so‘rab, xat yuboradi.",
   "settings.emailAsk.label": "Chekdan keyin pochtani so‘rash",
+  "settings.emailOptional.label": "Pochta ixtiyoriy",
+  "settings.emailOptional.hint":
+    "Pochta haqidagi savolga xaridor «vatsap», «shu yerga», «instagramga», «kerak emas» deb javob bersa — bot bir marta fayllar chek tekshirilgach yozishmaga kelishini yozadi va pochtani boshqa so‘ramaydi. Manzilni baribir yozsa, u saqlanadi.",
+  "settings.receiptText.title": "Chek matn bilan",
+  "settings.receiptText.intro":
+    "Kaspi ba’zan skrinshot qilishga ruxsat bermaydi va xaridor chek matnini qo‘yadi: «Оплата совершена 800 ₸ … № чека QR…». Yoqilgan — bot bunday matnni chek sifatida qabul qiladi: «Chekni qabul qildim, tekshiruvga yuboraman» deb javob beradi, buyurtma esa sizga chek matni bilan tasdiqlash uchun keladi, xuddi rasm kabi. Avtotekshiruv matnni o‘qimaydi: pul tushganini o‘zingiz tekshiring.",
+  "settings.receiptText.label": "Chekni matn bilan qabul qilish",
   "settings.ocr.intro":
     "Botga yuborilgan chek avtomatik o‘qiladi: summa va to‘lov belgilari mos kelsa — fayllar sizning ishtirokingizsiz darhol xaridorga ketadi; shubhali chek sababi bilan sizga tushadi; to‘lovsiz skrinni bot qayta yuborishni so‘raydi. Tarif — 1000 ta aniqlash uchun $2.",
   "settings.ocr.noKey":

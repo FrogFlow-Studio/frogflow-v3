@@ -201,7 +201,16 @@ export const SETTINGS_REGISTRY: readonly SettingsEntry[] = [
     sellsOnly: true,
     theme: "payment",
     title: "settings.emailAsk.title",
-    keys: ["chat_email_ask"],
+    keys: ["chat_email_ask", "chat_email_optional"],
+    fields: ["settings.emailAsk.label", "settings.emailOptional.label"],
+  }),
+  E({
+    id: "receipt-text",
+    sellsOnly: true,
+    theme: "payment",
+    title: "settings.receiptText.title",
+    keys: ["chat_receipt_text"],
+    fields: ["settings.receiptText.label"],
   }),
   E({
     id: "stars",
