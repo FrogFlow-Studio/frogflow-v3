@@ -61,6 +61,7 @@ const twoStepJustDelivered = vi.fn(async () => false);
 const deliverPendingTwoStepDm = vi.fn(async () => false);
 const deliverTwoStepFromDm = vi.fn(async () => false);
 const deliverTwoStepForDmKeyword = vi.fn(async (..._a: unknown[]) => false);
+const plusAnswersUnknownPrompt = vi.fn(async (..._a: unknown[]) => null as "ask" | "asked" | null);
 // Магазин в переписке — отдельный модуль со своими тестами; здесь важно, дошло ли до него.
 const expressFromAutomation = vi.fn(async (..._a: unknown[]) => true);
 vi.mock("./shop.server", () => ({
@@ -71,7 +72,12 @@ vi.mock("./automations.server", () => ({
   deliverPendingTwoStepDm: (...a: unknown[]) => deliverPendingTwoStepDm(...(a as [])),
   deliverTwoStepFromDm: (...a: unknown[]) => deliverTwoStepFromDm(...(a as [])),
   deliverTwoStepForDmKeyword: (...a: unknown[]) => deliverTwoStepForDmKeyword(...a),
+  plusAnswersUnknownPrompt: (...a: unknown[]) => plusAnswersUnknownPrompt(...a),
   twoStepJustDelivered,
+}));
+vi.mock("./shop/catalog.server", async (orig) => ({
+  ...(await orig<typeof import("./shop/catalog.server")>()),
+  listedSectionByName: vi.fn(async () => null),
 }));
 
 // Б9: сам разбор «позови человека» и карточка — в human-call.test.ts; здесь — что слово доходит до него.
@@ -262,6 +268,45 @@ describe("Comment-to-DM: второй быстрый «+»", () => {
     expect(
       await expressFor({ text: "", attachments: [{ type: "image", url: "https://cdn.test/i" }] }),
     ).toEqual({ ok: false, calls: 0 });
+  });
+
+  it("«+» на чужое сообщение с призывом — вопрос, какой товар, а не заказ и не обращение (Копилка #144)", async () => {
+    const shopCtx = {
+      tenant: { ...igCtx.tenant, modules: { instagram: true, dm_shop: true } },
+    } as unknown as TenantContext;
+    const t = { send: vi.fn(async () => ({ ok: true })), tail: async () => [] };
+    const { PLUS_WAIT } = await import("./handle-message");
+    PLUS_WAIT.ms = 0;
+    plusAnswersUnknownPrompt.mockResolvedValueOnce("ask");
+    expressFromAutomation.mockClear();
+    createTicket.mockClear();
+    const r = await handleZernioMessage(
+      shopCtx,
+      igEvent({ text: "+" }),
+      t as unknown as ZernioTransport,
+    );
+    expect(r).toEqual({ status: "processed", note: "«+» без правила — спросили, какой товар" });
+    expect(t.send).toHaveBeenCalledWith(
+      "conv-1",
+      "acc-1",
+      expect.stringContaining("какой материал вас интересует"),
+      {
+        platform: "instagram",
+        buttons: [{ type: "postback", title: "📚 Каталог", payload: "CATALOG" }],
+      },
+    );
+    expect(expressFromAutomation).not.toHaveBeenCalled();
+    expect(createTicket).not.toHaveBeenCalled();
+    // Второй «+» — вопрос уже задан, молчим.
+    plusAnswersUnknownPrompt.mockResolvedValueOnce("asked");
+    t.send.mockClear();
+    const again = await handleZernioMessage(
+      shopCtx,
+      igEvent({ text: "+" }),
+      t as unknown as ZernioTransport,
+    );
+    expect(again.note).toBe("«+» без правила — вопрос о товаре уже задан");
+    expect(t.send).not.toHaveBeenCalled();
   });
 
   it("«/start» сразу после второго сообщения при магазине в Direct идёт магазину", async () => {

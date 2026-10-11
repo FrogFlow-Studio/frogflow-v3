@@ -430,6 +430,67 @@ describe("Comment-to-DM: прежний призыв по умолчанию м�
     expect(inbox).toHaveBeenCalledTimes(1);
   });
 
+  it("«+» на чужое сообщение с тем же призывом — «Палитру» не шлём (Копилка, 12.10, заказ #144)", async () => {
+    const { listAutomations } = await import("./automations.server");
+    const { ctx, db, api, inbox, tail } = promptSetup("v2");
+    await listAutomations(ctx, api);
+    const at = (msAgo: number) => new Date(Date.now() - msAgo).toISOString();
+    // gritsevichnadezhda: «Зори» под бесплатным постом с пазлами (правила «Палитра» там нет),
+    // материал пришёл с тем же призывом в конце; потом «+».
+    for (const prompt of [DEFAULT_REPLY_PROMPT, OLD]) {
+      tail.mockResolvedValue([
+        {
+          id: "m-zori",
+          direction: "outgoing",
+          message: `Пазлы «Зори» — забирайте бесплатно!\n\n${prompt}`,
+          createdAt: at(13 * 60_000),
+        },
+        { id: "m-plus", direction: "incoming", message: "+", createdAt: at(1_000) },
+      ]);
+      const who = { accountId: "acc-1", conversationId: "conv-1", username: "gritsevichnadezhda" };
+      expect(await deliverTwoStepFromDm(ctx, who, api)).toBe(false);
+    }
+    expect(inbox).not.toHaveBeenCalled();
+    expect(secondSteps(db)).toEqual([]);
+  });
+
+  it("«+» на чужое сообщение с призывом — один вопрос о товаре, след в журнале; на первое сообщение правила — нет", async () => {
+    const { listAutomations, plusAnswersUnknownPrompt } = await import("./automations.server");
+    const { ctx, db, api, tail, rules } = promptSetup("v2");
+    await listAutomations(ctx, api);
+    const at = (msAgo: number) => new Date(Date.now() - msAgo).toISOString();
+    const who = { accountId: "acc-1", conversationId: "conv-1", username: "gritsevichnadezhda" };
+    tail.mockResolvedValue([
+      {
+        id: "m-zori",
+        direction: "outgoing",
+        message: `Пазлы «Зори» — забирайте!\n\n${DEFAULT_REPLY_PROMPT}`,
+        createdAt: at(13 * 60_000),
+      },
+    ]);
+    // Два «+» одновременно (повтор вебхука, двойная отправка) — спрашивает один.
+    const both = await Promise.all([
+      plusAnswersUnknownPrompt(ctx, who, api),
+      plusAnswersUnknownPrompt(ctx, who, api),
+    ]);
+    expect(both.sort()).toEqual(["ask", "asked"]);
+    // Ещё «+» на то же сообщение — вопрос не повторяем.
+    expect(await plusAnswersUnknownPrompt(ctx, who, api)).toBe("asked");
+    const trail = db.tables.zernio_logs!.filter((l) => l.event_type === "two_step_dm_unmatched");
+    expect(trail).toHaveLength(1);
+    expect(String((trail[0]!.payload as { answered: string }).answered)).toContain("Зори");
+    // Обычное сообщение продавца без призыва — не наш случай, «+» идёт дальше как раньше.
+    tail.mockResolvedValue([
+      { id: "m-2", direction: "outgoing", message: "Здравствуйте!", createdAt: at(60_000) },
+    ]);
+    expect(await plusAnswersUnknownPrompt(ctx, who, api)).toBeNull();
+    // Давнее сообщение с призывом — тоже не наш случай.
+    tail.mockResolvedValue([
+      { id: "m-3", direction: "outgoing", message: rules[0]!.dmMessage, createdAt: at(3600_000) },
+    ]);
+    expect(await plusAnswersUnknownPrompt(ctx, who, api)).toBeNull();
+  });
+
   it("продавец сам убрал призыв из текста — правило не трогаем", async () => {
     const { listAutomations, getAutomationsMeta } = await import("./automations.server");
     const { ctx, api, update } = promptSetup("v2", "Свой текст без призыва");

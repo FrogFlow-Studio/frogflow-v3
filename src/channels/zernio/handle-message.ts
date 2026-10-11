@@ -228,6 +228,32 @@ export async function handleZernioMessage(
       if (!section?.exact && (await deliverTwoStepForDmKeyword(ctx, who, m.text)))
         return processed("кодовое слово в Direct — сообщение правила");
     }
+    // «+» на сообщение с призывом, которое не первое сообщение нашего правила
+    // (материал под бесплатным постом): товар не угадываем — спрашиваем, какой
+    // нужен (Копилка, 12.10: «+» после «Зори» оформил «Палитру», заказ #144).
+    if (
+      !ack &&
+      !toShop &&
+      typedOnly &&
+      !inStep &&
+      m.text?.trim() &&
+      isTwoStepAcknowledgement(m.text) &&
+      ctx.tenant.modules.dm_shop &&
+      (await sells())
+    ) {
+      const { plusAnswersUnknownPrompt } = await import("./automations.server");
+      const asked = await plusAnswersUnknownPrompt(ctx, who);
+      if (asked === "asked") return processed("«+» без правила — вопрос о товаре уже задан");
+      if (asked === "ask") {
+        const locale = customer.state.locale ?? ctx.tenant.settings.default_locale ?? "ru";
+        const mm = COPY[locale] ?? COPY.ru;
+        await transport.send(m.conversationId, m.accountId, mm.plusWhichProduct, {
+          platform: m.platform,
+          buttons: [{ type: "postback", title: mm.catalog, payload: "CATALOG" }],
+        });
+        return processed("«+» без правила — спросили, какой товар");
+      }
+    }
   }
 
   const text = messageAsText(m);

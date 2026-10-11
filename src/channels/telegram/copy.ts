@@ -336,6 +336,8 @@ export type Msg = {
   contactAuthor: (link: string) => string;
   contactNotSet: string;
   useMenu: string;
+  /** «+» в Direct, а первого сообщения ни одного правила этому человеку не было. */
+  plusWhichProduct: string;
   /** Корзина из каталога Meta не совпала с товарами — заказ ушёл продавцу. */
   nativeCartForwarded: string;
   /** Выдача ссылками в Direct и WhatsApp (channels/zernio/deliver). */
@@ -828,6 +830,8 @@ const ru: Msg = {
   contactAuthor: (l) => `💬 Связаться с продавцом: ${l}`,
   contactNotSet: "Продавец ещё не указал контакт для связи.",
   useMenu: "Выберите раздел в меню ниже 👇",
+  plusWhichProduct:
+    "Подскажите, какой материал вас интересует? Напишите его название или откройте каталог 👇",
   nativeCartForwarded:
     "Получил вашу корзину из каталога и передал продавцу — он подтвердит заказ и напишет здесь.",
   deliveryLinksExpire: "Ссылки на файлы действуют 7 дней.",
@@ -1153,6 +1157,7 @@ const kk: Msg = {
   chooseCountry: "🌍 Төлем елін таңдаңыз:",
   choosePayCountry: "💳 Қай елден төлейсіз? Сома сол елдің валютасында:",
   useMenu: "Төмендегі мәзірден бөлімді таңдаңыз 👇",
+  plusWhichProduct: "Қай материал қызықтырады? Атауын жазыңыз немесе каталогты ашыңыз 👇",
   nativeCartForwarded:
     "Каталогтан жиналған себетіңізді алдым және сатушыға бердім — ол тапсырысты растап, осында жазады.",
   deliveryLinksExpire: "Файл сілтемелері 7 күн жарамды.",
@@ -1498,6 +1503,7 @@ const en: Msg = {
   receiptHowTo:
     "How to send the receipt: open this payment in the Kaspi or bank app and take a screenshot. Then, here in the chat, tap the photo 🖼 or paperclip 📎 icon next to the message field and pick the screenshot from your gallery.",
   useMenu: "Pick a section from the menu below 👇",
+  plusWhichProduct: "Which material are you interested in? Type its name or open the catalog 👇",
   nativeCartForwarded:
     "Got your cart from the catalog and passed it to the seller — they will confirm the order and reply here.",
   deliveryLinksExpire: "Links to the files are valid for 7 days.",
@@ -1808,6 +1814,7 @@ const uz: Msg = {
   giftCertificateBtn: "🎫 Sertifikat kodini kiritish",
   removeGiftCertificateBtn: "❌ Sertifikatni olib tashlash",
   useMenu: "Quyidagi menyudan bo‘limni tanlang 👇",
+  plusWhichProduct: "Qaysi material qiziqtiradi? Nomini yozing yoki katalogni oching 👇",
   nativeCartForwarded:
     "Katalogdan yig‘ilgan savatingizni oldim va sotuvchiga uzatdim — u buyurtmani tasdiqlab, shu yerda yozadi.",
   deliveryLinksExpire: "Fayl havolalari 7 kun amal qiladi.",
