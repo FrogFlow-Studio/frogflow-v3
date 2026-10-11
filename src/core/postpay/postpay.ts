@@ -208,7 +208,7 @@ type Texts = {
 export const POSTPAY_TEXT: Record<Locale, Texts> = {
   ru: {
     askEmail: (no) =>
-      `Напишите, пожалуйста, вашу почту — отправлю туда материалы по заказу №${no}.`,
+      `Напишите, пожалуйста, вашу почту — отправлю туда материалы по заказу №${no}.\n\n‼️ Почту пишите только текстом: фото и скриншоты с адресом не принимаются.`,
     toldSent: (email, when) =>
       `Материалы уже отправлены на ${email} (${when}). Если письма нет во «Входящих», загляните в «Спам» и «Промоакции». Нужно на другой адрес — напишите его.`,
     sent: (email) =>
@@ -221,7 +221,8 @@ export const POSTPAY_TEXT: Record<Locale, Texts> = {
         : "Оплату ещё подтверждают. Как только подтвердят, материалы придут сюда в переписку.",
   },
   kk: {
-    askEmail: (no) => `Поштаңызды жазыңызшы — №${no} тапсырыс материалдарын соған жіберемін.`,
+    askEmail: (no) =>
+      `Поштаңызды жазыңызшы — №${no} тапсырыс материалдарын соған жіберемін.\n\n‼️ Поштаны тек мәтінмен жазыңыз: мекенжайы бар фото мен скриншот қабылданбайды.`,
     toldSent: (email, when) =>
       `Материалдар ${email} поштасына жіберілді (${when}). «Кіріс» қалтасында болмаса, «Спам» мен «Промоакциялар» қалтасын қараңыз. Басқа мекенжай керек болса — жазыңыз.`,
     sent: (email) =>
@@ -235,7 +236,7 @@ export const POSTPAY_TEXT: Record<Locale, Texts> = {
   },
   en: {
     askEmail: (no) =>
-      `Please send your email address and I'll email the materials for order #${no}.`,
+      `Please send your email address and I'll email the materials for order #${no}.\n\n‼️ Please type your email as text: photos and screenshots of the address are not accepted.`,
     toldSent: (email, when) =>
       `The materials were already sent to ${email} (${when}). If you can't find the email in your inbox, check Spam and Promotions. Need a different address? Just send it.`,
     sent: (email) =>
@@ -249,7 +250,7 @@ export const POSTPAY_TEXT: Record<Locale, Texts> = {
   },
   uz: {
     askEmail: (no) =>
-      `Iltimos, pochtangizni yozing — №${no} buyurtma materiallarini o‘sha yerga yuboraman.`,
+      `Iltimos, pochtangizni yozing — №${no} buyurtma materiallarini o‘sha yerga yuboraman.\n\n‼️ Pochtani faqat matn bilan yozing: manzil yozilgan rasm va skrinshotlar qabul qilinmaydi.`,
     toldSent: (email, when) =>
       `Materiallar ${email} manziliga yuborilgan (${when}). «Kiruvchi»da bo‘lmasa, «Spam» va «Aksiyalar» papkasini tekshiring. Boshqa manzil kerak bo‘lsa — yozing.`,
     sent: (email) =>
