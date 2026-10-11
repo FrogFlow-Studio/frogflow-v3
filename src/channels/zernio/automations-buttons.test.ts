@@ -3,6 +3,8 @@ import { fakeDb } from "../../../tests/fake-db";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { DEFAULT_REPLY_PROMPT, LEGACY_REPLY_PROMPTS } from "@/core/instagram/comment-rules";
 import {
+  RULE_GONE,
+  SUPERSEDED,
   TWO_STEP_CLAIM_STALE_MS,
   TWO_STEP_MAX_ATTEMPTS,
   deliverPendingTwoStepDm,
@@ -1131,7 +1133,8 @@ describe("Comment-to-DM: «+» раньше вебхука комментари�
     // Следующее сообщение покупателя («Купить») — второе сообщение не повторяется.
     expect(await deliverPendingTwoStepDm(ctx, who, api)).toBe(false);
     expect(inbox).toHaveBeenCalledTimes(1);
-    expect(secondSteps(db).map((l) => l.status)).toEqual(["processed", "processed"]);
+    // Строку вебхука закрыла ушедшая новая: работает последняя.
+    expect(secondSteps(db).map((l) => l.status)).toEqual(["skipped", "processed"]);
   });
 
   it("после первого уже было другое исходящее, или первое давнее — «+» не трогаем", async () => {
@@ -1526,5 +1529,124 @@ describe("Comment-to-DM: правило с подписью поста — то�
       ).note,
     ).toBe("второе сообщение @anya");
     expect(secondSteps(h.db).map((l) => l.event_id)).toEqual(["two-step-dm:c-2"]);
+  });
+});
+
+describe("Comment-to-DM: работает только последнее видео, ожидание сутки (AATeach 10.10–11.10)", () => {
+  // Покупатель писал под двумя видео; в Direct диалога ещё не было — обе
+  // «Купить» в очереди. Ответ — второе последнего видео, прежнее закрыто.
+  const who = { accountId: "acc-1", conversationId: "conv-1", username: "anya" };
+  const at = (msAgo: number) => new Date(Date.now() - msAgo).toISOString();
+  const row = (id: string, rule: string, text: string, msAgo: number) => ({
+    id,
+    bot_id: BOT,
+    event_id: `two-step-dm:${id}`,
+    event_type: "two_step_dm_pending",
+    status: "pending",
+    error_message: null,
+    created_at: at(msAgo),
+    payload: { username: "anya", automationId: rule, secondText: text, buttons: [] },
+  });
+  function withRules(rules: string[]) {
+    const { ctx, db } = setup();
+    const inbox = vi.fn(async () => ({ ok: true }));
+    const api = {
+      list: async () =>
+        rules.map((id) => ({
+          id,
+          name: id,
+          accountId: "acc-1",
+          keywords: ["нужно"],
+          dmMessage: "x",
+        })),
+      inbox,
+      tail: vi.fn(async () => []),
+    } as unknown as AutomationApi;
+    return { ctx, db, api, inbox };
+  }
+  const statusOf = (db: ReturnType<typeof fakeDb>, id: string) =>
+    db.tables.zernio_logs!.find((l) => l.id === id) as { status: string; error_message: string };
+
+  it("комментарии под двумя видео — уходит «Купить» последнего, прежнее не всплывает позже", async () => {
+    const { ctx, db, api, inbox } = withRules(["padezhi", "hleb"]);
+    db.tables.zernio_logs!.push(
+      row("old", "padezhi", "Падежи: нажмите «Купить»", 3 * 3600_000),
+      row("new", "hleb", "Хлеб: нажмите «Купить»", 3600_000),
+    );
+    expect(await deliverPendingTwoStepDm(ctx, who, api)).toBe(true);
+    expect(inbox).toHaveBeenCalledTimes(1);
+    expect(inbox).toHaveBeenCalledWith(
+      "conv-1",
+      "acc-1",
+      "Хлеб: нажмите «Купить»",
+      expect.anything(),
+    );
+    expect(statusOf(db, "new").status).toBe("processed");
+    expect(statusOf(db, "old")).toMatchObject({ status: "skipped", error_message: SUPERSEDED });
+    // Через час покупатель пишет снова — второе прежнего видео не приходит.
+    const later = () => new Date(Date.now() + 3600_000);
+    expect(await deliverPendingTwoStepDm(ctx, who, api, later)).toBe(false);
+    expect(inbox).toHaveBeenCalledTimes(1);
+  });
+
+  it("ответ позже суток после комментария — «Купить» не присылаем", async () => {
+    const { ctx, db, api, inbox } = withRules(["hleb"]);
+    db.tables.zernio_logs!.push(row("stale", "hleb", "Хлеб", 25 * 3600_000));
+    expect(await deliverPendingTwoStepDm(ctx, who, api)).toBe(false);
+    expect(inbox).not.toHaveBeenCalled();
+  });
+
+  it("правило удалено продавцом — его «Купить» из очереди не уходит", async () => {
+    const { ctx, db, api, inbox } = withRules(["padezhi"]);
+    db.tables.zernio_logs!.push(row("bread", "hleb", "Хлеб", 3600_000));
+    expect(await deliverPendingTwoStepDm(ctx, who, api)).toBe(false);
+    expect(inbox).not.toHaveBeenCalled();
+    expect(statusOf(db, "bread")).toMatchObject({ status: "skipped", error_message: RULE_GONE });
+  });
+
+  it("новый комментарий при живой переписке — второе уходит сразу, прежнее из очереди закрыто", async () => {
+    const { ctx, db, api, inbox } = withRules(["padezhi", "hleb"]);
+    db.tables.zernio_logs!.push(row("old", "padezhi", "Падежи", 3 * 3600_000));
+    const r = await handleCommentReceived(
+      ctx,
+      {
+        account: { id: "acc-1" },
+        comment: { id: "c-new", text: "нужно", author: { id: "u-1", username: "anya" } },
+      },
+      {
+        ...api,
+        list: async () => [
+          {
+            id: "hleb",
+            name: "hleb",
+            accountId: "acc-1",
+            keywords: ["нужно"],
+            dmMessage: "x",
+            buttons: [{ type: "postback", title: "Купить", payload: "PROD:p-1" }],
+          },
+        ],
+      } as unknown as AutomationApi,
+      { delayMs: 0 },
+    );
+    expect(r.note).toBe("второе сообщение @anya");
+    expect(inbox).toHaveBeenCalledTimes(1);
+    expect(statusOf(db, "old")).toMatchObject({ status: "skipped", error_message: SUPERSEDED });
+    // Повтор вебхука прежнего комментария строку не воскрешает.
+    expect(await deliverPendingTwoStepDm(ctx, who, api)).toBe(false);
+    expect(inbox).toHaveBeenCalledTimes(1);
+  });
+
+  it("два ответа одновременно — уходит одно второе сообщение", async () => {
+    const { ctx, db, api, inbox } = withRules(["padezhi", "hleb"]);
+    db.tables.zernio_logs!.push(
+      row("old", "padezhi", "Падежи", 3 * 3600_000),
+      row("new", "hleb", "Хлеб", 3600_000),
+    );
+    await Promise.all([
+      deliverPendingTwoStepDm(ctx, who, api),
+      deliverPendingTwoStepDm(ctx, who, api),
+    ]);
+    expect(inbox).toHaveBeenCalledTimes(1);
+    expect(inbox).toHaveBeenCalledWith("conv-1", "acc-1", "Хлеб", expect.anything());
   });
 });
