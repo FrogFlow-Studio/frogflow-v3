@@ -28,7 +28,7 @@ Plitka tegishli bo‘lim ulangan bo‘lsagina ko‘rinadi. Hammasi ko‘rib chiq
 
 ## Raqamlar: tushum, mahsulotlar, xaridorlar {#stats}
 
-- «Sutkalik tushum», «Haftalik tushum», «30 kunlik tushum» — to‘langan buyurtmalar summasi: berilgan raqamli buyurtmalar va zaklad qabul qilingan jismoniy buyurtmalar. Qaytarishlar ayiriladi. Do‘konning asosiy valyutasida hisoblanadi, boshqa valyutalar qo‘shilmaydi.
+- «Sutkalik tushum», «Haftalik tushum», «30 kunlik tushum» — to‘langan buyurtmalar summasi: berilgan raqamli buyurtmalar va zaklad qabul qilingan jismoniy buyurtmalar. Qaytarishlar ayiriladi. Do‘konning asosiy valyutasida hisoblanadi, boshqa valyutalardagi buyurtmalar — bugungi kurs bo‘yicha.
 - «Sotuvdagi mahsulotlar» — hozir nechta mahsulot yoqilgan.
 - «Xaridorlar» — bazangizda nechta odam bor.
 

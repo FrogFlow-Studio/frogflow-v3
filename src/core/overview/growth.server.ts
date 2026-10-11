@@ -1,4 +1,5 @@
 import { pageAll } from "@/core/db/page";
+import { loadShopFx, rowsInBase } from "@/core/money/shop-fx";
 import { serverFailure } from "@/lib/server-failure";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { GROWTH_DAYS, growthOrders, trio, type Growth, type GrowthOrder } from "./growth";
@@ -9,7 +10,7 @@ export async function loadGrowth(ctx: TenantContext, now = new Date()): Promise<
   const since = new Date(now.getTime() - 2 * GROWTH_DAYS * day).toISOString();
   const mid = new Date(now.getTime() - GROWTH_DAYS * day).toISOString();
   const { refundsSince } = await import("@/core/orders/refund");
-  const [rows, refunds, cur, prev] = await Promise.all([
+  const [rawRows, rawRefunds, cur, prev, fx] = await Promise.all([
     pageAll<GrowthOrder>(
       (from, to) =>
         ctx.db
@@ -33,8 +34,11 @@ export async function loadGrowth(ctx: TenantContext, now = new Date()): Promise<
       .select("user_key", { count: "exact", head: true })
       .gte("created_at", since)
       .lt("created_at", mid),
+    loadShopFx(ctx),
   ]);
   if (cur.error) throw serverFailure(`Рост: покупатели: ${cur.error.message}`);
   if (prev.error) throw serverFailure(`Рост: покупатели: ${prev.error.message}`);
+  // Другие валюты — в основной по курсу на сегодня (core/money/shop-fx).
+  const { rows, refunds } = rowsInBase(fx, rawRows, rawRefunds);
   return { ...growthOrders(rows, refunds, now), buyers: trio(cur.count ?? 0, prev.count ?? 0) };
 }

@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { defaultFxProvider, resetPricingCache, setFxProvider } from "@/core/pricing/pricing";
 import { fakeDb } from "../../../tests/fake-db";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { analytics } from "@/core/analytics/analytics";
@@ -143,6 +144,13 @@ const refund = (db: ReturnType<typeof shop>["db"], orderId: number, amount: numb
     payload: { order_id: orderId, amount, currency: "KZT", ...extra },
   });
 
+// Курс — не из сети: по умолчанию его нет (валюта без курса идёт отдельно), тест с курсом ставит свой.
+beforeEach(() => {
+  resetPricingCache();
+  setFxProvider(() => Promise.reject(new Error("offline")));
+});
+afterEach(() => setFxProvider(defaultFxProvider));
+
 describe("прибыль в аналитике", () => {
   it("выручка сходится с аналитикой, прибыль — по товарам с себестоимостью", async () => {
     const { ctx } = shop();
@@ -187,7 +195,17 @@ describe("прибыль в аналитике", () => {
     expect(p.unknown).toEqual({ items: 2, revenue: 13000 });
   });
 
-  it("две валюты не складываются: чужая валюта — отдельной строкой без прибыли", async () => {
+  it("чужая валюта с курсом — в выручке магазина по курсу, отдельной строки нет", async () => {
+    setFxProvider(async () => ({ USD: 1, KZT: 500 }));
+    const { ctx } = shop();
+    await saveCost(ctx, P2, { price: 1000 });
+    const p = await profitReport(ctx, 30);
+    expect(p.otherCurrencies).toEqual([]);
+    expect(p.orders).toBe(3);
+    expect(p.revenue).toBe(23000);
+  });
+
+  it("валюта без курса не складывается: отдельной строкой без прибыли", async () => {
     const { ctx } = shop();
     await saveCost(ctx, P2, { price: 1000 });
     const p = await profitReport(ctx, 30);

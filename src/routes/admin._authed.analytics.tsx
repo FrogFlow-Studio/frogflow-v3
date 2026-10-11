@@ -109,11 +109,17 @@ function AnalyticsPage() {
         />
       </div>
 
-      {a.byCurrency.length > 1 && (
+      {a.byCurrency.some((c) => c.currency !== a.currency) && (
         <p className="mt-3 text-sm text-muted">
-          {t("analytics.byCurrency", { currency: a.currency })}{" "}
+          {t("analytics.byCurrency", { currency: formatMoney("", a.currency).trim() })}{" "}
           {a.byCurrency
-            .map((c) => `${formatMoney(c.revenue, c.currency)} (${num(c.orders)})`)
+            .map((c) => {
+              const own = `${formatMoney(c.revenue, c.currency)} (${num(c.orders)})`;
+              if (c.currency === a.currency) return own;
+              return c.inBase == null
+                ? `${own} ${t("analytics.byCurrency.noRate")}`
+                : `${own} ≈ ${money(c.inBase)}`;
+            })
             .join(" · ")}
         </p>
       )}

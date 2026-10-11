@@ -16,7 +16,7 @@ The "7 days", "30 days", "90 days" buttons. "Download CSV" — revenue, orders a
 
 ## Main numbers {#tiles}
 
-"Revenue", "Paid orders", "Average order", "New customers", "Paying customers". Tiles and charts are in the shop's main currency; revenue in other currencies is shown separately and not added up.
+"Revenue", "Paid orders", "Average order", "New customers", "Paying customers". Tiles and charts are in the shop's main currency: orders in roubles, som and other currencies are converted at today's rate. Below the tiles is revenue in the original currencies and what it comes to in the main one.
 
 ## Buyer funnel {#funnel}
 

@@ -261,7 +261,9 @@ export async function profitReport(
   const since = new Date(now.getTime() - 2 * days * 86400_000).toISOString();
   const firstDay = dayKeys(days, tz, now)[0]!;
   const currency = await shopCurrency(ctx);
-  const [orders, refunds, costs] = await Promise.all([
+  const { fxRates } = await import("@/core/pricing/pricing");
+  const { rowsInBase, shopFxFromRates } = await import("@/core/money/shop-fx");
+  const [rawOrders, rawRefunds, costs, rates] = await Promise.all([
     pageAll<ProfitOrder>(
       (from, to) =>
         ctx.db
@@ -275,7 +277,16 @@ export async function profitReport(
     ),
     refundsDetailSince(ctx, since),
     listCosts(ctx),
+    fxRates(),
   ]);
+  // Заказы и возвраты в других валютах — в валюте магазина по курсу на сегодня;
+  // без курса остаются в своей и идут отдельной строкой (otherCurrencies).
+  const fx = shopFxFromRates(currency, rates);
+  const amounts = new Map([...rawRefunds].map(([id, r]) => [id, r.amount]));
+  const { rows: orders, refunds: refundsInBase } = rowsInBase(fx, rawOrders, amounts);
+  const refunds = new Map(
+    [...rawRefunds].map(([id, r]) => [id, { ...r, amount: refundsInBase.get(id) ?? r.amount }]),
+  );
   const counted = orders.filter(
     (o) => dayKey(o.created_at, tz) >= firstDay && includeOrderInAnalytics(o),
   );

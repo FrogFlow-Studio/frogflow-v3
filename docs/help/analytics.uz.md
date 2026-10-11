@@ -16,7 +16,7 @@ Davr bo‘yicha tushum, buyurtmalar, xaridorlar va voronka. To‘langan buyurtma
 
 ## Asosiy raqamlar {#tiles}
 
-«Tushum», «To‘langan buyurtmalar», «O‘rtacha chek», «Yangi xaridorlar», «To‘laganlar». Plitkalar va grafiklar — do‘konning asosiy valyutasida; boshqa valyutalardagi tushum alohida ko‘rsatiladi va qo‘shilmaydi.
+«Tushum», «To‘langan buyurtmalar», «O‘rtacha chek», «Yangi xaridorlar», «To‘laganlar». Plitkalar va grafiklar — do‘konning asosiy valyutasida: rubl, som va boshqa valyutalardagi buyurtmalar bugungi kurs bo‘yicha qayta hisoblangan. Plitkalar ostida — asl valyutalardagi tushum va uning asosiy valyutadagi summasi.
 
 ## Xaridor voronkasi {#funnel}
 
