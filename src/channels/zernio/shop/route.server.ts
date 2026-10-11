@@ -292,10 +292,7 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
     }
     // Не чек (голосовое, видео, стикер) на шаге оплаты — продавцу, а не «пришлите
     // чек»: это чаще вопрос (AATeach 11.10).
-    if (orderId && !text) {
-      s.handoff = true;
-      return "question";
-    }
+    if (orderId && !text) return "question";
     return text ? route(s, { ...msg, attachments: [] }) : handleNonText(s, msg);
   }
 
@@ -719,7 +716,8 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
         // Любой другой текст — вопрос продавцу: бот молчит, заказ ждёт оплаты,
         // фото чека по-прежнему принимается (выше). «Пришлите чек» на «точно
         // придёт? боюсь мошенников» и «вместе сколько?» отпугивало (AATeach 11.10).
-        s.handoff = true;
+        // Без отметки «передал»: бот ничего не сказал, и «оплатила» потом
+        // по-прежнему получит просьбу о чеке.
         return "question";
       }
       break;

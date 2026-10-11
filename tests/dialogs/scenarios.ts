@@ -2554,6 +2554,10 @@ export const SCENARIOS: Scenario[] = [
         say: { text: "Я ещё не отправила деньги. Хочу приобрести и другие материалы" },
         expect: { silent: true, notSays: [(c) => c.dmReceiptPrompt] },
       },
+      {
+        say: { text: "Оплатила" },
+        expect: { count: 1, says: [(c) => c.dmReceiptPrompt], state: { mode: "awaiting_proof" } },
+      },
     ],
   },
   {
