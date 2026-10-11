@@ -1,3 +1,4 @@
+import { HelpTip } from "@/app/admin/help-panel";
 import { canEdit } from "@/core/auth/roles";
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useState } from "react";
@@ -118,7 +119,12 @@ function StocktakePage() {
               <p className="text-sm text-warn">{t("stocktake.partial")}</p>
             )}
             <Card
-              title={t("stocktake.diffs")}
+              title={
+                <span className="flex items-center gap-1.5">
+                  {t("stocktake.diffs")}
+                  <HelpTip article="warehouse" anchor="stocktake" />
+                </span>
+              }
               actions={<Badge>{t("stocktake.entered", { n: session.entered })}</Badge>}
             >
               {data.diffs.length === 0 ? (

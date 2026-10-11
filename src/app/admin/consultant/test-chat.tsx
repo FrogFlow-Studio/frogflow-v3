@@ -2,6 +2,7 @@ import { useState } from "react";
 import { consultantTestFn } from "@/app/admin/consultant-settings.functions";
 import { Badge, Card, ErrorBox, useAction } from "@/app/ui";
 import { type AdminT } from "@/app/i18n/admin";
+import { HelpTip } from "@/app/admin/help-panel";
 
 /** Проверочный чат с консультантом. */
 
@@ -24,7 +25,14 @@ export function TestChat({ configured, t }: { configured: boolean; t: AdminT }) 
     setQ("");
   });
   return (
-    <Card title={t("consultant.test.title")}>
+    <Card
+      title={
+        <span className="flex items-center gap-1.5">
+          {t("consultant.test.title")}
+          <HelpTip article="consultant" anchor="test" />
+        </span>
+      }
+    >
       <p className="mb-3 text-sm text-muted">{t("consultant.test.intro")}</p>
       <div className="mb-3 max-h-80 space-y-3 overflow-auto">
         {log.map((m, i) => (

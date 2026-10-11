@@ -1,6 +1,8 @@
 # Why the bot does not answer
 
 keywords: bot is silent, not answering, not working, no reply, messages not coming, webhook, token, telegram, instagram, whatsapp, autoresponder
+group: trouble
+order: 30
 
 Check in this order.
 

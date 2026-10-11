@@ -11,6 +11,7 @@ import {
   GIVEAWAY_PROMO_MAX_DAYS,
   GIVEAWAY_PROMO_MAX_PERCENT,
 } from "@/core/giveaways/giveaway";
+import { HelpTip } from "@/app/admin/help-panel";
 
 /** Раздел «Розыгрыши» в «Рассылках» (модуль giveaways): список и форма условий. */
 type Loaded = Awaited<ReturnType<typeof giveawaysFn>>;
@@ -108,7 +109,12 @@ export function GiveawaysCard({ t, locale }: { t: AdminT; locale: string }) {
   }, [wantsIg, igAccount]);
   return (
     <Card
-      title={t("giveaways.title")}
+      title={
+        <span className="flex items-center gap-1.5">
+          {t("giveaways.title")}
+          <HelpTip article="broadcasts" anchor="giveaways" />
+        </span>
+      }
       actions={
         !form && (
           <button
@@ -151,7 +157,10 @@ export function GiveawaysCard({ t, locale }: { t: AdminT; locale: string }) {
               onChange={(e) => set({ prize: e.target.value })}
             />
           </Field>
-          <Field label={t("giveaways.f.channel")}>
+          <Field
+            label={t("giveaways.f.channel")}
+            help={<HelpTip article="broadcasts" anchor="giveaways" />}
+          >
             <select
               className="input"
               value={form.channel}
@@ -208,7 +217,11 @@ export function GiveawaysCard({ t, locale }: { t: AdminT; locale: string }) {
                 </select>
               </Field>
               <ErrorBox error={postsError.error} />
-              <Field label={t("giveaways.f.igKeyword")} hint={t("giveaways.f.igHint")}>
+              <Field
+                label={t("giveaways.f.igKeyword")}
+                hint={t("giveaways.f.igHint")}
+                help={<HelpTip article="broadcasts" anchor="giveaways" />}
+              >
                 <input
                   className="input"
                   maxLength={40}
@@ -254,7 +267,11 @@ export function GiveawaysCard({ t, locale }: { t: AdminT; locale: string }) {
               />
             </Field>
           </div>
-          <Field label={t("giveaways.f.subscribe")} hint={t("giveaways.f.subscribeHint")}>
+          <Field
+            label={t("giveaways.f.subscribe")}
+            hint={t("giveaways.f.subscribeHint")}
+            help={<HelpTip article="broadcasts" anchor="giveaways" />}
+          >
             <input
               className="input"
               placeholder="@my_channel"
@@ -270,6 +287,7 @@ export function GiveawaysCard({ t, locale }: { t: AdminT; locale: string }) {
               onChange={(e) => set({ excludeBlocked: e.target.checked })}
             />
             {t("giveaways.f.excludeBlocked")}
+            <HelpTip article="broadcasts" anchor="giveaways" />
           </label>
           <label className="flex items-center gap-2 text-sm">
             <input
@@ -278,8 +296,13 @@ export function GiveawaysCard({ t, locale }: { t: AdminT; locale: string }) {
               onChange={(e) => set({ excludeStaff: e.target.checked })}
             />
             {t("giveaways.f.excludeStaff")}
+            <HelpTip article="broadcasts" anchor="giveaways" />
           </label>
-          <Field label={t("giveaways.f.prizePromo")} hint={t("giveaways.f.prizePromoHint")}>
+          <Field
+            label={t("giveaways.f.prizePromo")}
+            hint={t("giveaways.f.prizePromoHint")}
+            help={<HelpTip article="broadcasts" anchor="giveaways" />}
+          >
             <input
               className="input"
               type="number"
@@ -289,7 +312,11 @@ export function GiveawaysCard({ t, locale }: { t: AdminT; locale: string }) {
               onChange={(e) => set({ prizePromoPercent: Number(e.target.value) })}
             />
           </Field>
-          <Field label={t("giveaways.f.consolation")} hint={t("giveaways.f.consolationHint")}>
+          <Field
+            label={t("giveaways.f.consolation")}
+            hint={t("giveaways.f.consolationHint")}
+            help={<HelpTip article="broadcasts" anchor="giveaways" />}
+          >
             <input
               className="input"
               type="number"
@@ -392,7 +419,10 @@ export function GiveawayButtonPick({
   const open = rows.filter((g) => g.status === "open" && g.channel !== "instagram");
   if (open.length === 0) return null;
   return (
-    <Field label={t("giveaways.broadcastButton")}>
+    <Field
+      label={t("giveaways.broadcastButton")}
+      help={<HelpTip article="broadcasts" anchor="buttons" />}
+    >
       <select className="input" value={value} onChange={(e) => onChange(e.target.value)}>
         <option value="">{t("giveaways.broadcastNone")}</option>
         {open.map((g) => (

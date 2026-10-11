@@ -1,3 +1,4 @@
+import { HelpTip } from "@/app/admin/help-panel";
 import { useState } from "react";
 import { type AdminT } from "@/app/i18n/admin";
 import type { BulkAction } from "@/core/catalog/bulk";
@@ -44,6 +45,7 @@ export function BulkBar({
   return (
     <div className="flex flex-wrap items-center gap-2 border-b border-line p-3 text-sm">
       <b>{t("products.bulk.selectedOf", { n, total })}</b>
+      <HelpTip article="products" anchor="bulk" />
       <button type="button" className="btn-ghost" onClick={onClear}>
         {t("products.bulk.clear")}
       </button>
@@ -120,6 +122,7 @@ export function BulkBar({
       >
         {t("products.bulk.categorySet")}
       </button>
+      <HelpTip article="products" anchor="bulk-price" />
       <input
         className="input w-44"
         inputMode="decimal"

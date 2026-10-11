@@ -10,6 +10,7 @@ import {
   type NotifyItem,
   type NotifyType,
 } from "@/core/notifications/feed";
+import { HelpTip } from "@/app/admin/help-panel";
 
 export const Route = createFileRoute("/admin/_authed/notifications")({
   loader: () => notificationsFn(),
@@ -126,6 +127,7 @@ function NotificationsPage() {
                 {x === "all" ? t("bell.filterAll") : t(TYPE_LABEL[x])}
               </button>
             ))}
+            <HelpTip article="notifications" anchor="filters" />
           </div>
           {(
             [

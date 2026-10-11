@@ -8,6 +8,7 @@ import type { KnowledgeDoc } from "@/core/consultant/knowledge";
 import { PAUSE_CHOICES, type PauseHours } from "@/core/consultant/pause";
 import { TestChat } from "./test-chat";
 import { StoriesCard } from "./stories";
+import { HelpTip } from "@/app/admin/help-panel";
 
 /** Данные и контекст страницы консультанта: компонент вынесен из файла маршрута. */
 const Route = getRouteApi("/admin/_authed/consultant");
@@ -60,14 +61,26 @@ export function ConsultantClassic() {
       )}
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
         <div className="min-w-0 space-y-4">
-          <Card title={t("consultant.profile.title")}>
+          <Card
+            title={
+              <span className="flex items-center gap-1.5">
+                {t("consultant.profile.title")}
+                <HelpTip article="consultant" anchor="profile" />
+              </span>
+            }
+          >
             <div className="mb-4 flex items-center gap-3">
               <Switch checked={enabled} onChange={setEnabled} label={t("consultant.enable")} />
               <span className="text-sm">
                 {enabled ? t("consultant.enabledHint") : t("consultant.disabledHint")}
               </span>
+              <HelpTip article="consultant" anchor="enable" />
             </div>
-            <Field label={t("consultant.pause")} hint={t("consultant.pauseHint")}>
+            <Field
+              label={t("consultant.pause")}
+              hint={t("consultant.pauseHint")}
+              help={<HelpTip article="consultant" anchor="pause" />}
+            >
               <select
                 className="input mb-4 w-auto"
                 value={pause}
@@ -109,7 +122,10 @@ export function ConsultantClassic() {
                       placeholder="https://"
                     />
                   </Field>
-                  <Field label={t("consultant.goal")}>
+                  <Field
+                    label={t("consultant.goal")}
+                    help={<HelpTip article="consultant" anchor="goal" />}
+                  >
                     <select
                       className="input"
                       value={profile.goal}
@@ -122,7 +138,10 @@ export function ConsultantClassic() {
                       ))}
                     </select>
                   </Field>
-                  <Field label={t("consultant.tone")}>
+                  <Field
+                    label={t("consultant.tone")}
+                    help={<HelpTip article="consultant" anchor="goal" />}
+                  >
                     <select
                       className="input"
                       value={profile.tone}
@@ -135,7 +154,11 @@ export function ConsultantClassic() {
                       ))}
                     </select>
                   </Field>
-                  <Field label={t("consultant.language")} hint={t("consultant.languageHint")}>
+                  <Field
+                    label={t("consultant.language")}
+                    hint={t("consultant.languageHint")}
+                    help={<HelpTip article="consultant" anchor="goal" />}
+                  >
                     <select
                       className="input"
                       value={profile.primary_language}
@@ -201,6 +224,7 @@ export function ConsultantClassic() {
                   </Field>
                   <Field
                     label={t("consultant.instructions")}
+                    help={<HelpTip article="consultant" anchor="instructions" />}
                     hint={t("consultant.instructionsHint")}
                   >
                     <textarea
@@ -216,6 +240,7 @@ export function ConsultantClassic() {
                       onChange={(e) => set("medical_disclaimer", e.target.checked)}
                     />
                     {t("consultant.medicalDisclaimer")}
+                    <HelpTip article="consultant" anchor="disclaimer" />
                   </label>
                 </div>
               </>
@@ -233,7 +258,12 @@ export function ConsultantClassic() {
                 </div>
               )}
               <Card
-                title={t("consultant.knowledge.title")}
+                title={
+                  <span className="flex items-center gap-1.5">
+                    {t("consultant.knowledge.title")}
+                    <HelpTip article="consultant" anchor="knowledge" />
+                  </span>
+                }
                 actions={
                   <button
                     type="button"
@@ -303,7 +333,14 @@ export function ConsultantClassic() {
         <div className="min-w-0 space-y-4">
           <TestChat configured={data.configured} t={t} />
           {shop.modules.instagram && <StoriesCard t={t} />}
-          <Card title={t("consultant.usage.title")}>
+          <Card
+            title={
+              <span className="flex items-center gap-1.5">
+                {t("consultant.usage.title")}
+                <HelpTip article="consultant" anchor="usage" />
+              </span>
+            }
+          >
             <dl className="grid grid-cols-2 gap-2 text-sm">
               <dt className="text-muted">{t("consultant.usage.count")}</dt>
               <dd className="tabular-nums">{data.usage.count}</dd>

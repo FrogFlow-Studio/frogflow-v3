@@ -7,6 +7,7 @@ import {
 import { Badge, Card, ErrorBox, useAction } from "@/app/ui";
 import { type AdminKey } from "@/app/i18n/admin";
 import { type CardProps } from "./shared";
+import { HelpTip } from "@/app/admin/help-panel";
 
 /** Задачи консультанта для менеджера. */
 
@@ -43,7 +44,14 @@ export function TasksCard({
     return t(KNOWN_REASONS.includes(r) ? key : "pricelist.tasks.reason.other");
   };
   return (
-    <Card title={t("pricelist.tasks.title")}>
+    <Card
+      title={
+        <span className="flex items-center gap-1.5">
+          {t("pricelist.tasks.title")}
+          <HelpTip article="pricelist" anchor="tasks" />
+        </span>
+      }
+    >
       <p className="mb-3 text-sm text-muted">{t("pricelist.tasks.hint")}</p>
       {list && list.tasks.length === 0 && <p className="text-sm">{t("pricelist.tasks.empty")}</p>}
       {list && list.tasks.length > 0 && (

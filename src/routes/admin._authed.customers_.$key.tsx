@@ -1,3 +1,4 @@
+import { HelpTip } from "@/app/admin/help-panel";
 import { canEdit } from "@/core/auth/roles";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
@@ -188,7 +189,11 @@ function CustomerCardPage() {
         <Card title={t("customer.sellerTitle")}>
           <ErrorBox error={save.error} />
           {noteConflict && <p className="mb-2 text-xs text-warn">{t("customer.noteConflict")}</p>}
-          <Field label={t("customer.tags")} hint={t("customer.tagsHint")}>
+          <Field
+            label={t("customer.tags")}
+            hint={t("customer.tagsHint")}
+            help={<HelpTip article="customers" anchor="tags" />}
+          >
             <input
               className="input"
               list="customer-tags"
@@ -233,7 +238,8 @@ function CustomerCardPage() {
         {sells && shop.modules.loyalty && canWrite && (
           <Card title={t("customer.adjust.title")}>
             <ErrorBox error={adjust.error} />
-            <div className="mb-2 flex gap-2">
+            <div className="mb-2 flex items-center gap-2">
+              <HelpTip article="customers" anchor="points" />
               <select
                 className="input w-auto"
                 value={sign}
@@ -482,7 +488,10 @@ function BirthdayRow() {
     );
   return (
     <div className="flex items-center justify-between gap-3 py-1 text-sm">
-      <span className="text-muted">{t("birthday.customer")}</span>
+      <span className="flex items-center gap-1.5 text-muted">
+        {t("birthday.customer")}
+        <HelpTip article="customers" anchor="birthday" />
+      </span>
       <span className="flex items-center gap-2">
         <input
           className="input h-8 w-24 text-right"

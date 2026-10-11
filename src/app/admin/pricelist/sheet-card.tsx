@@ -8,6 +8,7 @@ import { Card, ErrorBox, Field, useAction } from "@/app/ui";
 import { intlLocale, type AdminT } from "@/app/i18n/admin";
 import type { Locale } from "@/core/i18n/locale";
 import { type CardProps } from "./shared";
+import { HelpTip } from "@/app/admin/help-panel";
 
 /** Прайс из Google-таблицы. */
 
@@ -60,7 +61,14 @@ export function SheetCard({
   const status = data.sheet?.status ?? null;
   const p = preview?.result;
   return (
-    <Card title={t("pricelist.sheet.title")}>
+    <Card
+      title={
+        <span className="flex items-center gap-1.5">
+          {t("pricelist.sheet.title")}
+          <HelpTip article="pricelist" anchor="sheet" />
+        </span>
+      }
+    >
       <p className="mb-3 text-sm text-muted">{t("pricelist.sheet.hint")}</p>
       {data.sheet && (
         <div className="mb-3 space-y-1 text-sm">

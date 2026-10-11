@@ -1,3 +1,4 @@
+import { HelpTip } from "@/app/admin/help-panel";
 import { CourseFunnel } from "@/app/admin/course-funnel";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
@@ -62,6 +63,7 @@ function StudentsPage() {
                 onChange={(e) => setOnlyBehind(e.target.checked)}
               />
               {t("product.studentBehindOnly")}
+              <HelpTip article="students" anchor="filters" />
             </label>
             {canEdit(shop.role) && (
               <a

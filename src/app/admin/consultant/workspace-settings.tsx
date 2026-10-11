@@ -10,6 +10,7 @@ import { PersonaCard, SettingsCard } from "@/app/admin/pricelist-cards";
 import { WorkspaceTestChat } from "@/app/admin/workspace-test-chat";
 import { canEdit, roleAllows } from "@/core/auth/roles";
 import { StoriesCard } from "./stories";
+import { HelpTip } from "@/app/admin/help-panel";
 
 /** Данные и контекст страницы консультанта: компонент вынесен из файла маршрута. */
 const Route = getRouteApi("/admin/_authed/consultant");
@@ -64,8 +65,13 @@ export function WorkspaceSettings() {
               <span className="text-sm">
                 {enabled ? t("consultant.enabledHint") : t("consultant.disabledHint")}
               </span>
+              <HelpTip article="consultant" anchor="enable" />
             </div>
-            <Field label={t("consultant.pause")} hint={t("consultant.pauseHint")}>
+            <Field
+              label={t("consultant.pause")}
+              hint={t("consultant.pauseHint")}
+              help={<HelpTip article="consultant" anchor="pause" />}
+            >
               <select
                 className="input mb-4 w-auto"
                 value={pause}
@@ -100,7 +106,14 @@ export function WorkspaceSettings() {
           <WorkspaceTestChat configured={data.configured} t={t} />
           {shop.modules.instagram && <CommentReplyCard />}
           {shop.modules.instagram && <StoriesCard t={t} />}
-          <Card title={t("pricelist.usage.title")}>
+          <Card
+            title={
+              <span className="flex items-center gap-1.5">
+                {t("pricelist.usage.title")}
+                <HelpTip article="consultant" anchor="usage" />
+              </span>
+            }
+          >
             <p className="text-sm">
               {pl.usage.messages
                 ? t("pricelist.usage.summary", {
@@ -148,6 +161,7 @@ function CommentReplyCard() {
           label={t("ws.settings.commentReply.label")}
         />
         <span className="text-sm">{t("ws.settings.commentReply.label")}</span>
+        <HelpTip article="consultant" anchor="comment-reply" />
       </div>
       <ErrorBox error={toggle.error} />
     </Card>

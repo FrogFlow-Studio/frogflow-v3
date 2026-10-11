@@ -1,3 +1,4 @@
+import { HelpTip } from "@/app/admin/help-panel";
 import { getRouteApi } from "@tanstack/react-router";
 import { useState } from "react";
 import { explainSalesFn } from "@/app/admin/analytics.functions";
@@ -20,7 +21,15 @@ export function SpeedCard({ rows }: { rows: SpeedRow[] }) {
   const all = rows[0]!;
   const share = autoShare(all);
   return (
-    <Card title={t("analytics.speed.title")} className="lg:col-span-2">
+    <Card
+      title={
+        <span className="flex items-center gap-1.5">
+          {t("analytics.speed.title")}
+          <HelpTip article="analytics" anchor="speed" />
+        </span>
+      }
+      className="lg:col-span-2"
+    >
       {all.placed === 0 ? (
         <p className="text-sm text-muted">{t("analytics.speed.empty")}</p>
       ) : (
@@ -69,7 +78,15 @@ export function ExplainCard({ days }: { days: 7 | 30 | 90 }) {
     setText(r.text);
   });
   return (
-    <Card title={t("analytics.explain.title")} className="lg:col-span-2">
+    <Card
+      title={
+        <span className="flex items-center gap-1.5">
+          {t("analytics.explain.title")}
+          <HelpTip article="analytics" anchor="explain" />
+        </span>
+      }
+      className="lg:col-span-2"
+    >
       <div className="flex flex-wrap items-center gap-3">
         <button
           type="button"

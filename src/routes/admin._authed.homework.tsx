@@ -1,3 +1,4 @@
+import { HelpTip } from "@/app/admin/help-panel";
 import { roleAllows } from "@/core/auth/roles";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
@@ -333,7 +334,9 @@ function CuratorsCard({
       <summary className="cursor-pointer font-medium">
         {t("homework.curators")} · {rows.length}
       </summary>
-      <p className="mt-2 text-xs text-muted">{t("homework.curatorsHint")}</p>
+      <p className="mt-2 text-xs text-muted">
+        {t("homework.curatorsHint")} <HelpTip article="homework" anchor="curators" />
+      </p>
       {load.length > 0 && (
         <div className="mt-3 rounded-md border border-line p-2 text-xs">
           <p className="mb-1 font-medium">{t("homework.load.title")}</p>
@@ -362,6 +365,7 @@ function CuratorsCard({
       )}
       <label className="mt-3 flex flex-wrap items-center gap-2 text-xs">
         {t("homework.curatorsMode")}
+        <HelpTip article="homework" anchor="curators-mode" />
         <select
           className="input w-auto text-xs"
           value={mode}
@@ -484,7 +488,9 @@ function RepliesCard({ replies, t }: { replies: HomeworkReply[]; t: AdminT }) {
       <summary className="cursor-pointer font-medium">
         {t("homework.replies")} · {rows.length}
       </summary>
-      <p className="mt-2 text-xs text-muted">{t("homework.repliesHint")}</p>
+      <p className="mt-2 text-xs text-muted">
+        {t("homework.repliesHint")} <HelpTip article="homework" anchor="replies" />
+      </p>
       <div className="mt-3 space-y-2">
         {rows.map((r, i) => (
           <div key={i} className="flex flex-wrap items-start gap-2">

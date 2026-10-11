@@ -1,3 +1,4 @@
+import { HelpTip } from "@/app/admin/help-panel";
 import { useEffect, useState } from "react";
 import {
   bundleComponentFn,
@@ -107,6 +108,7 @@ export function BundleCard({ productId, t }: { productId: string; t: AdminT }) {
           }}
         />
         {t("bundle.on")}
+        <HelpTip article="products" anchor="bundle" />
       </label>
       {on && (
         <>

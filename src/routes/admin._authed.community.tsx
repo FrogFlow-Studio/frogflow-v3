@@ -14,6 +14,7 @@ import { CommunityPromos } from "@/app/admin/community-promos";
 import { jointReadyFn } from "@/app/admin/community-promos.functions";
 import { Card, Empty, ErrorBox, Field, PageTitle, useAction } from "@/app/ui";
 import { canEdit } from "@/core/auth/roles";
+import { HelpTip } from "@/app/admin/help-panel";
 
 export const Route = createFileRoute("/admin/_authed/community")({
   component: CommunityPage,
@@ -172,13 +173,16 @@ function CommunityPage() {
               />
               <button className="btn-secondary">{t("community.search")}</button>
               {canWrite && (
-                <button
-                  type="button"
-                  className="btn-primary ml-auto"
-                  onClick={() => setComposing((v) => !v)}
-                >
-                  {t("community.new")}
-                </button>
+                <>
+                  <button
+                    type="button"
+                    className="btn-primary ml-auto"
+                    onClick={() => setComposing((v) => !v)}
+                  >
+                    {t("community.new")}
+                  </button>
+                  <HelpTip article="community" anchor="post" />
+                </>
               )}
             </form>
             <ErrorBox error={load.error} />

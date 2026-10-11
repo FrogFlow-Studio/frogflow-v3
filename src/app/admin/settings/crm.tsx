@@ -11,6 +11,7 @@ import {
 import { adminT, intlLocale, type AdminT } from "@/app/i18n/admin";
 import { settingsRoute } from "./route";
 import { roleAllows } from "@/core/auth/roles";
+import { HelpTip } from "@/app/admin/help-panel";
 
 /** Интеграция с CRM и Таблицами: события заказа POST-запросом на адрес продавца. */
 export function CrmCard() {
@@ -67,7 +68,11 @@ export function CrmCard() {
         }}
       >
         <p className="text-sm text-muted">{t("settings.crm.intro")}</p>
-        <Field label={t("settings.crm.url")} hint={t("settings.crm.urlHint")}>
+        <Field
+          label={t("settings.crm.url")}
+          help={<HelpTip article="settings-advanced" anchor="crm" />}
+          hint={t("settings.crm.urlHint")}
+        >
           <input
             className="input"
             value={url}
@@ -88,7 +93,10 @@ export function CrmCard() {
             onChange={(e) => setSecret(e.target.value)}
           />
         </Field>
-        <Field label={t("settings.crm.events")}>
+        <Field
+          label={t("settings.crm.events")}
+          help={<HelpTip article="settings-advanced" anchor="crm" />}
+        >
           <div className="grid gap-1 sm:grid-cols-3">
             {d.all.map((ev) => (
               <label key={ev} className="flex items-center gap-2 text-sm">

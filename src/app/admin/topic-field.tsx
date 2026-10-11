@@ -1,3 +1,4 @@
+import { HelpTip } from "@/app/admin/help-panel";
 import { useState } from "react";
 import type { AdminT } from "@/app/i18n/admin";
 import type { BulkAction } from "@/core/catalog/bulk";
@@ -35,7 +36,11 @@ export function TopicField({
   };
   return (
     <div>
-      <Field label={t("product.topics")} hint={t("product.topicsHint")}>
+      <Field
+        label={t("product.topics")}
+        hint={t("product.topicsHint")}
+        help={<HelpTip article="products" anchor="name" />}
+      >
         <input
           className="input"
           name="topics"

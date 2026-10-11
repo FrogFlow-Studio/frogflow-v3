@@ -1,5 +1,5 @@
 import { Link, type LinkProps } from "@tanstack/react-router";
-import { useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { claimStaleReload, isStaleChunkError, retryText, screenErrorText } from "@/lib/shown-error";
 import { reportBrowserFailure } from "./report-client";
 
@@ -32,15 +32,25 @@ export function Card({
 export function Field({
   label,
   hint,
+  help,
   children,
 }: {
   label: string;
   hint?: ReactNode;
+  /** Рядом с подписью: в админке — «?» со статьёй «Помощи». */
+  help?: ReactNode;
   children: ReactNode;
 }) {
   return (
     <label className="block">
-      <span className="label">{label}</span>
+      {help ? (
+        <span className="label flex items-center gap-1.5">
+          {label}
+          {help}
+        </span>
+      ) : (
+        <span className="label">{label}</span>
+      )}
       {children}
       {hint && <span className="mt-1 block text-xs text-muted">{hint}</span>}
     </label>
@@ -264,6 +274,12 @@ export function Shell({
   );
 }
 
+/**
+ * Что панель ставит рядом с заголовком каждой страницы (в админке — «?»,
+ * открывающий статью «Помощи» про эту страницу). Страницы об этом не знают.
+ */
+export const PageTitleAddon = createContext<ReactNode>(null);
+
 export function PageTitle({
   title,
   subtitle,
@@ -273,10 +289,14 @@ export function PageTitle({
   subtitle?: ReactNode;
   actions?: ReactNode;
 }) {
+  const addon = useContext(PageTitleAddon);
   return (
     <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
       <div>
-        <h1 className="text-xl font-semibold">{title}</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-xl font-semibold">{title}</h1>
+          {addon}
+        </div>
         {subtitle && <p className="mt-1 text-sm text-muted">{subtitle}</p>}
       </div>
       {actions && <div className="flex gap-2">{actions}</div>}

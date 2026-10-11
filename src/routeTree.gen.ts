@@ -130,6 +130,7 @@ import { Route as SSlugOfflineRouteImport } from './routes/s.$slug_.offline'
 import { Route as SSlugSitemapDotxmlRouteImport } from './routes/s.$slug_.sitemap[.]xml'
 import { Route as SSlugSwDotjsRouteImport } from './routes/s.$slug_.sw[.]js'
 import { Route as AdminAuthedCustomersKeyRouteImport } from './routes/admin._authed.customers_.$key'
+import { Route as AdminAuthedHelpSectionRouteImport } from './routes/admin._authed.help_.$section'
 import { Route as AdminAuthedOrdersIdRouteImport } from './routes/admin._authed.orders.$id'
 import { Route as AdminAuthedOrdersNewRouteImport } from './routes/admin._authed.orders.new'
 import { Route as AdminAuthedProductsIdRouteImport } from './routes/admin._authed.products_.$id'
@@ -768,6 +769,11 @@ const AdminAuthedCustomersKeyRoute = AdminAuthedCustomersKeyRouteImport.update({
   path: '/customers/$key',
   getParentRoute: () => AdminAuthedRoute,
 } as any)
+const AdminAuthedHelpSectionRoute = AdminAuthedHelpSectionRouteImport.update({
+  id: '/help_/$section',
+  path: '/help/$section',
+  getParentRoute: () => AdminAuthedRoute,
+} as any)
 const AdminAuthedOrdersIdRoute = AdminAuthedOrdersIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -1045,6 +1051,7 @@ export interface FileRoutesByFullPath {
   '/operator/': typeof OperatorAuthedIndexRoute
   '/s/$slug/': typeof SSlugIndexRoute
   '/admin/customers/$key': typeof AdminAuthedCustomersKeyRoute
+  '/admin/help/$section': typeof AdminAuthedHelpSectionRoute
   '/admin/orders/$id': typeof AdminAuthedOrdersIdRoute
   '/admin/orders/new': typeof AdminAuthedOrdersNewRoute
   '/admin/products/$id': typeof AdminAuthedProductsIdRoute
@@ -1191,6 +1198,7 @@ export interface FileRoutesByTo {
   '/s/$slug/sw.js': typeof SSlugSwDotjsRoute
   '/s/$slug': typeof SSlugIndexRoute
   '/admin/customers/$key': typeof AdminAuthedCustomersKeyRoute
+  '/admin/help/$section': typeof AdminAuthedHelpSectionRoute
   '/admin/orders/$id': typeof AdminAuthedOrdersIdRoute
   '/admin/orders/new': typeof AdminAuthedOrdersNewRoute
   '/admin/products/$id': typeof AdminAuthedProductsIdRoute
@@ -1344,6 +1352,7 @@ export interface FileRoutesById {
   '/operator/_authed/': typeof OperatorAuthedIndexRoute
   '/s/$slug/': typeof SSlugIndexRoute
   '/admin/_authed/customers_/$key': typeof AdminAuthedCustomersKeyRoute
+  '/admin/_authed/help_/$section': typeof AdminAuthedHelpSectionRoute
   '/admin/_authed/orders/$id': typeof AdminAuthedOrdersIdRoute
   '/admin/_authed/orders/new': typeof AdminAuthedOrdersNewRoute
   '/admin/_authed/products_/$id': typeof AdminAuthedProductsIdRoute
@@ -1496,6 +1505,7 @@ export interface FileRouteTypes {
     | '/operator/'
     | '/s/$slug/'
     | '/admin/customers/$key'
+    | '/admin/help/$section'
     | '/admin/orders/$id'
     | '/admin/orders/new'
     | '/admin/products/$id'
@@ -1642,6 +1652,7 @@ export interface FileRouteTypes {
     | '/s/$slug/sw.js'
     | '/s/$slug'
     | '/admin/customers/$key'
+    | '/admin/help/$section'
     | '/admin/orders/$id'
     | '/admin/orders/new'
     | '/admin/products/$id'
@@ -1794,6 +1805,7 @@ export interface FileRouteTypes {
     | '/operator/_authed/'
     | '/s/$slug/'
     | '/admin/_authed/customers_/$key'
+    | '/admin/_authed/help_/$section'
     | '/admin/_authed/orders/$id'
     | '/admin/_authed/orders/new'
     | '/admin/_authed/products_/$id'
@@ -2720,6 +2732,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAuthedCustomersKeyRouteImport
       parentRoute: typeof AdminAuthedRoute
     }
+    '/admin/_authed/help_/$section': {
+      id: '/admin/_authed/help_/$section'
+      path: '/help/$section'
+      fullPath: '/admin/help/$section'
+      preLoaderRoute: typeof AdminAuthedHelpSectionRouteImport
+      parentRoute: typeof AdminAuthedRoute
+    }
     '/admin/_authed/orders/$id': {
       id: '/admin/_authed/orders/$id'
       path: '/$id'
@@ -2982,6 +3001,7 @@ interface AdminAuthedRouteChildren {
   AdminAuthedVipRoute: typeof AdminAuthedVipRoute
   AdminAuthedIndexRoute: typeof AdminAuthedIndexRoute
   AdminAuthedCustomersKeyRoute: typeof AdminAuthedCustomersKeyRoute
+  AdminAuthedHelpSectionRoute: typeof AdminAuthedHelpSectionRoute
   AdminAuthedProductsIdRoute: typeof AdminAuthedProductsIdRoute
   AdminAuthedWarehouseJournalRoute: typeof AdminAuthedWarehouseJournalRoute
   AdminAuthedWarehouseReceiptsRoute: typeof AdminAuthedWarehouseReceiptsRoute
@@ -3036,6 +3056,7 @@ const AdminAuthedRouteChildren: AdminAuthedRouteChildren = {
   AdminAuthedVipRoute: AdminAuthedVipRoute,
   AdminAuthedIndexRoute: AdminAuthedIndexRoute,
   AdminAuthedCustomersKeyRoute: AdminAuthedCustomersKeyRoute,
+  AdminAuthedHelpSectionRoute: AdminAuthedHelpSectionRoute,
   AdminAuthedProductsIdRoute: AdminAuthedProductsIdRoute,
   AdminAuthedWarehouseJournalRoute: AdminAuthedWarehouseJournalRoute,
   AdminAuthedWarehouseReceiptsRoute: AdminAuthedWarehouseReceiptsRoute,

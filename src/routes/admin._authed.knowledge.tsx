@@ -9,6 +9,7 @@ import { KnowledgeImport } from "@/app/admin/pricelist-cards";
 import { Badge, Empty, ErrorBox, Field, PageTitle, useAction } from "@/app/ui";
 import { adminT, intlLocale, type AdminT } from "@/app/i18n/admin";
 import { canEdit } from "@/core/auth/roles";
+import { HelpTip } from "@/app/admin/help-panel";
 
 /**
  * «База знаний» консультанта по прайсу: статьи, которые консультант
@@ -132,7 +133,7 @@ function KnowledgePage(): ReactElement {
       />
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] [&>*]:min-w-0">
         <div className="space-y-3">
-          <Field label={t("ws.kb.search")}>
+          <Field label={t("ws.kb.search")} help={<HelpTip article="knowledge" anchor="list" />}>
             <input
               className="input"
               type="search"
@@ -270,7 +271,11 @@ function Editor({
           onChange={(e) => setDraft({ ...draft, title: e.target.value })}
         />
       </Field>
-      <Field label={t("ws.kb.tags")} hint={t("ws.kb.tagsHint")}>
+      <Field
+        label={t("ws.kb.tags")}
+        hint={t("ws.kb.tagsHint")}
+        help={<HelpTip article="knowledge" anchor="article" />}
+      >
         <input
           className="input"
           value={draft.tags}

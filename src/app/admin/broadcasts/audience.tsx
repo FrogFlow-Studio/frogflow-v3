@@ -16,6 +16,7 @@ import {
   type UiAudience,
   useT,
 } from "./shared";
+import { HelpTip } from "@/app/admin/help-panel";
 
 export function useAudienceCount(
   channel: Channel,
@@ -228,7 +229,10 @@ export function AudiencePicker({
   const sells = shop.sells !== false;
   return (
     <div>
-      <span className="label">{t("broadcasts.audience.label")}</span>
+      <span className="label flex items-center gap-1.5">
+        {t("broadcasts.audience.label")}
+        <HelpTip article="broadcasts" anchor="audience" />
+      </span>
       <div className="grid gap-2 sm:grid-cols-2">
         {AUDIENCES.filter(
           (a) => (channel === "telegram" || !a.tgOnly) && (sells || !a.sellsOnly),

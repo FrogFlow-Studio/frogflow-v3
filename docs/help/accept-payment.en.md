@@ -1,6 +1,8 @@
 # How to accept payment
 
 keywords: payment, pay, requisites, bank details, qr, receipt, kaspi, transfer, money, how to pay, buyer pays
+group: start
+order: 4
 
 The buyer pays the order using your payment details and sends a receipt. You confirm the payment yourself, or the bot checks the receipt automatically.
 

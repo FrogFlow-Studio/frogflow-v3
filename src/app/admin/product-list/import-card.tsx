@@ -1,3 +1,4 @@
+import { HelpTip } from "@/app/admin/help-panel";
 import { useState } from "react";
 import { importCatalogFn } from "@/app/admin/catalog.functions";
 import { type AdminT } from "@/app/i18n/admin";
@@ -45,7 +46,15 @@ export function ImportCard({ t, onDone }: { t: AdminT; onDone: () => Promise<voi
     await onDone();
   });
   return (
-    <Card title={t("products.import.title")} className="mb-4">
+    <Card
+      title={
+        <span className="flex items-center gap-1.5">
+          {t("products.import.title")}
+          <HelpTip article="products" anchor="import" />
+        </span>
+      }
+      className="mb-4"
+    >
       <div className="grid gap-4 md:grid-cols-2">
         <div>
           <p className="mb-2 text-sm text-muted">{t("products.import.intro22")}</p>

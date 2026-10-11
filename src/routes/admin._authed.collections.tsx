@@ -1,3 +1,4 @@
+import { HelpTip } from "@/app/admin/help-panel";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import {
@@ -61,7 +62,10 @@ function CollectionsPage() {
           >
             {c.url && (
               <p className="mb-3 break-all text-sm">
-                <span className="text-muted">{t("collections.link")}: </span>
+                <span className="text-muted">
+                  {t("collections.link")}
+                  <HelpTip article="collections" anchor="link" />:{" "}
+                </span>
                 <a href={c.url} target="_blank" rel="noreferrer" className="text-accent underline">
                   {c.url}
                 </a>
@@ -110,7 +114,10 @@ function CollectionsPage() {
                 void save.run().catch(() => {});
               }}
             >
-              <Field label={t("collections.name")}>
+              <Field
+                label={t("collections.name")}
+                help={<HelpTip article="collections" anchor="form" />}
+              >
                 <input
                   className="input"
                   value={draft.name}

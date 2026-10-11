@@ -1,3 +1,4 @@
+import { HelpTip } from "@/app/admin/help-panel";
 import { useState } from "react";
 import { chatUnansweredSaveFn, quickRepliesSaveFn } from "@/app/admin/chat.functions";
 import { type AdminT } from "@/app/i18n/admin";
@@ -49,6 +50,7 @@ export function UnansweredAlert({
         ))}
       </select>
       <span className="text-xs text-muted">{t("chat.unansweredHint")}</span>
+      <HelpTip article="chat" anchor="unanswered" />
       {minutes > 0 && (
         <label className="flex basis-full items-center gap-2 text-muted">
           <input
@@ -58,6 +60,7 @@ export function UnansweredAlert({
             onChange={(e) => void save.run(minutes, e.target.checked).catch(() => {})}
           />
           {t("chat.unansweredEscalate")}
+          <HelpTip article="chat" anchor="unanswered-escalate" />
         </label>
       )}
       <ErrorBox error={save.error} />
@@ -157,6 +160,7 @@ export function QuickReplies({
   return (
     <div className="flex items-center gap-2 overflow-x-auto border-t border-line px-3 py-2">
       <span className="shrink-0 text-xs text-muted">{t("chat.quick")}:</span>
+      <HelpTip article="chat" anchor="quick-replies" />
       {replies.length === 0 && (
         <span className="truncate text-xs text-muted">{t("chat.quickEmpty")}</span>
       )}

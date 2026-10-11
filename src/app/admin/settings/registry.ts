@@ -447,3 +447,11 @@ export function entryVisible(e: SettingsEntry, shop: SettingsShop): boolean {
   if (e.anyModule && !e.anyModule.some((m) => shop.modules[m])) return false;
   return !e.module || Boolean(shop.modules[e.module]);
 }
+
+/** Статья «Помощи» про раздел настроек: одна на тему, раздел — подзаголовок `{#id}` в ней. */
+export function settingsHelp(e: Pick<SettingsEntry, "id" | "theme">): {
+  article: string;
+  anchor: string;
+} {
+  return { article: `settings-${e.theme}`, anchor: e.id };
+}

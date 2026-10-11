@@ -1,3 +1,4 @@
+import { HelpTip } from "@/app/admin/help-panel";
 import { canEdit } from "@/core/auth/roles";
 import { createFileRoute, Link, redirect, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
@@ -153,6 +154,10 @@ function LeadCard({
       {c.note && !editing && <p className="mt-2 text-xs whitespace-pre-line">{c.note}</p>}
       {canWrite ? (
         <div className="mt-2 space-y-2">
+          <div className="flex items-center gap-1.5 text-xs text-muted">
+            {t("pipeline.moveTo")}
+            <HelpTip article="pipeline" anchor="lead-stage" />
+          </div>
           <select
             className="input text-xs"
             aria-label={t("pipeline.moveTo")}
@@ -166,6 +171,10 @@ function LeadCard({
               </option>
             ))}
           </select>
+          <div className="flex items-center gap-1.5 text-xs text-muted">
+            {t("pipeline.owner")}
+            <HelpTip article="pipeline" anchor="lead-owner" />
+          </div>
           <select
             className="input text-xs"
             aria-label={t("pipeline.owner")}

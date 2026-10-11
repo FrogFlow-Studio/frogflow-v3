@@ -21,6 +21,7 @@ import {
   type PlanNiche,
   type PlanTier,
 } from "@/core/plans/registry";
+import { HelpTip } from "@/app/admin/help-panel";
 
 export const Route = createFileRoute("/admin/_authed/modules")({
   loader: () => myPlanFn(),
@@ -154,7 +155,9 @@ function PlanPanel({
           ))}
         </div>
         <div className="space-y-1">
-          <div className="font-medium">{t("plan.usage")}</div>
+          <div className="font-medium">
+            {t("plan.usage")} <HelpTip article="modules" anchor="plan-usage" />
+          </div>
           <div className="flex justify-between">
             <span className="text-muted">{t("plan.dialogs")}</span>
             <span className="tabular-nums">
@@ -184,7 +187,8 @@ function PlanPanel({
           {t("billing.open")}
         </Link>
         <label className="flex items-center gap-2 text-xs">
-          <span className="text-muted">{t("plan.payFor")}</span>
+          <span className="text-muted">{t("plan.payFor")}</span>{" "}
+          <HelpTip article="modules" anchor="plan-pay" />
           <select
             className="input py-1 text-xs"
             value={payPeriod}

@@ -1,3 +1,4 @@
+import { HelpTip } from "@/app/admin/help-panel";
 import { useState } from "react";
 import { saveCostFn } from "@/app/admin/cost.functions";
 import type { AdminT } from "@/app/i18n/admin";
@@ -65,7 +66,11 @@ export function CostEditor({
   return (
     <div>
       <div className="flex flex-wrap items-end gap-3">
-        <Field label={t("cost.price", { cur: currency })} hint={t("cost.priceHint")}>
+        <Field
+          label={t("cost.price", { cur: currency })}
+          hint={t("cost.priceHint")}
+          help={<HelpTip article="cost" anchor="cost" />}
+        >
           <input
             className={`input w-36 ${priceN === "invalid" ? "border-danger" : ""}`}
             inputMode="decimal"

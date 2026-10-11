@@ -7,6 +7,7 @@ import {
 } from "@/app/admin/community-promos.functions";
 import type { AdminKey, AdminT } from "@/app/i18n/admin";
 import { Card, Empty, ErrorBox, Field, useAction } from "@/app/ui";
+import { HelpTip } from "@/app/admin/help-panel";
 
 type Data = Extract<Awaited<ReturnType<typeof jointPromosFn>>, { soon: false }>;
 type Promo = Data["promos"][number];
@@ -82,7 +83,9 @@ export function CommunityPromos({
   }, []);
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted">{t("community.joint.intro")}</p>
+      <p className="text-sm text-muted">
+        {t("community.joint.intro")} <HelpTip article="community" anchor="joint" />
+      </p>
       <ErrorBox error={load.error} />
       {canWrite && (
         <button className="btn-primary" onClick={() => setCreating((v) => !v)}>

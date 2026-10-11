@@ -7,6 +7,7 @@ import { uploadFile } from "@/app/admin/upload-client";
 import { assistPostFn } from "@/app/admin/assistant.functions";
 import { Badge, Card, Empty, ErrorBox, Field, PageTitle, useAction } from "@/app/ui";
 import { CAPTION_MAX, mediaTypeOf, type PostKind } from "@/core/social/post-draft";
+import { HelpTip } from "@/app/admin/help-panel";
 
 export const Route = createFileRoute("/admin/_authed/posts")({
   // ?product=<id> — пришли из карточки товара: можно попросить ИИ написать пост о нём.
@@ -145,7 +146,11 @@ function PostForm({ data }: { data: Data }) {
           void publish.run().catch(() => {});
         }}
       >
-        <Field label={t("posts.kind")} hint={t(`posts.kindHint.${kind}`)}>
+        <Field
+          label={t("posts.kind")}
+          hint={t(`posts.kindHint.${kind}`)}
+          help={<HelpTip article="posts" anchor="kind" />}
+        >
           <div className="flex gap-2">
             {(["feed", "reel", "story"] as const).map((k) => (
               <button
@@ -163,7 +168,7 @@ function PostForm({ data }: { data: Data }) {
           </div>
         </Field>
 
-        <Field label={t("posts.accounts")}>
+        <Field label={t("posts.accounts")} help={<HelpTip article="posts" anchor="accounts" />}>
           <div className="space-y-1">
             {data.accounts.map((a) => (
               <label key={a.id} className="flex items-center gap-2 text-sm">
@@ -186,7 +191,10 @@ function PostForm({ data }: { data: Data }) {
 
         {product && kind !== "story" && (
           <div className="rounded-md border border-line p-3">
-            <p className="text-sm font-medium">{t("posts.assist.title")}</p>
+            <p className="flex items-center gap-1.5 text-sm font-medium">
+              {t("posts.assist.title")}
+              <HelpTip article="posts" anchor="assist" />
+            </p>
             <p className="mb-2 text-xs text-muted">{t("posts.assist.hint")}</p>
             <button
               type="button"
@@ -242,7 +250,11 @@ function PostForm({ data }: { data: Data }) {
           </div>
         </Field>
 
-        <Field label={t("posts.when")} hint={later ? t("posts.timezoneHint") : undefined}>
+        <Field
+          label={t("posts.when")}
+          hint={later ? t("posts.timezoneHint") : undefined}
+          help={<HelpTip article="posts" anchor="when" />}
+        >
           <div className="flex flex-wrap items-center gap-3 text-sm">
             <label className="flex items-center gap-1">
               <input type="radio" checked={!later} onChange={() => setLater(false)} />

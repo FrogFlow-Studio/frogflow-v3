@@ -2,6 +2,7 @@ import { useState } from "react";
 import { savePricelistPersonaFn } from "../pricelist.functions";
 import { Card, ErrorBox, Field, useAction } from "@/app/ui";
 import { type CardProps } from "./shared";
+import { HelpTip } from "@/app/admin/help-panel";
 
 /** Характер консультанта. */
 
@@ -21,7 +22,14 @@ export function PersonaCard({ t, data, canEdit, onDone }: CardProps) {
   const set = (k: keyof typeof persona, v: string) => setPersona((p) => ({ ...p, [k]: v }));
   const left = (k: keyof typeof persona) => lim[k] - persona[k].length;
   return (
-    <Card title={t("pricelist.persona.title")}>
+    <Card
+      title={
+        <span className="flex items-center gap-1.5">
+          {t("pricelist.persona.title")}
+          <HelpTip article="pricelist" anchor="persona" />
+        </span>
+      }
+    >
       <p className="mb-3 text-sm text-muted">{t("pricelist.persona.hint")}</p>
       <div className="space-y-3">
         <Field label={t("pricelist.persona.brand")}>

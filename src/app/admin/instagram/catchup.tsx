@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { catchupPrivateFn, catchupPublicFn, postCommentsFn } from "@/app/admin/instagram.functions";
+import { HelpTip } from "@/app/admin/help-panel";
 import { Badge, Card, ErrorBox, Field, useAction } from "@/app/ui";
 import { BLOCK_REASON, type Data, REPLY_STATUS, useAdminI18n } from "./shared";
 import { usePosts } from "./rule-form";
@@ -63,7 +64,14 @@ export function CatchupCard({ data }: { data: Data }) {
   const resultOf = (id: string) => results.find((r) => r.commentId === id);
 
   return (
-    <Card title={t("instagram.catchup.title")}>
+    <Card
+      title={
+        <span className="flex items-center gap-1.5">
+          {t("instagram.catchup.title")}
+          <HelpTip article="instagram" anchor="catchup" />
+        </span>
+      }
+    >
       <p className="mb-3 text-sm text-muted">{t("instagram.catchup.intro")}</p>
       <div className="flex flex-wrap gap-2">
         {data.accounts.length > 1 && (

@@ -1,6 +1,8 @@
 # To‘lovni qanday qabul qilish mumkin
 
 keywords: to‘lov, rekvizitlar, qr, chek, kaspi, o‘tkazma, pul, qanday to‘lash, xaridor to‘laydi
+group: start
+order: 4
 
 Xaridor buyurtmani sizning rekvizitlaringiz bo‘yicha to‘laydi va chek yuboradi. To‘lovni o‘zingiz tasdiqlaysiz yoki bot chekni avtomatik tekshiradi.
 

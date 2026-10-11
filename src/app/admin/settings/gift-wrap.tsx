@@ -4,6 +4,7 @@ import { giftWrapFn, saveGiftWrapFn } from "@/app/admin/gift-wrap.functions";
 import { adminT } from "@/app/i18n/admin";
 import { settingsRoute } from "./route";
 import { roleAllows } from "@/core/auth/roles";
+import { HelpTip } from "@/app/admin/help-panel";
 
 /**
  * Подарочная упаковка: включить и поставить цену в валюте магазина. Покупатель,
@@ -54,7 +55,7 @@ export function GiftWrapCard() {
             disabled={!owner || price === null}
             onChange={(e) => setOn(e.target.checked)}
           />
-          {t("settings.giftWrap.on")}
+          {t("settings.giftWrap.on")} <HelpTip article="settings-shop" anchor="gift-wrap" />
         </label>
         <label className="flex items-center gap-2 text-sm">
           <input
@@ -63,7 +64,7 @@ export function GiftWrapCard() {
             disabled={!owner || price === null}
             onChange={(e) => setAsk(e.target.checked)}
           />
-          {t("settings.giftWrap.ask")}
+          {t("settings.giftWrap.ask")} <HelpTip article="settings-shop" anchor="gift-wrap" />
         </label>
         <p className="-mt-2 text-xs text-muted">{t("settings.giftWrap.askHint")}</p>
         <Field label={t("settings.giftWrap.price", { cur: currency })}>

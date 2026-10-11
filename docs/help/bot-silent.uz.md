@@ -1,6 +1,8 @@
 # Bot nega javob bermayapti
 
 keywords: bot jim, javob bermayapti, ishlamayapti, xabar kelmayapti, vebxuk, token, telegram, instagram, whatsapp, avtojavob
+group: trouble
+order: 30
 
 Ketma-ket tekshiring.
 

@@ -13,6 +13,7 @@ import {
 } from "@/core/storefront/design";
 import { settingsRoute } from "./route";
 import { roleAllows } from "@/core/auth/roles";
+import { HelpTip } from "@/app/admin/help-panel";
 
 /**
  * Оформление витрины: тема, обложка и порядок блоков главной. Внизу — живой
@@ -116,6 +117,7 @@ export function DesignCard() {
             {t("settings.design.cover")}
             <span className="block text-xs text-muted">{t("settings.design.coverHint")}</span>
           </span>
+          <HelpTip article="settings-shop" anchor="design" />
         </label>
         <fieldset className="space-y-2" disabled={locked}>
           <legend className="label">{t("settings.design.photo")}</legend>

@@ -1,6 +1,8 @@
 # Instagram’ni qanday ulash mumkin
 
 keywords: instagram, insta, direct, akkauntni ulash, whatsapp, messenjer, avtorizatsiya, qayta ulash
+group: start
+order: 2
 
 Bot Direct’da xaridorlarga javob beradi, katalog va buyurtmalarni yuritadi, murakkab savollarni «Chat» orqali sizga uzatadi.
 

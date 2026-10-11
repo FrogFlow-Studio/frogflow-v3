@@ -1,3 +1,4 @@
+import { HelpTip } from "@/app/admin/help-panel";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { igImportCandidatesFn, igImportFn } from "@/app/admin/posts.functions";
@@ -67,6 +68,7 @@ function IgImportPage() {
           <div className="mb-4 flex flex-wrap gap-4 text-sm">
             <label className="flex items-center gap-2">
               {t("igImport.kind")}
+              <HelpTip article="products" anchor="ig-import" />
               <select
                 className="input w-auto"
                 value={kind}

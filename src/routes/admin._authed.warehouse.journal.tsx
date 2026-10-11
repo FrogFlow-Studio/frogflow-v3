@@ -1,3 +1,4 @@
+import { HelpTip } from "@/app/admin/help-panel";
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useState } from "react";
 import { journalFn, journalProductsFn } from "@/app/admin/warehouse.functions";
@@ -151,7 +152,10 @@ function JournalPage() {
                 </div>
               )}
             </div>
-            <Field label={t("journal.reason")}>
+            <Field
+              label={t("journal.reason")}
+              help={<HelpTip article="warehouse" anchor="journal" />}
+            >
               <select
                 className="input"
                 value={filter.reason}

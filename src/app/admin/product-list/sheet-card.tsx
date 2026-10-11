@@ -1,3 +1,4 @@
+import { HelpTip } from "@/app/admin/help-panel";
 import { useEffect, useState } from "react";
 import {
   catalogSheetFn,
@@ -77,7 +78,15 @@ export function SheetCard({
   const when = status ? new Date(status.at).toLocaleString(locale) : "";
   const connected = Boolean(info?.config);
   return (
-    <Card title={t("sheet.title")} className="mb-4">
+    <Card
+      title={
+        <span className="flex items-center gap-1.5">
+          {t("sheet.title")}
+          <HelpTip article="products" anchor="sheet" />
+        </span>
+      }
+      className="mb-4"
+    >
       <p className="mb-3 text-sm text-muted">{t("sheet.intro")}</p>
       <div className="flex flex-wrap gap-2">
         <input
@@ -105,6 +114,7 @@ export function SheetCard({
           onChange={(e) => setHideMissing(e.target.checked)}
         />
         {t("sheet.hideMissing")}
+        <HelpTip article="products" anchor="sheet-hide" />
       </label>
       <label className="mt-1 flex items-start gap-2 text-sm">
         <input
@@ -113,6 +123,7 @@ export function SheetCard({
           onChange={(e) => setOverwriteManual(e.target.checked)}
         />
         {t("sheet.overwriteManual")}
+        <HelpTip article="products" anchor="sheet-overwrite" />
       </label>
       <p className="mt-1 text-xs text-muted">{t("sheet.manualNote")}</p>
       <ErrorBox error={check.error ?? load.error ?? save.error ?? disconnect.error} />

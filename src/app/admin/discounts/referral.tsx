@@ -4,6 +4,7 @@ import { saveSettingsFn } from "@/app/admin/settings.functions";
 import { adminT } from "@/app/i18n/admin";
 import { Card, Empty, ErrorBox, Field, useAction } from "@/app/ui";
 import { referralReportFn } from "@/app/admin/loyalty.functions";
+import { HelpTip } from "@/app/admin/help-panel";
 
 /** Реферальная скидка и отчёт по приглашениям. */
 
@@ -17,7 +18,14 @@ export function ReferralCard({ percent, bot }: { percent: string; bot: string | 
     await router.invalidate();
   });
   return (
-    <Card title={t("discounts.referral.title")}>
+    <Card
+      title={
+        <span className="flex items-center gap-1.5">
+          {t("discounts.referral.title")}
+          <HelpTip article="discounts" anchor="referral" />
+        </span>
+      }
+    >
       <p className="mb-3 text-sm text-muted">
         {t("discounts.referral.intro", { link: bot ? ` (t.me/${bot}?start=ref_…)` : "" })}
       </p>

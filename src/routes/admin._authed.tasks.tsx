@@ -10,6 +10,7 @@ import { TaskItem } from "@/app/admin/workspace-ui";
 import { Empty, ErrorBox, PageTitle, useAction } from "@/app/ui";
 import { adminT, intlLocale, type AdminKey } from "@/app/i18n/admin";
 import { CONTACTS_MIN_ROLE, canEdit, roleAllows } from "@/core/auth/roles";
+import { HelpTip } from "@/app/admin/help-panel";
 
 /**
  * «Задачи» рабочего места консультанта (BOVI): покупатели, которых консультант
@@ -107,6 +108,7 @@ function TasksPage() {
             </option>
           ))}
         </select>
+        <HelpTip article="tasks" anchor="filter" />
       </div>
 
       {list.length === 0 ? (
@@ -163,7 +165,10 @@ function TasksPage() {
               </button>
             </div>
           )}
-          <p className="text-xs text-muted">{t("ws.tasks.limit")}</p>
+          <p className="flex items-center gap-1.5 text-xs text-muted">
+            {t("ws.tasks.limit")}
+            <HelpTip article="tasks" anchor="cleanup" />
+          </p>
         </div>
       )}
     </>

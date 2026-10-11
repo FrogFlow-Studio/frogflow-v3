@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { saveSettingsFn } from "@/app/admin/settings.functions";
 import { Card, ErrorBox, Field, Switch, useAction } from "@/app/ui";
 import { useT } from "./shared";
+import { HelpTip } from "@/app/admin/help-panel";
 
 /** Общий потолок автосообщений (корзина, похожие, возврат, воронка) на покупателя в сутки. */
 export function MarketingCapCard({ cap }: { cap: string }) {
@@ -19,7 +20,14 @@ export function MarketingCapCard({ cap }: { cap: string }) {
     await router.invalidate();
   });
   return (
-    <Card title={t("broadcasts.cap.title")}>
+    <Card
+      title={
+        <span className="flex items-center gap-1.5">
+          {t("broadcasts.cap.title")}
+          <HelpTip article="broadcasts" anchor="cap" />
+        </span>
+      }
+    >
       <p className="mb-3 text-sm text-muted">{t("broadcasts.cap.intro")}</p>
       <form
         className="flex items-end gap-2"
@@ -58,7 +66,14 @@ export function CartReminderCard({ hours, stats }: { hours: string; stats?: Auto
     await router.invalidate();
   });
   return (
-    <Card title={t("broadcasts.cart.title")}>
+    <Card
+      title={
+        <span className="flex items-center gap-1.5">
+          {t("broadcasts.cart.title")}
+          <HelpTip article="broadcasts" anchor="cart" />
+        </span>
+      }
+    >
       <p className="mb-3 text-sm text-muted">{t("broadcasts.cart.intro")}</p>
       <form
         className="flex items-end gap-2"
@@ -108,11 +123,14 @@ export function WinbackCard({ stats }: { stats?: AutoStats }) {
     <Card
       title={t("broadcasts.winback.title")}
       actions={
-        <Switch
-          checked={c.enabled}
-          onChange={(on) => setC({ ...c, enabled: on })}
-          label={t("broadcasts.winback.enabled")}
-        />
+        <div className="flex items-center gap-1.5">
+          <Switch
+            checked={c.enabled}
+            onChange={(on) => setC({ ...c, enabled: on })}
+            label={t("broadcasts.winback.enabled")}
+          />
+          <HelpTip article="broadcasts" anchor="winback" />
+        </div>
       }
     >
       <form
@@ -162,7 +180,11 @@ export function WinbackCard({ stats }: { stats?: AutoStats }) {
             />
           </Field>
         </div>
-        <Field label={t("broadcasts.winback.promo")} hint={t("broadcasts.winback.promoHint")}>
+        <Field
+          label={t("broadcasts.winback.promo")}
+          hint={t("broadcasts.winback.promoHint")}
+          help={<HelpTip article="broadcasts" anchor="winback" />}
+        >
           <input
             className="input w-48 uppercase"
             value={c.promo}
@@ -211,6 +233,7 @@ export function BirthdayCard() {
             onChange={(e) => set({ enabled: e.target.checked })}
           />
           {t("birthday.enabled")}
+          <HelpTip article="broadcasts" anchor="birthday" />
         </label>
         <Field label={t("birthday.text")} hint={t("birthday.textHint")}>
           <textarea
@@ -270,11 +293,14 @@ export function FunnelCard() {
     <Card
       title={t("broadcasts.funnel.title")}
       actions={
-        <Switch
-          checked={c.enabled}
-          onChange={(on) => setC({ ...c, enabled: on })}
-          label={t("broadcasts.winback.enabled")}
-        />
+        <div className="flex items-center gap-1.5">
+          <Switch
+            checked={c.enabled}
+            onChange={(on) => setC({ ...c, enabled: on })}
+            label={t("broadcasts.winback.enabled")}
+          />
+          <HelpTip article="broadcasts" anchor="funnel" />
+        </div>
       }
     >
       <form
@@ -306,6 +332,7 @@ export function FunnelCard() {
                   onChange={(e) => setStep(i, { catalogButton: e.target.checked })}
                 />
                 {t("broadcasts.funnel.catalogButton")}
+                <HelpTip article="broadcasts" anchor="funnel" />
               </label>
               <button
                 type="button"
@@ -350,6 +377,7 @@ export function FunnelCard() {
             onChange={(e) => setC({ ...c, stopOnOrder: e.target.checked })}
           />
           {t("broadcasts.funnel.stopOnOrder")}
+          <HelpTip article="broadcasts" anchor="funnel" />
         </label>
         <div className="flex items-center gap-3">
           <button className="btn-primary" disabled={save.busy}>

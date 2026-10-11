@@ -23,6 +23,7 @@ import {
   type ThemeChoice,
 } from "@/app/admin/settings/nav";
 import { lazyCard } from "@/app/admin/settings/lazy-card";
+import { HelpTip } from "@/app/admin/help-panel";
 import { roleAllows } from "@/core/auth/roles";
 import type { Locale } from "@/core/i18n/locale";
 import { DELIVERY_NOTE_MAX } from "@/core/delivery/note";
@@ -311,6 +312,7 @@ function SettingsPage() {
                     </Field>
                     <Field
                       label={t("settings.shop.adminChatId")}
+                      help={<HelpTip article="settings-shop" anchor="shop-name" />}
                       hint={t("settings.shop.adminChatIdHint", {
                         owner: ownerTelegramId ? ` (${ownerTelegramId})` : "",
                       })}
@@ -324,6 +326,7 @@ function SettingsPage() {
                     <div className="grid gap-3 sm:grid-cols-2">
                       <Field
                         label={t("settings.shop.currency")}
+                        help={<HelpTip article="settings-shop" anchor="shop-currency" />}
                         hint={t("settings.shop.currencyHint")}
                       >
                         <select
@@ -340,6 +343,7 @@ function SettingsPage() {
                       </Field>
                       <Field
                         label={t("settings.shop.timezone")}
+                        help={<HelpTip article="settings-shop" anchor="shop-currency" />}
                         hint={t("settings.shop.timezoneHint")}
                       >
                         <select
@@ -370,7 +374,11 @@ function SettingsPage() {
                       </Field>
                     )}
                     {sells && (
-                      <Field label={t("settings.shop.accent")} hint={t("settings.shop.accentHint")}>
+                      <Field
+                        label={t("settings.shop.accent")}
+                        help={<HelpTip article="settings-shop" anchor="shop-storefront" />}
+                        hint={t("settings.shop.accentHint")}
+                      >
                         <div className="flex items-center gap-3">
                           <input
                             type="checkbox"
@@ -389,6 +397,7 @@ function SettingsPage() {
                     {sells && shop.modules.web_storefront && (
                       <Field
                         label={t("settings.shop.webCheckout")}
+                        help={<HelpTip article="settings-shop" anchor="shop-storefront" />}
                         hint={t("settings.shop.webCheckoutHint")}
                       >
                         <input
@@ -403,6 +412,7 @@ function SettingsPage() {
                     {sells && shop.modules.web_storefront && (
                       <Field
                         label={t("settings.shop.tgLogin")}
+                        help={<HelpTip article="settings-shop" anchor="shop-storefront" />}
                         hint={t("settings.shop.tgLoginHint")}
                       >
                         <input
@@ -414,7 +424,10 @@ function SettingsPage() {
                         />
                       </Field>
                     )}
-                    <Field label={t("settings.shop.contactLink")}>
+                    <Field
+                      label={t("settings.shop.contactLink")}
+                      help={<HelpTip article="settings-shop" anchor="shop-contact" />}
+                    >
                       <input
                         className="input"
                         name="admin_contact_link"
@@ -425,6 +438,7 @@ function SettingsPage() {
                     {sells && shop.modules.loyalty && (
                       <Field
                         label={t("settings.shop.loyaltyPercent")}
+                        help={<HelpTip article="settings-shop" anchor="shop-loyalty" />}
                         hint={t("settings.shop.loyaltyHint")}
                       >
                         <input
@@ -440,6 +454,7 @@ function SettingsPage() {
                     {sells && shop.modules.loyalty && (
                       <Field
                         label={t("settings.shop.loyaltyMaxRedeem")}
+                        help={<HelpTip article="settings-shop" anchor="shop-loyalty" />}
                         hint={t("settings.shop.loyaltyMaxRedeemHint")}
                       >
                         <input
@@ -455,6 +470,7 @@ function SettingsPage() {
                     {sells && shop.modules.multi_language && (
                       <Field
                         label={t("settings.shop.langTiming")}
+                        help={<HelpTip article="settings-shop" anchor="shop-lang" />}
                         hint={t("settings.shop.langTimingHint")}
                       >
                         <select
@@ -468,7 +484,10 @@ function SettingsPage() {
                       </Field>
                     )}
                     {sells && (
-                      <Field label={t("settings.shop.instruction")}>
+                      <Field
+                        label={t("settings.shop.instruction")}
+                        help={<HelpTip article="settings-shop" anchor="shop-texts" />}
+                      >
                         <textarea
                           className="input"
                           name="instruction_caption"
@@ -480,6 +499,7 @@ function SettingsPage() {
                     {sells && (shop.modules.instagram || shop.modules.whatsapp) && (
                       <Field
                         label={t("settings.shop.deliveryNote")}
+                        help={<HelpTip article="settings-shop" anchor="shop-texts" />}
                         hint={t("settings.shop.deliveryNoteHint")}
                       >
                         <textarea

@@ -1,3 +1,4 @@
+import { HelpTip } from "@/app/admin/help-panel";
 import { useRouter, useRouteContext } from "@tanstack/react-router";
 import { useState } from "react";
 import {
@@ -54,7 +55,14 @@ export function ApprovalCard({
     await router.invalidate();
   });
   return (
-    <Card title={t("approval.title")}>
+    <Card
+      title={
+        <span className="flex items-center gap-1.5">
+          {t("approval.title")}
+          <HelpTip article="orders" anchor="approval" />
+        </span>
+      }
+    >
       {approval.status !== "none" && (
         <div className="mb-3 space-y-2">
           {photoUrl && (
@@ -148,7 +156,14 @@ export function RefundCard({
     await router.invalidate();
   });
   return (
-    <Card title={t("refund.title")}>
+    <Card
+      title={
+        <span className="flex items-center gap-1.5">
+          {t("refund.title")}
+          <HelpTip article="orders" anchor="refund" />
+        </span>
+      }
+    >
       {refunded > 0 && (
         <p className="mb-2 text-sm">
           {t("refund.done", { sum: formatMoney(refunded, o.currency) })}
@@ -203,11 +218,13 @@ export function RefundCard({
                 onChange={(e) => setRestock(e.target.checked)}
               />
               {t("refund.restock")}
+              <HelpTip article="orders" anchor="refund-restock" />
             </label>
           )}
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={notify} onChange={(e) => setNotify(e.target.checked)} />
             {t("refund.notify")}
+            <HelpTip article="orders" anchor="refund-notify" />
           </label>
           <p className="text-xs text-muted">{t("refund.hint")}</p>
           <ErrorBox error={run.error} />
@@ -254,10 +271,20 @@ export function PaymentCard({
   });
   const closed = o.status === "rejected" || o.status === "cancelled";
   return (
-    <Card title={t("physical.payTitle")}>
+    <Card
+      title={
+        <span className="flex items-center gap-1.5">
+          {t("physical.payTitle")}
+          <HelpTip article="orders" anchor="payment" />
+        </span>
+      }
+    >
       {balanceProofUrl && (
         <div className="mb-3 space-y-2 rounded-md bg-surface-2 p-3 text-sm">
-          <p>{t("order.balancePendingNote")}</p>
+          <p className="flex items-start gap-1.5">
+            {t("order.balancePendingNote")}
+            <HelpTip article="orders" anchor="balance-proof" />
+          </p>
           <a
             className="text-accent hover:underline"
             href={balanceProofUrl}
@@ -500,7 +527,14 @@ export function CourierCard({
     await router.invalidate();
   });
   return (
-    <Card title={t("courier.title")}>
+    <Card
+      title={
+        <span className="flex items-center gap-1.5">
+          {t("courier.title")}
+          <HelpTip article="orders" anchor="courier" />
+        </span>
+      }
+    >
       {courier && (
         <div className="mb-3 space-y-1 text-sm">
           <Badge tone="neutral">

@@ -1,3 +1,4 @@
+import { HelpTip } from "@/app/admin/help-panel";
 import { CONTACTS_MIN_ROLE, canEdit, roleAllows } from "@/core/auth/roles";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
@@ -597,7 +598,8 @@ function ChatPage() {
                           : `id ${selected.telegram_id}`)}
                     </span>
                     {selected.bot_paused_until && (
-                      <span className="block text-xs text-muted">
+                      <span className="flex items-center gap-1.5 text-xs text-muted">
+                        <HelpTip article="chat" anchor="resume-bot" />
                         {isIndefinite(selected.bot_paused_until)
                           ? t("chat.botPausedForever")
                           : t("chat.botPausedUntil", {
@@ -611,6 +613,7 @@ function ChatPage() {
                       </span>
                     )}
                     {window24 && <WindowBadge t={t} w={window24} />}
+                    {window24 && <HelpTip article="chat" anchor="window-24h" />}
                   </span>
                   {(canWrite || (ws && contacts && selected.user_key)) && (
                     <span className="flex flex-wrap items-center justify-end gap-2">
@@ -626,6 +629,7 @@ function ChatPage() {
                       )}
                       {canWrite && (
                         <>
+                          <HelpTip article="chat" anchor="assignee" />
                           <select
                             className="input h-8 w-auto py-0 text-xs"
                             aria-label={t("chat.assignee")}
@@ -686,6 +690,7 @@ function ChatPage() {
                           >
                             {selected.active ? t("chat.returnToBot") : t("chat.join")}
                           </button>
+                          <HelpTip article="chat" anchor="join" />
                         </>
                       )}
                     </span>
@@ -853,6 +858,9 @@ function ChatPage() {
                       >
                         {t("chat.send")}
                       </button>
+                      <span className="self-center">
+                        <HelpTip article="chat" anchor="reply" />
+                      </span>
                     </div>
                   </form>
                 )}

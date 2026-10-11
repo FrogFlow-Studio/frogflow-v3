@@ -4,6 +4,7 @@ import { Badge, Card, ErrorBox, Field, useAction } from "@/app/ui";
 import { type AdminKey, type AdminT } from "@/app/i18n/admin";
 import type { RateAttempt } from "@/core/consultant/pricelist/rate-attempts";
 import { type CardProps } from "./shared";
+import { HelpTip } from "@/app/admin/help-panel";
 
 /** Курс валюты прайса. */
 
@@ -41,7 +42,14 @@ export function RateCard({
   });
   const rate = data.rate;
   return (
-    <Card title={t("pricelist.rate.title")}>
+    <Card
+      title={
+        <span className="flex items-center gap-1.5">
+          {t("pricelist.rate.title")}
+          <HelpTip article="pricelist" anchor="rate" />
+        </span>
+      }
+    >
       {rate ? (
         <>
           <p className="text-lg font-semibold">

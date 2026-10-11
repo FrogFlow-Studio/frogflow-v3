@@ -1,3 +1,4 @@
+import { HelpTip } from "@/app/admin/help-panel";
 import { canEdit } from "@/core/auth/roles";
 import { createFileRoute, redirect, useNavigate, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
@@ -110,6 +111,7 @@ function ReviewsPage() {
             }
           />
           {t("reviews.withComment")}
+          <HelpTip article="reviews" anchor="filters" />
         </label>
         <label className="flex items-center gap-2 text-sm">
           <input
@@ -161,6 +163,7 @@ function ReviewsPage() {
       {canWrite && rows.some((r) => r.legacy) && (
         <div className="card mb-4 flex flex-wrap items-center gap-3 p-3 text-sm">
           <span className="min-w-0 flex-1 text-muted">{t("reviews.legacyHint")}</span>
+          <HelpTip article="reviews" anchor="legacy" />
           <button
             className="btn-secondary text-xs"
             disabled={legacy.busy}
@@ -239,6 +242,7 @@ function AskDays({ days, canWrite, t }: { days: number; canWrite: boolean; t: Ad
     <div className="card mb-4 space-y-2 p-3 text-sm">
       <div className="flex flex-wrap items-center gap-2">
         <label htmlFor="review-ask-days">{t("reviews.askDays")}</label>
+        <HelpTip article="reviews" anchor="ask-days" />
         <input
           id="review-ask-days"
           className="input w-20"
@@ -348,6 +352,7 @@ function ReviewCard({
         >
           {t(r.legacy ? "reviews.status.legacy" : `reviews.status.${r.status}`)}
         </span>
+        <HelpTip article="reviews" anchor="moderation" />
         {canWrite && r.status !== "approved" && (
           <button
             className="btn-secondary text-xs"
@@ -411,6 +416,7 @@ function ReviewCard({
               onChange={(e) => setToBuyer(e.target.checked)}
             />
             {t("reviews.toBuyer")}
+            <HelpTip article="reviews" anchor="reply-buyer" />
           </label>
           <label className="flex items-center gap-2 text-xs">
             <input
@@ -419,6 +425,7 @@ function ReviewCard({
               onChange={(e) => setToStore(e.target.checked)}
             />
             {t("reviews.toStore")}
+            <HelpTip article="reviews" anchor="reply-store" />
           </label>
           <div className="flex flex-wrap items-center gap-2">
             <button

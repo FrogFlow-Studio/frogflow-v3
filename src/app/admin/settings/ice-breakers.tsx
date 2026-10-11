@@ -5,6 +5,7 @@ import { ICE_BREAKER_QUESTION_MAX, type IceBreakersConfig } from "@/core/instagr
 import { adminT } from "@/app/i18n/admin";
 import { settingsRoute } from "./route";
 import { roleAllows } from "@/core/auth/roles";
+import { HelpTip } from "@/app/admin/help-panel";
 
 /**
  * Быстрые вопросы Instagram (core/instagram/ice-breakers): тумблер, по
@@ -31,11 +32,14 @@ export function IceBreakersCard() {
       title={t("settings.ib.title")}
       actions={
         s && (
-          <Switch
-            checked={s.enabled}
-            onChange={(on) => owner && setS({ ...s, enabled: on })}
-            label={t("settings.ib.enabled")}
-          />
+          <div className="flex items-center gap-2">
+            <Switch
+              checked={s.enabled}
+              onChange={(on) => owner && setS({ ...s, enabled: on })}
+              label={t("settings.ib.enabled")}
+            />
+            <HelpTip article="settings-channels" anchor="ice-breakers" />
+          </div>
         )
       }
     >

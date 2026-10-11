@@ -9,6 +9,7 @@ import { storyPostsFn } from "@/app/admin/instagram.functions";
 import { PICKER_LIMIT } from "@/core/catalog/picker";
 import { Card, ErrorBox, useAction } from "@/app/ui";
 import { type AdminT } from "@/app/i18n/admin";
+import { HelpTip } from "@/app/admin/help-panel";
 
 /** Метки историй Instagram. */
 
@@ -99,7 +100,14 @@ export function StoriesCard({ t }: { t: AdminT }) {
   const source = found?.source ?? data?.source;
   const money = (n: number | null) => (n != null ? ` · ${n.toLocaleString("ru-RU")}` : "");
   return (
-    <Card title={t("consultant.stories.title")}>
+    <Card
+      title={
+        <span className="flex items-center gap-1.5">
+          {t("consultant.stories.title")}
+          <HelpTip article="consultant" anchor="stories" />
+        </span>
+      }
+    >
       <p className="mb-3 text-sm text-muted">{t("consultant.stories.intro")}</p>
       <form
         className="space-y-2"

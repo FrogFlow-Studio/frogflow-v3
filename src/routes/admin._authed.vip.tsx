@@ -14,6 +14,7 @@ import {
 } from "@/app/admin/vip.functions";
 import { adminT, intlLocale, type AdminKey, type AdminT } from "@/app/i18n/admin";
 import { Badge, Card, Empty, ErrorBox, Field, PageTitle, Switch, useAction } from "@/app/ui";
+import { HelpTip } from "@/app/admin/help-panel";
 
 export const Route = createFileRoute("/admin/_authed/vip")({
   loader: () => vipStateFn(),
@@ -72,7 +73,12 @@ function BotCard({ state, t }: { state: State; t: AdminT }) {
   const ok = state.bot.connected && state.bot.webhookOk;
   return (
     <Card
-      title={t("vip.bot.title")}
+      title={
+        <span className="flex items-center gap-1.5">
+          {t("vip.bot.title")}
+          <HelpTip article="vip" anchor="bot" />
+        </span>
+      }
       actions={
         state.bot.connected ? (
           <Badge tone={ok ? "ok" : "warn"}>
@@ -164,7 +170,14 @@ function SettingsCard({ state, t }: { state: State; t: AdminT }) {
   });
   const unit = test ? t("vip.settings.unitMin") : t("vip.settings.unitDays");
   return (
-    <Card title={t("vip.settings.title")}>
+    <Card
+      title={
+        <span className="flex items-center gap-1.5">
+          {t("vip.settings.title")}
+          <HelpTip article="vip" anchor="settings" />
+        </span>
+      }
+    >
       <form
         className="space-y-3"
         onSubmit={(e) => {
@@ -199,9 +212,15 @@ function SettingsCard({ state, t }: { state: State; t: AdminT }) {
         <div className="flex items-center gap-3">
           <Switch checked={test} onChange={setTest} label={t("vip.settings.testMode")} />
           <span className="text-sm">{test ? t("vip.settings.on") : t("vip.settings.off")}</span>
+          <span className="text-sm text-muted">{t("vip.settings.testMode")}</span>
+          <HelpTip article="vip" anchor="test-mode" />
         </div>
         <div>
-          <Switch checked={auto} onChange={setAuto} label={t("vip.settings.autoConfirm")} />
+          <div className="flex items-center gap-3">
+            <Switch checked={auto} onChange={setAuto} label={t("vip.settings.autoConfirm")} />
+            <span className="text-sm">{t("vip.settings.autoConfirm")}</span>
+            <HelpTip article="vip" anchor="auto-confirm" />
+          </div>
           <p className="mt-1 text-sm text-muted">{t("vip.settings.autoConfirmHint")}</p>
           {auto && !state.autoCheckReady && (
             <p className="mt-1 text-sm text-warn">{t("vip.settings.autoConfirmUnavailable")}</p>
@@ -278,7 +297,12 @@ function TariffsCard({ state, t }: { state: State; t: AdminT }) {
     state.bot.username ? `https://t.me/${state.bot.username}?start=t_${tariff.id}` : null;
   return (
     <Card
-      title={t("vip.tariffs.title")}
+      title={
+        <span className="flex items-center gap-1.5">
+          {t("vip.tariffs.title")}
+          <HelpTip article="vip" anchor="tariffs" />
+        </span>
+      }
       actions={
         <button
           type="button"
@@ -425,21 +449,33 @@ function TariffsCard({ state, t }: { state: State; t: AdminT }) {
             />
           </Field>
           <div className="flex flex-wrap items-center gap-4 pt-5">
-            <Switch
-              checked={editing.is_active}
-              onChange={(v) => setEditing({ ...editing, is_active: v })}
-              label={t("vip.tariffs.form.active")}
-            />
-            <Switch
-              checked={editing.is_public}
-              onChange={(v) => setEditing({ ...editing, is_public: v })}
-              label={t("vip.tariffs.form.public")}
-            />
-            <Switch
-              checked={editing.is_entry}
-              onChange={(v) => setEditing({ ...editing, is_entry: v })}
-              label={t("vip.tariffs.form.entry")}
-            />
+            <div className="flex items-center gap-1.5">
+              <Switch
+                checked={editing.is_active}
+                onChange={(v) => setEditing({ ...editing, is_active: v })}
+                label={t("vip.tariffs.form.active")}
+              />
+              <span className="text-sm">{t("vip.tariffs.form.active")}</span>
+              <HelpTip article="vip" anchor="tariff-flags" />
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Switch
+                checked={editing.is_public}
+                onChange={(v) => setEditing({ ...editing, is_public: v })}
+                label={t("vip.tariffs.form.public")}
+              />
+              <span className="text-sm">{t("vip.tariffs.form.public")}</span>
+              <HelpTip article="vip" anchor="tariff-flags" />
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Switch
+                checked={editing.is_entry}
+                onChange={(v) => setEditing({ ...editing, is_entry: v })}
+                label={t("vip.tariffs.form.entry")}
+              />
+              <span className="text-sm">{t("vip.tariffs.form.entry")}</span>
+              <HelpTip article="vip" anchor="tariff-flags" />
+            </div>
           </div>
           <div className="flex gap-2 md:col-span-2">
             <button className="btn-primary" disabled={save.busy}>
@@ -520,7 +556,12 @@ function SubscribersCard({ state, t, locale }: { state: State; t: AdminT; locale
   const pending = state.subscriptions.filter((s) => s.status === "pending_payment").length;
   return (
     <Card
-      title={t("vip.subs.title")}
+      title={
+        <span className="flex items-center gap-1.5">
+          {t("vip.subs.title")}
+          <HelpTip article="vip" anchor="subscribers" />
+        </span>
+      }
       actions={
         pending > 0 ? (
           <Badge tone="warn">{t("vip.subs.pendingCount", { n: pending })}</Badge>
@@ -697,7 +738,10 @@ function SubscribersCard({ state, t, locale }: { state: State; t: AdminT; locale
             .catch(() => {});
         }}
       >
-        <div className="md:col-span-4 text-sm font-medium">{t("vip.subs.add.title")}</div>
+        <div className="flex items-center gap-1.5 text-sm font-medium md:col-span-4">
+          {t("vip.subs.add.title")}
+          <HelpTip article="vip" anchor="manual" />
+        </div>
         <Field label={t("vip.subs.add.telegramId")}>
           <input className="input" name="telegram_id" type="number" min={1} required />
         </Field>

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { savePricelistSettingsFn } from "../pricelist.functions";
 import { Card, ErrorBox, Field, useAction } from "@/app/ui";
 import { type CardProps } from "./shared";
+import { HelpTip } from "@/app/admin/help-panel";
 
 /** Настройки прайса. */
 
@@ -23,7 +24,14 @@ export function SettingsCard({ t, data, canEdit, onDone }: CardProps) {
     await onDone();
   });
   return (
-    <Card title={t("pricelist.settings.title")}>
+    <Card
+      title={
+        <span className="flex items-center gap-1.5">
+          {t("pricelist.settings.title")}
+          <HelpTip article="pricelist" anchor="settings" />
+        </span>
+      }
+    >
       <div className="space-y-3">
         <Field label={t("pricelist.settings.synonyms")} hint={t("pricelist.settings.synonymsHint")}>
           <textarea
@@ -68,7 +76,10 @@ export function SettingsCard({ t, data, canEdit, onDone }: CardProps) {
             />
           </Field>
         </div>
-        <p className="label">{t("pricelist.settings.workHours")}</p>
+        <p className="label flex items-center gap-1.5">
+          {t("pricelist.settings.workHours")}
+          <HelpTip article="pricelist" anchor="work-hours" />
+        </p>
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label={t("pricelist.settings.open")}>
             <input
@@ -102,7 +113,10 @@ export function SettingsCard({ t, data, canEdit, onDone }: CardProps) {
             onChange={(e) => setFollowUp(e.target.checked)}
           />
           <span>
-            {t("pricelist.settings.followUp")}
+            <span className="flex items-center gap-1.5">
+              {t("pricelist.settings.followUp")}
+              <HelpTip article="pricelist" anchor="follow-up" />
+            </span>
             <span className="block text-xs text-muted">{t("pricelist.settings.followUpHint")}</span>
           </span>
         </label>
@@ -115,7 +129,10 @@ export function SettingsCard({ t, data, canEdit, onDone }: CardProps) {
             onChange={(e) => setQualityDigest(e.target.checked)}
           />
           <span>
-            {t("pricelist.settings.digest")}
+            <span className="flex items-center gap-1.5">
+              {t("pricelist.settings.digest")}
+              <HelpTip article="pricelist" anchor="digest" />
+            </span>
             <span className="block text-xs text-muted">{t("pricelist.settings.digestHint")}</span>
           </span>
         </label>
@@ -128,7 +145,10 @@ export function SettingsCard({ t, data, canEdit, onDone }: CardProps) {
             onChange={(e) => setTaskReminders(e.target.checked)}
           />
           <span>
-            {t("pricelist.settings.taskReminders")}
+            <span className="flex items-center gap-1.5">
+              {t("pricelist.settings.taskReminders")}
+              <HelpTip article="pricelist" anchor="task-reminders" />
+            </span>
             <span className="block text-xs text-muted">
               {t("pricelist.settings.taskRemindersHint")}
             </span>

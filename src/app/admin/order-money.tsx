@@ -1,3 +1,4 @@
+import { HelpTip } from "@/app/admin/help-panel";
 import { useRouteContext } from "@tanstack/react-router";
 import { adminT, intlLocale } from "@/app/i18n/admin";
 import { Badge, Card } from "@/app/ui";
@@ -53,7 +54,14 @@ export function MoneyBlock({
     });
   const rowLabel = (r: MoneyRow) => t(`money.kind.${r.kind}` as Parameters<typeof t>[0]);
   return (
-    <Card title={t("money.title")}>
+    <Card
+      title={
+        <span className="flex items-center gap-1.5">
+          {t("money.title")}
+          <HelpTip article="orders" anchor="money" />
+        </span>
+      }
+    >
       <dl className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1 text-sm">
         <dt className="text-muted">{t("money.total")}</dt>
         <dd className="text-right font-medium tabular-nums" data-testid="money-total">
@@ -114,7 +122,10 @@ export function MoneyBlock({
         </p>
       )}
       <div className="mt-3 border-t border-line pt-3">
-        <h3 className="mb-2 text-xs font-semibold text-muted">{t("money.journal")}</h3>
+        <h3 className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-muted">
+          {t("money.journal")}
+          <HelpTip article="orders" anchor="money-journal" />
+        </h3>
         {money.rows.length === 0 ? (
           <p className="text-sm text-muted">{t("money.journalEmpty")}</p>
         ) : (
@@ -162,7 +173,10 @@ export function MoneyBlock({
         )}
       </div>
       <div className="mt-3 border-t border-line pt-3 text-sm">
-        <h3 className="mb-2 text-xs font-semibold text-muted">{t("order.proof")}</h3>
+        <h3 className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-muted">
+          {t("order.proof")}
+          <HelpTip article="orders" anchor="proof" />
+        </h3>
         {proofUrl ? (
           /\.(pdf)(\?|$)/i.test(o.payment_proof_path ?? "") ? (
             <a

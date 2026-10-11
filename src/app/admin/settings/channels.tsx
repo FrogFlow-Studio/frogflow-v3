@@ -20,6 +20,7 @@ import type { InstallError } from "@/channels/telegram/bot-check";
 import { adminT, intlLocale, type AdminKey } from "@/app/i18n/admin";
 import { settingsRoute } from "./route";
 import { roleAllows } from "@/core/auth/roles";
+import { HelpTip } from "@/app/admin/help-panel";
 
 type TelegramState = Awaited<ReturnType<typeof telegramStateFn>>;
 type BotCheckState = Awaited<ReturnType<typeof checkBotFn>>;
@@ -53,6 +54,7 @@ function BotCheckPanel() {
         >
           {t("settings.tg.checkBot")}
         </button>
+        <HelpTip article="settings-channels" anchor="telegram-check" />
         {check && !check.ok && !check.skipped && (
           <button
             type="button"
@@ -404,11 +406,14 @@ export function DirectBotCard({ platform }: { platform: "instagram" | "whatsapp"
       actions={
         s &&
         sells && (
-          <Switch
-            checked={s.enabled}
-            onChange={(on) => owner && setS({ ...s, enabled: on })}
-            label={t("settings.dbot.enabled")}
-          />
+          <div className="flex items-center gap-2">
+            <Switch
+              checked={s.enabled}
+              onChange={(on) => owner && setS({ ...s, enabled: on })}
+              label={t("settings.dbot.enabled")}
+            />
+            <HelpTip article="settings-channels" anchor="dbot-enabled" />
+          </div>
         )
       }
     >
@@ -434,7 +439,10 @@ export function DirectBotCard({ platform }: { platform: "instagram" | "whatsapp"
             </p>
           )}
           {sells && (
-            <Field label={t("settings.dbot.scope")}>
+            <Field
+              label={t("settings.dbot.scope")}
+              help={<HelpTip article="settings-channels" anchor="dbot-scope" />}
+            >
               <div className="space-y-1 text-sm">
                 {(["purchases", "all"] as const).map((v) => (
                   <label key={v} className="flex items-start gap-2">
@@ -457,7 +465,11 @@ export function DirectBotCard({ platform }: { platform: "instagram" | "whatsapp"
             </Field>
           )}
           {sells && (
-            <Field label={t("settings.dbot.triggers")} hint={t("settings.dbot.triggersHint")}>
+            <Field
+              label={t("settings.dbot.triggers")}
+              help={<HelpTip article="settings-channels" anchor="dbot-triggers" />}
+              hint={t("settings.dbot.triggersHint")}
+            >
               <input
                 className="input"
                 value={s.triggersText}
@@ -470,6 +482,7 @@ export function DirectBotCard({ platform }: { platform: "instagram" | "whatsapp"
           {pauseApplies && (
             <Field
               label={t("settings.dbot.sellerPause")}
+              help={<HelpTip article="settings-channels" anchor="dbot-pause" />}
               hint={t(
                 sells ? "settings.dbot.sellerPauseHint" : "settings.dbot.sellerPauseHintConsultant",
               )}
@@ -491,7 +504,11 @@ export function DirectBotCard({ platform }: { platform: "instagram" | "whatsapp"
             </Field>
           )}
           {sells && (
-            <Field label={t("settings.dbot.script")} hint={t("settings.dbot.scriptHint")}>
+            <Field
+              label={t("settings.dbot.script")}
+              help={<HelpTip article="settings-channels" anchor="dbot-triggers" />}
+              hint={t("settings.dbot.scriptHint")}
+            >
               <textarea
                 className="input min-h-20"
                 value={s.script}
@@ -502,7 +519,10 @@ export function DirectBotCard({ platform }: { platform: "instagram" | "whatsapp"
             </Field>
           )}
           {sells && (
-            <Field label={t("settings.dbot.features")}>
+            <Field
+              label={t("settings.dbot.features")}
+              help={<HelpTip article="settings-channels" anchor="dbot-features" />}
+            >
               <div className="grid grid-cols-2 gap-1">
                 {feature("catalog", t("settings.dbot.feature.catalog"))}
                 {feature("search", t("settings.dbot.feature.search"))}
@@ -512,7 +532,10 @@ export function DirectBotCard({ platform }: { platform: "instagram" | "whatsapp"
               {platform === "instagram" && (
                 <div className="mt-1">
                   {feature("express", t("settings.dbot.feature.express"))}
-                  <p className="text-xs text-muted">{t("settings.dbot.feature.expressHint")}</p>
+                  <p className="text-xs text-muted">
+                    {t("settings.dbot.feature.expressHint")}{" "}
+                    <HelpTip article="settings-channels" anchor="dbot-express" />
+                  </p>
                 </div>
               )}
             </Field>
@@ -526,10 +549,12 @@ export function DirectBotCard({ platform }: { platform: "instagram" | "whatsapp"
                   disabled={!owner}
                   onChange={(e) => setS({ ...s, ignoreExcluded: e.target.checked })}
                 />
-                {t("settings.dbot.ignoreExcluded")}
+                {t("settings.dbot.ignoreExcluded")}{" "}
+                <HelpTip article="settings-channels" anchor="dbot-wa-extra" />
               </label>
               <Field
                 label={t("settings.dbot.notifyTemplate")}
+                help={<HelpTip article="settings-channels" anchor="dbot-wa-extra" />}
                 hint={t("settings.dbot.notifyTemplateHint")}
               >
                 <input

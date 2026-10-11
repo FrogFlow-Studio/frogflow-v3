@@ -6,6 +6,7 @@ import { TgText } from "@/app/admin/tg-html";
 import { adminT } from "@/app/i18n/admin";
 import { Card, Empty, ErrorBox, Field, PageTitle, useAction } from "@/app/ui";
 import { localeFlags, localeNames, SUPPORTED_LOCALES } from "@/core/i18n/locale";
+import { HelpTip } from "@/app/admin/help-panel";
 
 export const Route = createFileRoute("/admin/_authed/bot-preview")({
   validateSearch: z.object({
@@ -70,7 +71,10 @@ function BotPreviewPage() {
         <Card className="self-start">
           <div className="space-y-4">
             {data.locales.length > 1 && (
-              <Field label={t("botPreview.language")}>
+              <Field
+                label={t("botPreview.language")}
+                help={<HelpTip article="bot-preview" anchor="language" />}
+              >
                 <select
                   className="input"
                   value={data.locale}
@@ -94,7 +98,11 @@ function BotPreviewPage() {
               </div>
             )}
             {data.sells && (
-              <Field label={t("botPreview.product")} hint={p ? p.name : undefined}>
+              <Field
+                label={t("botPreview.product")}
+                help={<HelpTip article="bot-preview" anchor="product" />}
+                hint={p ? p.name : undefined}
+              >
                 <form
                   className="flex gap-2"
                   onSubmit={(e) => {

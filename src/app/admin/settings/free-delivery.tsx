@@ -4,6 +4,7 @@ import { freeDeliveryFn, saveFreeDeliveryFn } from "@/app/admin/free-delivery.fu
 import { adminT } from "@/app/i18n/admin";
 import { settingsRoute } from "./route";
 import { roleAllows } from "@/core/auth/roles";
+import { HelpTip } from "@/app/admin/help-panel";
 
 const num = (v: string) => Number(v.replace(",", ".")) || 0;
 
@@ -51,6 +52,7 @@ export function FreeDeliveryCard() {
         <p className="text-sm text-muted">{t("settings.freeDelivery.intro")}</p>
         <Field
           label={t("settings.freeDelivery.general", { cur: currency })}
+          help={<HelpTip article="settings-payment" anchor="free-delivery" />}
           hint={t("settings.freeDelivery.hint")}
         >
           <input

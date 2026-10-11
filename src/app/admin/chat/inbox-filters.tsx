@@ -1,3 +1,4 @@
+import { HelpTip } from "@/app/admin/help-panel";
 import { type AdminT } from "@/app/i18n/admin";
 import { type InboxFilter } from "@/core/inbox/inbox";
 
@@ -57,6 +58,9 @@ export function InboxFilters({
       >
         {`${t("chat.fUnread")} · ${counts.unread}`}
       </button>
+      <span className="self-center">
+        <HelpTip article="chat" anchor="filters" />
+      </span>
       <input
         type="search"
         className="input h-8 w-48 py-0 text-sm"

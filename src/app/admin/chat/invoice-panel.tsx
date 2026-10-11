@@ -1,3 +1,4 @@
+import { HelpTip } from "@/app/admin/help-panel";
 import { useEffect, useState } from "react";
 import { chatInvoiceFn, invoiceCartFn, invoiceProductsFn } from "@/app/admin/chat.functions";
 import { type AdminT } from "@/app/i18n/admin";
@@ -78,7 +79,10 @@ export function InvoicePanel({
     <div className="max-h-[50%] overflow-y-auto border-t border-line p-3">
       <ErrorBox error={search.error ?? loadCart.error ?? send.error} />
       <div className="mb-2 flex items-center justify-between gap-2">
-        <p className="text-sm font-medium">{t("chat.invoice")}</p>
+        <p className="flex items-center gap-1.5 text-sm font-medium">
+          {t("chat.invoice")}
+          <HelpTip article="chat" anchor="invoice" />
+        </p>
         <button type="button" className="btn-secondary text-xs" onClick={onClose}>
           {t("chat.invoiceClose")}
         </button>
@@ -96,6 +100,7 @@ export function InvoicePanel({
           <label className="mt-1 flex items-center gap-2">
             <input type="checkbox" checked={append} onChange={(e) => setAppend(e.target.checked)} />
             {t("chat.invoiceAppend")}
+            <HelpTip article="chat" anchor="invoice-append" />
           </label>
         </div>
       )}

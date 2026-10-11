@@ -1,3 +1,4 @@
+import { HelpTip } from "@/app/admin/help-panel";
 import { canEdit } from "@/core/auth/roles";
 import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
@@ -152,6 +153,7 @@ function OverdueSetting({
       <label htmlFor="overdue" className="text-muted">
         {t("tickets.overdue.label")}
       </label>
+      <HelpTip article="tickets" anchor="overdue" />
       <select
         id="overdue"
         className="input w-auto"
@@ -308,6 +310,7 @@ function TicketCard({
       {open && (
         <div className="mt-4 space-y-4 border-t border-line pt-4">
           <div className="flex flex-wrap items-center gap-2">
+            <HelpTip article="tickets" anchor="status" />
             {(["open", "waiting", "closed"] as const).map((s) => (
               <button
                 key={s}
@@ -324,7 +327,10 @@ function TicketCard({
             </Link>
           </div>
           <label className="block text-sm">
-            <span className="mb-1 block text-muted">{t("tickets.assignee")}</span>
+            <span className="mb-1 flex items-center gap-1.5 text-muted">
+              {t("tickets.assignee")}
+              <HelpTip article="tickets" anchor="assignee" />
+            </span>
             <select
               className="input w-full sm:w-72"
               value={tk.assignee ?? ""}

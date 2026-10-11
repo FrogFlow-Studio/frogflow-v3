@@ -3,6 +3,7 @@ import { importPricelistDriveFn, importPricelistFn } from "../pricelist.function
 import { Card, ErrorBox, Field, useAction } from "@/app/ui";
 import { type AdminT } from "@/app/i18n/admin";
 import { type CardProps, type ImportResult, type Pending, rawBase64, readCsv } from "./shared";
+import { HelpTip } from "@/app/admin/help-panel";
 
 /** Загрузка прайса файлом. */
 
@@ -34,7 +35,14 @@ export function FileCard({
     else await onDone();
   });
   return (
-    <Card title={t("pricelist.file.title")}>
+    <Card
+      title={
+        <span className="flex items-center gap-1.5">
+          {t("pricelist.file.title")}
+          <HelpTip article="pricelist" anchor="file" />
+        </span>
+      }
+    >
       <p className="mb-3 text-sm text-muted">{t("pricelist.file.hint")}</p>
       {data.meta ? (
         <p className="text-sm">

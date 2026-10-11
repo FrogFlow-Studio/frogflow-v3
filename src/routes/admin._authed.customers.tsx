@@ -1,3 +1,4 @@
+import { HelpTip } from "@/app/admin/help-panel";
 import { canEdit } from "@/core/auth/roles";
 import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
@@ -97,7 +98,11 @@ function CustomersPage() {
                 <th>{t("customers.col.contacts")}</th>
                 {sells && <th className="text-right">{t("customers.col.points")}</th>}
                 <th>{t("customers.col.since")}</th>
-                {shop.modules.blocked && <th></th>}
+                {shop.modules.blocked && (
+                  <th className="text-right">
+                    <HelpTip article="customers" anchor="block" />
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody>

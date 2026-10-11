@@ -3,6 +3,7 @@ import { useState } from "react";
 import { deletePromoCodeFn, promoCodesFn, savePromoCodeFn } from "@/app/admin/promos.functions";
 import { adminT, intlLocale } from "@/app/i18n/admin";
 import { Badge, Card, Empty, ErrorBox, Field, useAction } from "@/app/ui";
+import { HelpTip } from "@/app/admin/help-panel";
 
 /** Промокоды. */
 
@@ -39,7 +40,12 @@ export function PromoCard({ promos }: { promos: Promo[] }) {
   const cur = editing === "new" ? null : editing;
   return (
     <Card
-      title={t("discounts.promo.title")}
+      title={
+        <span className="flex items-center gap-1.5">
+          {t("discounts.promo.title")}
+          <HelpTip article="discounts" anchor="promo" />
+        </span>
+      }
       actions={
         <button className="btn-secondary text-xs" onClick={() => setEditing("new")}>
           {t("discounts.promo.new")}
@@ -124,7 +130,10 @@ export function PromoCard({ promos }: { promos: Promo[] }) {
                 placeholder="SALE10"
               />
             </Field>
-            <Field label={t("discounts.promo.type")}>
+            <Field
+              label={t("discounts.promo.type")}
+              help={<HelpTip article="discounts" anchor="promo" />}
+            >
               <select
                 className="input"
                 name="discountType"
@@ -165,6 +174,7 @@ export function PromoCard({ promos }: { promos: Promo[] }) {
             <label className="flex items-center gap-2 self-end pb-2 text-sm">
               <input type="checkbox" name="isActive" defaultChecked={cur?.is_active ?? true} />{" "}
               {t("discounts.promo.active")}
+              <HelpTip article="discounts" anchor="promo-active" />
             </label>
             <label className="flex items-center gap-2 self-end pb-2 text-sm">
               <input
@@ -173,6 +183,7 @@ export function PromoCard({ promos }: { promos: Promo[] }) {
                 defaultChecked={cur?.once_per_buyer ?? false}
               />{" "}
               {t("discounts.promo.oncePerBuyer")}
+              <HelpTip article="discounts" anchor="promo-once" />
             </label>
           </div>
           <ErrorBox error={save.error} />

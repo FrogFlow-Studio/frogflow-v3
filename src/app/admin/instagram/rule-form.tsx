@@ -14,6 +14,7 @@ import {
   type RuleFormValues,
   type RuleTarget,
 } from "@/app/admin/instagram-rule-form";
+import { HelpTip } from "@/app/admin/help-panel";
 import { Card, ErrorBox, Field, Switch, useAction } from "@/app/ui";
 import {
   buyButtonProductIds,
@@ -239,7 +240,10 @@ function ButtonsEditor({
       )}
       {sells && picking && buttons.length < 3 && (
         <div className="space-y-1">
-          <p className="text-xs text-muted">{t("instagram.buttons.productHint")}</p>
+          <p className="flex items-center gap-1.5 text-xs text-muted">
+            {t("instagram.buttons.productHint")}
+            <HelpTip article="instagram" anchor="buy-button" />
+          </p>
           <ProductSearch
             t={t}
             autoFocus
@@ -422,7 +426,10 @@ export function RuleForm({
             />
           </Field>
           {data.accounts.length > 1 ? (
-            <Field label={t("instagram.form.account")}>
+            <Field
+              label={t("instagram.form.account")}
+              help={<HelpTip article="instagram" anchor="trigger" />}
+            >
               <select
                 className="input"
                 value={accountId}
@@ -439,7 +446,10 @@ export function RuleForm({
               </select>
             </Field>
           ) : (
-            <Field label={t("instagram.form.trigger")}>
+            <Field
+              label={t("instagram.form.trigger")}
+              help={<HelpTip article="instagram" anchor="trigger" />}
+            >
               <select
                 className="input"
                 value={trigger}
@@ -452,12 +462,20 @@ export function RuleForm({
           )}
         </div>
         {trigger === "comment" && (
-          <Field label={t("instagram.form.post")} hint={t("instagram.form.postHint")}>
+          <Field
+            label={t("instagram.form.post")}
+            hint={t("instagram.form.postHint")}
+            help={<HelpTip article="instagram" anchor="post" />}
+          >
             <PostPicker accountId={accountId} value={target} onChange={setTarget} />
           </Field>
         )}
         <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_10rem]">
-          <Field label={t("instagram.form.keywords")} hint={t("instagram.form.keywordsHint")}>
+          <Field
+            label={t("instagram.form.keywords")}
+            hint={t("instagram.form.keywordsHint")}
+            help={<HelpTip article="instagram" anchor="keywords" />}
+          >
             <input
               className="input"
               value={keywords}
@@ -466,7 +484,10 @@ export function RuleForm({
               placeholder={t("instagram.form.keywordsPlaceholder")}
             />
           </Field>
-          <Field label={t("instagram.form.match")}>
+          <Field
+            label={t("instagram.form.match")}
+            help={<HelpTip article="instagram" anchor="keywords" />}
+          >
             <select
               className="input"
               value={matchMode}
@@ -485,9 +506,14 @@ export function RuleForm({
               label={t("instagram.form.replyToAll")}
             />
             <span className="text-sm">{t("instagram.form.replyToAllHint")}</span>
+            <HelpTip article="instagram" anchor="reply-to-all" />
           </div>
         )}
-        <Field label={t("instagram.form.dmMessage")} hint={`${firstLength} / ${limit}`}>
+        <Field
+          label={t("instagram.form.dmMessage")}
+          hint={`${firstLength} / ${limit}`}
+          help={<HelpTip article="instagram" anchor="dm-message" />}
+        >
           <textarea
             className="input min-h-28"
             value={dmMessage}
@@ -498,7 +524,10 @@ export function RuleForm({
           />
         </Field>
         <div>
-          <span className="label">{t("instagram.form.buttons")}</span>
+          <span className="label flex items-center gap-1.5">
+            {t("instagram.form.buttons")}
+            <HelpTip article="instagram" anchor="buttons" />
+          </span>
           <ButtonsEditor
             buttons={buttons}
             onChange={setButtons}
@@ -515,12 +544,14 @@ export function RuleForm({
               label={t("instagram.form.twoStep")}
             />
             <span className="text-sm">{t("instagram.form.twoStepLabel")}</span>
+            <HelpTip article="instagram" anchor="two-step" />
           </div>
           <p className="mt-1 text-xs text-muted">{t("instagram.form.twoStepHint")}</p>
           {twoStepOn && (
             <Field
               label={t("instagram.form.replyPrompt")}
               hint={t("instagram.form.replyPromptHint")}
+              help={<HelpTip article="instagram" anchor="reply-prompt" />}
             >
               <input
                 className="input mt-2"
@@ -531,7 +562,10 @@ export function RuleForm({
             </Field>
           )}
           {twoStepOn && (
-            <Field label={t("instagram.form.secondDm")}>
+            <Field
+              label={t("instagram.form.secondDm")}
+              help={<HelpTip article="instagram" anchor="second-dm" />}
+            >
               <input
                 className="input mt-2"
                 value={secondDmMessage}
@@ -542,7 +576,11 @@ export function RuleForm({
             </Field>
           )}
         </div>
-        <Field label={t("instagram.form.commentReply")} hint={t("instagram.form.commentReplyHint")}>
+        <Field
+          label={t("instagram.form.commentReply")}
+          hint={t("instagram.form.commentReplyHint")}
+          help={<HelpTip article="instagram" anchor="comment-reply" />}
+        >
           <div className="space-y-2">
             {commentReplies.map((reply, i) => (
               <div key={i} className="flex gap-2">
@@ -578,7 +616,11 @@ export function RuleForm({
             )}
           </div>
         </Field>
-        <Field label={t("instagram.form.unresolved")} hint={t("instagram.form.unresolvedHint")}>
+        <Field
+          label={t("instagram.form.unresolved")}
+          hint={t("instagram.form.unresolvedHint")}
+          help={<HelpTip article="instagram" anchor="unresolved" />}
+        >
           <input
             className="input"
             value={unresolvedPrompt}

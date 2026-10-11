@@ -3,6 +3,7 @@ import { useState, type FormEvent } from "react";
 import { aiBalanceFn, aiTopupFn } from "@/app/admin/ai-balance.functions";
 import { adminT, intlLocale, type AdminKey, type AdminT } from "@/app/i18n/admin";
 import { Badge, Card, ErrorBox, Field, PageTitle, useAction } from "@/app/ui";
+import { HelpTip } from "@/app/admin/help-panel";
 
 export const Route = createFileRoute("/admin/_authed/ai-balance")({
   loader: () => aiBalanceFn(),
@@ -75,6 +76,7 @@ function TopupCard({ s, t, n }: { s: State; t: AdminT; n: (x: number) => string 
       >
         <Field
           label={t("aiBalance.topup.amount")}
+          help={<HelpTip article="ai-balance" anchor="topup" />}
           hint={t("aiBalance.topup.range", { min: s.min, max: s.max })}
         >
           <input
