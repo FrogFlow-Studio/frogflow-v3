@@ -4,6 +4,7 @@ import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Customer } from "@/core/customers/customers";
 import { settingsFromJson } from "@/core/tenant/directory";
 import {
+  addContactToOpenTask,
   addTask,
   capTasks,
   clearTasks,
@@ -309,5 +310,41 @@ describe("задачи консультанта", () => {
     expect(telegramDialogLink("@bovi_client")).toBe("https://t.me/bovi_client");
     expect(telegramDialogLink(null)).toBeNull();
     expect(telegramDialogLink("a b")).toBeNull();
+  });
+
+  it("телефон после передачи — в контакт последней открытой задачи покупателя, один раз (BOVI 11.10)", async () => {
+    const { ctx, db } = ctxOf();
+    const done = await addTask(
+      ctx,
+      { userKey: "ig:42", reason: "human_requested", text: "старое", contact: "@fokkiuo77" },
+      at("2026-10-10T10:00:00Z"),
+    );
+    await setTaskDone(ctx, done!.id, true);
+    const open = await addTask(
+      ctx,
+      { userKey: "ig:42", reason: "purchase", text: "Uchino 50х100", contact: "@fokkiuo77" },
+      at("2026-10-11T13:49:00Z"),
+    );
+    await addTask(
+      ctx,
+      { userKey: "ig:7", reason: "purchase", text: "чужая" },
+      at("2026-10-11T13:50:00Z"),
+    );
+    expect(await addContactToOpenTask(ctx, "ig:42", "+7 916 123 45 67")).toBe(true);
+    const byId = (id: string) => stored(db).find((t) => t.id === id)!;
+    expect(byId(open!.id).contact).toBe("+7 916 123 45 67 · @fokkiuo77");
+    expect(byId(done!.id).contact).toBe("@fokkiuo77");
+    expect(stored(db).find((t) => t.userKey === "ig:7")!.contact).toBeUndefined();
+    // Тот же номер второй раз (повтор события) — без записи.
+    expect(await addContactToOpenTask(ctx, "ig:42", "89161234567".replace(/^8/, "7"))).toBe(false);
+    expect(byId(open!.id).contact).toBe("+7 916 123 45 67 · @fokkiuo77");
+    // Открытой задачи нет — ничего не пишем.
+    expect(await addContactToOpenTask(ctx, "ig:99", "+7 700 111 22 33")).toBe(false);
+  });
+
+  it("телефон без консультанта по прайсу — задачи не трогаются", async () => {
+    const { ctx, db } = ctxOf(false);
+    expect(await addContactToOpenTask(ctx, "ig:42", "+7 916 123 45 67")).toBe(false);
+    expect(stored(db)).toEqual([]);
   });
 });

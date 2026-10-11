@@ -56,6 +56,8 @@ export async function runPricelistTurn(
     data?: PricelistData;
     now?: Date;
     fetchImage?: PricelistInput["fetchImage"];
+    /** Канал диалога: в Instagram и WhatsApp заказ передаётся без телефона. */
+    channel?: string;
   },
 ): Promise<PricelistTurn> {
   const data = args.data ?? (await loadPricelistData(ctx));
@@ -67,6 +69,7 @@ export async function runPricelistTurn(
     images: args.images,
     now: args.now,
     fetchImage: args.fetchImage,
+    channel: args.channel,
     call: (req) => args.callModel({ model: args.model, ...req, ...modelParams(args.model) }),
   });
   const r = data.rate;

@@ -329,6 +329,39 @@ export async function closeTaskAfterReply(
   return closed;
 }
 
+/**
+ * Покупатель прислал телефон после передачи (бот уже на паузе): номер — в
+ * контакт его последней открытой задачи. BOVI 11.10: заказ из Instagram
+ * передаётся без телефона (core/consultant/pricelist/engine.server), и
+ * телефон, присланный следом, иначе остался бы только в переписке. Запись
+ * условна по `updated_at` (updateSettingStamped); номер уже в задаче или
+ * открытой задачи нет — ничего не пишем. Сбой записи — false, ответа
+ * покупателю здесь нет.
+ */
+export async function addContactToOpenTask(
+  ctx: TenantContext,
+  userKey: string,
+  phone: string,
+): Promise<boolean> {
+  if (!pricelistMode(ctx.tenant)) return false;
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length < 10) return false;
+  let added = false;
+  const res = await updateSettingStamped(ctx, TASKS_KEY, (raw) => {
+    const list = parseTasks(raw);
+    const open = sortTasks(list.filter((t) => t.userKey === userKey && !t.done))[0];
+    added = false;
+    if (!open || (open.contact ?? "").replace(/\D/g, "").includes(digits)) return null;
+    added = true;
+    const contact = [phone.trim(), open.contact].filter(Boolean).join(" · ").slice(0, MAX.contact);
+    return JSON.stringify(list.map((t) => (t.id === open.id ? { ...t, contact } : t)));
+  }).catch((e: unknown) => {
+    console.warn(`[consultant] телефон не дописан в задачу ${ctx.tenant.id}: ${String(e)}`);
+    return "failed" as const;
+  });
+  return res !== "failed" && added;
+}
+
 /** Передача менеджеру, как её отдаёт консультант (core/consultant/engine.server Handoff). */
 export type HandoffLike = {
   reason: string;
