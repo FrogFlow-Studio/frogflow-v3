@@ -912,6 +912,12 @@ async function sendSecondStep(
       createdAt: new Date().toISOString(),
     },
   });
+  if (ok)
+    await supersedeOlderTwoStep(
+      ctx,
+      { username: p.username, senderId: p.authorId },
+      { eventId: key },
+    );
   return ok;
 }
 
@@ -984,6 +990,7 @@ export async function handleCommentReceived(
   if (existingErr2)
     throw serverFailure(`[zernio] журнал второго сообщения не прочитан: ${existingErr2.message}`);
   if (existing?.status === "processed") return { note: "второе сообщение уже ушло" };
+  if (existing?.status === "skipped") return { note: "второе сообщение уже закрыто" };
 
   // Пауза: даём Zernio и Meta доставить первое сообщение без кнопок.
   await sleep(opts.delayMs ?? 1500);
@@ -1080,6 +1087,73 @@ async function answerNotReceived(
 }
 
 const PENDING_TWO_STEP_DAYS = 7;
+/**
+ * Сколько обещанное второе сообщение ждёт ответа покупателя. Дольше — не
+ * шлём: покупатель уже забыл, под чем писал, а «Купить» старого видео посреди
+ * новой переписки сбивает (AATeach 10.10: «через день, если не ответили,
+ * пусть перестаёт работать»).
+ */
+export const PENDING_TWO_STEP_MS = 24 * 60 * 60_000;
+/** Строка очереди, которую сменил комментарий новее или ушедшее второе сообщение. */
+export const SUPERSEDED = "покупатель написал под другим видео — работает последнее";
+/** Строка очереди, правило которой продавец удалил или выключил. */
+export const RULE_GONE = "правило удалено или выключено";
+
+/** Своя строка очереди: по имени или по id автора комментария. */
+function ownTwoStepRow(pl: Json, who: { username?: string | null; senderId?: string | null }) {
+  const p = pl as { username?: string; authorId?: string } | null;
+  const name = who.username?.toLowerCase();
+  return (
+    (Boolean(name) && typeof p?.username === "string" && p.username.toLowerCase() === name) ||
+    (Boolean(who.senderId) && p?.authorId === who.senderId)
+  );
+}
+
+/**
+ * Работает только последнее видео: прежние обещанные вторые сообщения этого
+ * покупателя закрываются, когда ушло (или забрано к отправке) новое. Закрытие
+ * — условной записью по статусу pending: строку, которую в этот момент
+ * забрал соседний вебхук, не трогаем.
+ */
+async function supersedeOlderTwoStep(
+  ctx: TenantContext,
+  who: { username?: string | null; senderId?: string | null },
+  keep: { id?: string; eventId?: string },
+  now: () => Date = () => new Date(),
+): Promise<void> {
+  const since = new Date(now().getTime() - PENDING_TWO_STEP_MS).toISOString();
+  let rows: { id: string; event_id: string | null; payload: Json }[];
+  try {
+    rows = await pageAll(
+      (from, to) =>
+        ctx.db
+          .from("zernio_logs")
+          .select("id, event_id, payload")
+          .eq("event_type", "two_step_dm_pending")
+          .eq("status", "pending")
+          .gte("created_at", since)
+          .order("created_at", { ascending: false })
+          .order("id")
+          .range(from, to),
+      "[zernio] очередь вторых сообщений не прочитана",
+    );
+  } catch (e) {
+    console.warn(`[comment-dm] прежние вторые сообщения не закрыты: ${String(e)}`);
+    return;
+  }
+  const older = rows
+    .filter((r) => r.id !== keep.id && r.event_id !== keep.eventId)
+    .filter((r) => ownTwoStepRow(r.payload, who))
+    .map((r) => r.id);
+  for (let i = 0; i < older.length; i += 200) {
+    const { error } = await ctx.db
+      .from("zernio_logs")
+      .update({ status: "skipped", error_message: SUPERSEDED })
+      .in("id", older.slice(i, i + 200))
+      .eq("status", "pending");
+    if (error) console.warn(`[comment-dm] прежние вторые сообщения не закрыты: ${error.message}`);
+  }
+}
 /** Захват старше этого — процесс, скорее всего, умер до отправки (таймаут функции). */
 export const TWO_STEP_CLAIM_STALE_MS = 5 * 60 * 1000;
 /** Сколько раз забираем строку второго шага, прежде чем сдаться. */
@@ -1186,9 +1260,8 @@ export async function deliverPendingTwoStepDm(
   now: () => Date = () => new Date(),
 ): Promise<boolean> {
   if (!p.username) return false;
-  // Private-reply можно отправить в течение 7 дней после комментария — столько
-  // и ждём ответа покупателя.
-  const cutoff = new Date(now().getTime() - PENDING_TWO_STEP_DAYS * 86_400_000).toISOString();
+  // Ждём ответа покупателя сутки: позже «Купить» старого видео сбивает.
+  const cutoff = new Date(now().getTime() - PENDING_TWO_STEP_MS).toISOString();
   const logs = await pageAll(
     (from, to) =>
       ctx.db
@@ -1206,22 +1279,46 @@ export async function deliverPendingTwoStepDm(
   // переписки Zernio кладёт в имя отправителя цифровой id, и строка с именем
   // из комментария по имени не находилась (Кристина Дидактика, 07.10: «+» от
   // «@1407411881513987», комментарий от «@dolphin.2023841»).
-  const own = (logs as PendingRow[]).filter((l) => {
-    const pl = l.payload as { username?: string; authorId?: string } | null;
-    return (
-      (typeof pl?.username === "string" &&
-        pl.username.toLowerCase() === p.username.toLowerCase()) ||
-      (Boolean(p.senderId) && pl?.authorId === p.senderId)
-    );
-  });
-  const matched = own.find((l) => l.status === "pending") ?? own[0];
+  const own = (logs as PendingRow[]).filter((l) => ownTwoStepRow(l.payload, p));
+  // Работает только последнее видео: строки новее первыми, берём первую.
+  // Прежние закроются, когда эту заберём к отправке.
+  const matched = own[0];
   if (!matched) return false;
   const pl = matched.payload as {
     secondText?: string;
     buttons?: DmButton[];
     attempts?: number;
     noExpress?: boolean;
+    automationId?: string;
   };
+  // Правило удалено или выключено — его «Купить» не шлём (AATeach 11.10: «День
+  // хлеба» убрали, а 55 человек из очереди всё равно получили бы его). Список
+  // правил не прочитан или пуст — шлём: правило было живым, когда строку ставили.
+  if (pl.automationId && matched.status === "pending") {
+    let alive = true;
+    try {
+      const rules = await listAutomations(ctx, api);
+      // Пустой список — правил не видно вовсе (нет подключения), а не «удалено».
+      alive =
+        rules.length === 0 ||
+        rules.some((a) => automationId(a) === pl.automationId && a.isActive !== false);
+    } catch (e) {
+      console.warn(`[comment-dm] правила не прочитаны, второе шлём: ${String(e)}`);
+    }
+    if (!alive) {
+      let gone = ctx.db
+        .from("zernio_logs")
+        .update({ status: "skipped", error_message: RULE_GONE })
+        .eq("id", matched.id)
+        .eq("status", "pending");
+      gone =
+        matched.error_message == null
+          ? gone.is("error_message", null)
+          : gone.eq("error_message", matched.error_message);
+      await gone;
+      return false;
+    }
+  }
   const text = pl.secondText?.trim() || DEFAULT_SECOND_DM;
   const attempts = typeof pl.attempts === "number" ? pl.attempts : 0;
 
@@ -1278,6 +1375,7 @@ export async function deliverPendingTwoStepDm(
     return false;
   }
   if (!claimed?.length) return true;
+  await supersedeOlderTwoStep(ctx, p, { id: matched.id }, now);
   // Одно второе сообщение в переписку, каким бы путём и по какому бы правилу
   // оно ни шло: строка из очереди, которую обогнал «+», закрывается без
   // отправки (Кристина Дидактика, 07.10: «+» пришёл с цифровым id вместо
