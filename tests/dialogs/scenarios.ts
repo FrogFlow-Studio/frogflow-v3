@@ -2331,7 +2331,12 @@ export const SCENARIOS: Scenario[] = [
         },
       },
       {
+        // Решение Якова 11.10: непонятное на шаге оплаты — продавцу, бот молчит.
         say: { text: "." },
+        expect: { silent: true, state: { mode: "awaiting_payment" } },
+      },
+      {
+        say: { text: "Оплатила" },
         expect: { count: 1, says: [(c) => c.payLinkAboveHint], notSays: ["Пришлите"] },
       },
     ],
@@ -2466,6 +2471,161 @@ export const SCENARIOS: Scenario[] = [
       },
     ],
   },
+  // ───── Ожидание оплаты: вопрос — продавцу, а не «Пришлите чек» (решение Якова 11.10, п.1) ─────
+  {
+    id: "awaiting-proof-question-silent-ig-ru",
+    title:
+      "ждём чек, покупатель спрашивает — бот молчит (вопрос продавцу), заказ ждёт оплаты, фото чека после этого принимается",
+    origin:
+      "AATeach 11.10 09:27 (saraabdinasirova, #1384): «А этот материал точно придёт? Боюсь мошенников», «Почему сейчас надо платить, а не при получении?» → «Пришлите чек»",
+    channel: "instagram",
+    locale: "ru",
+    full: true,
+    products: PRODUCTS,
+    receipts: true,
+    state: {
+      mode: "awaiting_proof",
+      pending_order_id: 82,
+      direct: { last_reply: "К оплате", last_reply_at: new Date().toISOString() },
+    },
+    arrange: (r) => {
+      paidOrder({ status: "awaiting_payment" })(r);
+      r.db.tables.app_settings!.push({ key: "chat_email_ask", value: "false" });
+    },
+    steps: [
+      {
+        say: { text: "А этот материал точно придёт? Боюсь мошенников" },
+        expect: { silent: true, state: { mode: "awaiting_proof", pending_order_id: 82 } },
+      },
+      {
+        say: { text: "Почему сейчас надо платить, а не при получении?" },
+        expect: { silent: true, state: { mode: "awaiting_proof" } },
+      },
+      { say: { photo: true }, expect: { says: [(c) => c.proofReceived(82)] } },
+    ],
+  },
+  {
+    id: "awaiting-proof-question-to-seller-tg-ru",
+    title:
+      "Telegram: ждём чек, покупатель спрашивает — вопрос уходит продавцу, а не «пришлите чек»; «оплатила» — просьба о чеке",
+    origin:
+      "AATeach 11.10 (D3: «Куда вышлет материалы?» → «Пришлите фото чека»); решение Якова 11.10, п.1",
+    channel: "telegram",
+    locale: "ru",
+    products: PRODUCTS,
+    state: { mode: "awaiting_proof", pending_order_id: 82 },
+    arrange: paidOrder({ status: "awaiting_payment" }),
+    steps: [
+      {
+        say: { text: "Куда вышлет материалы?" },
+        expect: {
+          notSays: [(c) => c.sendReceiptPrompt],
+          sellerNotices: 1,
+          state: { mode: "awaiting_proof", pending_order_id: 82 },
+        },
+      },
+      {
+        say: { text: "Оплатила" },
+        expect: { says: [(c) => c.sendReceiptPrompt], sellerNotices: 0 },
+      },
+    ],
+  },
+  {
+    id: "awaiting-proof-other-product-question-silent-ig-ru",
+    title: "ждём чек, «вместе сколько будет?» про другой материал — бот молчит, не просит чек",
+    origin:
+      "AATeach 11.10 07:23 (attokurovasaida): «Карточки поощрений тоже. Вместе сколько будет» → «Пришлите чек»; 07:27 «Я ещё не отправила деньги»",
+    channel: "instagram",
+    locale: "ru",
+    full: true,
+    products: PRODUCTS,
+    state: {
+      mode: "awaiting_proof",
+      pending_order_id: 82,
+      direct: { last_reply: "К оплате", last_reply_at: new Date().toISOString() },
+    },
+    arrange: paidOrder({ status: "awaiting_payment" }),
+    steps: [
+      {
+        say: { text: "Карточки поощрений тоже. Вместе сколько будет" },
+        expect: { silent: true, state: { mode: "awaiting_proof" } },
+      },
+      {
+        say: { text: "Я ещё не отправила деньги. Хочу приобрести и другие материалы" },
+        expect: { silent: true, notSays: [(c) => c.dmReceiptPrompt] },
+      },
+      {
+        say: { text: "Оплатила" },
+        expect: { count: 1, says: [(c) => c.dmReceiptPrompt], state: { mode: "awaiting_proof" } },
+      },
+    ],
+  },
+  {
+    id: "awaiting-proof-paid-report-asks-receipt-ig-ru",
+    title: "ждём чек, «оплатила» — бот просит чек: это не вопрос, а сообщение об оплате",
+    origin: "ожидание к awaiting-proof-question-silent-ig-ru; заказ #93 Копилки 10.10",
+    channel: "instagram",
+    locale: "ru",
+    full: true,
+    products: PRODUCTS,
+    state: {
+      mode: "awaiting_proof",
+      pending_order_id: 82,
+      direct: { last_reply: "К оплате", last_reply_at: new Date().toISOString() },
+    },
+    arrange: paidOrder({ status: "awaiting_payment" }),
+    steps: [
+      {
+        say: { text: "Перевела 1400 на каспи" },
+        expect: { count: 1, says: [(c) => c.dmReceiptPrompt], state: { mode: "awaiting_proof" } },
+      },
+    ],
+  },
+  {
+    id: "order-email-not-email-releases-ig-ru",
+    title:
+      "после «на какую почту?» покупатель пишет не почту — бот отпускает шаг и разбирает сообщение как обычно, без «не похоже на почту»",
+    origin:
+      "AATeach 11.10 (galinaganchikina, #1380): «А на ватсап мой можно?», «Члены предложения, как купить», «212», «350» → трижды «Это не похоже на адрес почты»",
+    channel: "instagram",
+    locale: "ru",
+    full: true,
+    products: PRODUCTS,
+    state: {
+      mode: "awaiting_order_email",
+      pending_order_id: 82,
+      direct: { last_reply: "На какую почту?", last_reply_at: new Date().toISOString() },
+    },
+    arrange: paidOrder(),
+    steps: [
+      {
+        say: { text: "А на ватсап мой можно?" },
+        expect: { notSays: [(c) => c.emailHint], state: { mode: "idle" } },
+      },
+      { say: { text: "212" }, expect: { notSays: [(c) => c.emailHint] } },
+    ],
+  },
+  {
+    id: "order-email-typo-asks-again-ig-ru",
+    title:
+      "после «на какую почту?» адрес с опечаткой (есть «@») — бот просит ещё раз, шаг остаётся",
+    origin: "ожидание к order-email-not-email-releases-ig-ru",
+    channel: "instagram",
+    locale: "ru",
+    products: PRODUCTS,
+    state: {
+      mode: "awaiting_order_email",
+      pending_order_id: 82,
+      direct: { last_reply: "На какую почту?", last_reply_at: new Date().toISOString() },
+    },
+    arrange: paidOrder(),
+    steps: [
+      {
+        say: { text: "anna@mailru" },
+        expect: { says: [(c) => c.emailHint], state: { mode: "awaiting_order_email" } },
+      },
+    ],
+  },
   {
     id: "pay-trouble-then-thanks-no-receipt-prompt-ig-ru",
     title: "после «передал продавцу» на «Спасибо» бот молчит, а не просит чек",
@@ -2573,8 +2733,10 @@ export const SCENARIOS: Scenario[] = [
   },
   {
     id: "choose-pay-unclear-text-hint-ig-ru",
-    title: "непонятная реплика до выбора способа оплаты — «выберите способ», не «пришлите чек»",
-    origin: "заказ #76 Копилки русоведа 10.10",
+    title:
+      "вопрос до выбора способа оплаты — бот молчит (продавцу); «оплатила» — «выберите способ», не «пришлите чек»",
+    origin:
+      "заказ #76 Копилки русоведа 10.10; решение Якова 11.10 (вопрос в ожидании оплаты — продавцу)",
     channel: "instagram",
     locale: "ru",
     full: true,
@@ -2595,6 +2757,10 @@ export const SCENARIOS: Scenario[] = [
       },
       {
         say: { text: "А это подойдёт учителю начальных классов?" },
+        expect: { silent: true, state: { mode: "choose_pay" } },
+      },
+      {
+        say: { text: "Я оплатила" },
         expect: {
           count: 1,
           says: [(c) => c.choosePayHint],

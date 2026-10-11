@@ -10,6 +10,7 @@ import type { TelegramMessage } from "../types";
 import { COPY, menuActionFor, menuWordFor, normalizePhone } from "../copy";
 import { isBlocked, setContactPhone, setState, upsertCustomer } from "@/core/customers/customers";
 import { recentAwaitingPaymentOrder } from "@/core/orders/orders";
+import { isPaidReport } from "@/core/payments/paid-report";
 import { optOutCommand, optOutWordsApply, setOptOut } from "@/core/customers/opt-out";
 import { botCommandFor } from "../commands";
 import { sellsNowOrShop } from "@/core/tenant/sells.server";
@@ -233,6 +234,9 @@ export async function handleMessage(
     customer.state.pending_order_id &&
     !action
   ) {
+    // Вопрос на шаге «жду чек» — продавцу, а не «пришлите чек»: заказ ждёт
+    // оплаты, фото чека принимается как раньше (AATeach 11.10, решение Якова).
+    if (text && !isPaidReport(text)) return questionToManager(b, text);
     await send(b, b.m.sendReceiptPrompt);
     return;
   }
