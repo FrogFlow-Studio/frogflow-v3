@@ -83,7 +83,7 @@ describe("ответ модели", () => {
     });
     expect(r).toEqual({ code: "RU", onlyCountry: true });
     expect(model).toHaveBeenCalledOnce();
-    const spend = (c.db as ReturnType<typeof fakeDb>).tables.app_settings!.find(
+    const spend = (c.db as unknown as ReturnType<typeof fakeDb>).tables.app_settings!.find(
       (s) => s.key === countryAiSpendKey("2026-10-11"),
     );
     expect(JSON.parse(String(spend?.value))).toEqual({ usd: 0.0011, calls: 1 });
@@ -91,7 +91,7 @@ describe("ответ модели", () => {
 
   it("потолок дня исчерпан — модель не зовём, работает запасной разбор", async () => {
     const c = ctx();
-    (c.db as ReturnType<typeof fakeDb>).tables.app_settings!.push(
+    (c.db as unknown as ReturnType<typeof fakeDb>).tables.app_settings!.push(
       { key: COUNTRY_AI_CAP_KEY, value: "0.01" },
       { key: countryAiSpendKey("2026-10-11"), value: JSON.stringify({ usd: 0.02, calls: 9 }) },
     );

@@ -79,8 +79,13 @@ const spentCalls = (raw: string | null | undefined) => spentField(raw, "calls");
 /** Модель доступна: ключ есть, не предпросмотр (тесты подставляют модель сами). */
 function modelReady(): boolean {
   if (modelOverride) return true;
-  if (previewReadonly()) return false;
-  return Boolean(env().ANTHROPIC_API_KEY?.trim());
+  try {
+    if (previewReadonly()) return false;
+    return Boolean(env().ANTHROPIC_API_KEY?.trim());
+  } catch {
+    // Окружение не настроено — модели нет, работает запасной разбор.
+    return false;
+  }
 }
 
 /**
