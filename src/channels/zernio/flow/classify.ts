@@ -9,6 +9,8 @@ import {
 } from "./numbers";
 import { isAffirmative, isDismissal } from "./replies";
 
+export { isPaidReport } from "@/core/payments/paid-report";
+
 /** Вид входящего сообщения и выборы покупателя. */
 
 const PAID_MARKERS =
