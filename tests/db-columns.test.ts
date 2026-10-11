@@ -209,9 +209,7 @@ describe("таблицы совместных акций (миграция 19-4)
  */
 describe("индексы партии 20 строятся на колонках схемы", () => {
   const dir = "migrations";
-  const files = readdirSync(dir).filter(
-    (f) => /^(20|24)-.*\.sql$/.test(f) && !f.endsWith(".down.sql"),
-  );
+  const files = readdirSync(dir).filter((f) => /^20-.*\.sql$/.test(f) && !f.endsWith(".down.sql"));
 
   it("миграции нашлись и у каждой есть откат", () => {
     expect(files.length).toBeGreaterThan(0);
@@ -250,5 +248,39 @@ describe("индексы партии 20 строятся на колонках 
         .join("\n");
       expect(sql, f).not.toMatch(/\b(DROP|DELETE|ALTER|UPDATE|TRUNCATE|CREATE TABLE)\b/i);
     }
+  });
+});
+
+/**
+ * Миграция 24-1 (номера заказов не повторяются): переписывает функции нумерации,
+ * таблиц и колонок не трогает. Откат рядом, индекс — на колонках схемы.
+ */
+describe("миграция 24-1 номеров заказов", () => {
+  const file = "migrations/24-1-order-numbers-monotonic.sql";
+  const sql = readFileSync(file, "utf8")
+    .split("\n")
+    .filter((l) => !l.trim().startsWith("--"))
+    .join("\n");
+
+  it("есть откат", () => {
+    expect(readdirSync("migrations")).toContain("24-1-order-numbers-monotonic.down.sql");
+  });
+
+  it("не меняет таблицы и колонки", () => {
+    expect(sql).not.toMatch(/\b(CREATE|DROP|ALTER)\s+TABLE\b/i);
+    expect(sql).not.toMatch(/\bDROP\s+COLUMN\b/i);
+  });
+
+  it("индекс строится на колонках orders из схемы", () => {
+    const cols = schemaColumns().get("orders")!;
+    expect(cols.has("bot_id") && cols.has("display_no")).toBe(true);
+    expect(sql).toMatch(/CREATE INDEX IF NOT EXISTS \w+ ON orders \(bot_id, display_no\)/);
+  });
+
+  it("ночной крон больше не перенумеровывает, счётчик не уменьшается", () => {
+    const nightly = sql.slice(sql.indexOf("FUNCTION public.nightly_orders_maintenance"));
+    expect(nightly).not.toMatch(/renumber_orders/);
+    expect(sql).toMatch(/GREATEST\(public\.order_counters\.last_no, max_shown\) \+ 1/);
+    expect(sql).toMatch(/GREATEST\(public\.order_counters\.last_no, EXCLUDED\.last_no\)/);
   });
 });
