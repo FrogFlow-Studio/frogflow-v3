@@ -29,13 +29,18 @@ function ctxOf() {
 }
 
 /** Zernio, как в проде: одно активное правило на пост, иначе 409. */
-function fakeZernio(rules: CommentAutomation[], opts: { failCreate?: boolean } = {}) {
+function fakeZernio(
+  rules: CommentAutomation[],
+  opts: { failCreate?: boolean; allPostsBlocks?: boolean } = {},
+) {
   let seq = 0;
   const api = {
     list: async () => rules.map((r) => ({ ...r })),
     create: async (body: Record<string, unknown>) => {
       if (opts.failCreate) throw new Error("Zernio API 500: boom");
-      if (rules.some((r) => r.isActive !== false && r.platformPostId === body.platformPostId))
+      const blocks = (r: CommentAutomation) =>
+        r.platformPostId === body.platformPostId || (opts.allPostsBlocks && !r.platformPostId);
+      if (rules.some((r) => r.isActive !== false && blocks(r)))
         throw new Error(
           'Zernio API 409: {"error":"An active automation already exists for this post. Deactivate it first or edit it."}',
         );
@@ -125,5 +130,22 @@ describe("Comment-to-DM: пересохранение правила на тот
       fakeZernio(rules),
     );
     expect(r).toEqual({ ok: true, id: "new-1" });
+  });
+
+  it("правило «на все посты» переставили на конкретный рилс — сохраняется", async () => {
+    const rules = [rule({ platformPostId: null, postId: null, keywords: ["матрешки"] })];
+    const r = await saveAutomation(
+      ctxOf(),
+      {
+        ...input,
+        original: { platformPostId: null, postId: null, trigger: "comment" },
+        replyToAll: true,
+      },
+      fakeZernio(rules, { allPostsBlocks: true }),
+    );
+    expect(r).toEqual({ ok: true, id: "new-1" });
+    expect(rules.map((x) => [x.id, x.platformPostId, x.isActive, x.keywords])).toEqual([
+      ["new-1", IG_POST, true, []],
+    ]);
   });
 });

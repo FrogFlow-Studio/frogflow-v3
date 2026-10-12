@@ -620,15 +620,18 @@ export async function saveAutomation(
       // id) — выключаем на время создания и включаем обратно, если создать
       // не вышло: правило не должно пропасть из-за неудачного сохранения.
       let pausedOld = false;
+      const own =
+        data.platformPostId || id
+          ? (await api.list(data.profileId)).filter((a) => ownsZernioAccount(ctx, a.accountId))
+          : [];
       if (data.platformPostId) {
-        const onPost = (await api.list(data.profileId)).filter(
+        const other = own.find(
           (a) =>
-            ownsZernioAccount(ctx, a.accountId) &&
+            automationId(a) !== id &&
             a.isActive !== false &&
             a.platformPostId === data.platformPostId &&
             (a.trigger || "comment") === (data.trigger || "comment"),
         );
-        const other = onPost.find((a) => automationId(a) !== id);
         if (other)
           return {
             ok: false,
@@ -636,10 +639,12 @@ export async function saveAutomation(
             key: POST_TAKEN_KEY,
             vars: { name: other.name },
           };
-        if (id && onPost.some((a) => automationId(a) === id)) {
-          await api.update(id, { isActive: false });
-          pausedOld = true;
-        }
+      }
+      // Старое правило выключаем всегда, а не только на том же посте: правило
+      // «на все посты» Zernio, возможно, тоже считает занявшим пост.
+      if (id && own.some((a) => automationId(a) === id && a.isActive !== false)) {
+        await api.update(id, { isActive: false });
+        pausedOld = true;
       }
       let created: CommentAutomation;
       try {
