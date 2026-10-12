@@ -692,6 +692,13 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
         return "handled";
       }
       await setMode(s, { mode: "idle" });
+      // Шаг остался с давнего оформления, а корзины уже нет: адрес — о прошлом
+      // заказе, а не к оформлению («🛒 Корзина пуста.» lady_brown_hair_pp,
+      // AATeach 12.10). Разбирает ИИ после оплаты; не о заказе — продавцу.
+      if ((await listCart(s.ctx, s.customer)).length === 0) {
+        const { postPayAssist } = await import("./postpay.server");
+        return (await postPayAssist(s, text)) ?? "question";
+      }
       const cc = s.customer.state.country_code;
       if (!cc) return askCountry(s, true).then(() => "handled" as const);
       await finishCheckout(s, cc);
@@ -887,6 +894,17 @@ async function listWordsHint(s: Shop): Promise<boolean> {
   if (!(Date.now() - listAt < LIST_TTL_MS)) return false;
   // Список — последнее, что прислал бот (его отметка ставится перед отправкой).
   if (!Number.isFinite(replyAt) || replyAt - listAt > 60_000) return false;
+  // Несколько реплик разом (вебхуки идут параллельно) — подсказка одна: её
+  // получает тот, кто первым поставил метку на этот список (AATeach 12.10, три
+  // одинаковых подсказки dusembina_irina). Остальные и сбой метки — как вопрос.
+  const { claimZernioMessage } = await import("../message-claim.server");
+  const claim = await claimZernioMessage(
+    s.ctx,
+    `list-hint:${s.customer.userKey}:${list.at}`,
+    crypto.randomUUID(),
+    s.conversationId,
+  );
+  if (claim !== "won") return false;
   s.hint = true;
   return reply(s, s.m.listNumberHint, { force: true });
 }
