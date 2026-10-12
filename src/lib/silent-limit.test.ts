@@ -17,6 +17,9 @@ const SHOWN = "последние N на экране: список не обя�
 const BATCH = "пачка за запуск: остальное в следующий; обработанные из выборки уходят";
 
 const ALLOWED: Record<string, string[]> = {
+  "src/app/operator/platform-alerts.server.ts": [
+    "проба тишины: нужно только «набралось ли INBOUND_ACTIVE_MIN входящих за неделю», не число",
+  ],
   "src/app/admin/automsg-preview.server.ts": [
     "образец для предпросмотра: первые три товара каталога, а не весь список",
   ],

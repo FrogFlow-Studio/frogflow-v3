@@ -2522,6 +2522,54 @@ export const SCENARIOS: Scenario[] = [
     ],
   },
   {
+    id: "pricelist-no-third-clarification-ig-ru",
+    title:
+      "уже переспросили, а модель снова уточняет без поиска — черновик не уходит, покупатель получает варианты с ценой",
+    origin:
+      "BOVI 12.10 20:16, anjellaakaeva: «этот комплект?», фото, «в полуторном», «155*200» — четыре уточнения подряд, ни одного поиска и цены",
+    channel: "instagram",
+    locale: "ru",
+    full: true,
+    vertical: "consultant",
+    modules: { shop: true },
+    pricelist: {
+      catalog: [
+        ...PL_CATALOG,
+        {
+          id: "B1",
+          name: "Rivolta постельное бельё Fiori сатин",
+          category: "Постельное бельё",
+          size: "155x200",
+          colors: ["молочный"],
+          price_kzt: 45000,
+          stock: true,
+        },
+      ],
+      rounds: [
+        said("Здравствуйте. Что подсказать?"),
+        said("Уточните, пожалуйста, название комплекта?"),
+        said("Уточните, пожалуйста, марку комплекта?"),
+        [
+          {
+            type: "tool_use",
+            id: "s1",
+            name: "search_products",
+            input: { query: "постельное бельё 155x200" },
+          },
+        ],
+        said("Rivolta Fiori 155x200, молочный — 45 000 ₸. Показать другие расцветки?"),
+      ],
+    },
+    steps: [
+      { say: { text: "Здравствуйте" }, expect: { count: 1 } },
+      { say: { text: "У вас есть в наличии этот комплект?" }, expect: { count: 1 } },
+      {
+        say: { text: "155*200" },
+        expect: { says: ["45 000 ₸"], notSays: [/марку/], count: 1 },
+      },
+    ],
+  },
+  {
     id: "pricelist-send-failed-handoff-ig-ru",
     title:
       "передача менеджеру, а фраза покупателю не ушла — продавцу карточка, пауза при менеджере",
@@ -3116,7 +3164,7 @@ export const SCENARIOS: Scenario[] = [
     modules: { shop: true },
     pricelist: {
       catalog: PL_CATALOG,
-      rounds: [said("Похоже на Uchino. Для чего нужно полотенце: для рук или банное?")],
+      rounds: [said("Похоже на Uchino банное 50x100 — 9 000 ₸.")],
     },
     steps: [
       {
@@ -3143,7 +3191,7 @@ export const SCENARIOS: Scenario[] = [
     modules: { shop: true },
     pricelist: {
       catalog: PL_CATALOG,
-      rounds: [said("Похоже на Uchino. Для чего нужно полотенце: для рук или банное?")],
+      rounds: [said("Похоже на Uchino банное 50x100 — 9 000 ₸.")],
     },
     steps: [
       {

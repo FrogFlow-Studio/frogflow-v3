@@ -276,13 +276,21 @@ export async function processPlatformAlerts(
   probes: HealthProbe[],
   labels: Map<string, string>,
   now = new Date().toISOString(),
+  /** Не проверено в этот прогон — состояние переносится (stepHealthAlerts). */
+  keep?: (key: string) => boolean,
 ): Promise<AlertSummary> {
   const { APP_URL, APP_TIMEZONE } = env();
   const base = APP_URL.replace(/\/$/, "");
-  return runAlerts(ALERT_KEYS.platformState, probes, now, {
-    one: (e) => platformAlertText(e, { labels, base, timeZone: APP_TIMEZONE }),
-    summary: (events) => platformSummaryText(events, { labels, base }),
-  });
+  return runAlerts(
+    ALERT_KEYS.platformState,
+    probes,
+    now,
+    {
+      one: (e) => platformAlertText(e, { labels, base, timeZone: APP_TIMEZONE }),
+      summary: (events) => platformSummaryText(events, { labels, base }),
+    },
+    keep,
+  );
 }
 
 async function runAlerts(
@@ -290,10 +298,11 @@ async function runAlerts(
   probes: HealthProbe[],
   now: string,
   render: Render,
+  keep?: (key: string) => boolean,
 ): Promise<AlertSummary> {
   const cur = await readState(stateKey);
   const prev = parseAlertStates(cur.raw);
-  const { next, events } = stepHealthAlerts(prev, probes, now);
+  const { next, events } = stepHealthAlerts(prev, probes, now, keep);
   const count = (k: AlertEvent["kind"]) => events.filter((e) => e.kind === k).length;
   const summary: AlertSummary = {
     down: count("down"),

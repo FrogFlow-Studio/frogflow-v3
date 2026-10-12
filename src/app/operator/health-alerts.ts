@@ -37,14 +37,23 @@ export type AlertEvent =
   | { kind: "down"; botId: string; since: string; error: string | null }
   | { kind: "up"; botId: string; since: string; at: string };
 
-/** Шаг по одному прогону крона. Боты без снимка (ушли с v2, без токена) забываются молча. */
+/**
+ * Шаг по одному прогону крона. Боты без снимка (ушли с v2, без токена)
+ * забываются молча. `keep` — ключи, которые в этот прогон не удалось
+ * проверить (чтение упало): их состояние переносится как было. Иначе одно
+ * упавшее чтение обнуляло счётчик сбоя, и о сбое не сообщалось вовсе (BOVI
+ * 12.10: сутки без входящих, а оповещения нет).
+ */
 export function stepHealthAlerts(
   prev: AlertStates,
   probes: HealthProbe[],
   now: string,
+  keep: (key: string) => boolean = () => false,
 ): { next: AlertStates; events: AlertEvent[] } {
   const next: AlertStates = {};
   const events: AlertEvent[] = [];
+  const probed = new Set(probes.map((p) => p.bot_id));
+  for (const [key, was] of Object.entries(prev)) if (!probed.has(key) && keep(key)) next[key] = was;
   for (const p of probes) {
     const was = prev[p.bot_id];
     if (p.ok) {

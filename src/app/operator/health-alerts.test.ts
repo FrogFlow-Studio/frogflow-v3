@@ -21,7 +21,7 @@ import {
   type AlertStates,
   type HealthProbe,
 } from "./health-alerts";
-import { platformProbes, rateReading, rateTenantIds } from "./platform-alerts.server";
+import { platformProbes, rateReading, rateTenantIds, unreadKeys } from "./platform-alerts.server";
 import { RATE_ALERT_AFTER_HOURS } from "@/core/consultant/pricelist/rate";
 
 const T = (min: number) => new Date(Date.UTC(2026, 8, 27, 3, 0) + min * 60_000).toISOString();
@@ -328,6 +328,40 @@ describe("сутки без входящих у клиента (BOVI 07.10: тр
     expect(down).toContain("https://ff.example/operator/clients/bovi");
     const up = platformAlertText({ kind: "up", botId: "inbound:bovi", since: T(0), at: T(60) }, o);
     expect(up).toContain("Клиент «BOVI»: входящие снова идут");
+  });
+});
+
+describe("непрочитанная проба не сбрасывает счётчик сбоя (BOVI 12.10: сутки тишины без оповещения)", () => {
+  const silent = bad("inbound:bovi", "нет входящих 1 дн");
+
+  it("сбой, прогон с упавшим чтением, снова сбой — оператору сообщается", () => {
+    const keep = unreadKeys({ inbound: { failed: ["bovi"] }, rates: true });
+    const s1 = stepHealthAlerts({}, [silent], T(0));
+    expect(s1.events).toEqual([]);
+    // Чтение входящих BOVI упало: пробы нет, состояние переносится как было.
+    const s2 = stepHealthAlerts(s1.next, [], T(15), keep);
+    expect(s2.next).toEqual(s1.next);
+    const s3 = stepHealthAlerts(s2.next, [silent], T(30));
+    expect(s3.events).toEqual([
+      { kind: "down", botId: "inbound:bovi", since: T(0), error: "нет входящих 1 дн" },
+    ]);
+  });
+
+  it("без переноса прежнее поведение: клиент без пробы забывается", () => {
+    const s1 = stepHealthAlerts({}, [silent], T(0));
+    expect(stepHealthAlerts(s1.next, [], T(15)).next).toEqual({});
+  });
+
+  it("какие ключи переносятся", () => {
+    const one = unreadKeys({ inbound: { failed: ["bovi"] }, rates: true });
+    expect(one("inbound:bovi")).toBe(true);
+    expect(one("inbound:other")).toBe(false);
+    expect(one("rate:bovi")).toBe(false);
+    expect(one("cron:health")).toBe(false);
+    const all = unreadKeys({ inbound: null, rates: false });
+    expect(all("inbound:other")).toBe(true);
+    expect(all("rate:bovi")).toBe(true);
+    expect(all("account:bovi:1")).toBe(false);
   });
 });
 

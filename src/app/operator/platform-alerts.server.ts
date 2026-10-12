@@ -1,6 +1,7 @@
 import type { Tenant } from "@/core/tenant/types";
 import {
   cronProbe,
+  INBOUND_ACTIVE_MIN,
   inboundProbe,
   platformKey,
   rateProbe,
@@ -31,7 +32,7 @@ export type PlatformReadings = {
   tenants: readonly Pick<Tenant, "id" | "name" | "settings" | "archived">[];
   cronTitles: Map<string, string>;
   /** Входящие Zernio по клиентам v2 с аккаунтами (inboundReadings). */
-  inbound?: Array<{ botId: string; last: string | null; weekBefore: number }>;
+  inbound?: InboundReading[];
   /** Курс рубля консультантов по прайсу (rateReadings). */
   rates?: RateReading[];
   now?: number;
@@ -172,51 +173,90 @@ export async function rateReadings(
 const INCOMING = "message.received";
 const INBOUND_DAY_MS = 24 * 60 * 60 * 1000;
 
+/** Входящие клиента: последнее и сколько их было за неделю до него. */
+export type InboundReading = { botId: string; last: string | null; weekBefore: number };
+
 /**
  * Последнее входящее в Zernio и сколько их было за неделю до него —
  * у клиентов v2 с аккаунтами Instagram/WhatsApp (журнал zernio_logs, serviceDb:
- * крон по всем клиентам). Сбой чтения — исключение: «не прочитали» не равно
- * «тишина».
+ * крон по всем клиентам). Сбой чтения у клиента — в `failed`, остальные
+ * клиенты проверяются: «не прочитали» не равно «тишина», и чужой сбой не
+ * прячет тишину у BOVI.
  */
 export async function inboundReadings(
   tenants: readonly Pick<Tenant, "id" | "settings">[],
-): Promise<Array<{ botId: string; last: string | null; weekBefore: number }>> {
+): Promise<{ readings: InboundReading[]; failed: string[] }> {
   const { serviceDb } = await import("@/core/db/client.server");
   const db = serviceDb();
-  const out: Array<{ botId: string; last: string | null; weekBefore: number }> = [];
+  const readings: InboundReading[] = [];
+  const failed: string[] = [];
   for (const t of tenants) {
     if (!(t.settings.zernio?.accounts ?? []).some((a) => a.id && !a.expired)) continue;
-    const lastQ = await db
-      .from("zernio_logs")
-      .select("created_at")
-      .eq("bot_id", t.id)
-      .eq("status", "processed")
-      .eq("event_type", INCOMING)
-      // Нужна только дата самого свежего: при равных created_at неважно, какая
-      // строка. Без хвоста по id запрос идёт по индексу (bot_id, status,
-      // created_at) за миллисекунды; фильтр по payload читал бы весь журнал (8 с).
-      .order("created_at", { ascending: false })
-      .limit(1);
-    if (lastQ.error) throw serverFailure(`zernio_logs: ${lastQ.error.message}`);
-    const last = (lastQ.data?.[0]?.created_at as string | undefined) ?? null;
-    if (!last) {
-      out.push({ botId: t.id, last: null, weekBefore: 0 });
-      continue;
+    try {
+      readings.push(await inboundReading(db, t.id));
+    } catch (e) {
+      console.warn(
+        "[platform-alerts] входящие не прочитаны",
+        t.id,
+        e instanceof Error ? e.message : e,
+      );
+      failed.push(t.id);
     }
-    // Неделя до последнего входящего, а не до «сейчас»: после недели тишины
-    // клиент не должен стать «тихим по природе» и закрыть сбой сам.
-    const weekQ = await db
-      .from("zernio_logs")
-      .select("id", { count: "exact", head: true })
-      .eq("bot_id", t.id)
-      .eq("status", "processed")
-      .eq("event_type", INCOMING)
-      .gte("created_at", new Date(Date.parse(last) - 7 * INBOUND_DAY_MS).toISOString())
-      .lte("created_at", last);
-    if (weekQ.error) throw serverFailure(`zernio_logs: ${weekQ.error.message}`);
-    out.push({ botId: t.id, last, weekBefore: weekQ.count ?? 0 });
   }
-  return out;
+  return { readings, failed };
+}
+
+async function inboundReading(
+  db: ReturnType<typeof import("@/core/db/client.server").serviceDb>,
+  botId: string,
+): Promise<InboundReading> {
+  const lastQ = await db
+    .from("zernio_logs")
+    .select("created_at")
+    .eq("bot_id", botId)
+    .eq("status", "processed")
+    .eq("event_type", INCOMING)
+    // Нужна только дата самого свежего: при равных created_at неважно, какая
+    // строка. Без хвоста по id запрос идёт по индексу (bot_id, status,
+    // created_at) за миллисекунды; фильтр по payload читал бы весь журнал (8 с).
+    .order("created_at", { ascending: false })
+    .limit(1);
+  if (lastQ.error) throw serverFailure(`zernio_logs: ${lastQ.error.message}`);
+  const last = (lastQ.data?.[0]?.created_at as string | undefined) ?? null;
+  if (!last) return { botId, last: null, weekBefore: 0 };
+  // Неделя до последнего входящего, а не до «сейчас»: после недели тишины
+  // клиент не должен стать «тихим по природе» и закрыть сбой сам. Пробе нужно
+  // только «набралось ли INBOUND_ACTIVE_MIN»: столько строк и читаем. Точный
+  // count у AATeach перебирал ~20 тыс. строк журнала (до 5 с на холодную) и
+  // падал по тайм-ауту, а с ним пропадала и проба BOVI (12.10).
+  const weekQ = await db
+    .from("zernio_logs")
+    .select("created_at")
+    .eq("bot_id", botId)
+    .eq("status", "processed")
+    .eq("event_type", INCOMING)
+    .gte("created_at", new Date(Date.parse(last) - 7 * INBOUND_DAY_MS).toISOString())
+    .lte("created_at", last)
+    .order("created_at", { ascending: false })
+    .limit(INBOUND_ACTIVE_MIN);
+  if (weekQ.error) throw serverFailure(`zernio_logs: ${weekQ.error.message}`);
+  return { botId, last, weekBefore: weekQ.data?.length ?? 0 };
+}
+
+/**
+ * Ключи проб, которые в этот прогон не прочитаны: их состояние сбоя
+ * переносится как было, а не сбрасывается (stepHealthAlerts, keep).
+ * inbound null — входящие не прочитаны ни у кого; rates false — курс тоже.
+ */
+export function unreadKeys(r: {
+  inbound: { failed: string[] } | null;
+  rates: boolean;
+}): (key: string) => boolean {
+  const failed = new Set((r.inbound?.failed ?? []).map((id) => `inbound:${id}`));
+  return (key) =>
+    (r.inbound === null && key.startsWith("inbound:")) ||
+    failed.has(key) ||
+    (!r.rates && key.startsWith("rate:"));
 }
 
 /** Прогон из крона health: читает всё свежим и шлёт оператору переходы. */
@@ -243,26 +283,28 @@ export async function runPlatformAlerts(): Promise<unknown> {
           }))
       : null;
     const now = Date.now();
-    // Сбой чтения журнала не роняет остальные пробы: тишину просто не проверяем.
+    // Сбой чтения журнала не роняет остальные пробы; непрочитанное не
+    // считается ни сбоем, ни «в порядке» — его состояние переносится (keep).
     const inbound = await inboundReadings(tenants).catch((e: unknown) => {
       console.warn("[platform-alerts] входящие не прочитаны", e instanceof Error ? e.message : e);
-      return [];
+      return null;
     });
     const rates = await rateReadings(tenants).catch((e: unknown) => {
       console.warn("[platform-alerts] курс не прочитан", e instanceof Error ? e.message : e);
-      return [];
+      return null;
     });
     const { probes, labels } = platformProbes({
       crons: await listCronStatus(),
       zernioWebhook,
       tenants,
       cronTitles: new Map(CRON_JOBS.map((j) => [j.job, j.title])),
-      inbound,
-      rates,
+      inbound: inbound?.readings ?? [],
+      rates: rates ?? [],
       now,
     });
+    const keep = unreadKeys({ inbound, rates: rates !== null });
     const { processPlatformAlerts } = await import("./health-alerts.server");
-    return await processPlatformAlerts(probes, labels);
+    return await processPlatformAlerts(probes, labels, undefined, keep);
   } catch (e) {
     return { error: e instanceof Error ? e.message : String(e) };
   }
