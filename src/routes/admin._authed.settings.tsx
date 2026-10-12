@@ -128,7 +128,7 @@ function SettingsPage() {
     zones,
     zernio,
     smartSearchKey,
-    visionKey,
+    ocrKey,
     pdfWatermark,
     recentKeys,
   } = Route.useLoaderData();
@@ -596,7 +596,7 @@ function SettingsPage() {
               )}
               {shop.modules.receipt_ocr && (
                 <SettingsSection id="receipt-ocr">
-                  <ReceiptOcrCard settings={settings} hasKey={visionKey} />
+                  <ReceiptOcrCard settings={settings} hasKey={ocrKey} />
                 </SettingsSection>
               )}
               {shop.modules.smart_search && (

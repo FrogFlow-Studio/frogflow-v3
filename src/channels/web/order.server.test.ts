@@ -11,6 +11,7 @@ const markVerified = vi.fn();
 const deliver = vi.fn();
 const verify = vi.fn();
 const autoOn = vi.fn();
+const deliverOn = vi.fn();
 const notifyNew = vi.fn();
 const notifyFail = vi.fn();
 const coreDeliver = vi.fn();
@@ -43,7 +44,10 @@ vi.mock("@/core/storefront/web-order", () => ({
 }));
 vi.mock("@/core/receipts/verify.server", () => ({
   receiptOcrAutoEnabled: () => autoOn(),
+  receiptAutoDeliver: async () => deliverOn(),
   verifyCustomerReceipt: (...a: unknown[]) => verify(...a),
+  sellerReceiptNote: (v: { ok: boolean; detail?: string }) =>
+    v.ok ? "✅ Чек совпал с заказом" : v.detail,
 }));
 vi.mock("@/core/customers/customers", () => ({
   getCustomer: async () => ({ userKey: "web_x", telegramId: -5, platform: "web", state: {} }),
@@ -92,6 +96,7 @@ beforeEach(() => {
     deliver,
     verify,
     autoOn,
+    deliverOn,
     notifyNew,
     notifyFail,
     coreDeliver,
@@ -107,6 +112,7 @@ beforeEach(() => {
   attach.mockResolvedValue({ ok: true, order: { ...ORDER }, hash: "h" });
   deliver.mockResolvedValue({ sent: 1, failed: 0, pending: 0 });
   markVerified.mockResolvedValue(true);
+  deliverOn.mockReturnValue(true);
   notifyNew.mockResolvedValue(undefined);
   notifyFail.mockResolvedValue(0);
 });
@@ -151,6 +157,18 @@ describe("чек с сайта", () => {
     expect(await receiveWebProof(ctx, 9, file)).toEqual({ ok: true, result: "review" });
     expect(notifyNew).toHaveBeenCalledTimes(1);
     expect(deliver).not.toHaveBeenCalled();
+  });
+
+  it("чек совпал, выдача сразу выключена (по умолчанию) — продавцу «совпал», без выдачи", async () => {
+    const { ctx, db } = setup();
+    autoOn.mockResolvedValue(true);
+    deliverOn.mockReturnValue(false);
+    verify.mockResolvedValue({ result: { ok: true, matchedAmount: 2500 } });
+    expect(await receiveWebProof(ctx, 9, file)).toEqual({ ok: true, result: "review" });
+    expect(deliver).not.toHaveBeenCalled();
+    expect(markVerified).not.toHaveBeenCalled();
+    expect(notifyNew.mock.calls[0]![4]).toEqual({ reviewReason: "✅ Чек совпал с заказом" });
+    expect(db.tables.orders?.[0]?.admin_note).toBe("OCR: ✅ Чек совпал с заказом");
   });
 
   it("чек совпал — заказ выдан на страницу, продавцу «выдано автоматически»", async () => {

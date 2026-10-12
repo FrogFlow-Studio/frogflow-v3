@@ -189,6 +189,13 @@ describe("золотые диалоги", () => {
           { type: "tool_use", id: "t1", name: "triage", input: { country: "", ...d } },
         ]);
       }
+      if (s.receiptAi) {
+        // Чек читает модель: настоящий вызов через SDK, ответ инструмента receipt — из сценария.
+        setEnvForTests({ ANTHROPIC_API_KEY: "sk-test" });
+        modelRounds.list = s.receiptAi.map((d) => [
+          { type: "tool_use", id: "t1", name: "receipt", input: d },
+        ]);
+      }
       if (s.countryAi) {
         // Страна из слов: настоящий вызов через SDK, ответ инструмента country — из сценария.
         setEnvForTests({ ANTHROPIC_API_KEY: "sk-test" });
@@ -197,12 +204,14 @@ describe("золотые диалоги", () => {
         ]);
       }
       const r = room(
-        s.pricelist
-          ? {
-              ...s,
-              tenantSettings: { ...s.tenantSettings, consultant_pricelist: { enabled: true } },
-            }
-          : s,
+        s.receiptAi
+          ? { ...s, modules: { ...s.modules, receipt_ocr: true } }
+          : s.pricelist
+            ? {
+                ...s,
+                tenantSettings: { ...s.tenantSettings, consultant_pricelist: { enabled: true } },
+              }
+            : s,
       );
       if (s.pricelist)
         r.db.tables.app_settings!.push(

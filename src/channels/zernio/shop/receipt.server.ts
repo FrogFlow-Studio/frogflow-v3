@@ -85,9 +85,12 @@ export async function receiveProof(
       });
   };
 
+  // Итог автопроверки для продавца, когда заказ сам не выдаётся (см. ниже).
+  let reviewReason: string | undefined;
   const { receiptOcrAutoEnabled } = await import("@/core/receipts/verify.server");
   if (res.order.fulfillment_kind !== "physical" && (await receiptOcrAutoEnabled(s.ctx))) {
-    const { verifyCustomerReceipt } = await import("@/core/receipts/verify.server");
+    const { verifyCustomerReceipt, receiptAutoDeliver, sellerReceiptNote } =
+      await import("@/core/receipts/verify.server");
     const { isRetryReason } = await import("@/core/receipts/pure");
     const checked = await verifyCustomerReceipt(s.ctx, s.customer, {
       bytes: file.bytes,
@@ -96,6 +99,7 @@ export async function receiveProof(
       currency: res.order.currency,
       orderId,
       recipientCountry: res.order.country_code,
+      orderCreatedAt: res.order.created_at,
     });
     s.customer = checked.customer;
     const v = checked.result;
@@ -114,46 +118,35 @@ export async function receiveProof(
       );
       return;
     }
-    await setMode(s, { mode: "idle" });
-    if (!v.ok) {
+    if (!(await receiptAutoDeliver(s.ctx))) {
+      // Выдача кнопкой продавца (по умолчанию): покупателю — обычное «чек
+      // получен», продавцу — итог проверки: совпал, подозрительный, повтор.
+      reviewReason = sellerReceiptNote(v);
       await s.ctx.db
         .from("orders")
-        .update({ admin_note: `OCR: ${v.detail}`.slice(0, 500) })
+        .update({ admin_note: `OCR: ${reviewReason}`.slice(0, 500) })
         .eq("id", orderId);
-      await reply(s, s.m.receiptManualReview(String(no)), { force: true });
-      if (await askOrderEmailIfMissing(s, res.order)) await reply(s, s.m.emailAsk, { force: true });
-      await notifyAdmin(res.order, { reviewReason: v.detail });
-      return;
+    } else {
+      await setMode(s, { mode: "idle" });
+      if (!v.ok) {
+        await s.ctx.db
+          .from("orders")
+          .update({ admin_note: `OCR: ${v.detail}`.slice(0, 500) })
+          .eq("id", orderId);
+        await reply(s, s.m.receiptManualReview(String(no)), { force: true });
+        if (await askOrderEmailIfMissing(s, res.order))
+          await reply(s, s.m.emailAsk, { force: true });
+        await notifyAdmin(res.order, { reviewReason: v.detail });
+        return;
+      }
+      return autoDeliver(s, orderId, no, res, v, notifyAdmin);
     }
-    const verified = await markProofVerified(
-      s.ctx,
-      orderId,
-      res.hash,
-      `OCR ok: сумма ${v.matchedAmount}${v.matchedCurrency ? ` ${v.matchedCurrency} (по курсу)` : ""}`,
-      { amount: v.matchedAmount, currency: v.matchedCurrency },
-    );
-    if (!verified) {
-      await s.ctx.db
-        .from("orders")
-        .update({ admin_note: PROOF_SWAPPED_NOTE })
-        .eq("id", orderId)
-        .eq("status", "awaiting_confirmation");
-      await reply(s, s.m.receiptManualReview(String(no)), { force: true });
-      await notifyAdmin(res.order, { reviewReason: PROOF_SWAPPED_NOTE });
-      return;
-    }
-    await reply(s, s.m.receiptVerified(String(no)), { force: true });
-    const delivered = await deliverHere(s, orderId, no);
-    const fresh = (await getOrder(s.ctx, orderId)) ?? res.order;
-    if (await askOrderEmailIfMissing(s, fresh)) await reply(s, s.m.emailAsk, { force: true });
-    await notifyAdmin(fresh, { autoDelivered: delivered });
-    return;
   }
 
   await setMode(s, { mode: "idle" });
   if (await askOrderEmailIfMissing(s, res.order)) {
     await reply(s, s.m.proofReceivedNeedEmail(no), { force: true });
-    await notifyAdmin(res.order);
+    await notifyAdmin(res.order, reviewReason ? { reviewReason } : {});
     return;
   }
   const email =
@@ -162,7 +155,43 @@ export async function receiveProof(
     force: true,
     buttons: [BTN.orders(s.m), BTN.catalog(s.m)],
   });
-  await notifyAdmin(res.order);
+  await notifyAdmin(res.order, reviewReason ? { reviewReason } : {});
+}
+
+/** Чек совпал, продавец включил выдачу сразу: отметка «проверен» и выдача. */
+async function autoDeliver(
+  s: Shop,
+  orderId: number,
+  no: ReturnType<typeof displayNo>,
+  res: { order: OrderWithItems; hash: string },
+  v: { matchedAmount: number; matchedCurrency?: string },
+  notifyAdmin: (
+    o: OrderWithItems,
+    opts?: { reviewReason?: string; autoDelivered?: boolean },
+  ) => Promise<void>,
+) {
+  const verified = await markProofVerified(
+    s.ctx,
+    orderId,
+    res.hash,
+    `OCR ok: сумма ${v.matchedAmount}${v.matchedCurrency ? ` ${v.matchedCurrency} (по курсу)` : ""}`,
+    { amount: v.matchedAmount, currency: v.matchedCurrency },
+  );
+  if (!verified) {
+    await s.ctx.db
+      .from("orders")
+      .update({ admin_note: PROOF_SWAPPED_NOTE })
+      .eq("id", orderId)
+      .eq("status", "awaiting_confirmation");
+    await reply(s, s.m.receiptManualReview(String(no)), { force: true });
+    await notifyAdmin(res.order, { reviewReason: PROOF_SWAPPED_NOTE });
+    return;
+  }
+  await reply(s, s.m.receiptVerified(String(no)), { force: true });
+  const delivered = await deliverHere(s, orderId, no);
+  const fresh = (await getOrder(s.ctx, orderId)) ?? res.order;
+  if (await askOrderEmailIfMissing(s, fresh)) await reply(s, s.m.emailAsk, { force: true });
+  await notifyAdmin(fresh, { autoDelivered: delivered });
 }
 
 function proofErrorText(

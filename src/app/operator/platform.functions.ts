@@ -156,7 +156,7 @@ export const receiptAuditInventoryFn = createServerFn({ method: "GET" })
     return (await import("./receipt-audit.server")).receiptAuditInventory(data.botId);
   });
 
-/** Один шаг прогона: следующий чек с новых к старым; Vision — с ключа платформы. */
+/** Один шаг прогона: следующий чек с новых к старым; ИИ — с ключа платформы. */
 export const receiptAuditScanFn = createServerFn({ method: "POST" })
   .validator((d: unknown) =>
     z

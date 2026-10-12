@@ -85,9 +85,11 @@ For a Russian account: "Send a 54-FZ receipt (Robokassa online cash register)", 
 
 ## Receipt recognition {#receipt-ocr}
 
-Available with the "Receipt recognition" module. A receipt sent to the bot is read automatically: if the amount and payment signs match, the files go to the buyer right away, without you; a doubtful receipt comes to you with the reason; a screenshot with no payment makes the bot ask to send it again.
+Available with the "Receipt recognition" module. AI reads every receipt sent to the bot: amount, currency, date, operation number, recipient. The bot checks it against the order, the payment method details and earlier receipts and tells you in the notification and on the order card: "matched", "suspicious" with the reasons (signs of editing, a payment still "processing", a receipt dated before the order) or "repeat" (the same file or operation number was already used). A screenshot with no payment or a failed payment makes the bot ask to send it again. The bank does not confirm the receipt: check that the money arrived in your bank.
 
-"Auto-check receipts" on: it works like this. Off: all receipts come to you for manual review.
+"Auto-check receipts" on: it works like this. Off: all receipts come to you unchecked.
+
+"Deliver the order right away if the receipt matches" is off by default: you confirm the order with the button. Turn it on and a matching receipt delivers the files to the buyer by itself; suspicious receipts and repeats still come to you.
 
 Honestly about the limits: if no recognition key is set on the platform yet, the card says so, the switch is unavailable, and all receipts go to manual review until the operator adds it. Above your plan's monthly limit and when the [AI balance](/admin/ai-balance) has run out, you also check receipts yourself. Below in the card is how many receipts were recognized this month and in total.
 

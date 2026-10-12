@@ -171,7 +171,8 @@ export async function receiveWebProof(
   const { receiptOcrAutoEnabled } = await import("@/core/receipts/verify.server");
   const customer = res.order.user_key ? await getCustomer(ctx, res.order.user_key) : null;
   if (customer && res.order.fulfillment_kind !== "physical" && (await receiptOcrAutoEnabled(ctx))) {
-    const { verifyCustomerReceipt } = await import("@/core/receipts/verify.server");
+    const { verifyCustomerReceipt, receiptAutoDeliver, sellerReceiptNote } =
+      await import("@/core/receipts/verify.server");
     const { isRetryReason } = await import("@/core/receipts/pure");
     const { result: v } = await verifyCustomerReceipt(ctx, customer, {
       bytes: file.bytes,
@@ -180,6 +181,7 @@ export async function receiveWebProof(
       currency: res.order.currency,
       orderId,
       recipientCountry: res.order.country_code,
+      orderCreatedAt: res.order.created_at,
     });
     if (!v.ok && isRetryReason(v.reason)) {
       await ctx.db
@@ -189,12 +191,14 @@ export async function receiveWebProof(
         .eq("status", "awaiting_confirmation");
       return { ok: true, result: "retry", paymentFailed: v.reason === "payment_failed" };
     }
-    if (!v.ok) {
+    // Выдача кнопкой продавца (по умолчанию) — продавцу итог: совпал, подозрительный, повтор.
+    if (!v.ok || !(await receiptAutoDeliver(ctx))) {
+      const reviewReason = sellerReceiptNote(v);
       await ctx.db
         .from("orders")
-        .update({ admin_note: `OCR: ${v.detail}`.slice(0, 500) })
+        .update({ admin_note: `OCR: ${reviewReason}`.slice(0, 500) })
         .eq("id", orderId);
-      await notifySeller(ctx, res.order, { reviewReason: v.detail });
+      await notifySeller(ctx, res.order, { reviewReason });
       return { ok: true, result: "review" };
     }
     const verified = await markProofVerified(

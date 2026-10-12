@@ -4,7 +4,7 @@ import type { TenantContext } from "@/core/tenant/resolve.server";
 import { activeDeliveryZones, amountDueNow } from "@/core/fulfillment/fulfillment";
 import { getSetting, getSettings, getSettingStrict, getSettingsStrict } from "./settings";
 
-vi.mock("@/config/env", () => ({ env: () => ({ GOOGLE_VISION_API_KEY: "k" }) }));
+vi.mock("@/config/env", () => ({ env: () => ({ ANTHROPIC_API_KEY: "k" }) }));
 const reported = vi.fn(async (..._a: unknown[]) => {});
 vi.mock("@/lib/errors", () => ({ reportError: (...a: unknown[]) => reported(...a) }));
 

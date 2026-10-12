@@ -29,7 +29,6 @@ export const ENV_VARS: readonly EnvVarSpec[] = [
   { name: "APIPAY_API_KEY", kind: "feature", note: "оплата ApiPay" },
   { name: "APIPAY_WEBHOOK_SECRET", kind: "feature", note: "вебхук ApiPay" },
   { name: "ANTHROPIC_API_KEY", kind: "feature", note: "ИИ-консультант и лиды" },
-  { name: "GOOGLE_VISION_API_KEY", kind: "feature", note: "распознавание чеков" },
   { name: "SMTP_HOST", kind: "feature", note: "почта" },
   { name: "SMTP_USER", kind: "feature", note: "почта" },
   { name: "SMTP_PASSWORD", kind: "feature", note: "почта" },

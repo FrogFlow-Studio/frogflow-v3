@@ -3,7 +3,7 @@
  * заказе» с «что сказала бы автопроверка чека по текущим правилам».
  *
  * Только чтение: прогон в панели оператора не меняет статусы и не выдаёт
- * материалы. Здесь чистые правила, чтобы тесты не ходили в Vision; прогон —
+ * материалы. Здесь чистые правила, чтобы тесты не ходили в модель; прогон —
  * app/operator/receipt-audit.server.ts.
  */
 import type { ReceiptReason } from "./pure";
@@ -69,8 +69,9 @@ export const OCR_REASON_LABEL: Record<OcrFailReason | "ok", string> = {
   receipt_reused: "этот же файл уже принимали по другому заказу",
   receipt_stale: "все даты в чеке старше 3 суток",
   recipient_mismatch: "получатель в чеке не совпал с реквизитами",
-  ocr_unavailable: "Vision не ответил или нет ключа",
+  ocr_unavailable: "ИИ не прочитал чек или нет ключа",
   check_limit: "покупатель исчерпал автопроверки чека",
+  receipt_suspicious: "сумма сошлась, но чек подозрительный",
   skip: "файл не прочитан",
 };
 
@@ -351,13 +352,17 @@ export type ReceiptAuditRow = {
   comparison: ReceiptAuditComparison;
 };
 
-/** Vision: $1.50 за 1000 запросов; PDF с текстовым слоем обходится без вызова. */
-export const VISION_USD_PER_CALL = 0.0015;
+/**
+ * Оценка цены одного чека для аудита оператора, $: Claude Haiku 5.5, фото до
+ * ~4 800 токенов и ответ до ~800 — около 0,0009 $; PDF с текстовым слоем
+ * обходится без вызова.
+ */
+export const RECEIPT_USD_PER_CALL = 0.001;
 
 export type ReceiptAuditInventory = {
   withFile: number;
   estimatedUsd: number;
-  visionConfigured: boolean;
+  readerConfigured: boolean;
   moduleEnabled: boolean;
   autoEnabled: boolean;
 };
@@ -368,7 +373,7 @@ export type ReceiptAuditScanResult = {
   afterId: number;
   remaining: number;
   done: boolean;
-  visionConfigured: boolean;
+  readerConfigured: boolean;
 };
 
 /** Хеши уже прогнанных в этой сессии файлов — ловим повтор, которого ещё нет в базе. */

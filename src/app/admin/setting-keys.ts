@@ -31,6 +31,7 @@ export const SETTING_KEYS = [
   "smart_search_lifetime_spend",
   "smart_search_last_error",
   "receipt_ocr_auto",
+  "receipt_ocr_deliver",
   "weekly_report_enabled",
   "weekly_report_sections",
   "auto_messages_v3",
@@ -96,7 +97,7 @@ export const SETTING_KEYS = [
 
 /**
  * Счётчики расходов и последние ошибки пишет только платформа: ими считаются
- * пределы тарифа на платные вызовы (Vision, консультант, умный поиск).
+ * пределы тарифа на платные вызовы (чтение чеков, консультант, умный поиск).
  * Продавец их видит, но сбросить не может — иначе обнулил бы свой предел.
  */
 const PLATFORM_ONLY = new Set<string>([
