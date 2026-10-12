@@ -1890,6 +1890,8 @@ export async function plusAnswersUnknownPrompt(
   p: TwoStepBuyer,
   api: AutomationApi = liveAutomationApi,
   now: () => Date = () => new Date(),
+  /** Покупатель написал голый «+». */
+  bare = false,
 ): Promise<"ask" | "asked" | null> {
   let tail: ZernioInboxMessage[];
   try {
@@ -1904,13 +1906,23 @@ export async function plusAnswersUnknownPrompt(
       (m) => m.direction === "outgoing" && m.message && Date.parse(m.createdAt ?? "") >= since,
     )
     .at(-1);
-  if (!last?.message) return null;
-  const t = squash(last.message);
-  const prompted = /[«"“]\s*\+\s*[»"”]/.test(t) || KNOWN_PROMPTS.some((q) => t.endsWith(squash(q)));
-  if (!prompted) return null;
+  // Голый «+», а в переписке Zernio наших сообщений нет: первое сообщение
+  // прислали вручную, и Zernio его не показал (Копилка 12.10, maryyyyisaaaa —
+  // «+» на «Палитру» ушёл в обращение #147). Спрашиваем, какой материал, —
+  // раз в сутки на переписку.
+  if (!last?.message && !bare) return null;
+  if (last?.message) {
+    const t = squash(last.message);
+    const prompted =
+      /[«"“]\s*\+\s*[»"”]/.test(t) || KNOWN_PROMPTS.some((q) => t.endsWith(squash(q)));
+    if (!prompted) return null;
+  }
+  const day = Math.floor(now().getTime() / 86_400_000);
   const { error } = await ctx.db.from("zernio_logs").insert({
     bot_id: ctx.tenant.id,
-    event_id: `plus-unmatched:${last.id ?? `${p.conversationId}:${Date.parse(last.createdAt ?? "")}`}`,
+    event_id: last?.message
+      ? `plus-unmatched:${last.id ?? `${p.conversationId}:${Date.parse(last.createdAt ?? "")}`}`
+      : `plus-unmatched:${p.conversationId}:day:${day}`,
     event_type: "two_step_dm_unmatched",
     status: "skipped",
     error_message: "«+» на сообщение, которое не первое сообщение правила — спросили, какой товар",
@@ -1919,7 +1931,7 @@ export async function plusAnswersUnknownPrompt(
       username: p.username,
       accountId: p.accountId,
       conversationId: p.conversationId,
-      answered: last.message.slice(0, 300),
+      answered: last?.message?.slice(0, 300) ?? null,
     }),
   });
   // Повторный «+» на то же сообщение — вопрос уже задан, второй раз не спрашиваем.
