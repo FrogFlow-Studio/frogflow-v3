@@ -14,6 +14,7 @@ import type { TenantContext } from "@/core/tenant/resolve.server";
 import { previewReadonly } from "@/lib/preview";
 import { serverFailure } from "@/lib/server-failure";
 import { parseSpend } from "@/core/postpay/postpay";
+import { CHAT_RECEIPT_TEXT_KEY, receiptTextOn } from "@/core/receipts/text-receipt";
 import {
   CHAT_FOREIGN_PAY_KEY,
   CHAT_PAY_FAILED_KEY,
@@ -110,21 +111,24 @@ export type TriageSwitches = {
   foreignPay: boolean;
   payFailed: boolean;
   receiptTextOffer: boolean;
+  receiptText: boolean;
 };
 
 /** Что включено у клиента: всё выключено — модель не зовём. */
 export async function triageSwitches(ctx: TenantContext): Promise<TriageSwitches> {
-  const [chatter, foreignPay, payFailed, offer] = await Promise.all([
+  const [chatter, foreignPay, payFailed, offer, receiptText] = await Promise.all([
     getSetting(ctx, CHAT_SKIP_CHATTER_KEY),
     getSetting(ctx, CHAT_FOREIGN_PAY_KEY),
     getSetting(ctx, CHAT_PAY_FAILED_KEY),
     getSetting(ctx, CHAT_RECEIPT_TEXT_OFFER_KEY),
+    getSetting(ctx, CHAT_RECEIPT_TEXT_KEY),
   ]);
   return {
     chatter: skipChatterOn(chatter),
     foreignPay: foreignPayOn(foreignPay),
     payFailed: payFailedOn(payFailed),
     receiptTextOffer: receiptTextOfferOn(offer),
+    receiptText: receiptTextOn(receiptText),
   };
 }
 
@@ -133,6 +137,9 @@ const SWITCH_OF: Record<Exclude<Triage["kind"], "other">, keyof TriageSwitches> 
   foreign_pay: "foreignPay",
   payment_failed: "payFailed",
   cant_send_receipt: "receiptTextOffer",
+  text_receipt: "receiptText",
+  // Ещё раз шаг оплаты — продолжение «платёж не прошёл, какой у вас банк».
+  how_to_pay: "payFailed",
 };
 
 /**

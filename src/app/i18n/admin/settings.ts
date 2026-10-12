@@ -460,14 +460,14 @@ export const ru = {
     "На вопрос о почте покупатель отвечает «вацап», «сюда», «в инстаграм», «не надо» — бот один раз пишет, что файлы придут в переписку после проверки чека, и больше почту не спрашивает. Если адрес всё же напишут, он сохранится.",
   "settings.receiptText.title": "Чек текстом",
   "settings.receiptText.intro":
-    "Kaspi иногда не даёт сделать скриншот, и покупатель вставляет текст чека: «Оплата совершена 800 ₸ … № чека QR…». Включено — бот принимает такой текст как чек: отвечает «Принял чек, передаю на проверку», а заказ приходит вам на подтверждение с текстом чека, как с фото. Автопроверка текст не читает: поступление денег проверьте сами.",
+    "Kaspi иногда не даёт сделать скриншот, и покупатель вставляет текст чека: «Оплата совершена 800 ₸ … № чека QR…» или уведомление банка «Покупка: 1 700 ₸, ИП …». Включено — бот принимает такой текст как чек (что это чек, а не рассказ «я оплатила», решает ИИ): отвечает «Принял чек, передаю на проверку», а заказ приходит вам на подтверждение с текстом чека, как с фото. Автопроверка текст не читает: поступление денег проверьте сами.",
   "settings.receiptText.label": "Принимать чек текстом",
   "settings.payChat.title": "Оплата и чеки в переписке",
   "settings.payChat.intro":
     "Instagram и WhatsApp. Что написал покупатель («не проходит», «скриншот не загружается»), понимает ИИ, а не список слов. Сообщение всегда остаётся в «Чате». Тексты ответов меняются в «Настройки → Текст бота → Instagram».",
   "settings.payChat.failedLabel": "Не принимать чек, если покупатель пишет, что платёж не прошёл",
   "settings.payChat.failedHint":
-    "Фото с подписью «Не проходит» или фото и следом «Не проходит» — не чек. Бот отвечает «Похоже, платёж не прошёл. Попробуйте ещё раз или напишите, какой у вас банк», заказ остаётся «ждёт оплату», вопрос приходит вам. Если чек уже успел записаться (не раньше 15 минут назад), он снимается, и вам приходит уведомление.",
+    "Фото с подписью «Не проходит» или фото и следом «Не проходит» — не чек. Бот отвечает «Похоже, платёж не прошёл. Попробуйте ещё раз или напишите, какой у вас банк», заказ остаётся «ждёт оплату», вопрос приходит вам. Если чек уже успел записаться (не раньше 15 минут назад), он снимается, и вам приходит уведомление. Если потом покупатель спрашивает, как оплатить, или называет свой банк, бот ещё раз присылает шаг оплаты (реквизиты или ссылку) — не чаще раза в полчаса.",
   "settings.payChat.offerLabel": "Предлагать чек текстом, если скриншот не отправляется",
   "settings.payChat.offerHint":
     "Покупатель пишет «скриншот не загружается», «можно чек на ватсап?» — бот один раз на заказ предлагает скопировать сюда текст чека с номером операции и суммой. Работает, когда включено «Принимать чек текстом». Следующие такие сообщения приходят вам.",
@@ -1012,14 +1012,14 @@ export const kk: SectionDict<typeof ru> = {
     "Пошта туралы сұраққа сатып алушы «вацап», «осында», «инстаграмға», «керек емес» деп жауап берсе — бот бір рет файлдар чек тексерілгеннен кейін хат алмасуға келетінін жазады да, поштаны қайта сұрамайды. Мекенжайды бәрібір жазса, ол сақталады.",
   "settings.receiptText.title": "Мәтінмен чек",
   "settings.receiptText.intro":
-    "Kaspi кейде скриншот жасатпайды, сонда сатып алушы чек мәтінін қояды: «Оплата совершена 800 ₸ … № чека QR…». Қосулы — бот мұндай мәтінді чек ретінде қабылдайды: «Чекті қабылдадым, тексеруге жіберемін» деп жауап береді, ал тапсырыс сізге чек мәтінімен расталуға келеді, фото сияқты. Автотексеру мәтінді оқымайды: ақшаның түскенін өзіңіз тексеріңіз.",
+    "Kaspi кейде скриншот жасатпайды, сонда сатып алушы чек мәтінін қояды: «Оплата совершена 800 ₸ … № чека QR…» немесе банк хабарламасы «Покупка: 1 700 ₸, ИП …». Қосулы — бот мұндай мәтінді чек ретінде қабылдайды (бұл «төледім» деген әңгіме емес, чек екенін ЖИ шешеді): «Чекті қабылдадым, тексеруге жіберемін» деп жауап береді, ал тапсырыс сізге чек мәтінімен расталуға келеді, фото сияқты. Автотексеру мәтінді оқымайды: ақшаның түскенін өзіңіз тексеріңіз.",
   "settings.receiptText.label": "Чекті мәтінмен қабылдау",
   "settings.payChat.title": "Хат алмасудағы төлем мен чектер",
   "settings.payChat.intro":
     "Instagram және WhatsApp. Сатып алушының не жазғанын («өтпей жатыр», «скриншот жүктелмейді») сөздер тізімі емес, ЖИ түсінеді. Хабарлама әрдайым «Чатта» қалады. Жауап мәтіндері «Баптаулар → Бот мәтіні → Instagram» ішінде өзгертіледі.",
   "settings.payChat.failedLabel": "Сатып алушы төлем өтпегенін жазса, чекті қабылдамау",
   "settings.payChat.failedHint":
-    "«Өтпей жатыр» деген жазуы бар фото немесе фото мен артынша «Өтпей жатыр» — чек емес. Бот «Төлем өтпеген сияқты. Қайта төлеп көріңіз немесе қай банк екенін жазыңыз» деп жауап береді, тапсырыс «төлемді күтуде» күйінде қалады, сұрақ сізге келеді. Чек жазылып үлгерсе (15 минуттан ерте емес), ол алынып тасталады және сізге хабарлама келеді.",
+    "«Өтпей жатыр» деген жазуы бар фото немесе фото мен артынша «Өтпей жатыр» — чек емес. Бот «Төлем өтпеген сияқты. Қайта төлеп көріңіз немесе қай банк екенін жазыңыз» деп жауап береді, тапсырыс «төлемді күтуде» күйінде қалады, сұрақ сізге келеді. Чек жазылып үлгерсе (15 минуттан ерте емес), ол алынып тасталады және сізге хабарлама келеді. Кейін сатып алушы қалай төлеуді сұраса немесе банкін атаса, бот төлем қадамын (деректемелер не сілтеме) қайта жібереді — жарты сағатта бір реттен жиі емес.",
   "settings.payChat.offerLabel": "Скриншот жіберілмесе, чекті мәтінмен ұсыну",
   "settings.payChat.offerHint":
     "Сатып алушы «скриншот жүктелмейді», «чекті ватсапқа жіберуге бола ма?» деп жазады — бот бір тапсырысқа бір рет чек мәтінін операция нөмірі мен сомасымен осында көшіріп жіберуді ұсынады. «Чекті мәтінмен қабылдау» қосулы болғанда жұмыс істейді. Келесі осындай хабарламалар сізге келеді.",
@@ -1559,14 +1559,14 @@ export const en: SectionDict<typeof ru> = {
     "When the buyer answers the email question with “WhatsApp”, “here”, “to Instagram” or “no need”, the bot says once that the files will come to this chat after the receipt is checked, and stops asking for an email. If they still send an address, it is saved.",
   "settings.receiptText.title": "Receipt as text",
   "settings.receiptText.intro":
-    "Kaspi sometimes blocks screenshots, so the buyer pastes the receipt text: “Оплата совершена 800 ₸ … № чека QR…”. On: the bot accepts such text as a receipt, replies “Got the receipt, passing it on for checking”, and the order comes to you for confirmation with the receipt text, just like a photo. Automatic checking does not read text: check the payment yourself.",
+    "Kaspi sometimes blocks screenshots, so the buyer pastes the receipt text: “Оплата совершена 800 ₸ … № чека QR…”, or the bank notification “Покупка: 1 700 ₸, ИП …”. On: the bot accepts such text as a receipt (AI decides it is a receipt and not just “I paid”), replies “Got the receipt, passing it on for checking”, and the order comes to you for confirmation with the receipt text, just like a photo. Automatic checking does not read text: check the payment yourself.",
   "settings.receiptText.label": "Accept receipts as text",
   "settings.payChat.title": "Payment and receipts in chat",
   "settings.payChat.intro":
     "Instagram and WhatsApp. AI, not a word list, understands what the buyer wrote (“it doesn't go through”, “the screenshot won't upload”). The message always stays in “Chat”. Reply texts are edited in “Settings → Bot texts → Instagram”.",
   "settings.payChat.failedLabel": "Don't accept a receipt if the buyer says the payment failed",
   "settings.payChat.failedHint":
-    "A photo captioned “doesn't go through”, or a photo followed by “doesn't go through”, is not a receipt. The bot replies “It looks like the payment didn't go through. Please try again or tell us which bank you use”, the order stays “awaiting payment” and the question comes to you. If the receipt was already recorded (no more than 15 minutes earlier), it is withdrawn and you get a notification.",
+    "A photo captioned “doesn't go through”, or a photo followed by “doesn't go through”, is not a receipt. The bot replies “It looks like the payment didn't go through. Please try again or tell us which bank you use”, the order stays “awaiting payment” and the question comes to you. If the receipt was already recorded (no more than 15 minutes earlier), it is withdrawn and you get a notification. If the buyer then asks how to pay or names their bank, the bot sends the payment step again (details or link), at most once every half hour.",
   "settings.payChat.offerLabel": "Offer a text receipt if the screenshot won't send",
   "settings.payChat.offerHint":
     "The buyer writes “the screenshot won't upload”, “can I send the receipt on WhatsApp?” — once per order the bot offers to paste the receipt text here with the transaction number and amount. Works when “Accept receipts as text” is on. Further such messages come to you.",
@@ -2113,14 +2113,14 @@ export const uz: SectionDict<typeof ru> = {
     "Pochta haqidagi savolga xaridor «vatsap», «shu yerga», «instagramga», «kerak emas» deb javob bersa — bot bir marta fayllar chek tekshirilgach yozishmaga kelishini yozadi va pochtani boshqa so‘ramaydi. Manzilni baribir yozsa, u saqlanadi.",
   "settings.receiptText.title": "Chek matn bilan",
   "settings.receiptText.intro":
-    "Kaspi ba’zan skrinshot qilishga ruxsat bermaydi va xaridor chek matnini qo‘yadi: «Оплата совершена 800 ₸ … № чека QR…». Yoqilgan — bot bunday matnni chek sifatida qabul qiladi: «Chekni qabul qildim, tekshiruvga yuboraman» deb javob beradi, buyurtma esa sizga chek matni bilan tasdiqlash uchun keladi, xuddi rasm kabi. Avtotekshiruv matnni o‘qimaydi: pul tushganini o‘zingiz tekshiring.",
+    "Kaspi ba’zan skrinshot qilishga ruxsat bermaydi va xaridor chek matnini qo‘yadi: «Оплата совершена 800 ₸ … № чека QR…» yoki bank xabarnomasi «Покупка: 1 700 ₸, ИП …». Yoqilgan — bot bunday matnni chek sifatida qabul qiladi (bu «to‘ladim» degan gap emas, chek ekanini SI hal qiladi): «Chekni qabul qildim, tekshiruvga yuboraman» deb javob beradi, buyurtma esa sizga chek matni bilan tasdiqlash uchun keladi, xuddi rasm kabi. Avtotekshiruv matnni o‘qimaydi: pul tushganini o‘zingiz tekshiring.",
   "settings.receiptText.label": "Chekni matn bilan qabul qilish",
   "settings.payChat.title": "Yozishmadagi to‘lov va cheklar",
   "settings.payChat.intro":
     "Instagram va WhatsApp. Xaridor nima yozganini («o‘tmayapti», «skrinshot yuklanmayapti») so‘zlar ro‘yxati emas, SI tushunadi. Xabar har doim «Chat»da qoladi. Javob matnlari «Sozlamalar → Bot matni → Instagram» bo‘limida o‘zgartiriladi.",
   "settings.payChat.failedLabel": "Xaridor to‘lov o‘tmaganini yozsa, chekni qabul qilmaslik",
   "settings.payChat.failedHint":
-    "«O‘tmayapti» yozuvli rasm yoki rasm va ketidan «O‘tmayapti» — chek emas. Bot «To‘lov o‘tmaganga o‘xshaydi. Qayta to‘lab ko‘ring yoki qaysi bank ekanini yozing» deb javob beradi, buyurtma «to‘lovni kutmoqda» holatida qoladi, savol sizga keladi. Agar chek yozilib ulgurgan bo‘lsa (15 daqiqadan oldin emas), u olib tashlanadi va sizga xabar keladi.",
+    "«O‘tmayapti» yozuvli rasm yoki rasm va ketidan «O‘tmayapti» — chek emas. Bot «To‘lov o‘tmaganga o‘xshaydi. Qayta to‘lab ko‘ring yoki qaysi bank ekanini yozing» deb javob beradi, buyurtma «to‘lovni kutmoqda» holatida qoladi, savol sizga keladi. Agar chek yozilib ulgurgan bo‘lsa (15 daqiqadan oldin emas), u olib tashlanadi va sizga xabar keladi. Keyin xaridor qanday to‘lashni so‘rasa yoki bankini aytsa, bot to‘lov qadamini (rekvizitlar yoki havola) qayta yuboradi — yarim soatda bir martadan ko‘p emas.",
   "settings.payChat.offerLabel": "Skrinshot yuborilmasa, chekni matn bilan taklif qilish",
   "settings.payChat.offerHint":
     "Xaridor «skrinshot yuklanmayapti», «chekni WhatsApp’ga yuborsam bo‘ladimi?» deb yozadi — bot bir buyurtmaga bir marta chek matnini operatsiya raqami va summasi bilan shu yerga nusxalashni taklif qiladi. «Chekni matn bilan qabul qilish» yoqilganda ishlaydi. Keyingi shunday xabarlar sizga keladi.",

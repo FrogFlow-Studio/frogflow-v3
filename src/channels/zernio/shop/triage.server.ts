@@ -37,6 +37,13 @@ export async function triageQuestion(s: Shop, text: string): Promise<ShopOutcome
     const { payTroubleReply } = await import("./pay-trouble.server");
     return payTroubleReply(s, t.kind);
   }
+  // «Как перейти на оплату?», банк в ответ на «какой у вас банк» — шаг оплаты ещё раз (Копилка 12.10).
+  if (t.kind === "how_to_pay") {
+    const { payHowToReply } = await import("./pay-trouble.server");
+    return payHowToReply(s);
+  }
+  // Текст чека принимает шаг оплаты раньше (shop/evening, textReceipt); здесь — прежний путь.
+  if (t.kind === "text_receipt") return null;
   if (t.kind === "chatter") {
     // Сообщение остаётся в «Чате»; бот молчит, обращения нет (Копилка 12.10:
     // «Благодарю! 🌹» открывало обращение #123).

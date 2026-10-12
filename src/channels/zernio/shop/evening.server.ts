@@ -10,6 +10,7 @@ import { CHAT_EMAIL_OPTIONAL_KEY, emailOptionalOn } from "@/core/orders/email-as
 import {
   CHAT_RECEIPT_TEXT_KEY,
   looksLikeTextReceipt,
+  mentionsAmount,
   receiptOperationNo,
   receiptTextOn,
 } from "@/core/receipts/text-receipt";
@@ -17,6 +18,7 @@ import { displayNo, getOrder, recentAwaitingPaymentOrder, rejectOrder } from "@/
 import { EVENING_COPY } from "./evening-copy";
 import { BTN, reply, setMode, type Shop } from "./context.server";
 import { receiveTextProof } from "./receipt.server";
+import { triageOnce } from "./triage.server";
 
 /** «Файлы придут сюда» — не чаще раза в 6 часов: дальше такие реплики читает продавец. */
 export const FILES_HERE_WINDOW_MS = 6 * 3600_000;
@@ -57,12 +59,17 @@ export async function textReceipt(
   mode: string | undefined,
   text: string,
 ): Promise<boolean> {
-  if (!looksLikeTextReceipt(text)) return false;
+  const byWords = looksLikeTextReceipt(text);
+  if (!byWords && !(mentionsAmount(text) && text.trim().length >= 12)) return false;
   if (!receiptTextOn(await getSetting(s.ctx, CHAT_RECEIPT_TEXT_KEY))) return false;
   const pending = s.customer.state.pending_order_id;
   let orderId = mode && PAY_MODES.includes(mode) && pending ? Number(pending) : null;
   if (!orderId) orderId = await recentAwaitingPaymentOrder(s.ctx, s.customer);
   if (!orderId) return false;
+  // Слов чека нет, а сумма есть — уведомление ли это банка, решает модель
+  // (Копилка 12.10, taurgalievna #148: «Покупка: 1 700 ₸ / ИП КОПИЛКА
+  // РУСОВЕДА / Доступно: …» — бот промолчал, деньги пришли).
+  if (!byWords && (await triageOnce(s, text))?.kind !== "text_receipt") return false;
   s.why = "чек текстом — продавцу на проверку";
   await receiveTextProof(s, orderId, text, receiptOperationNo(text));
   return true;

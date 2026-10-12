@@ -327,3 +327,61 @@ export async function confirmOldResend(s: Shop, text: string): Promise<ShopOutco
   const { resendConfirmed } = await import("./postpay.server");
   return resendConfirmed(s, order, ask.email);
 }
+
+/** Заказ шага оплаты уже оплачен — шаг оплаты больше ничего не ждёт. */
+const PAID_STATUSES = ["paid", "delivering", "delivered"];
+
+/**
+ * Шаг оплаты остался, а заказ уже оплачен (Продамус, ApiPay, продавец
+ * подтвердил): шаг снимается, реплику разбирает обычный путь — ИИ после
+ * оплаты. _marina_lyalina_ (Копилка 12.10, #149) оплатила картой РФ, файлы
+ * выданы, а «можно на почту?» и «не могу скачать по ссылкам» ушли в
+ * обращение: шаг «жду оплату по ссылке» забирал реплику раньше ИИ.
+ * true — шаг снят.
+ */
+export async function dropPaidStep(s: Shop): Promise<boolean> {
+  const mode = s.customer.state.mode;
+  const id = Number(s.customer.state.pending_order_id);
+  if (!mode || !PAY_MODES.includes(mode) || !id) return false;
+  const order = await getOrder(s.ctx, id);
+  if (!order || order.telegram_id !== s.customer.telegramId) return false;
+  if (!PAID_STATUSES.includes(order.status)) return false;
+  await setMode(s, {
+    mode: "idle",
+    pending_order_id: undefined,
+    pending_display_no: undefined,
+    pay_link: undefined,
+  });
+  return true;
+}
+
+/**
+ * «Как перейти на оплату?», «Каспий банк РК» в ответ на «какой у вас банк»
+ * (разбор моделью — how_to_pay): ещё раз шаг оплаты выбранным способом —
+ * реквизиты перевода или ссылка текстом. Раз в PAY_FAILED_REPLY_MS на заказ:
+ * дальше такие реплики читает продавец. janat021265 (Копилка 12.10, #147)
+ * после «Не получается» спросила, как оплатить, назвала банк — тишина.
+ * null — заказа, ждущего оплату, нет или способ не понятен: прежний путь.
+ */
+export async function payHowToReply(s: Shop): Promise<ShopOutcome | null> {
+  const order = await payOrder(s);
+  if (!order || order.status !== "awaiting_payment") return null;
+  const mode = s.customer.state.mode;
+  const link = s.customer.state.pay_link;
+  const kind =
+    mode === "awaiting_proof"
+      ? "manual"
+      : mode === "awaiting_payment" && (link === "pdm" || link === "rk")
+        ? link
+        : null;
+  if (!kind || Number(s.customer.state.pending_order_id) !== order.id) return null;
+  const bucket = Math.floor(Date.now() / PAY_FAILED_REPLY_MS);
+  if (!(await claimOrderEvent(s.ctx, order.id, "pay_howto", String(bucket)))) {
+    s.why = "снова «как оплатить» — шаг оплаты уже повторяли, вопрос продавцу";
+    return "question";
+  }
+  s.why = "покупатель спрашивает, как оплатить, — ещё раз шаг оплаты";
+  const { choosePayment } = await import("./checkout.server");
+  await choosePayment(s, kind, { asText: true });
+  return "handled";
+}

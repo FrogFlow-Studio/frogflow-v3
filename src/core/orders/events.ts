@@ -38,6 +38,8 @@ export type OrderEventKind =
   | "pay_failed"
   /** Чек снят: покупатель написал, что платёж не прошёл, заказ снова ждёт оплату. */
   | "proof_withdrawn"
+  /** Покупатель спросил, как оплатить, — бот ещё раз прислал шаг оплаты (раз в полчаса). */
+  | "pay_howto"
   /** Скриншот не отправляется — бот предложил чек текстом (один раз на заказ). */
   | "receipt_text_offered"
   /** Номер товара сразу после заказа — бот напомнил о неоплаченном заказе (один раз). */
@@ -452,6 +454,11 @@ export function describeOrderEvent(e: Pick<OrderEvent, "kind" | "actor" | "paylo
       return {
         text: `Чек снят: покупатель написал «${str(p.text)}» — заказ снова ждёт оплату`,
         tone: "warn",
+      };
+    case "pay_howto":
+      return {
+        text: "Покупатель спросил, как оплатить, — бот ещё раз прислал шаг оплаты",
+        tone: "neutral",
       };
     case "receipt_text_offered":
       return {
