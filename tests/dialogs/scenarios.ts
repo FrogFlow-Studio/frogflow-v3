@@ -177,7 +177,7 @@ const prodamusOrder = (r: Room): void => {
 
 /** Заказ №82 Копилки (10.10): оплачен картой и выдан; почта и письмо — по сценарию. */
 const paidOrder =
-  (o: { email?: string; sentAt?: string; status?: string } = {}) =>
+  (o: { email?: string; sentAt?: string; status?: string; daysAgo?: number } = {}) =>
   (r: Room): void => {
     const buyer = r.db.tables.bot_users![0]!;
     r.db.tables.orders!.push({
@@ -193,7 +193,7 @@ const paidOrder =
       currency: "KZT",
       fulfillment_kind: "digital",
       customer_email: o.email ?? null,
-      created_at: new Date(Date.now() - 3 * 60_000).toISOString(),
+      created_at: new Date(Date.now() - (o.daysAgo ?? 0) * 86_400_000 - 3 * 60_000).toISOString(),
       updated_at: new Date(Date.now() - 2 * 60_000).toISOString(),
       order_items: [
         {
@@ -337,7 +337,10 @@ export interface Scenario {
    * Разбор реплики перед обращением (core/inbox/triage): ответы инструмента
    * triage по вызовам — маршрут настоящий, подменён только ответ API модели.
    */
-  triage?: Array<{ kind: "chatter" | "foreign_pay" | "other"; country?: string }>;
+  triage?: Array<{
+    kind: "chatter" | "foreign_pay" | "payment_failed" | "cant_send_receipt" | "other";
+    country?: string;
+  }>;
   /** Instagram/WhatsApp: ник покупателя во входящем. */
   username?: string;
   /** Instagram (только `full`): правила комментариев Zernio клиента (список /comment-automations). */
@@ -723,6 +726,309 @@ export const SCENARIOS: Scenario[] = [
       {
         say: { text: "В бел. руб можно" },
         expect: { notSays: [(c) => c.foreignPayReply], sellerNotices: 1 },
+      },
+    ],
+  },
+  // ───── Дневной срез AATeach 12.10: оплата и чеки в переписке (решения Якова 1–4) ─────
+  {
+    id: "pay-failed-photo-caption-ig-ru",
+    title:
+      "фото с подписью «Не проходит» — это скриншот ошибки: чек не принимается, «попробуйте ещё раз или напишите банк», заказ ждёт оплату",
+    origin:
+      "AATeach 12.10, kopats23 #1435 (Беларусь): фото и «Не проходит» → «✅ Чек получен», заказ 13 часов висел у Анастасии как оплаченный",
+    channel: "instagram",
+    locale: "ru",
+    products: PRODUCTS,
+    mail: true,
+    receipts: true,
+    triage: [{ kind: "payment_failed" }],
+    state: { mode: "awaiting_proof", pending_order_id: 82 },
+    arrange: paidOrder({ status: "awaiting_payment" }),
+    steps: [
+      {
+        say: { photoWithText: "Не проходит" },
+        expect: {
+          count: 1,
+          says: [(c) => c.payFailedReply],
+          notSays: [(c) => c.proofReceivedNeedEmail(82), (c) => c.proofReceived(82)],
+          orders: { 82: { status: "awaiting_payment" } },
+        },
+      },
+    ],
+  },
+  {
+    id: "pay-failed-after-photo-ig-ru",
+    title:
+      "фото, а следом «Не проходит» — чек снимается: заказ снова ждёт оплату, продавцу уведомление, покупателю «попробуйте ещё раз»",
+    origin: "AATeach 12.10, kopats23 #1435: фото 18:27:06, «Не проходит» 18:27:09",
+    channel: "instagram",
+    locale: "ru",
+    products: PRODUCTS,
+    mail: true,
+    receipts: true,
+    triage: [{ kind: "payment_failed" }],
+    state: { mode: "awaiting_proof", pending_order_id: 82 },
+    arrange: paidOrder({ status: "awaiting_payment" }),
+    steps: [
+      {
+        say: { photo: true },
+        expect: {
+          says: [(c) => c.proofReceivedNeedEmail(82)],
+          orders: { 82: { status: "awaiting_confirmation" } },
+        },
+      },
+      {
+        say: { text: "Не проходит" },
+        expect: {
+          count: 1,
+          says: [(c) => c.payFailedReply],
+          sellerNotices: 1,
+          state: { mode: "awaiting_proof" },
+          orders: {
+            82: {
+              status: "awaiting_payment",
+              admin_note: expect.stringContaining("Не проходит"),
+            },
+          },
+        },
+      },
+    ],
+  },
+  {
+    id: "pay-failed-same-time-ig-ru",
+    title:
+      "фото и «Не проходит» приходят почти одновременно и обрабатываются параллельно — заказ остаётся неоплаченным, «не прошёл» уходит один раз",
+    origin:
+      "AATeach 12.10, kopats23 #1435: два вебхука с разницей в 3 секунды, разбор шёл одновременно",
+    channel: "instagram",
+    locale: "ru",
+    products: PRODUCTS,
+    full: true,
+    mail: true,
+    receipts: true,
+    triage: [{ kind: "payment_failed" }],
+    state: { mode: "awaiting_proof", pending_order_id: 82 },
+    arrange: paidOrder({ status: "awaiting_payment" }),
+    steps: [
+      {
+        say: { photos: 1, caption: "Не проходит" },
+        expect: {
+          says: [(c) => c.payFailedReply],
+          orders: { 82: { status: "awaiting_payment" } },
+        },
+      },
+    ],
+  },
+  {
+    id: "pay-failed-switch-off-ig-ru",
+    title:
+      "«Не принимать чек, если платёж не прошёл» выключено — фото с подписью «Не проходит» принимается как чек, как раньше",
+    origin: "Яков 11.10: новое поведение бота — переключатель в настройках",
+    channel: "instagram",
+    locale: "ru",
+    products: PRODUCTS,
+    mail: true,
+    receipts: true,
+    triage: [{ kind: "payment_failed" }],
+    state: { mode: "awaiting_proof", pending_order_id: 82 },
+    arrange: (r) => {
+      paidOrder({ status: "awaiting_payment" })(r);
+      r.db.tables.app_settings!.push({ key: "chat_pay_failed", value: "false" });
+    },
+    steps: [
+      {
+        say: { photoWithText: "Не проходит" },
+        expect: {
+          says: [(c) => c.proofReceivedNeedEmail(82)],
+          notSays: [(c) => c.payFailedReply],
+          orders: { 82: { status: "awaiting_confirmation" } },
+        },
+      },
+    ],
+  },
+  {
+    id: "pay-ok-caption-ig-ru",
+    title: "фото чека с подписью «Оплатила» — обычный чек: «Чек получен», заказ на подтверждение",
+    origin: "граница к pay-failed-photo-caption-ig-ru",
+    channel: "instagram",
+    locale: "ru",
+    products: PRODUCTS,
+    mail: true,
+    receipts: true,
+    triage: [{ kind: "other" }],
+    state: { mode: "awaiting_proof", pending_order_id: 82 },
+    arrange: paidOrder({ status: "awaiting_payment" }),
+    steps: [
+      {
+        say: { photoWithText: "Оплатила, вот чек" },
+        expect: {
+          says: [(c) => c.proofReceivedNeedEmail(82)],
+          orders: { 82: { status: "awaiting_confirmation" } },
+        },
+      },
+    ],
+  },
+  {
+    id: "cant-send-receipt-ig-ru",
+    title:
+      "«Не получается отправить чек сюда» — бот предлагает прислать текст чека; «На ватсап можно?» после этого — продавцу, без второй подсказки; текст чека принимается",
+    origin:
+      "AATeach 12.10, asya_6465 #1437: «Не получается отправить чек сюда», «На ватсап можно?» — дважды инструкция про скрепку",
+    channel: "instagram",
+    locale: "ru",
+    products: PRODUCTS,
+    triage: [{ kind: "cant_send_receipt" }, { kind: "cant_send_receipt" }],
+    state: { mode: "awaiting_proof", pending_order_id: 82 },
+    arrange: paidOrder({ status: "awaiting_payment" }),
+    steps: [
+      {
+        say: { text: "Не получается отправить чек сюда" },
+        expect: {
+          count: 1,
+          says: [(c) => c.receiptTextOffer],
+          notSays: [(c) => c.receiptHowTo],
+        },
+      },
+      {
+        say: { text: "На ватсап можно?" },
+        expect: { silent: true },
+      },
+      {
+        say: { text: "Перевод выполнен\n189 ₽\nПолучатель: Анастасия А.\n№ операции 4405123987" },
+        expect: {
+          says: [EVENING_COPY.ru.textReceiptTaken(82)],
+          orders: { 82: { status: "awaiting_confirmation", payment_proof_path: "Чек текстом" } },
+        },
+      },
+    ],
+  },
+  {
+    id: "cant-send-receipt-paid-ig-ru",
+    title:
+      "«Я закинула деньги, но скриншот не загружается сюда» — не тишина, а предложение прислать текст чека",
+    origin: "AATeach 11.10 23:02, galinka.iva #1431 — бот промолчал",
+    channel: "instagram",
+    locale: "ru",
+    products: PRODUCTS,
+    triage: [{ kind: "cant_send_receipt" }],
+    state: { mode: "awaiting_proof", pending_order_id: 82 },
+    arrange: paidOrder({ status: "awaiting_payment" }),
+    steps: [
+      {
+        say: { text: "Я закинула деньги, но скриншот не загружается сюда." },
+        expect: { count: 1, says: [(c) => c.receiptTextOffer] },
+      },
+    ],
+  },
+  {
+    id: "cant-send-receipt-switch-off-ig-ru",
+    title:
+      "«Предлагать чек текстом» выключено — на «не получается отправить чек» бот, как раньше, объясняет, как прикрепить скриншот",
+    origin: "Яков 11.10: новое поведение бота — переключатель в настройках",
+    channel: "instagram",
+    locale: "ru",
+    products: PRODUCTS,
+    triage: [{ kind: "cant_send_receipt" }],
+    state: { mode: "awaiting_proof", pending_order_id: 82 },
+    arrange: (r) => {
+      paidOrder({ status: "awaiting_payment" })(r);
+      r.db.tables.app_settings!.push({ key: "chat_receipt_text_offer", value: "false" });
+    },
+    steps: [
+      {
+        say: { text: "Не получается отправить чек сюда" },
+        expect: { says: [(c) => c.receiptHowTo], notSays: [(c) => c.receiptTextOffer] },
+      },
+    ],
+  },
+  {
+    id: "unpaid-number-ig-ru",
+    title:
+      "сразу после заказа «018» — не товар 018, а «Заказ #82 ждёт оплату, отменить — «Отмена»»; номер ещё раз — обычный путь к товару",
+    origin:
+      "AATeach 11.10 23:09, tskhay_sasha: после #1432 «3» → карточка товара 003, потом второй заказ #1434 на то же",
+    channel: "instagram",
+    locale: "ru",
+    products: PRODUCTS,
+    state: { mode: "awaiting_payment", pending_order_id: 82 },
+    arrange: paidOrder({ status: "awaiting_payment" }),
+    steps: [
+      {
+        say: { text: "018" },
+        expect: { count: 1, says: [(c) => c.orderAwaitsPayment("82")], notSays: ["Прописи"] },
+      },
+      // Номер ещё раз — обычный путь к товару, без второго напоминания.
+      { say: { text: "018" }, expect: { notSays: [(c) => c.orderAwaitsPayment("82")] } },
+    ],
+  },
+  {
+    id: "unpaid-number-switch-off-ig-ru",
+    title:
+      "«Номер товара сразу после заказа — сначала про заказ» выключено — номер сразу открывает товар",
+    origin: "Яков 11.10: новое поведение бота — переключатель в настройках",
+    channel: "instagram",
+    locale: "ru",
+    products: PRODUCTS,
+    state: { mode: "awaiting_payment", pending_order_id: 82 },
+    arrange: (r) => {
+      paidOrder({ status: "awaiting_payment" })(r);
+      r.db.tables.app_settings!.push({ key: "chat_unpaid_number", value: "false" });
+    },
+    steps: [
+      {
+        say: { text: "018" },
+        expect: { notSays: [(c) => c.orderAwaitsPayment("82")] },
+      },
+    ],
+  },
+  {
+    id: "resend-old-order-asks-ig-ru",
+    title:
+      "почта по заказу месячной давности — бот сначала спрашивает «прислать №82 от …?», письмо уходит только после «да»",
+    origin:
+      "AATeach 12.10 07:35, yekaterina3107: прислала почту, бот отправил сентябрьский заказ #955, а она ждала «Части речи»",
+    channel: "instagram",
+    locale: "ru",
+    products: PRODUCTS,
+    full: true,
+    mail: true,
+    postpay: [{ action: "resend", email: "kate@mail.ru" }],
+    arrange: paidOrder({ email: "kate@mail.ru", daysAgo: 32 }),
+    steps: [
+      {
+        say: { text: "kate@mail.ru" },
+        expect: {
+          count: 1,
+          says: ["№82", "Палитра средств выразительности", "kate@mail.ru"],
+          mails: [],
+          sellerNotices: 0,
+        },
+      },
+      {
+        say: { text: "да" },
+        expect: { says: ["Отправил материалы на kate@mail.ru"], mails: ["kate@mail.ru"] },
+      },
+    ],
+  },
+  {
+    id: "resend-old-order-switch-off-ig-ru",
+    title:
+      "«Спрашивать перед повторной отправкой» выключено — письмо по старому заказу уходит сразу, как раньше",
+    origin: "Яков 11.10: новое поведение бота — переключатель в настройках",
+    channel: "instagram",
+    locale: "ru",
+    products: PRODUCTS,
+    full: true,
+    mail: true,
+    postpay: [{ action: "resend", email: "kate@mail.ru" }],
+    arrange: (r) => {
+      paidOrder({ email: "kate@mail.ru", daysAgo: 32 })(r);
+      r.db.tables.app_settings!.push({ key: "resend_old_confirm", value: "false" });
+    },
+    steps: [
+      {
+        say: { text: "kate@mail.ru" },
+        expect: { says: ["Отправил материалы на kate@mail.ru"], mails: ["kate@mail.ru"] },
       },
     ],
   },

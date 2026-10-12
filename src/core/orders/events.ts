@@ -34,6 +34,16 @@ export type OrderEventKind =
   | "email_resend"
   /** Покупатель поблагодарил после выдачи, бот ответил (ИИ после оплаты): один раз на заказ. */
   | "thanked"
+  /** Покупатель пишет, что платёж не прошёл (core/inbox/triage); reply — бот ответил. */
+  | "pay_failed"
+  /** Чек снят: покупатель написал, что платёж не прошёл, заказ снова ждёт оплату. */
+  | "proof_withdrawn"
+  /** Скриншот не отправляется — бот предложил чек текстом (один раз на заказ). */
+  | "receipt_text_offered"
+  /** Номер товара сразу после заказа — бот напомнил о неоплаченном заказе (один раз). */
+  | "number_held"
+  /** Заказ старше 14 дней: бот спросил, прислать ли его ещё раз. */
+  | "resend_asked"
   | "payment"
   /** Шлюз прислал деньги по закрытому заказу: в оплату не записаны, решает продавец. */
   | "payment_on_closed"
@@ -426,6 +436,36 @@ export function describeOrderEvent(e: Pick<OrderEvent, "kind" | "actor" | "paylo
     case "thanked":
       return {
         text: "Покупатель поблагодарил — бот ответил, обращение не открывалось",
+        tone: "neutral",
+      };
+    case "pay_failed":
+      return p.reply
+        ? {
+            text: "Бот ответил: «Похоже, платёж не прошёл — попробуйте ещё раз или напишите банк»",
+            tone: "neutral",
+          }
+        : {
+            text: `Покупатель пишет, что платёж не прошёл${p.photo ? " (подпись к фото)" : ""}: «${str(p.text)}»`,
+            tone: "warn",
+          };
+    case "proof_withdrawn":
+      return {
+        text: `Чек снят: покупатель написал «${str(p.text)}» — заказ снова ждёт оплату`,
+        tone: "warn",
+      };
+    case "receipt_text_offered":
+      return {
+        text: "Скриншот не отправлялся — бот предложил прислать текст чека",
+        tone: "neutral",
+      };
+    case "number_held":
+      return {
+        text: `Покупатель написал «${str(p.text)}» — бот напомнил, что заказ ждёт оплату`,
+        tone: "neutral",
+      };
+    case "resend_asked":
+      return {
+        text: `Заказ старше 14 дней — бот спросил, прислать ли его ещё раз на ${str(p.to)}`,
         tone: "neutral",
       };
     case "notify_failed":

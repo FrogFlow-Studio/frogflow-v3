@@ -1,0 +1,329 @@
+/**
+ * Оплата и чеки в переписке — дневной срез AATeach 12.10, решения Якова 1–4.
+ * Что написал покупатель, решает модель (core/inbox/triage, shop/triage),
+ * а не список слов; код только исполняет:
+ * 1. «Не проходит» (подписью к фото или следом за фото) — чек не принимается,
+ *    заказ снова ждёт оплату, покупателю «попробуйте ещё раз или напишите
+ *    банк», продавцу — уведомление. kopats23 #1435: фото и «Не проходит» →
+ *    «✅ Чек получен», заказ 13 часов висел как оплаченный.
+ * 2. Скриншот не отправляется — один раз на заказ предложить чек текстом
+ *    (его принимает shop/evening.server). asya_6465 дважды получила
+ *    инструкцию про скрепку, galinka.iva — тишину.
+ * 3. Почта по заказу старше 14 дней — сначала спросить, тот ли заказ.
+ *    yekaterina3107 получила сентябрьский #955 вместо «Частей речи».
+ * 4. Номер товара сразу после заказа — сначала про ждущий оплаты заказ.
+ *    tskhay_sasha после #1432 написала «3», бот открыл товар 003, а она
+ *    оформила второй заказ #1434.
+ * Каждый ответ — с условной отметкой до отправки: повтор события и два
+ * сообщения подряд дают один ответ.
+ */
+import { claimStateSection } from "@/core/customers/customers";
+import { getSetting } from "@/core/settings/settings";
+import { claimOrderEvent, listOrderEvents, recordOrderEvent } from "@/core/orders/events";
+import {
+  displayNo,
+  getOrder,
+  recentAwaitingPaymentOrder,
+  type OrderWithItems,
+} from "@/core/orders/orders";
+import { CHAT_RECEIPT_TEXT_KEY, receiptTextOn } from "@/core/receipts/text-receipt";
+import {
+  CHAT_UNPAID_NUMBER_KEY,
+  PAY_FAILED_REPLY_MS,
+  PROOF_WITHDRAW_MS,
+  RESEND_ASK_MS,
+  RESEND_OLD_CONFIRM_KEY,
+  failedNearPhoto,
+  isBareNumber,
+  isOldOrder,
+  isYes,
+  resendOldConfirmOn,
+  unpaidNumberOn,
+} from "@/core/inbox/pay-chat";
+import { serverFailure } from "@/lib/server-failure";
+import { escapeHtml } from "@/channels/telegram/copy";
+import { notifyAdminsHtml } from "@/channels/telegram/notify";
+import { PLATFORM_LABEL } from "../platform";
+import { isCancel } from "../flow/replies";
+import { matchDirectCommand } from "../flow/commands";
+import { SELLER_PROOF_WITHDRAWN } from "../phone-notice";
+import { memory, reply, setMode, type Shop, type ShopOutcome } from "./context.server";
+import { CANCEL_FRESH_MS } from "./evening.server";
+import { triageOnce } from "./triage.server";
+
+const PAY_MODES = ["awaiting_proof", "awaiting_payment", "choose_pay"];
+const clip = (t: string) => t.replace(/\s+/g, " ").trim().slice(0, 300);
+const msgAt = (s: Shop) => new Date(s.inboundAt ?? Date.now()).toISOString();
+
+/** Заказ покупателя, который ждёт оплату или подтверждения чека; иначе null. */
+async function payOrder(s: Shop): Promise<OrderWithItems | null> {
+  const id =
+    Number(s.customer.state.pending_order_id) ||
+    (await recentAwaitingPaymentOrder(s.ctx, s.customer));
+  if (!id) return null;
+  const o = await getOrder(s.ctx, id);
+  if (!o || o.telegram_id !== s.customer.telegramId) return null;
+  return o.status === "awaiting_payment" || o.status === "awaiting_confirmation" ? o : null;
+}
+
+/** Чек этого заказа пришёл недавно (PROOF_WITHDRAW_MS) — его ещё можно снять. */
+async function proofFresh(s: Shop, orderId: number): Promise<boolean> {
+  const events = await listOrderEvents(s.ctx, orderId);
+  const at = Date.parse(events.filter((e) => e.kind === "proof").at(-1)?.at ?? "");
+  return Number.isFinite(at) && Date.now() - at < PROOF_WITHDRAW_MS;
+}
+
+/**
+ * Снять чек: «ждёт подтверждения» → «ждёт оплату», только если статус ещё
+ * тот (продавец мог успеть подтвердить). Файл чека остаётся в заказе:
+ * продавец видит, что прислал покупатель. Продавцу — уведомление.
+ */
+async function withdrawProof(s: Shop, order: OrderWithItems, said: string): Promise<boolean> {
+  const { data, error } = await s.ctx.db
+    .from("orders")
+    .update({
+      status: "awaiting_payment",
+      admin_note: `Покупатель написал, что платёж не прошёл: «${said}». Чек снят.`.slice(0, 500),
+    })
+    .eq("id", order.id)
+    .eq("status", "awaiting_confirmation")
+    .select("id");
+  if (error) throw serverFailure(`Чек заказа #${order.id} не снят: ${error.message}`);
+  if (!data?.length) return false;
+  const no = displayNo(order);
+  await recordOrderEvent(s.ctx, order.id, "proof_withdrawn", { text: said });
+  await setMode(s, { mode: "awaiting_proof", pending_order_id: order.id, pending_display_no: no });
+  const { sellerLocale } = await import("@/core/catalog/low-stock");
+  const locale = await sellerLocale(s.ctx).catch(
+    () => s.ctx.tenant.settings.default_locale ?? "ru",
+  );
+  const who = s.customer.username
+    ? `@${s.customer.username}`
+    : s.customer.firstName || s.customer.userKey;
+  await notifyAdminsHtml(
+    s.ctx,
+    SELLER_PROOF_WITHDRAWN[locale](
+      escapeHtml(who),
+      PLATFORM_LABEL[s.platform],
+      no,
+      escapeHtml(said),
+    ),
+    { orderId: order.id, kind: "complaint" },
+  ).catch(() => 0);
+  return true;
+}
+
+/** «Похоже, платёж не прошёл…» — один раз на заказ в PAY_FAILED_REPLY_MS. */
+async function payFailedReplyOnce(s: Shop, orderId: number): Promise<void> {
+  s.handoff = true;
+  s.why = "покупатель пишет, что платёж не прошёл — чек не принят, вопрос продавцу";
+  const bucket = Math.floor(Date.now() / PAY_FAILED_REPLY_MS);
+  if (await claimOrderEvent(s.ctx, orderId, "pay_failed", `reply:${bucket}`, { reply: true }))
+    await reply(s, s.m.payFailedReply, { force: true });
+}
+
+/** Свободный текст, а не номер, команда или почта: только его есть смысл разбирать моделью. */
+function freeText(text: string): boolean {
+  return (
+    !isBareNumber(text) &&
+    !text.includes("@") &&
+    text.trim().length > 1 &&
+    !isCancel(text) &&
+    !matchDirectCommand(text)
+  );
+}
+
+/**
+ * Фото с подписью «не проходит» на шаге оплаты: это не чек. true — ответили,
+ * реплика продавцу; чек не регистрируется.
+ */
+export async function payFailedCaption(s: Shop, orderId: number, text: string): Promise<boolean> {
+  if (!freeText(text)) return false;
+  const t = await triageOnce(s, text, true);
+  if (t?.kind !== "payment_failed") return false;
+  const order = await getOrder(s.ctx, orderId);
+  if (!order) return false;
+  await recordOrderEvent(s.ctx, orderId, "pay_failed", {
+    text: clip(text),
+    msg_at: msgAt(s),
+    photo: true,
+  });
+  if (order.status === "awaiting_confirmation" && (await proofFresh(s, orderId)))
+    await withdrawProof(s, order, clip(text));
+  await payFailedReplyOnce(s, orderId);
+  return true;
+}
+
+/**
+ * Текст «не проходит» к заказу, ждущему оплату или подтверждения свежего
+ * чека. Отметка — до проверки статуса: если фото обрабатывается в это же
+ * время, его обработка увидит отметку (proofAfterPayFailed), а если чек уже
+ * записан — его снимаем здесь. true — чек снят и ответ ушёл; false — пусть
+ * реплику разбирает шаг оплаты (ответ «не прошёл» даст triageQuestion).
+ */
+export async function payFailedText(s: Shop, text: string): Promise<boolean> {
+  if (!freeText(text)) return false;
+  const order = await payOrder(s);
+  if (!order) return false;
+  if (order.status === "awaiting_confirmation" && !(await proofFresh(s, order.id))) return false;
+  const t = await triageOnce(s, text);
+  if (t?.kind !== "payment_failed") return false;
+  await recordOrderEvent(s.ctx, order.id, "pay_failed", { text: clip(text), msg_at: msgAt(s) });
+  const now = await getOrder(s.ctx, order.id);
+  if (!now || now.status !== "awaiting_confirmation") return false;
+  if (!(await withdrawProof(s, now, clip(text)))) return false;
+  await payFailedReplyOnce(s, order.id);
+  return true;
+}
+
+/**
+ * Чек только что записан: если покупатель одновременно написал, что платёж
+ * не прошёл, — снять его и не отвечать «Чек получен». true — снят.
+ */
+export async function proofAfterPayFailed(s: Shop, order: OrderWithItems): Promise<boolean> {
+  const photoAt = s.inboundAt ?? Date.now();
+  const events = await listOrderEvents(s.ctx, order.id);
+  const said = events.find(
+    (e) =>
+      e.kind === "pay_failed" &&
+      !e.payload.reply &&
+      failedNearPhoto(typeof e.payload.msg_at === "string" ? e.payload.msg_at : null, photoAt),
+  );
+  if (!said) return false;
+  const text = typeof said.payload.text === "string" ? said.payload.text : "";
+  if (!(await withdrawProof(s, order, text))) return false;
+  await payFailedReplyOnce(s, order.id);
+  return true;
+}
+
+/**
+ * Ответ разбора моделью на шаге оплаты или вне его (shop/triage):
+ * payment_failed — «попробуйте ещё раз», cant_send_receipt — чек текстом.
+ * null — заказа, ждущего оплату, нет: прежний путь.
+ */
+export async function payTroubleReply(
+  s: Shop,
+  kind: "payment_failed" | "cant_send_receipt",
+): Promise<ShopOutcome | null> {
+  const order = await payOrder(s);
+  if (!order || order.status !== "awaiting_payment") return null;
+  if (kind === "payment_failed") {
+    await payFailedReplyOnce(s, order.id);
+    return "question";
+  }
+  if (!receiptTextOn(await getSetting(s.ctx, CHAT_RECEIPT_TEXT_KEY))) return null;
+  // Второй раз ту же подсказку не повторяем: дальше переписку ведёт продавец.
+  if (!(await claimOrderEvent(s.ctx, order.id, "receipt_text_offered", "offer"))) {
+    s.why = "скриншот снова не отправляется — подсказку уже давали, вопрос продавцу";
+    return "question";
+  }
+  s.why = "скриншот не отправляется — предложили чек текстом";
+  await reply(s, s.m.receiptTextOffer, { force: true });
+  return "handled";
+}
+
+/**
+ * Шаг оплаты: «скриншот не загружается», «можно на ватсап?» — раньше
+ * инструкции про скрепку. null — это не то, разбираем дальше.
+ */
+export async function cantSendReceipt(s: Shop, text: string): Promise<ShopOutcome | null> {
+  if (!freeText(text)) return null;
+  if (!receiptTextOn(await getSetting(s.ctx, CHAT_RECEIPT_TEXT_KEY))) return null;
+  const t = await triageOnce(s, text);
+  if (t?.kind !== "cant_send_receipt") return null;
+  return payTroubleReply(s, "cant_send_receipt");
+}
+
+/**
+ * Голый номер в первые 30 минут после заказа, ждущего оплату (там же
+ * работает «Отмена»): один раз на заказ — «Заказ #N ждёт оплату»; номер ещё
+ * раз — обычный путь, к товару. true — ответили.
+ */
+export async function numberWhileUnpaid(s: Shop, text: string): Promise<boolean> {
+  if (!isBareNumber(text)) return false;
+  const mode = s.customer.state.mode;
+  const id = Number(s.customer.state.pending_order_id);
+  if (!mode || !PAY_MODES.includes(mode) || !id) return false;
+  if (!unpaidNumberOn(await getSetting(s.ctx, CHAT_UNPAID_NUMBER_KEY))) return false;
+  const order = await getOrder(s.ctx, id);
+  if (
+    !order ||
+    order.telegram_id !== s.customer.telegramId ||
+    order.status !== "awaiting_payment" ||
+    order.payment_proof_path ||
+    !(Date.now() - Date.parse(order.created_at) < CANCEL_FRESH_MS)
+  )
+    return false;
+  if (!(await claimOrderEvent(s.ctx, id, "number_held", "once", { text: text.trim() })))
+    return false;
+  s.why = `номер товара, пока заказ №${displayNo(order)} ждёт оплату — сначала про заказ`;
+  await reply(s, s.m.orderAwaitsPayment(String(displayNo(order))), { force: true });
+  return true;
+}
+
+/**
+ * ИИ после оплаты собирается отправить материалы ещё раз, а заказу больше
+ * 14 дней: сначала спросить, тот ли это заказ. «handled» — спросили;
+ * «question» — уже спрашивали только что, а в ответ не «да»: к продавцу;
+ * null — заказ свежий или настройка выключена, отправляем как раньше.
+ */
+export async function askBeforeOldResend(
+  s: Shop,
+  order: OrderWithItems,
+  email: string,
+): Promise<ShopOutcome | null> {
+  if (!isOldOrder(order.created_at)) return null;
+  if (!resendOldConfirmOn(await getSetting(s.ctx, RESEND_OLD_CONFIRM_KEY))) return null;
+  const now = new Date();
+  const claimed = await claimStateSection(s.ctx, s.customer, "direct", (cur) => {
+    const prev = cur.resend_ask as { order?: number; at?: string } | undefined;
+    const at = Date.parse(String(prev?.at ?? ""));
+    if (prev?.order === order.id && Number.isFinite(at) && now.getTime() - at < RESEND_ASK_MS)
+      return null;
+    return { ...cur, resend_ask: { order: order.id, email, at: now.toISOString() } };
+  });
+  // Уже спросили только что, а в ответ не «да» — это к продавцу.
+  if (!claimed) return "question";
+  s.customer = claimed;
+  const date = new Date(order.created_at).toLocaleDateString("ru-RU", {
+    timeZone: s.ctx.timezone,
+    day: "2-digit",
+    month: "2-digit",
+  });
+  const items = (order.order_items ?? []).map((i) => i.name_snapshot).join(", ");
+  s.why = `заказ №${displayNo(order)} старше 14 дней — спросили, прислать ли его`;
+  await recordOrderEvent(s.ctx, order.id, "resend_asked", { to: email });
+  await reply(
+    s,
+    s.m.resendOldAsk(
+      String(displayNo(order)),
+      date,
+      items.length > 120 ? `${items.slice(0, 120)}…` : items,
+      email,
+    ),
+    { force: true },
+  );
+  return "handled";
+}
+
+/**
+ * «Да» на вопрос о старом заказе: отправить письмо (ИИ после оплаты, тот же
+ * путь с отметкой на 10 минут). Отметка снимается условной записью — два
+ * «да» подряд дают одно письмо. null — вопроса не было или ответ не «да».
+ */
+export async function confirmOldResend(s: Shop, text: string): Promise<ShopOutcome | null> {
+  const ask = memory(s.customer).resend_ask;
+  if (!ask || !isYes(text)) return null;
+  if (!(Date.now() - Date.parse(ask.at) < RESEND_ASK_MS)) return null;
+  const claimed = await claimStateSection(s.ctx, s.customer, "direct", (cur) => {
+    const curAsk = cur.resend_ask as { order?: number } | undefined;
+    if (curAsk?.order !== ask.order) return null;
+    return { ...cur, resend_ask: undefined };
+  });
+  if (!claimed) return "handled";
+  s.customer = claimed;
+  const order = await getOrder(s.ctx, ask.order);
+  if (!order || order.telegram_id !== s.customer.telegramId) return null;
+  const { resendConfirmed } = await import("./postpay.server");
+  return resendConfirmed(s, order, ask.email);
+}

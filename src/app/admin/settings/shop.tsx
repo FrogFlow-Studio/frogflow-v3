@@ -6,6 +6,18 @@ import {
 } from "@/core/orders/email-ask";
 import { CHAT_RECEIPT_TEXT_KEY, receiptTextOn } from "@/core/receipts/text-receipt";
 import {
+  CHAT_PAY_FAILED_KEY,
+  CHAT_RECEIPT_TEXT_OFFER_KEY,
+  payFailedOn,
+  receiptTextOfferOn,
+} from "@/core/inbox/triage";
+import {
+  CHAT_UNPAID_NUMBER_KEY,
+  RESEND_OLD_CONFIRM_KEY,
+  resendOldConfirmOn,
+  unpaidNumberOn,
+} from "@/core/inbox/pay-chat";
+import {
   CHAT_FOREIGN_PAY_KEY,
   CHAT_SKIP_CHATTER_KEY,
   foreignPayOn,
@@ -486,6 +498,72 @@ export function DirectTriageCard({ settings }: { settings: Record<string, string
         <HelpTip article="settings-channels" anchor="direct-foreign-pay" />
       </div>
       <p className="mt-1 text-xs text-muted">{t("settings.triage.foreignHint")}</p>
+      <ErrorBox error={toggle.error} />
+    </Card>
+  );
+}
+
+/**
+ * Оплата и чеки в переписке Instagram/WhatsApp (shop/pay-trouble): что
+ * написал покупатель, решает модель; по умолчанию всё включено.
+ */
+export function PayChatCard({ settings }: { settings: Record<string, string> }) {
+  const router = useRouter();
+  const { shop } = settingsRoute.useRouteContext();
+  const t = adminT(shop.locale);
+  const toggle = useAction(async (key: string, v: boolean) => {
+    await saveSettingsFn({ data: { [key]: v ? "true" : "false" } });
+    await router.invalidate();
+  });
+  const readOnly = toggle.busy || !roleAllows(shop.role, "admin");
+  const rows = [
+    {
+      key: CHAT_PAY_FAILED_KEY,
+      on: payFailedOn(settings[CHAT_PAY_FAILED_KEY]),
+      label: t("settings.payChat.failedLabel"),
+      hint: t("settings.payChat.failedHint"),
+      tip: <HelpTip article="settings-payment" anchor="pay-failed" />,
+    },
+    {
+      key: CHAT_RECEIPT_TEXT_OFFER_KEY,
+      on: receiptTextOfferOn(settings[CHAT_RECEIPT_TEXT_OFFER_KEY]),
+      label: t("settings.payChat.offerLabel"),
+      hint: t("settings.payChat.offerHint"),
+      tip: <HelpTip article="settings-payment" anchor="receipt-text-offer" />,
+    },
+    {
+      key: CHAT_UNPAID_NUMBER_KEY,
+      on: unpaidNumberOn(settings[CHAT_UNPAID_NUMBER_KEY]),
+      label: t("settings.payChat.numberLabel"),
+      hint: t("settings.payChat.numberHint"),
+      tip: <HelpTip article="settings-payment" anchor="unpaid-number" />,
+    },
+    {
+      key: RESEND_OLD_CONFIRM_KEY,
+      on: resendOldConfirmOn(settings[RESEND_OLD_CONFIRM_KEY]),
+      label: t("settings.payChat.resendLabel"),
+      hint: t("settings.payChat.resendHint"),
+      tip: <HelpTip article="settings-payment" anchor="resend-old" />,
+    },
+  ];
+  return (
+    <Card title={t("settings.payChat.title")}>
+      <p className="mb-3 text-sm text-muted">{t("settings.payChat.intro")}</p>
+      {rows.map((r, i) => (
+        <div key={r.key} className={i ? "mt-3" : undefined}>
+          <div className="flex items-center gap-3">
+            <Switch
+              checked={r.on}
+              disabled={readOnly}
+              onChange={(v) => void toggle.run(r.key, v).catch(() => {})}
+              label={r.label}
+            />
+            <span className="text-sm">{r.label}</span>
+            {r.tip}
+          </div>
+          <p className="mt-1 text-xs text-muted">{r.hint}</p>
+        </div>
+      ))}
       <ErrorBox error={toggle.error} />
     </Card>
   );

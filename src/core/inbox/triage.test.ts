@@ -5,6 +5,8 @@ import type { Customer } from "@/core/customers/customers";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import {
   CHAT_FOREIGN_PAY_KEY,
+  CHAT_PAY_FAILED_KEY,
+  CHAT_RECEIPT_TEXT_OFFER_KEY,
   CHAT_SKIP_CHATTER_KEY,
   TRIAGE_CAP_KEY,
   foreignPayApplies,
@@ -40,6 +42,11 @@ describe("ответ модели", () => {
     });
     expect(parseTriage({ kind: "foreign_pay", country: "Беларусь" }).country).toBeNull();
     expect(parseTriage({ kind: "spam" }).kind).toBe("other");
+    expect(parseTriage({ kind: "payment_failed", country: "BY" })).toEqual({
+      kind: "payment_failed",
+      country: null,
+    });
+    expect(parseTriage({ kind: "cant_send_receipt" }).kind).toBe("cant_send_receipt");
     expect(parseTriage(null).kind).toBe("other");
   });
 
@@ -79,15 +86,36 @@ describe("вызов модели", () => {
     expect(JSON.parse(String(spend?.value))).toEqual({ usd: 0.0012, calls: 1 });
   });
 
-  it("обе настройки выключены — модель не зовём", async () => {
+  it("все настройки выключены — модель не зовём", async () => {
     const model = vi.fn();
     setTriageModelForTests(model);
     const c = ctx([
       { key: CHAT_SKIP_CHATTER_KEY, value: "false" },
       { key: CHAT_FOREIGN_PAY_KEY, value: "false" },
+      { key: CHAT_PAY_FAILED_KEY, value: "false" },
+      { key: CHAT_RECEIPT_TEXT_OFFER_KEY, value: "false" },
     ]);
     expect((await triageMessage(c, { customer, text: "Спасибо", now: NOW })).kind).toBe("other");
     expect(model).not.toHaveBeenCalled();
+  });
+
+  it("подпись к фото — модель знает, что сообщение пришло с картинкой", () => {
+    const p = triageUserPrompt({ text: "Не проходит", lines: [], withPhoto: true });
+    expect(p).toContain("фото с подписью");
+    expect(p).toContain("«Не проходит»");
+  });
+
+  it("«платёж не прошёл» выключен — исполняется как other, остальные виды работают", async () => {
+    setTriageModelForTests(async () => ({ input: { kind: "payment_failed", country: "" } }));
+    const off = ctx([{ key: CHAT_PAY_FAILED_KEY, value: "false" }]);
+    expect((await triageMessage(off, { customer, text: "Не проходит", now: NOW })).kind).toBe(
+      "other",
+    );
+    setTriageModelForTests(async () => ({ input: { kind: "cant_send_receipt", country: "" } }));
+    const on = ctx([{ key: CHAT_PAY_FAILED_KEY, value: "false" }]);
+    expect(
+      (await triageMessage(on, { customer, text: "скриншот не загружается", now: NOW })).kind,
+    ).toBe("cant_send_receipt");
   });
 
   it("выключенный вид исполняется как other", async () => {
