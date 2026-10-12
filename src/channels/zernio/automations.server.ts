@@ -1351,6 +1351,25 @@ async function expressTexts(
   return out;
 }
 
+/**
+ * Пересохранённое правило: Zernio выдаёт ему новый id, а строки очереди
+ * хранят старый. Тот же аккаунт и тот же товар кнопки «Купить» — то же
+ * правило, обещанное второе сообщение уходит (Копилка 12.10: Кристина
+ * пересохранила «Матрешки» в 17:39, toktobiubiudzhaparova ответила
+ * «Здравствуйте» — и карточку не получила, «правило удалено»).
+ */
+export function sameBuyRule(
+  rule: CommentAutomation,
+  rowButtons: DmButton[] | undefined,
+  accountId: string,
+): boolean {
+  if (rule.accountId && rule.accountId !== accountId) return false;
+  const promised = buyButtonProduct(normalizeDmButtons(rowButtons ?? []));
+  if (!promised) return false;
+  const now = rule.secondDmButtons?.length ? rule.secondDmButtons : (rule.buttons ?? []);
+  return buyButtonProduct(normalizeDmButtons(now as DmButton[])) === promised;
+}
+
 /** Товар кнопки «Купить» правила: ровно один PROD:<id> среди кнопок, иначе null. */
 export function buyButtonProduct(buttons: DmButton[]): string | null {
   const ids = new Set(
@@ -1413,7 +1432,11 @@ export async function deliverPendingTwoStepDm(
       // Пустой список — правил не видно вовсе (нет подключения), а не «удалено».
       alive =
         rules.length === 0 ||
-        rules.some((a) => automationId(a) === pl.automationId && a.isActive !== false);
+        rules.some(
+          (a) =>
+            a.isActive !== false &&
+            (automationId(a) === pl.automationId || sameBuyRule(a, pl.buttons, p.accountId)),
+        );
     } catch (e) {
       console.warn(`[comment-dm] правила не прочитаны, второе шлём: ${String(e)}`);
     }

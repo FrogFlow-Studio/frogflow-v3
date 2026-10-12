@@ -15,6 +15,7 @@ import {
   triageUserPrompt,
 } from "./triage";
 import { setTriageModelForTests, triageMessage } from "./triage.server";
+import { CHAT_RECEIPT_TEXT_KEY } from "@/core/receipts/text-receipt";
 
 function ctx(settings: Array<{ key: string; value: string }> = []) {
   const db = fakeDb();
@@ -47,6 +48,9 @@ describe("ответ модели", () => {
       country: null,
     });
     expect(parseTriage({ kind: "cant_send_receipt" }).kind).toBe("cant_send_receipt");
+    // Копилка 12.10: пуш Kaspi текстом (#148), «как перейти на оплату?» (#147).
+    expect(parseTriage({ kind: "text_receipt" }).kind).toBe("text_receipt");
+    expect(parseTriage({ kind: "how_to_pay" }).kind).toBe("how_to_pay");
     expect(parseTriage(null).kind).toBe("other");
   });
 
@@ -94,6 +98,7 @@ describe("вызов модели", () => {
       { key: CHAT_FOREIGN_PAY_KEY, value: "false" },
       { key: CHAT_PAY_FAILED_KEY, value: "false" },
       { key: CHAT_RECEIPT_TEXT_OFFER_KEY, value: "false" },
+      { key: CHAT_RECEIPT_TEXT_KEY, value: "false" },
     ]);
     expect((await triageMessage(c, { customer, text: "Спасибо", now: NOW })).kind).toBe("other");
     expect(model).not.toHaveBeenCalled();

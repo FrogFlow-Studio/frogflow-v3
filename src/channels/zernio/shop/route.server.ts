@@ -145,6 +145,7 @@ import { triageQuestion } from "./triage.server";
 import {
   cantSendReceipt,
   confirmOldResend,
+  dropPaidStep,
   numberWhileUnpaid,
   payFailedCaption,
   payFailedText,
@@ -268,6 +269,10 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
   const ib = iceBreakerKind(msg.postbackPayload);
   if (ib) return handleIceBreaker(s, ib);
   if (msg.postbackPayload) return handlePostback(s, msg.postbackPayload);
+
+  // Заказ шага оплаты уже оплачен — шаг снят, реплику разбирает ИИ после
+  // оплаты, а не шаг оплаты (Копилка 12.10, _marina_lyalina_ #149).
+  if (await dropPaidStep(s)) mode = s.customer.state.mode;
 
   // Вложение без ссылки (Zernio сменил форму события): если ждём чек — просим
   // прислать ещё раз, а не отвечаем как на вопрос и не теряем его молча.
