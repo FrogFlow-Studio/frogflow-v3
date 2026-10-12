@@ -349,8 +349,12 @@ export const SETTINGS_REGISTRY: readonly SettingsEntry[] = [
     theme: "channels",
     title: "settings.triage.title",
     anyModule: ["instagram", "whatsapp"],
-    keys: ["chat_skip_chatter", "chat_foreign_pay"],
-    fields: ["settings.triage.chatterLabel", "settings.triage.foreignLabel"],
+    keys: ["chat_skip_chatter", "chat_foreign_pay", "chat_how_to_buy"],
+    fields: [
+      "settings.triage.chatterLabel",
+      "settings.triage.foreignLabel",
+      "settings.triage.howToBuyLabel",
+    ],
   }),
   E({
     id: "dbot-whatsapp",

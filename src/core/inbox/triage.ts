@@ -21,7 +21,12 @@
  * - how_to_pay — на шаге оплаты: «как перейти на оплату?», «куда платить?»,
  *   название своего банка в ответ на «какой у вас банк»: бот ещё раз
  *   присылает шаг оплаты (Копилка 12.10, janat021265 #147 — тишина).
- * - other — всё остальное: прежний путь, обращение продавцу.
+ * - how_to_buy — заказа ещё нет, а покупатель спрашивает, как получить,
+ *   купить или заказать материал: если недавно ушла карточка с «Купить»,
+ *   бот зовёт её нажать (Копилка 12.10, boranbaeva__ainur после карточки
+ *   «Матрёшек» — «Как можно получить», тишина).
+ * - how_to_buy — покупатель спрашивает, как получить, купить или заказать материал, а заказ ещё не оформлен: «Как можно получить», «как купить?», «как заказать?», «хочу, что делать?», «как его получить и оплатить?». Если заказ уже оформлен и человек спрашивает, как его оплатить, — это how_to_pay; про оплату из другой страны — foreign_pay.
+- other — всё остальное: прежний путь, обращение продавцу.
  *
  * Здесь — чистые правила: промпт, инструмент, разбор ответа. Вызов модели —
  * triage.server.ts, исполнение — адаптер канала.
@@ -34,8 +39,12 @@ export type TriageKind =
   | "cant_send_receipt"
   | "text_receipt"
   | "how_to_pay"
+  | "how_to_buy"
   | "other";
-/** country — ISO-код страны покупателя (или страны валюты), если понятно. */
+/**
+ * country — ISO-код страны покупателя (или страны валюты), если понятно:
+ * у foreign_pay и payment_failed (оплата из Кыргызстана не прошла через Kaspi).
+ */
 export type Triage = { kind: TriageKind; country: string | null };
 
 export const TRIAGE_MODEL = "claude-sonnet-5";
@@ -49,6 +58,8 @@ export const CHAT_FOREIGN_PAY_KEY = "chat_foreign_pay";
 export const CHAT_PAY_FAILED_KEY = "chat_pay_failed";
 /** Скриншот не отправляется — предложить чек текстом. «false» — выключено. */
 export const CHAT_RECEIPT_TEXT_OFFER_KEY = "chat_receipt_text_offer";
+/** «Как получить?» после карточки с «Купить» — позвать нажать кнопку. «false» — выключено. */
+export const CHAT_HOW_TO_BUY_KEY = "chat_how_to_buy";
 /** Потолок расхода в день, $; нет ключа — TRIAGE_DAILY_USD. */
 export const TRIAGE_CAP_KEY = "inbox_triage_daily_usd";
 export const triageSpendKey = (date: string) => `inbox_triage_spend:${date}`;
@@ -70,16 +81,20 @@ export function payFailedOn(raw: string | null | undefined): boolean {
 export function receiptTextOfferOn(raw: string | null | undefined): boolean {
   return raw?.trim() !== "false";
 }
+export function howToBuyOn(raw: string | null | undefined): boolean {
+  return raw?.trim() !== "false";
+}
 
 export const TRIAGE_SYSTEM = `Ты помогаешь боту магазина в Instagram/WhatsApp решить, что делать с сообщением покупателя, на которое у бота нет готового ответа. Обычно такое сообщение уходит продавцу обращением. Сам ты покупателю не пишешь: ответь инструментом triage.
 
 kind:
 - chatter — в сообщении нет ни вопроса, ни просьбы, продавцу отвечать не на что: благодарность или прощание («спасибо», «Благодарю! 🌹», «получила, спасибо»), похвала («Браво!», «Класс»), только эмодзи или стикер-смайл («🔥», «❤️👍»), «+», «1», «ок», «Я подписан(а)», «подписалась». Если в сообщении есть хоть какой-то вопрос или просьба («спасибо, а когда придёт?», «+ хочу палитру») — не chatter.
 - foreign_pay — покупатель спрашивает, можно ли оплатить из своей страны или в своей валюте, как оплатить оттуда, или цену в своей валюте: «В бел. руб можно», «Я из Узбекистана, как оплатить?», «сколько в сумах?», «можно посчитать в сомах», «оплачу картой Беларуси?». country — ISO-код этой страны (по названию, городу, валюте или банку: белорусские рубли — BY, сумы — UZ, сомы — KG, рубли или карта РФ — RU, тенге или Kaspi — KZ); не понять — пустая строка.
-- payment_failed — покупатель сообщает, что оплата не прошла: перевод не проходит, банк отклонил, ошибка платежа, деньги не ушли («Не проходит», «ошибка», «отклонено», «карта не принимает», «не получилось оплатить»). Если вместе с сообщением прислано фото — это, скорее всего, скриншот ошибки, а не чек. Если покупатель пишет, что оплатил, но не может прислать чек, — это не payment_failed.
+- payment_failed — покупатель сообщает, что оплата не прошла или не получится: перевод не проходит, банк отклонил, ошибка платежа, деньги не ушли, этим способом оплатить не может («Не проходит», «ошибка», «отклонено», «карта не принимает», «не получилось оплатить», «Не получится»). Если вместе с сообщением прислано фото — это, скорее всего, скриншот ошибки, а не чек. Если покупатель пишет, что оплатил, но не может прислать чек, — это не payment_failed. country — страна покупателя, если из сообщения или переписки понятно, откуда он («Я с Кыргызстана» раньше в переписке — KG); не понять — пустая строка.
 - cant_send_receipt — покупатель оплатил или готов оплатить, но не может прислать сюда скриншот или чек: «скриншот не загружается», «не получается отправить чек сюда», «можно чек на ватсап?», «куда скинуть чек, тут не отправляется».
 - text_receipt — покупатель вставил текстом уведомление или чек банка о совершённой оплате: сумма и магазин или получатель, часто остаток на счёте, номер операции, «Покупка: 1 700 ₸ / ИП КОПИЛКА РУСОВЕДА / Доступно: 3 668 ₸», «Перевод 1500 ₸ Кристина У. успешно». Рассказ своими словами («я оплатила 1700», «перевела») — не text_receipt.
 - how_to_pay — заказ уже оформлен, а покупатель не понимает, как его оплатить, или отвечает на вопрос бота о банке: «Как перейти на оплату?», «куда платить?», «как оплатить?», «где реквизиты?», название своего банка («Каспий банк РК», «Халык») после того, как бот спросил, какой у него банк. Если человек пишет, что оплата не проходит, — это payment_failed; про оплату из другой страны или в другой валюте — foreign_pay.
+- how_to_buy — покупатель спрашивает, как получить, купить или заказать материал, а заказ ещё не оформлен: «Как можно получить», «как купить?», «как заказать?», «хочу, что делать?», «как его получить и оплатить?». Если заказ уже оформлен и человек спрашивает, как его оплатить, — это how_to_pay; про оплату из другой страны — foreign_pay.
 - other — всё остальное: вопрос о товаре, цене без страны и валюты, доставке, оплате вообще, жалоба, приветствие, разговор с продавцом, непонятно. Сомневаешься — other: тогда сообщение увидит продавец.`;
 
 export const TRIAGE_TOOL = {
@@ -97,6 +112,7 @@ export const TRIAGE_TOOL = {
           "cant_send_receipt",
           "text_receipt",
           "how_to_pay",
+          "how_to_buy",
           "other",
         ],
       },
@@ -135,6 +151,7 @@ const KINDS = [
   "cant_send_receipt",
   "text_receipt",
   "how_to_pay",
+  "how_to_buy",
 ] as const;
 
 export const TRIAGE_OTHER: Triage = { kind: "other", country: null };
@@ -147,7 +164,7 @@ export function parseTriage(input: unknown): Triage {
     : "other";
   const raw = typeof v.country === "string" ? v.country.trim().toUpperCase() : "";
   const country = /^[A-Z]{2}$/.test(raw) ? raw : null;
-  return { kind, country: kind === "foreign_pay" ? country : null };
+  return { kind, country: kind === "foreign_pay" || kind === "payment_failed" ? country : null };
 }
 
 export function triageCostUsd(
@@ -174,6 +191,22 @@ export function foreignPayApplies(t: Triage, payCountries: readonly string[]): b
   return !payCountries.includes(t.country);
 }
 
+/**
+ * «Не получится» оплатить Kaspi (способ оплаты Казахстана) у покупателя из
+ * страны, для которой у магазина нет своего способа: не «какой у вас банк»,
+ * а честно — Kaspi берёт только карты Казахстана, оплату оттуда подключают
+ * (Копилка 12.10, kramiliia #159, Кыргызстан). Россия — свой путь (карта РФ).
+ */
+export function kaspiForeignApplies(
+  buyerCountry: string | null | undefined,
+  orderCountry: string | null | undefined,
+  payCountries: readonly string[],
+): boolean {
+  if (!buyerCountry || orderCountry !== "KZ") return false;
+  if (buyerCountry === "KZ" || buyerCountry === "RU") return false;
+  return !payCountries.includes(buyerCountry);
+}
+
 /** Название страны для продавца (обращение, уведомление). */
 const COUNTRY_RU: Record<string, string> = {
   BY: "Беларусь",
@@ -191,4 +224,14 @@ const COUNTRY_RU: Record<string, string> = {
 };
 export function countryNameRu(code: string): string {
   return COUNTRY_RU[code] ?? code;
+}
+
+/** Название страны покупателю на его языке: русский — как принято в этих странах («Кыргызстан»). */
+export function countryName(code: string, locale: string): string {
+  if (locale === "ru") return countryNameRu(code);
+  try {
+    return new Intl.DisplayNames([locale], { type: "region" }).of(code) ?? countryNameRu(code);
+  } catch {
+    return countryNameRu(code);
+  }
 }

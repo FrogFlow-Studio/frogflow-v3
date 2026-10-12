@@ -21,8 +21,16 @@ import { claimStateSection } from "@/core/customers/customers";
 import { getSetting } from "@/core/settings/settings";
 import { claimOrderEvent, listOrderEvents, recordOrderEvent } from "@/core/orders/events";
 import {
+  CHAT_FOREIGN_PAY_KEY,
+  countryName,
+  countryNameRu,
+  foreignPayOn,
+  kaspiForeignApplies,
+} from "@/core/inbox/triage";
+import {
   displayNo,
   getOrder,
+  listActivePaymentMethods,
   recentAwaitingPaymentOrder,
   type OrderWithItems,
 } from "@/core/orders/orders";
@@ -122,6 +130,70 @@ async function payFailedReplyOnce(s: Shop, orderId: number): Promise<void> {
     await reply(s, s.m.payFailedReply, { force: true });
 }
 
+/**
+ * «Не получится» по заказу на Kaspi (способ оплаты Казахстана), а покупатель
+ * из страны без своего способа оплаты (сам сказал раньше — direct.foreign_country,
+ * или модель поняла из переписки): не «какой у вас банк», а «Kaspi принимает
+ * только карты Казахстана, оплату из вашей страны подключаем» — один раз на
+ * заказ (условная отметка до отправки), вопрос продавцу обращением. Копилка
+ * 12.10, kramiliia #159: «Я с Кыргызстана» → «Перевод Kaspi» → «Не получится»
+ * → «напишите, какой у вас банк». Выключается вместе с «Отвечать про оплату
+ * из других стран». true — ответили (или уже отвечали по этому заказу).
+ */
+async function kaspiForeignReply(
+  s: Shop,
+  order: OrderWithItems,
+  fromModel: string | null,
+): Promise<boolean> {
+  const remembered = memory(s.customer).foreign_country;
+  const country = fromModel ?? (typeof remembered === "string" ? remembered : null);
+  if (!country || order.country_code !== "KZ") return false;
+  if (!foreignPayOn(await getSetting(s.ctx, CHAT_FOREIGN_PAY_KEY))) return false;
+  // Способы оплаты не прочитались — не знаем, есть ли способ: прежний ответ.
+  const methods = await listActivePaymentMethods(s.ctx).catch(() => null);
+  if (!methods) return false;
+  if (
+    !kaspiForeignApplies(
+      country,
+      order.country_code,
+      methods.map((m) => m.country_code),
+    )
+  )
+    return false;
+  s.handoff = true;
+  s.why = `Kaspi не подходит покупателю из страны без способа оплаты (${countryNameRu(country)}) — ответили, вопрос продавцу`;
+  if (
+    await claimOrderEvent(s.ctx, order.id, "pay_failed", `foreign:${country}`, {
+      country,
+      reply: true,
+    })
+  )
+    await reply(s, s.m.kaspiForeignReply(countryName(country, s.locale)), { force: true });
+  return true;
+}
+
+/**
+ * Шаг оплаты, «я из Кыргызстана», «не получается оплатить» (слова о
+ * трудностях с оплатой, shop/flow/classify): заказ на Kaspi, а покупатель
+ * из страны без своего способа оплаты — тот же честный ответ, что и на «Не
+ * получится» (kaspiForeignReply), а не «передал продавцу». Страну называет
+ * модель (из сообщения или переписки) или покупатель сказал её раньше.
+ * true — ответили.
+ */
+export async function kaspiForeignTrouble(s: Shop, text: string): Promise<boolean> {
+  const order = await payOrder(s);
+  if (!order || order.status !== "awaiting_payment" || order.country_code !== "KZ") return false;
+  const t = freeText(text) ? await triageOnce(s, text) : null;
+  const said = t?.kind === "foreign_pay" || t?.kind === "payment_failed" ? t.country : null;
+  if (said && said !== "KZ" && said !== "RU" && said !== memory(s.customer).foreign_country) {
+    const saved = await claimStateSection(s.ctx, s.customer, "direct", (cur) =>
+      cur.foreign_country === said ? null : { ...cur, foreign_country: said },
+    ).catch(() => null);
+    if (saved) s.customer = saved;
+  }
+  return kaspiForeignReply(s, order, said);
+}
+
 /** Свободный текст, а не номер, команда или почта: только его есть смысл разбирать моделью. */
 function freeText(text: string): boolean {
   return (
@@ -204,10 +276,12 @@ export async function proofAfterPayFailed(s: Shop, order: OrderWithItems): Promi
 export async function payTroubleReply(
   s: Shop,
   kind: "payment_failed" | "cant_send_receipt",
+  buyerCountry: string | null = null,
 ): Promise<ShopOutcome | null> {
   const order = await payOrder(s);
   if (!order || order.status !== "awaiting_payment") return null;
   if (kind === "payment_failed") {
+    if (await kaspiForeignReply(s, order, buyerCountry)) return "question";
     await payFailedReplyOnce(s, order.id);
     return "question";
   }

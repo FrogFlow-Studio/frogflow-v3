@@ -126,6 +126,30 @@ const twoCountriesBuySent = (r: Room): void => {
   });
 };
 
+/** Кнопка «Купить» правила «Матрёшки», ушедшая этому покупателю в Direct (магазин только с Kaspi). */
+const buySent = (r: Room): void => {
+  r.db.tables.zernio_logs!.push({
+    id: "log-2step",
+    bot_id: r.db.tables.payment_methods![0]!.bot_id,
+    event_id: "two-step-dm:c1",
+    event_type: "two_step_dm_sent",
+    status: "processed",
+    created_at: new Date().toISOString(),
+    payload: {
+      username: "boranbaeva__ainur",
+      authorId: "1",
+      buttons: [{ type: "postback", title: "Купить", payload: `PROD:${P1}` }],
+    },
+  });
+};
+
+/** Заказ на перевод Kaspi ждёт чек (Копилка: способ оплаты только Казахстан). */
+const kaspiOrder = (r: Room): void => {
+  paidOrder({ status: "awaiting_payment" })(r);
+  r.db.tables.orders![0]!.country_code = "KZ";
+  r.db.tables.payment_methods![0]!.instructions = "Kaspi Gold 4400 4302 1234 5678, Кристина У.";
+};
+
 /** Копилка с рублями: Россия вторым способом оплаты, цены по странам и «цены во всех валютах». */
 const allPrices = (r: Room): void => {
   r.db.tables.payment_methods!.push({
@@ -352,6 +376,7 @@ export interface Scenario {
       | "cant_send_receipt"
       | "text_receipt"
       | "how_to_pay"
+      | "how_to_buy"
       | "other";
     country?: string;
   }>;
@@ -4373,6 +4398,242 @@ export const SCENARIOS: Scenario[] = [
       {
         say: { text: "+" },
         expect: { notSays: [(c) => c.plusWhichProduct] },
+      },
+    ],
+  },
+  // ───── Копилка, вечер 12.10: Kaspi из Кыргызстана и «как получить» после карточки ─────
+  {
+    id: "kaspi-foreign-cant-pay-ig-ru",
+    title:
+      "покупатель раньше сказал «Я с Кыргызстана», выбрал перевод Kaspi и пишет «Не получится» — «Kaspi принимает только карты Казахстана, оплату подключаем», банк не спрашиваем, вопрос продавцу; второй раз не повторяем",
+    origin:
+      "Копилка 12.10 19:44, kramiliia #159: «Я с Кыргызстана. Сколько в сомах» → «Перевод Kaspi» → «Не получится» → «напишите, какой у вас банк»",
+    channel: "instagram",
+    locale: "ru",
+    products: PRODUCTS,
+    full: true,
+    modules: { helpdesk: true, manager_chat: true },
+    triage: [{ kind: "payment_failed" }, { kind: "payment_failed" }],
+    state: {
+      mode: "awaiting_proof",
+      pending_order_id: 82,
+      direct: { foreign_country: "KG", foreign_pay_at: new Date().toISOString() },
+    },
+    arrange: kaspiOrder,
+    steps: [
+      {
+        say: { text: "Не получится" },
+        expect: {
+          count: 1,
+          says: [(c) => c.kaspiForeignReply("Кыргызстан")],
+          notSays: [(c) => c.payFailedReply, "какой у вас банк"],
+          sellerNotices: 1,
+          orders: { 82: { status: "awaiting_payment" } },
+        },
+      },
+      {
+        say: { text: "Не получится у меня" },
+        expect: { notSays: [(c) => c.kaspiForeignReply("Кыргызстан"), (c) => c.payFailedReply] },
+      },
+    ],
+  },
+  {
+    id: "kaspi-foreign-said-at-pay-step-ig-ru",
+    title:
+      "«Я с Кыргызстана» уже на шаге перевода Kaspi — тот же честный ответ про Kaspi, а не «передал продавцу»",
+    origin: "Копилка 12.10, kramiliia #159: ожидание к kaspi-foreign-cant-pay-ig-ru",
+    channel: "instagram",
+    locale: "ru",
+    products: PRODUCTS,
+    triage: [{ kind: "foreign_pay", country: "KG" }, { kind: "payment_failed" }],
+    state: { mode: "awaiting_proof", pending_order_id: 82 },
+    arrange: kaspiOrder,
+    steps: [
+      {
+        say: { text: "Я с Кыргызстана. Сколько в сомах" },
+        expect: {
+          count: 1,
+          says: [(c) => c.kaspiForeignReply("Кыргызстан")],
+          notSays: [(c) => c.payTroubleHandoff],
+        },
+      },
+      {
+        say: { text: "Не получится" },
+        expect: { notSays: [(c) => c.payFailedReply, "какой у вас банк"] },
+      },
+    ],
+  },
+  {
+    id: "kaspi-foreign-country-from-model-ig-ru",
+    title:
+      "страну покупателя («я из Узбекистана» раньше в переписке) называет модель — тот же честный ответ про Kaspi, без вопроса о банке",
+    origin: "Копилка 12.10, _madaminova_77_ (Узбекистан): ожидание к kaspi-foreign-cant-pay-ig-ru",
+    channel: "instagram",
+    locale: "ru",
+    products: PRODUCTS,
+    triage: [{ kind: "payment_failed", country: "UZ" }],
+    state: { mode: "awaiting_proof", pending_order_id: 82 },
+    arrange: kaspiOrder,
+    steps: [
+      {
+        say: { text: "Не получается оплатить" },
+        expect: {
+          count: 1,
+          says: [(c) => c.kaspiForeignReply("Узбекистан")],
+          notSays: [(c) => c.payFailedReply],
+        },
+      },
+    ],
+  },
+  {
+    id: "kaspi-foreign-kazakhstan-asks-bank-ig-ru",
+    title:
+      "покупатель из Казахстана пишет «Не получится» на Kaspi — прежний ответ «попробуйте ещё раз или напишите банк»",
+    origin: "граница к kaspi-foreign-cant-pay-ig-ru",
+    channel: "instagram",
+    locale: "ru",
+    products: PRODUCTS,
+    triage: [{ kind: "payment_failed", country: "KZ" }],
+    state: { mode: "awaiting_proof", pending_order_id: 82 },
+    arrange: kaspiOrder,
+    steps: [
+      {
+        say: { text: "Не получится" },
+        expect: { says: [(c) => c.payFailedReply], notSays: ["только карты Казахстана"] },
+      },
+    ],
+  },
+  {
+    id: "kaspi-foreign-switch-off-ig-ru",
+    title:
+      "«Отвечать про оплату из других стран» выключено — на «Не получится» из Кыргызстана прежний ответ",
+    origin: "Яков 11.10: новое поведение бота — переключатель в настройках",
+    channel: "instagram",
+    locale: "ru",
+    products: PRODUCTS,
+    triage: [{ kind: "payment_failed", country: "KG" }],
+    state: { mode: "awaiting_proof", pending_order_id: 82 },
+    arrange: (r) => {
+      kaspiOrder(r);
+      r.db.tables.app_settings!.push({ key: "chat_foreign_pay", value: "false" });
+    },
+    steps: [
+      {
+        say: { text: "Не получится" },
+        expect: { says: [(c) => c.payFailedReply], notSays: ["только карты Казахстана"] },
+      },
+    ],
+  },
+  {
+    id: "how-to-get-after-buy-card-ig-ru",
+    title:
+      "после карточки с «Купить» «Как можно получить» — «нажмите «Купить»» с кнопкой, без обращения; повтор в полчаса — без второго ответа",
+    origin:
+      "Копилка 12.10, boranbaeva__ainur: карточка «Матрёшки» → «Здравствуйте» → обращение, «Как можно получить» → тишина",
+    channel: "instagram",
+    locale: "ru",
+    products: PRODUCTS,
+    full: true,
+    modules: { helpdesk: true, manager_chat: true },
+    username: "boranbaeva__ainur",
+    triage: [{ kind: "how_to_buy" }, { kind: "how_to_buy" }],
+    arrange: buySent,
+    steps: [
+      {
+        say: { text: "Как можно получить" },
+        expect: {
+          count: 1,
+          says: [(c) => c.howToBuyReply("Купить")],
+          buttons: ["Купить"],
+          sellerNotices: 0,
+        },
+      },
+      {
+        say: { text: "Как получить?" },
+        expect: { notSays: [(c) => c.howToBuyReply("Купить")] },
+      },
+    ],
+  },
+  {
+    id: "how-to-get-race-ig-ru",
+    title:
+      "«Как получить?» дважды одновременно и повтор вебхука — «нажмите «Купить»» уходит один раз",
+    origin: "CLAUDE.md «Один раз»: двойная доставка, два сообщения подряд",
+    channel: "instagram",
+    locale: "ru",
+    products: PRODUCTS,
+    full: true,
+    modules: { helpdesk: true, manager_chat: true },
+    username: "boranbaeva__ainur",
+    triage: [{ kind: "how_to_buy" }, { kind: "how_to_buy" }, { kind: "how_to_buy" }],
+    arrange: buySent,
+    steps: [
+      {
+        say: { burst: ["Как можно получить", "Как получить?"] },
+        expect: { count: 1, says: [(c) => c.howToBuyReply("Купить")] },
+      },
+      { say: { repeat: true }, expect: { silent: true } },
+    ],
+  },
+  {
+    id: "how-to-get-no-buy-card-ig-ru",
+    title:
+      "«Как можно получить» без карточки с «Купить» — бот не отвечает за продавца, вопрос продавцу",
+    origin: "граница к how-to-get-after-buy-card-ig-ru",
+    channel: "instagram",
+    locale: "ru",
+    products: PRODUCTS,
+    full: true,
+    modules: { helpdesk: true, manager_chat: true },
+    triage: [{ kind: "how_to_buy" }],
+    steps: [
+      {
+        say: { text: "Как можно получить" },
+        expect: { notSays: [(c) => c.howToBuyReply("Купить")], sellerNotices: 1 },
+      },
+    ],
+  },
+  {
+    id: "how-to-get-while-unpaid-ig-ru",
+    title:
+      "заказ уже ждёт оплату — «как получить?» не зовёт снова нажать «Купить» (вопросы об оплате разбирает шаг оплаты, #109)",
+    origin: "граница к how-to-get-after-buy-card-ig-ru и #109",
+    channel: "instagram",
+    locale: "ru",
+    products: PRODUCTS,
+    username: "boranbaeva__ainur",
+    triage: [{ kind: "how_to_buy" }],
+    state: { mode: "awaiting_proof", pending_order_id: 82 },
+    arrange: (r) => {
+      kaspiOrder(r);
+      buySent(r);
+    },
+    steps: [
+      {
+        say: { text: "Как можно получить" },
+        expect: { notSays: [(c) => c.howToBuyReply("Купить")] },
+      },
+    ],
+  },
+  {
+    id: "how-to-get-switch-off-ig-ru",
+    title: "«Отвечать на «как получить?»» выключено — вопрос уходит продавцу, как раньше",
+    origin: "Яков 11.10: новое поведение бота — переключатель в настройках",
+    channel: "instagram",
+    locale: "ru",
+    products: PRODUCTS,
+    full: true,
+    modules: { helpdesk: true, manager_chat: true },
+    username: "boranbaeva__ainur",
+    triage: [{ kind: "how_to_buy" }],
+    arrange: (r) => {
+      buySent(r);
+      r.db.tables.app_settings!.push({ key: "chat_how_to_buy", value: "false" });
+    },
+    steps: [
+      {
+        say: { text: "Как можно получить" },
+        expect: { notSays: [(c) => c.howToBuyReply("Купить")], sellerNotices: 1 },
       },
     ],
   },

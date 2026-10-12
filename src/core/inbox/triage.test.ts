@@ -5,11 +5,14 @@ import type { Customer } from "@/core/customers/customers";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import {
   CHAT_FOREIGN_PAY_KEY,
+  CHAT_HOW_TO_BUY_KEY,
   CHAT_PAY_FAILED_KEY,
   CHAT_RECEIPT_TEXT_OFFER_KEY,
   CHAT_SKIP_CHATTER_KEY,
   TRIAGE_CAP_KEY,
+  countryName,
   foreignPayApplies,
+  kaspiForeignApplies,
   parseTriage,
   triageSpendKey,
   triageUserPrompt,
@@ -43,8 +46,13 @@ describe("ответ модели", () => {
     });
     expect(parseTriage({ kind: "foreign_pay", country: "Беларусь" }).country).toBeNull();
     expect(parseTriage({ kind: "spam" }).kind).toBe("other");
-    expect(parseTriage({ kind: "payment_failed", country: "BY" })).toEqual({
+    // Копилка 12.10, kramiliia #159: страна покупателя нужна и у «не получится».
+    expect(parseTriage({ kind: "payment_failed", country: "kg" })).toEqual({
       kind: "payment_failed",
+      country: "KG",
+    });
+    expect(parseTriage({ kind: "how_to_buy", country: "KZ" })).toEqual({
+      kind: "how_to_buy",
       country: null,
     });
     expect(parseTriage({ kind: "cant_send_receipt" }).kind).toBe("cant_send_receipt");
@@ -63,6 +71,21 @@ describe("ответ модели", () => {
     expect(foreignPayApplies({ kind: "chatter", country: null }, ["KZ"])).toBe(false);
   });
 
+  it("Kaspi из другой страны — заказ на Kaspi, страна понятна, не Казахстан и не Россия, способа для неё нет", () => {
+    expect(kaspiForeignApplies("KG", "KZ", ["KZ"])).toBe(true);
+    expect(kaspiForeignApplies("KG", "KZ", ["KZ", "KG"])).toBe(false);
+    expect(kaspiForeignApplies("KZ", "KZ", ["KZ"])).toBe(false);
+    expect(kaspiForeignApplies("RU", "KZ", ["KZ"])).toBe(false);
+    expect(kaspiForeignApplies(null, "KZ", ["KZ"])).toBe(false);
+    expect(kaspiForeignApplies("KG", "RU", ["KZ", "RU"])).toBe(false);
+  });
+
+  it("название страны покупателю — на его языке", () => {
+    expect(countryName("KG", "ru")).toBe("Кыргызстан");
+    expect(countryName("UZ", "ru")).toBe("Узбекистан");
+    expect(countryName("KG", "en")).toBe("Kyrgyzstan");
+  });
+
   it("в промпте — переписка и само сообщение", () => {
     const p = triageUserPrompt({
       text: "+",
@@ -74,6 +97,18 @@ describe("ответ модели", () => {
 });
 
 describe("вызов модели", () => {
+  it("«как получить?» выключено — other", async () => {
+    setTriageModelForTests(async () => ({ input: { kind: "how_to_buy", country: "" } }));
+    const on = ctx();
+    expect((await triageMessage(on, { customer, text: "Как можно получить", now: NOW })).kind).toBe(
+      "how_to_buy",
+    );
+    const off = ctx([{ key: CHAT_HOW_TO_BUY_KEY, value: "false" }]);
+    expect(
+      (await triageMessage(off, { customer, text: "Как можно получить", now: NOW })).kind,
+    ).toBe("other");
+  });
+
   it("понимает модель; расход дня записан", async () => {
     const c = ctx();
     const model = vi.fn(async () => ({
@@ -99,6 +134,7 @@ describe("вызов модели", () => {
       { key: CHAT_PAY_FAILED_KEY, value: "false" },
       { key: CHAT_RECEIPT_TEXT_OFFER_KEY, value: "false" },
       { key: CHAT_RECEIPT_TEXT_KEY, value: "false" },
+      { key: CHAT_HOW_TO_BUY_KEY, value: "false" },
     ]);
     expect((await triageMessage(c, { customer, text: "Спасибо", now: NOW })).kind).toBe("other");
     expect(model).not.toHaveBeenCalled();

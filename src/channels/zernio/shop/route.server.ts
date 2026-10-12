@@ -146,6 +146,7 @@ import { triageQuestion } from "./triage.server";
 import {
   cantSendReceipt,
   confirmOldResend,
+  kaspiForeignTrouble,
   dropPaidStep,
   numberWhileUnpaid,
   payFailedCaption,
@@ -755,6 +756,9 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
           (await choosePayment(s, "pdm", { ruCard: true }))
         )
           return "handled";
+        // Покупатель из Кыргызстана, Узбекистана… на переводе Kaspi: Kaspi берёт
+        // только карты Казахстана — так и сказать (Копилка 12.10, kramiliia #159).
+        if (!isFromRussia(text) && (await kaspiForeignTrouble(s, text))) return "question";
         s.handoff = true;
         await reply(s, s.m.payTroubleHandoff, { force: true });
         // Не прошла оплата «Картой РФ»: форма берёт только карты российских
@@ -796,7 +800,12 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
         // Без отметки «передал»: бот ничего не сказал, и «оплатила» потом
         // по-прежнему получит просьбу о чеке. «Спасибо», эмодзи, оплата из
         // страны без способа оплаты — разбирает модель (shop/triage).
-        return (await triageQuestion(s, text)) ?? "question";
+        return (
+          (await triageQuestion(s, text, {
+            username: msg.senderUsername,
+            senderId: msg.senderId,
+          })) ?? "question"
+        );
       }
       break;
     }
@@ -875,7 +884,10 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
       if (after) return after;
       // «Спасибо», эмодзи, «+» — без обращения; оплата из страны без способа
       // оплаты — честный ответ и вопрос продавцу (Копилка 12.10, shop/triage).
-      return (await triageQuestion(s, text)) ?? "question";
+      return (
+        (await triageQuestion(s, text, { username: msg.senderUsername, senderId: msg.senderId })) ??
+        "question"
+      );
     }
   }
 }
