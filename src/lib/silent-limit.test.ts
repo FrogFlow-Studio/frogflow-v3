@@ -26,6 +26,9 @@ const ALLOWED: Record<string, string[]> = {
   ],
   "src/app/admin/audit.server.ts": [`${SHOWN} (журнал действий команды)`],
   "src/app/admin/chat.functions.ts": [`${SHOWN} (подбор товара в счёт: поиск, INVOICE_PAGE)`],
+  "src/core/inbox/triage.server.ts": [
+    "контекст для разбора реплики перед обращением: последние HISTORY реплик, старые не нужны",
+  ],
   "src/core/postpay/decide.server.ts": [
     "контекст для модели ИИ после оплаты: последние HISTORY реплик, старые не нужны",
   ],

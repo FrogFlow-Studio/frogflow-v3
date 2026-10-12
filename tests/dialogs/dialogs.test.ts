@@ -182,6 +182,13 @@ describe("золотые диалоги", () => {
           { type: "tool_use", id: "t1", name: "decide", input: { email: "", ...d } },
         ]);
       }
+      if (s.triage) {
+        // Разбор реплики перед обращением: настоящий вызов через SDK, ответ инструмента triage.
+        setEnvForTests({ ANTHROPIC_API_KEY: "sk-test" });
+        modelRounds.list = s.triage.map((d) => [
+          { type: "tool_use", id: "t1", name: "triage", input: { country: "", ...d } },
+        ]);
+      }
       if (s.countryAi) {
         // Страна из слов: настоящий вызов через SDK, ответ инструмента country — из сценария.
         setEnvForTests({ ANTHROPIC_API_KEY: "sk-test" });

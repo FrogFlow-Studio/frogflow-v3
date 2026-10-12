@@ -27,6 +27,7 @@ export const BOT_TEXT_KEYS = [
   "email_ask",
   "email_retry",
   "thanks_reply",
+  "foreign_pay_reply",
 ] as const;
 export type BotTextKey = (typeof BOT_TEXT_KEYS)[number];
 
@@ -50,6 +51,7 @@ export const DIRECT_KEYS = [
   "email_ask",
   "email_retry",
   "thanks_reply",
+  "foreign_pay_reply",
 ] as const satisfies readonly BotTextKey[];
 
 /**
@@ -81,6 +83,7 @@ export const MSG_PROPS: Partial<Record<BotTextKey, readonly string[]>> = {
   email_ask: ["emailAsk"],
   email_retry: ["emailHint"],
   thanks_reply: ["thanksReply"],
+  foreign_pay_reply: ["foreignPayReply"],
 };
 
 /** Тексты про заказ: у консультанта без продаж их не показываем. */
@@ -104,6 +107,7 @@ export const BOT_TEXT_VARS: Record<BotTextKey, readonly string[]> = {
   email_ask: [],
   email_retry: [],
   thanks_reply: [],
+  foreign_pay_reply: [],
 };
 
 /**

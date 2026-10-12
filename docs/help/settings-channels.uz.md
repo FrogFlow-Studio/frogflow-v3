@@ -90,3 +90,15 @@ Instagram’dagi kabi sozlamalar: kalit, «Nimaga javob berish», buyruqlar, tus
 «24 soatlik oynadan tashqari xabarlar uchun shablon» — WhatsApp xaridorga faqat uning xabaridan keyin bir sutka ichida erkin matn bilan yozishga ruxsat beradi. Buyurtma haqidagi bildirishnomalar keyinroq ham yetib borishi uchun Meta tasdiqlagan bitta parametrli shablonni va ikki nuqta orqali tilni ko‘rsating, masalan order_update:ru. Shablonsiz bot oddiy xabar yuborishga harakat qiladi, WhatsApp esa uni o‘tkazmasligi mumkin.
 
 Meta katalogidan savat: bot bunday buyurtmani o‘zi rasmiylashtirishi uchun Meta katalogida artikul sifatida mahsulot id’sini, uning raqamini yoki admin paneldagi aniq nomini ko‘rsating.
+
+## Savolsiz xabarlar va boshqa davlatlardan to‘lov {#direct-triage}
+
+«To‘lov va sozlamalar» bo‘limidagi karta, agar Instagram yoki WhatsApp va yozishmadagi do‘kon ulangan bo‘lsa. Qanday xabar kelganini so‘zlar ro‘yxati emas, SI tushunadi; xabar har doim «Chat»da qoladi. SI xarajati — bir xabarga sentning ulushi, do‘konga kuniga 0,3 $ dan oshmaydi.
+
+## Savolsiz xabarlar {#direct-chatter}
+
+«„Rahmat“, emoji va „+“ uchun murojaat ochmaslik» — sukut bo‘yicha yoqilgan. Direct yoki WhatsApp’ga savol ham, iltimos ham bo‘lmagan xabar kelsa («Rahmat! 🌹», «Barakalla!», «🔥», «+», «Obuna bo‘ldim»), bot jim turadi va murojaat ochmaydi. Xabar nimaligini so‘zlar ro‘yxati emas, SI xabar va yozishma bo‘yicha hal qiladi. Xabar baribir «Chat»da ko‘rinadi. Buyurtma topshirilgandan keyingi «rahmat»ga bot avvalgidek «„Rahmat“ga javob» matni bilan bir marta javob beradi (Sozlamalar → Bot matni → Instagram). «Rahmat, qachon keladi?» — bu savol: u sizga murojaat bo‘lib keladi. O‘chirilgan — har bir bunday xabar avvalgidek murojaat ochadi.
+
+## Boshqa davlatlardan to‘lov {#direct-foreign-pay}
+
+«Boshqa davlatlardan to‘lov haqida javob berish» — sukut bo‘yicha yoqilgan. Xaridor o‘z davlatidan yoki o‘z valyutasida to‘lash mumkinmi deb so‘raydi («Belarus rublida bo‘ladimi?», «O‘zbekistondanman, qanday to‘layman?», «so‘mda qancha?»), sizda esa bu davlat uchun to‘lov usuli yo‘q. Bot sutkada bir marta javob beradi: «Davlatingizdan to‘lovni hozir ulayapmiz. Savolingiz sotuvchiga yuborildi — u shu yerda qanday to‘lashni yozadi», savol esa sizga murojaat bo‘lib keladi, rekvizitlarni o‘zingiz yuborasiz. Matn «Sozlamalar → Bot matni → Instagram → Boshqa davlatdan to‘lov» bo‘limida o‘zgartiriladi. Davlat uchun to‘lov usuli qo‘shilgan bo‘lsa, bot xaridorni odatiy yo‘l bilan olib boradi. Rossiya bunga kirmaydi: unga RF kartasi bilan to‘lov yoki sizning rekvizitlaringiz ishlaydi. O‘chirilgan — bot bunday savollarga javob bermaydi, ular sizga murojaat bo‘lib keladi.

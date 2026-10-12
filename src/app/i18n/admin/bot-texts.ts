@@ -51,6 +51,9 @@ export const ru = {
   "botTexts.key.thanks_reply": "Ответ на «спасибо»",
   "botTexts.key.thanks_reply.hint":
     "Покупатель поблагодарил после выдачи заказа. Бот отвечает один раз на заказ, обращение не открывается.",
+  "botTexts.key.foreign_pay_reply": "Оплата из другой страны",
+  "botTexts.key.foreign_pay_reply.hint":
+    "Покупатель спрашивает, как оплатить из страны, для которой у магазина нет способа оплаты (например, Беларусь, Узбекистан, Кыргызстан). Бот отвечает один раз в сутки, вопрос уходит вам обращением.",
   "botTexts.vars": "Можно вставить: {vars}",
   "botTexts.var.shop": "{shop} — название магазина",
   "botTexts.var.order": "{order} — номер заказа",
@@ -133,6 +136,9 @@ export const kk: SectionDict<typeof ru> = {
   "botTexts.key.thanks_reply": "«Рақмет» сөзіне жауап",
   "botTexts.key.thanks_reply.hint":
     "Сатып алушы тапсырыс берілгеннен кейін алғыс айтты. Бот бір тапсырысқа бір рет жауап береді, өтініш ашылмайды.",
+  "botTexts.key.foreign_pay_reply": "Басқа елден төлеу",
+  "botTexts.key.foreign_pay_reply.hint":
+    "Сатып алушы дүкенде төлем тәсілі жоқ елден (мысалы, Беларусь, Өзбекстан, Қырғызстан) қалай төлеуге болатынын сұрайды. Бот тәулігіне бір рет жауап береді, сұрақ сізге өтініш болып келеді.",
   "botTexts.vars": "Қоюға болады: {vars}",
   "botTexts.var.shop": "{shop} — дүкен атауы",
   "botTexts.var.order": "{order} — тапсырыс нөмірі",
@@ -217,6 +223,9 @@ export const en: SectionDict<typeof ru> = {
   "botTexts.key.thanks_reply": "Reply to “thank you”",
   "botTexts.key.thanks_reply.hint":
     "The buyer said thanks after the order was delivered. The bot replies once per order and opens no ticket.",
+  "botTexts.key.foreign_pay_reply": "Payment from another country",
+  "botTexts.key.foreign_pay_reply.hint":
+    "The buyer asks how to pay from a country the shop has no payment method for (for example, Belarus, Uzbekistan, Kyrgyzstan). The bot replies once a day and the question comes to you as a ticket.",
   "botTexts.vars": "You can insert: {vars}",
   "botTexts.var.shop": "{shop} — shop name",
   "botTexts.var.order": "{order} — order number",
@@ -301,6 +310,9 @@ export const uz: SectionDict<typeof ru> = {
   "botTexts.key.thanks_reply": "«Rahmat»ga javob",
   "botTexts.key.thanks_reply.hint":
     "Xaridor buyurtma topshirilgandan keyin minnatdorchilik bildirdi. Bot bir buyurtmaga bir marta javob beradi, murojaat ochilmaydi.",
+  "botTexts.key.foreign_pay_reply": "Boshqa davlatdan to‘lov",
+  "botTexts.key.foreign_pay_reply.hint":
+    "Xaridor do‘konda to‘lov usuli yo‘q davlatdan (masalan, Belarus, O‘zbekiston, Qirg‘iziston) qanday to‘lashni so‘raydi. Bot sutkada bir marta javob beradi, savol sizga murojaat bo‘lib keladi.",
   "botTexts.vars": "Qoʻyish mumkin: {vars}",
   "botTexts.var.shop": "{shop} — doʻkon nomi",
   "botTexts.var.order": "{order} — buyurtma raqami",

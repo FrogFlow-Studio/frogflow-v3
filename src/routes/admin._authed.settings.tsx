@@ -54,6 +54,7 @@ import {
   PayReminderCard,
   EmailAskCard,
   ReceiptTextCard,
+  DirectTriageCard,
   SmartSearchCard,
   WatermarkCard,
   WeeklyReportCard,
@@ -290,6 +291,12 @@ function SettingsPage() {
                   <IceBreakersCard />
                 </SettingsSection>
               )}
+              {(shop.modules.instagram || shop.modules.whatsapp) &&
+                (shop.modules.dm_shop || shop.modules.wa_shop) && (
+                  <SettingsSection id="direct-triage">
+                    <DirectTriageCard settings={settings} />
+                  </SettingsSection>
+                )}
               {shop.modules.whatsapp && (
                 <SettingsSection id="dbot-whatsapp">
                   <DirectBotCard platform="whatsapp" />

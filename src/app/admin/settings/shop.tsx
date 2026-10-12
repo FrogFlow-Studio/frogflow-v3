@@ -5,6 +5,12 @@ import {
   emailOptionalOn,
 } from "@/core/orders/email-ask";
 import { CHAT_RECEIPT_TEXT_KEY, receiptTextOn } from "@/core/receipts/text-receipt";
+import {
+  CHAT_FOREIGN_PAY_KEY,
+  CHAT_SKIP_CHATTER_KEY,
+  foreignPayOn,
+  skipChatterOn,
+} from "@/core/inbox/triage";
 import { useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { saveSettingsFn, setPdfWatermarkFn } from "@/app/admin/settings.functions";
@@ -436,6 +442,51 @@ export function PayReminderCard({ settings }: { settings: Record<string, string>
       </div>
       <p className="mt-1 text-xs text-muted">{t("settings.payRemindHold.hint")}</p>
       <ErrorBox error={save.error} />
+    </Card>
+  );
+}
+
+/**
+ * Сообщения без вопроса и оплата из других стран в Instagram/WhatsApp
+ * (core/inbox/triage): что это за сообщение, решает модель.
+ */
+export function DirectTriageCard({ settings }: { settings: Record<string, string> }) {
+  const router = useRouter();
+  const { shop } = settingsRoute.useRouteContext();
+  const t = adminT(shop.locale);
+  const chatter = skipChatterOn(settings[CHAT_SKIP_CHATTER_KEY]);
+  const foreign = foreignPayOn(settings[CHAT_FOREIGN_PAY_KEY]);
+  const toggle = useAction(async (key: string, v: boolean) => {
+    await saveSettingsFn({ data: { [key]: v ? "true" : "false" } });
+    await router.invalidate();
+  });
+  const readOnly = toggle.busy || !roleAllows(shop.role, "admin");
+  return (
+    <Card title={t("settings.triage.title")}>
+      <p className="mb-3 text-sm text-muted">{t("settings.triage.intro")}</p>
+      <div className="flex items-center gap-3">
+        <Switch
+          checked={chatter}
+          disabled={readOnly}
+          onChange={(v) => void toggle.run(CHAT_SKIP_CHATTER_KEY, v).catch(() => {})}
+          label={t("settings.triage.chatterLabel")}
+        />
+        <span className="text-sm">{t("settings.triage.chatterLabel")}</span>
+        <HelpTip article="settings-channels" anchor="direct-chatter" />
+      </div>
+      <p className="mt-1 text-xs text-muted">{t("settings.triage.chatterHint")}</p>
+      <div className="mt-3 flex items-center gap-3">
+        <Switch
+          checked={foreign}
+          disabled={readOnly}
+          onChange={(v) => void toggle.run(CHAT_FOREIGN_PAY_KEY, v).catch(() => {})}
+          label={t("settings.triage.foreignLabel")}
+        />
+        <span className="text-sm">{t("settings.triage.foreignLabel")}</span>
+        <HelpTip article="settings-channels" anchor="direct-foreign-pay" />
+      </div>
+      <p className="mt-1 text-xs text-muted">{t("settings.triage.foreignHint")}</p>
+      <ErrorBox error={toggle.error} />
     </Card>
   );
 }

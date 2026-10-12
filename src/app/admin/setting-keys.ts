@@ -19,6 +19,8 @@ export const SETTING_KEYS = [
   "chat_email_ask",
   "chat_email_optional",
   "chat_receipt_text",
+  "chat_skip_chatter",
+  "chat_foreign_pay",
   "delivery_lang_timing",
   "loyalty_earn_percent",
   "loyalty_max_redeem_percent",

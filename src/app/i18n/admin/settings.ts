@@ -462,6 +462,15 @@ export const ru = {
   "settings.receiptText.intro":
     "Kaspi иногда не даёт сделать скриншот, и покупатель вставляет текст чека: «Оплата совершена 800 ₸ … № чека QR…». Включено — бот принимает такой текст как чек: отвечает «Принял чек, передаю на проверку», а заказ приходит вам на подтверждение с текстом чека, как с фото. Автопроверка текст не читает: поступление денег проверьте сами.",
   "settings.receiptText.label": "Принимать чек текстом",
+  "settings.triage.title": "Сообщения без вопроса и оплата из других стран",
+  "settings.triage.intro":
+    "Что за сообщение пришло в Direct или WhatsApp, понимает ИИ, а не список слов. Сообщение всегда остаётся в «Чате».",
+  "settings.triage.chatterLabel": "Не открывать обращение на «спасибо», эмодзи и «+»",
+  "settings.triage.chatterHint":
+    "«Благодарю! 🌹», «Браво!», «🔥», «+», «Я подписана» без вопроса и просьбы — бот молчит, обращение не открывается. После выданного заказа на «спасибо» бот, как и раньше, один раз отвечает текстом «Ответ на «спасибо»». «Спасибо, а когда придёт?» — это вопрос, он уходит вам.",
+  "settings.triage.foreignLabel": "Отвечать про оплату из других стран",
+  "settings.triage.foreignHint":
+    "Покупатель спрашивает, как оплатить из страны, для которой у вас нет способа оплаты («В бел. руб можно?», «я из Узбекистана, как оплатить?»). Бот раз в сутки отвечает, что оплату оттуда подключают и вы напишете, а вопрос приходит вам обращением. Текст — «Настройки → Текст бота → Instagram → Оплата из другой страны». Россия сюда не входит: у неё своя оплата.",
   "settings.ocr.intro":
     "Чек, присланный в бот, читается автоматически: если сумма и признаки оплаты сошлись — файлы уходят покупателю сразу, без вашего участия; сомнительный чек попадает к вам с причиной; скрин без оплаты бот просит прислать заново. Тариф — $2 за 1000 распознаваний.",
   "settings.ocr.noKey":
@@ -987,6 +996,15 @@ export const kk: SectionDict<typeof ru> = {
   "settings.receiptText.intro":
     "Kaspi кейде скриншот жасатпайды, сонда сатып алушы чек мәтінін қояды: «Оплата совершена 800 ₸ … № чека QR…». Қосулы — бот мұндай мәтінді чек ретінде қабылдайды: «Чекті қабылдадым, тексеруге жіберемін» деп жауап береді, ал тапсырыс сізге чек мәтінімен расталуға келеді, фото сияқты. Автотексеру мәтінді оқымайды: ақшаның түскенін өзіңіз тексеріңіз.",
   "settings.receiptText.label": "Чекті мәтінмен қабылдау",
+  "settings.triage.title": "Сұрақсыз хабарламалар және басқа елдерден төлем",
+  "settings.triage.intro":
+    "Direct немесе WhatsApp-қа қандай хабарлама келгенін сөздер тізімі емес, ЖИ түсінеді. Хабарлама әрдайым «Чатта» қалады.",
+  "settings.triage.chatterLabel": "«Рақмет», эмодзи және «+» үшін өтініш ашпау",
+  "settings.triage.chatterHint":
+    "«Рақмет! 🌹», «Браво!», «🔥», «+», «Жазылдым» сұрақ пен өтінішсіз — бот үндемейді, өтініш ашылмайды. Тапсырыс берілгеннен кейін «рақмет» десе, бот бұрынғыдай «Рақмет сөзіне жауап» мәтінімен бір рет жауап береді. «Рақмет, қашан келеді?» — бұл сұрақ, ол сізге келеді.",
+  "settings.triage.foreignLabel": "Басқа елдерден төлем туралы жауап беру",
+  "settings.triage.foreignHint":
+    "Сатып алушы сізде төлем тәсілі жоқ елден қалай төлеуге болатынын сұрайды («Беларусь рублімен бола ма?», «Өзбекстаннанмын, қалай төлеймін?»). Бот тәулігіне бір рет ол жерден төлем қосылып жатқанын және сіз жазатыныңызды айтады, ал сұрақ сізге өтініш болып келеді. Мәтін — «Баптаулар → Бот мәтіні → Instagram → Басқа елден төлеу». Ресей бұған кірмейді: оның өз төлемі бар.",
   "settings.ocr.intro":
     "Ботқа жіберілген чек автоматты түрде оқылады: сома мен төлем белгілері сәйкес келсе — файлдар сізге қатыссыз бірден сатып алушыға кетеді; күмәнді чек себебімен сізге түседі; төлемсіз скринді бот қайта жіберуді сұрайды. Тариф — 1000 тануға $2.",
   "settings.ocr.noKey":
@@ -1507,6 +1525,15 @@ export const en: SectionDict<typeof ru> = {
   "settings.receiptText.intro":
     "Kaspi sometimes blocks screenshots, so the buyer pastes the receipt text: “Оплата совершена 800 ₸ … № чека QR…”. On: the bot accepts such text as a receipt, replies “Got the receipt, passing it on for checking”, and the order comes to you for confirmation with the receipt text, just like a photo. Automatic checking does not read text: check the payment yourself.",
   "settings.receiptText.label": "Accept receipts as text",
+  "settings.triage.title": "Messages without a question and payment from other countries",
+  "settings.triage.intro":
+    "AI, not a word list, decides what kind of message arrived in Direct or WhatsApp. The message always stays in “Chat”.",
+  "settings.triage.chatterLabel": "Don’t open a ticket for “thank you”, emoji and “+”",
+  "settings.triage.chatterHint":
+    "“Thank you! 🌹”, “Bravo!”, “🔥”, “+”, “I’ve subscribed” with no question or request: the bot stays silent and no ticket is opened. After a delivered order the bot still replies once to “thank you” with the “Reply to thank you” text. “Thanks, when will it arrive?” is a question and comes to you.",
+  "settings.triage.foreignLabel": "Reply about payment from other countries",
+  "settings.triage.foreignHint":
+    "The buyer asks how to pay from a country you have no payment method for (“Can I pay in Belarusian rubles?”, “I’m from Uzbekistan, how do I pay?”). Once a day the bot replies that payments from there are being set up and you will write, and the question comes to you as a ticket. Text: “Settings → Bot texts → Instagram → Payment from another country”. Russia is not included: it has its own payment.",
   "settings.ocr.intro":
     "A receipt sent to the bot is read automatically: if the amount and payment markers match, the files go to the customer right away without you; a doubtful receipt comes to you with the reason; a screenshot without payment is asked to be resent. Rate — $2 per 1,000 recognitions.",
   "settings.ocr.noKey":
@@ -2034,6 +2061,15 @@ export const uz: SectionDict<typeof ru> = {
   "settings.receiptText.intro":
     "Kaspi ba’zan skrinshot qilishga ruxsat bermaydi va xaridor chek matnini qo‘yadi: «Оплата совершена 800 ₸ … № чека QR…». Yoqilgan — bot bunday matnni chek sifatida qabul qiladi: «Chekni qabul qildim, tekshiruvga yuboraman» deb javob beradi, buyurtma esa sizga chek matni bilan tasdiqlash uchun keladi, xuddi rasm kabi. Avtotekshiruv matnni o‘qimaydi: pul tushganini o‘zingiz tekshiring.",
   "settings.receiptText.label": "Chekni matn bilan qabul qilish",
+  "settings.triage.title": "Savolsiz xabarlar va boshqa davlatlardan to‘lov",
+  "settings.triage.intro":
+    "Direct yoki WhatsApp’ga qanday xabar kelganini so‘zlar ro‘yxati emas, SI tushunadi. Xabar har doim «Chat»da qoladi.",
+  "settings.triage.chatterLabel": "«Rahmat», emoji va «+» uchun murojaat ochmaslik",
+  "settings.triage.chatterHint":
+    "«Rahmat! 🌹», «Barakalla!», «🔥», «+», «Obuna bo‘ldim» savol va iltimossiz — bot jim turadi, murojaat ochilmaydi. Buyurtma topshirilgach «rahmat» deyilsa, bot avvalgidek «Rahmat»ga javob» matni bilan bir marta javob beradi. «Rahmat, qachon keladi?» — bu savol, u sizga keladi.",
+  "settings.triage.foreignLabel": "Boshqa davlatlardan to‘lov haqida javob berish",
+  "settings.triage.foreignHint":
+    "Xaridor sizda to‘lov usuli yo‘q davlatdan qanday to‘lashni so‘raydi («Belarus rublida bo‘ladimi?», «O‘zbekistondanman, qanday to‘layman?»). Bot sutkada bir marta u yerdan to‘lov ulanayotganini va siz yozishingizni aytadi, savol esa sizga murojaat bo‘lib keladi. Matn — «Sozlamalar → Bot matni → Instagram → Boshqa davlatdan to‘lov». Rossiya bunga kirmaydi: uning o‘z to‘lovi bor.",
   "settings.ocr.intro":
     "Botga yuborilgan chek avtomatik o‘qiladi: summa va to‘lov belgilari mos kelsa — fayllar sizning ishtirokingizsiz darhol xaridorga ketadi; shubhali chek sababi bilan sizga tushadi; to‘lovsiz skrinni bot qayta yuborishni so‘raydi. Tarif — 1000 ta aniqlash uchun $2.",
   "settings.ocr.noKey":
