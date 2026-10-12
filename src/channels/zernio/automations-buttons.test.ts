@@ -1721,7 +1721,7 @@ describe("Comment-to-DM: кодовое слово прямо в Direct (Коп�
       expect(mentionsOwnedProduct(t), t).toBe(true);
     for (const t of ["Купить", "Палитра", "пришлите палитру", "Хочу купить", "Покупка"])
       expect(mentionsOwnedProduct(t), t).toBe(false);
-    const rule = { name: "Палитра", keywords: ["палитра"] };
+    const rule = { name: "Палитра", keywords: ["палитра"], dmMessage: "Палитра — 1700 ₸" };
     expect(expressAllowed("Палитра", rule)).toBe(true);
     expect(expressAllowed("Палитра у меня уже есть", rule)).toBe(false);
   });
