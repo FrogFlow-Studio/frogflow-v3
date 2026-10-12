@@ -57,7 +57,7 @@ function setup(status = "pending_payment") {
     createInvite: vi.fn(async () => "https://t.me/+invite"),
     revokeInvite: vi.fn(async () => {}),
     kick: vi.fn(async () => ({ ok: true })),
-    send: vi.fn(async () => true),
+    send: vi.fn(async (_id: number, _html: string) => true),
   } satisfies VipGroup;
   const ctx = {
     tenant: { id: BOT, plan: null, settings: {}, modules: {}, ownerTelegramId: null },
