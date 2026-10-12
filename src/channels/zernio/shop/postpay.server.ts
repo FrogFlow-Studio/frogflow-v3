@@ -6,7 +6,7 @@
 import { isMailConfigured } from "@/core/mail/mail.server";
 import { setEmail } from "@/core/customers/customers";
 import { claimOrderEvent } from "@/core/orders/events";
-import { getOrder } from "@/core/orders/orders";
+import { getOrder, type OrderWithItems } from "@/core/orders/orders";
 import { POSTPAY_TEXT, RESEND_BUCKET_MS, planStep, type PostPayStep } from "@/core/postpay/postpay";
 import { reply, setMode, type Shop, type ShopOutcome } from "./context.server";
 import { mentionsEmail } from "@/core/orders/email-ask";
@@ -68,9 +68,26 @@ export async function postPayAssist(
     case "limit":
       // Много писем подряд — пусть посмотрит продавец.
       return "question";
-    case "send":
+    case "send": {
+      // Заказу больше 14 дней — сначала спросить, тот ли (AATeach 12.10, #955).
+      const { askBeforeOldResend } = await import("./pay-trouble.server");
+      const asked = await askBeforeOldResend(s, order, step.email);
+      if (asked) return asked;
       return resend(s, order.id, step);
+    }
   }
+}
+
+/** «Да» на «прислать ещё раз заказ №N от …?» (shop/pay-trouble.server). */
+export async function resendConfirmed(
+  s: Shop,
+  order: OrderWithItems,
+  email: string,
+): Promise<ShopOutcome> {
+  if (!(s.transport.mailReady ?? isMailConfigured)()) return "question";
+  s.why = `ИИ после оплаты (заказ №${order.display_no ?? order.order_no}): покупатель подтвердил — отправили ещё раз`;
+  const fresh = email !== order.customer_email?.trim().toLowerCase();
+  return resend(s, order.id, { kind: "send", email, fresh });
 }
 
 const WHY: Record<PostPayStep["kind"], string> = {

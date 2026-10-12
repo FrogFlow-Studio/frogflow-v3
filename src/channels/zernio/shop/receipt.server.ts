@@ -69,6 +69,10 @@ export async function receiveProof(
     await reply(s, proofErrorText(s, res.reason), { force: true });
     return;
   }
+  // Покупатель в это же время написал «не проходит» (два сообщения обрабатываются
+  // одновременно): чек снят, «Чек получен» не отвечаем (AATeach 12.10, #1435).
+  const { proofAfterPayFailed } = await import("./pay-trouble.server");
+  if (await proofAfterPayFailed(s, res.order)) return;
   const no = displayNo(res.order);
   const api = adminTelegramApi(s.ctx);
   const { notifyAdminNewOrder } = await import("@/channels/telegram/admin-notify");

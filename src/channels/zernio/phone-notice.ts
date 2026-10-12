@@ -32,3 +32,21 @@ export const SELLER_PHONE: Record<
     (o ? (o.saved ? `\n№${o.no} buyurtmaga yozildi.` : `\nOxirgi buyurtma — №${o.no}.`) : "") +
     `\nXaridor bilan bog‘laning.`,
 };
+
+/**
+ * Покупатель написал, что платёж не прошёл, а чек уже был записан: чек снят,
+ * заказ снова ждёт оплату (shop/pay-trouble.server). `who`, `said` уже экранированы.
+ */
+export const SELLER_PROOF_WITHDRAWN: Record<
+  Locale,
+  (who: string, channel: string, no: number, said: string) => string
+> = {
+  ru: (who, ch, no, said) =>
+    `⚠️ ${who} (${ch}) пишет, что платёж не прошёл: «${said}».\nЧек по заказу №${no} снят, заказ снова ждёт оплату. Не подтверждайте, пока деньги не придут.`,
+  kk: (who, ch, no, said) =>
+    `⚠️ ${who} (${ch}) төлем өтпегенін жазады: «${said}».\n№${no} тапсырыс бойынша чек алынып тасталды, тапсырыс қайтадан төлемді күтеді. Ақша түспейінше растамаңыз.`,
+  en: (who, ch, no, said) =>
+    `⚠️ ${who} (${ch}) says the payment didn't go through: “${said}”.\nThe receipt for order #${no} was withdrawn and the order is waiting for payment again. Don't confirm it until the money arrives.`,
+  uz: (who, ch, no, said) =>
+    `⚠️ ${who} (${ch}) to‘lov o‘tmaganini yozmoqda: «${said}».\n№${no} buyurtma bo‘yicha chek olib tashlandi, buyurtma yana to‘lovni kutmoqda. Pul tushmaguncha tasdiqlamang.`,
+};

@@ -54,12 +54,26 @@ export const ru = {
   "botTexts.key.foreign_pay_reply": "Оплата из другой страны",
   "botTexts.key.foreign_pay_reply.hint":
     "Покупатель спрашивает, как оплатить из страны, для которой у магазина нет способа оплаты (например, Беларусь, Узбекистан, Кыргызстан). Бот отвечает один раз в сутки, вопрос уходит вам обращением.",
+  "botTexts.key.pay_failed_reply": "Платёж не прошёл",
+  "botTexts.key.pay_failed_reply.hint":
+    "Покупатель пишет, что оплата не прошла («Не проходит», «ошибка»), в том числе подписью к фото. Чек не принимается, заказ ждёт оплату, вопрос уходит вам. Включается в «Оплата и настройки → Оплата и чеки в переписке».",
+  "botTexts.key.receipt_text_offer": "Скриншот не отправляется",
+  "botTexts.key.receipt_text_offer.hint":
+    "Покупатель не может прислать скриншот чека («не загружается», «можно на ватсап?»). Бот один раз на заказ предлагает прислать текст чека.",
+  "botTexts.key.order_awaits_payment": "Номер товара при неоплаченном заказе",
+  "botTexts.key.order_awaits_payment.hint":
+    "Покупатель пишет номер товара в первые 30 минут после заказа, который ещё не оплачен. Один раз на заказ; номер ещё раз — откроется товар.",
+  "botTexts.key.resend_old_ask": "Повторная отправка старого заказа",
+  "botTexts.key.resend_old_ask.hint":
+    "Покупатель прислал почту или просит отправить материалы, а его последнему заказу больше 14 дней. Бот спрашивает, тот ли это заказ, и отправляет только после «да».",
   "botTexts.vars": "Можно вставить: {vars}",
   "botTexts.var.shop": "{shop} — название магазина",
   "botTexts.var.order": "{order} — номер заказа",
   "botTexts.var.from": "{from} — начало работы",
   "botTexts.var.to": "{to} — конец работы",
   "botTexts.var.email": "{email} — почта покупателя",
+  "botTexts.var.date": "{date} — дата заказа",
+  "botTexts.var.items": "{items} — товары заказа",
   "botTexts.unknownVar": "Нет такой подстановки: {name}. Она останется в тексте как есть.",
   "botTexts.custom": "Свой текст",
   "botTexts.standard": "Стандартный",
@@ -139,12 +153,26 @@ export const kk: SectionDict<typeof ru> = {
   "botTexts.key.foreign_pay_reply": "Басқа елден төлеу",
   "botTexts.key.foreign_pay_reply.hint":
     "Сатып алушы дүкенде төлем тәсілі жоқ елден (мысалы, Беларусь, Өзбекстан, Қырғызстан) қалай төлеуге болатынын сұрайды. Бот тәулігіне бір рет жауап береді, сұрақ сізге өтініш болып келеді.",
+  "botTexts.key.pay_failed_reply": "Төлем өтпеді",
+  "botTexts.key.pay_failed_reply.hint":
+    "Сатып алушы төлем өтпегенін жазады («Өтпей жатыр», «қате»), соның ішінде фото астындағы жазумен. Чек қабылданбайды, тапсырыс төлемді күтеді, сұрақ сізге келеді. «Төлем және баптаулар → Хат алмасудағы төлем мен чектер» ішінде қосылады.",
+  "botTexts.key.receipt_text_offer": "Скриншот жіберілмейді",
+  "botTexts.key.receipt_text_offer.hint":
+    "Сатып алушы чек скриншотын жібере алмайды («жүктелмейді», «ватсапқа болады ма?»). Бот бір тапсырысқа бір рет чек мәтінін жіберуді ұсынады.",
+  "botTexts.key.order_awaits_payment": "Төленбеген тапсырыс кезіндегі тауар нөмірі",
+  "botTexts.key.order_awaits_payment.hint":
+    "Сатып алушы әлі төленбеген тапсырыстан кейінгі алғашқы 30 минутта тауар нөмірін жазады. Бір тапсырысқа бір рет; нөмірді қайта жіберсе — тауар ашылады.",
+  "botTexts.key.resend_old_ask": "Ескі тапсырысты қайта жіберу",
+  "botTexts.key.resend_old_ask.hint":
+    "Сатып алушы пошта жіберді немесе материалдарды қайта жіберуді сұрайды, ал соңғы тапсырысына 14 күннен асқан. Бот сол тапсырыс па деп сұрайды және тек «иә» дегеннен кейін жібереді.",
   "botTexts.vars": "Қоюға болады: {vars}",
   "botTexts.var.shop": "{shop} — дүкен атауы",
   "botTexts.var.order": "{order} — тапсырыс нөмірі",
   "botTexts.var.from": "{from} — жұмыс басталуы",
   "botTexts.var.to": "{to} — жұмыс аяқталуы",
   "botTexts.var.email": "{email} — сатып алушының поштасы",
+  "botTexts.var.date": "{date} — тапсырыс күні",
+  "botTexts.var.items": "{items} — тапсырыстағы тауарлар",
   "botTexts.unknownVar": "Мұндай ауыстыру жоқ: {name}. Ол мәтінде өзгеріссіз қалады.",
   "botTexts.custom": "Өз мәтіні",
   "botTexts.standard": "Стандартты",
@@ -226,12 +254,26 @@ export const en: SectionDict<typeof ru> = {
   "botTexts.key.foreign_pay_reply": "Payment from another country",
   "botTexts.key.foreign_pay_reply.hint":
     "The buyer asks how to pay from a country the shop has no payment method for (for example, Belarus, Uzbekistan, Kyrgyzstan). The bot replies once a day and the question comes to you as a ticket.",
+  "botTexts.key.pay_failed_reply": "Payment didn't go through",
+  "botTexts.key.pay_failed_reply.hint":
+    "The buyer writes that the payment failed (“doesn't go through”, “error”), including as a photo caption. The receipt is not accepted, the order keeps waiting for payment and the question comes to you. Turned on in “Payment and settings → Payment and receipts in chat”.",
+  "botTexts.key.receipt_text_offer": "Screenshot won't send",
+  "botTexts.key.receipt_text_offer.hint":
+    "The buyer can't send a receipt screenshot (“it won't upload”, “can I send it on WhatsApp?”). Once per order the bot offers to send the receipt text instead.",
+  "botTexts.key.order_awaits_payment": "Product number while an order is unpaid",
+  "botTexts.key.order_awaits_payment.hint":
+    "The buyer types a product number within 30 minutes of an order that is not paid yet. Once per order; sending the number again opens the product.",
+  "botTexts.key.resend_old_ask": "Resending an old order",
+  "botTexts.key.resend_old_ask.hint":
+    "The buyer sent an email or asks to resend the materials, but their last order is older than 14 days. The bot asks whether it is the right order and sends only after “yes”.",
   "botTexts.vars": "You can insert: {vars}",
   "botTexts.var.shop": "{shop} — shop name",
   "botTexts.var.order": "{order} — order number",
   "botTexts.var.from": "{from} — opening time",
   "botTexts.var.to": "{to} — closing time",
   "botTexts.var.email": "{email} — buyer’s email",
+  "botTexts.var.date": "{date} — order date",
+  "botTexts.var.items": "{items} — order items",
   "botTexts.unknownVar": "No such placeholder: {name}. It will stay in the text as is.",
   "botTexts.custom": "Your text",
   "botTexts.standard": "Standard",
@@ -313,12 +355,26 @@ export const uz: SectionDict<typeof ru> = {
   "botTexts.key.foreign_pay_reply": "Boshqa davlatdan to‘lov",
   "botTexts.key.foreign_pay_reply.hint":
     "Xaridor do‘konda to‘lov usuli yo‘q davlatdan (masalan, Belarus, O‘zbekiston, Qirg‘iziston) qanday to‘lashni so‘raydi. Bot sutkada bir marta javob beradi, savol sizga murojaat bo‘lib keladi.",
+  "botTexts.key.pay_failed_reply": "To‘lov o‘tmadi",
+  "botTexts.key.pay_failed_reply.hint":
+    "Xaridor to‘lov o‘tmaganini yozadi («O‘tmayapti», «xato»), shu jumladan rasm ostidagi yozuv bilan. Chek qabul qilinmaydi, buyurtma to‘lovni kutadi, savol sizga keladi. «To‘lov va sozlamalar → Yozishmadagi to‘lov va cheklar» bo‘limida yoqiladi.",
+  "botTexts.key.receipt_text_offer": "Skrinshot yuborilmayapti",
+  "botTexts.key.receipt_text_offer.hint":
+    "Xaridor chek skrinshotini yubora olmaydi («yuklanmayapti», «WhatsApp’ga mumkinmi?»). Bot bir buyurtmaga bir marta chek matnini yuborishni taklif qiladi.",
+  "botTexts.key.order_awaits_payment": "To‘lanmagan buyurtmada mahsulot raqami",
+  "botTexts.key.order_awaits_payment.hint":
+    "Xaridor hali to‘lanmagan buyurtmadan keyingi dastlabki 30 daqiqada mahsulot raqamini yozadi. Bir buyurtmaga bir marta; raqamni yana yuborsa — mahsulot ochiladi.",
+  "botTexts.key.resend_old_ask": "Eski buyurtmani qayta yuborish",
+  "botTexts.key.resend_old_ask.hint":
+    "Xaridor pochta yubordi yoki materiallarni qayta yuborishni so‘raydi, lekin oxirgi buyurtmasiga 14 kundan oshgan. Bot shu buyurtmami deb so‘raydi va faqat «ha» deganidan keyin yuboradi.",
   "botTexts.vars": "Qoʻyish mumkin: {vars}",
   "botTexts.var.shop": "{shop} — doʻkon nomi",
   "botTexts.var.order": "{order} — buyurtma raqami",
   "botTexts.var.from": "{from} — ish boshlanishi",
   "botTexts.var.to": "{to} — ish tugashi",
   "botTexts.var.email": "{email} — xaridor pochtasi",
+  "botTexts.var.date": "{date} — buyurtma sanasi",
+  "botTexts.var.items": "{items} — buyurtmadagi mahsulotlar",
   "botTexts.unknownVar": "Bunday almashtirish yoʻq: {name}. U matnda oʻz holicha qoladi.",
   "botTexts.custom": "Oʻz matni",
   "botTexts.standard": "Standart",

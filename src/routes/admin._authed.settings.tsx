@@ -54,6 +54,7 @@ import {
   PayReminderCard,
   EmailAskCard,
   ReceiptTextCard,
+  PayChatCard,
   DirectTriageCard,
   SmartSearchCard,
   WatermarkCard,
@@ -621,6 +622,9 @@ function SettingsPage() {
               </SettingsSection>
               <SettingsSection id="receipt-text">
                 <ReceiptTextCard settings={settings} />
+              </SettingsSection>
+              <SettingsSection id="pay-chat">
+                <PayChatCard settings={settings} />
               </SettingsSection>
               {shop.modules.legal_docs && (
                 <SettingsSection id="legal">

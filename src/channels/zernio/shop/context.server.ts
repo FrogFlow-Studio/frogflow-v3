@@ -1,4 +1,5 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
+import type { Triage } from "@/core/inbox/triage";
 import { setState, type Customer, type DialogState } from "@/core/customers/customers";
 import type { Json } from "@/core/db-types";
 import { isLocale, type Locale } from "@/core/i18n/locale";
@@ -53,6 +54,8 @@ type DirectMemory = {
   nontext_at?: string;
   /** Когда ответили «файлы придут сюда, почта по желанию» (shop/evening.server). */
   files_here_at?: string;
+  /** Спросили, прислать ли ещё раз заказ старше 14 дней (shop/pay-trouble.server). */
+  resend_ask?: { order: number; email: string; at: string };
   /** Повторное «Купить» по заказу: когда ответили «уже оформлен» (shop/evening.server). */
   repeat_buy?: { order: number; at: string };
   /** Последний ответ бота — подсказка на нераспознанный ответ шага (строгий режим). */
@@ -84,6 +87,8 @@ export type Shop = {
   handoff?: boolean;
   /** Почему бот ответил (channels/zernio/reason): уходит в журнал диалога вместе с ответом. */
   why?: string | null;
+  /** Разбор этой реплики моделью (shop/triage): один вызов на сообщение. */
+  triaged?: { key: string; result: Promise<Triage | null> };
 };
 
 /**

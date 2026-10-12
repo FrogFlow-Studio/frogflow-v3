@@ -7,19 +7,36 @@
  */
 import { claimStateSection } from "@/core/customers/customers";
 import { listActivePaymentMethods } from "@/core/orders/orders";
-import { foreignPayApplies, countryNameRu } from "@/core/inbox/triage";
+import { foreignPayApplies, countryNameRu, type Triage } from "@/core/inbox/triage";
 import { triageMessage } from "@/core/inbox/triage.server";
 import { reply, type Shop, type ShopOutcome } from "./context.server";
 
 /** Ответ «оплату из вашей страны подключаем» — не чаще раза в это время. */
 export const FOREIGN_PAY_REPLY_MS = 24 * 60 * 60_000;
 
-export async function triageQuestion(s: Shop, text: string): Promise<ShopOutcome | null> {
-  const t = await triageMessage(s.ctx, { customer: s.customer, text }).catch((e) => {
+/**
+ * Разбор реплики моделью — один раз на сообщение: шаг оплаты, «платёж не
+ * прошёл» и обращение продавцу спрашивают одно и то же. null — сбой.
+ */
+export function triageOnce(s: Shop, text: string, withPhoto = false): Promise<Triage | null> {
+  const key = `${withPhoto ? "photo" : "text"}:${text}`;
+  if (s.triaged?.key === key) return s.triaged.result;
+  const result = triageMessage(s.ctx, { customer: s.customer, text, withPhoto }).catch((e) => {
     console.warn(`[triage:${s.ctx.tenant.id}] ${String(e)}`);
     return null;
   });
+  s.triaged = { key, result };
+  return result;
+}
+
+export async function triageQuestion(s: Shop, text: string): Promise<ShopOutcome | null> {
+  const t = await triageOnce(s, text);
   if (!t || t.kind === "other") return null;
+  // Платёж не прошёл, скриншот не отправляется — про заказ, ждущий оплаты (AATeach 12.10).
+  if (t.kind === "payment_failed" || t.kind === "cant_send_receipt") {
+    const { payTroubleReply } = await import("./pay-trouble.server");
+    return payTroubleReply(s, t.kind);
+  }
   if (t.kind === "chatter") {
     // Сообщение остаётся в «Чате»; бот молчит, обращения нет (Копилка 12.10:
     // «Благодарю! 🌹» открывало обращение #123).

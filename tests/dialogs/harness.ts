@@ -35,6 +35,8 @@ export type Input =
   | { voice: true }
   | { sticker: true }
   | { photo: true }
+  /** Фото с подписью одним сообщением (kopats23: скриншот ошибки и «Не проходит»). */
+  | { photoWithText: string }
   /** Та же реплика ещё раз: двойная доставка вебхука или двойной клик. */
   | { repeat: true }
   /**
@@ -410,6 +412,11 @@ function directRoom(o: RoomOptions): Room {
     if ("late" in i)
       return { text: i.late, sentAt: new Date(Date.now() - i.minutes * 60_000).toISOString() };
     if ("burst" in i || "photos" in i || "clicks" in i) return {};
+    if ("photoWithText" in i)
+      return {
+        text: i.photoWithText,
+        attachments: [{ type: "image", url: "https://cdn.test/image", index: 0 }] as never,
+      };
     if ("attachmentNoUrl" in i) return { attachments: [{ type: "share" }] as never };
     if ("stuck" in i) return { text: i.stuck };
     if ("button" in i) return { text: i.title ?? i.button, postbackPayload: i.button };

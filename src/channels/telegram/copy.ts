@@ -353,6 +353,14 @@ export type Msg = {
   thanksReply: string;
   /** Оплата из страны, для которой у магазина нет способа оплаты (Direct, core/inbox/triage). */
   foreignPayReply: string;
+  /** Покупатель пишет, что платёж не прошёл (Direct, core/inbox/triage): чек не принят. */
+  payFailedReply: string;
+  /** Скриншот не отправляется — чек можно текстом (Direct, core/inbox/triage). */
+  receiptTextOffer: string;
+  /** Номер товара, пока свежий заказ ждёт оплату (Direct): сначала про заказ. */
+  orderAwaitsPayment: (no: string) => string;
+  /** Почта по заказу старше 14 дней (Direct, ИИ после оплаты): сначала спросить, тот ли. */
+  resendOldAsk: (no: string, date: string, items: string, email: string) => string;
   smartSearchResults: (q: string, n: number) => string;
   rateBtn: (no: string) => string;
   chooseProductToRate: string;
@@ -481,6 +489,14 @@ const ru: Msg = {
   thanksReply: "Рада помочь! Хороших уроков 🌷",
   foreignPayReply:
     "Оплату из вашей страны сейчас подключаем. Ваш вопрос уже у продавца: вам напишут здесь, как оплатить.",
+  payFailedReply:
+    "Похоже, платёж не прошёл. Попробуйте оплатить ещё раз или напишите, какой у вас банк, — продавец подскажет, как оплатить.",
+  receiptTextOffer:
+    "Можно без скриншота: скопируйте сюда весь текст чека из приложения банка, с номером операции и суммой. Передам продавцу на проверку.",
+  orderAwaitsPayment: (no) =>
+    `Заказ #${no} ждёт оплату — как оплатить, в сообщении выше. Отменить заказ: напишите «Отмена». Нужен другой товар — пришлите его номер ещё раз.`,
+  resendOldAsk: (no, date, items, email) =>
+    `Ваш последний заказ — №${no} от ${date} (${items}). Отправить его ещё раз на ${email}? Ответьте «да». Если ждёте другой материал, напишите какой — передам продавцу.`,
   smartSearchResults: (q, n) => `🤖 По смыслу запроса «${q}» подобрано: ${n}`,
   rateBtn: (no) => `⭐ Оценить (#${no})`,
   chooseProductToRate: "Какой товар из этого заказа оцениваете?",
@@ -1028,6 +1044,14 @@ const kk: Msg = {
   thanksReply: "Көмектескеніме қуаныштымын! Сабақтарыңыз сәтті өтсін 🌷",
   foreignPayReply:
     "Сіздің елден төлем қабылдауды қазір қосып жатырмыз. Сұрағыңыз сатушыға жіберілді — ол осында қалай төлеуге болатынын жазады.",
+  payFailedReply:
+    "Төлем өтпеген сияқты. Қайта төлеп көріңіз немесе қай банк екенін жазыңыз — сатушы қалай төлеуге болатынын айтады.",
+  receiptTextOffer:
+    "Скриншотсыз да болады: банк қосымшасынан чектің бүкіл мәтінін операция нөмірі мен сомасымен бірге осында көшіріп жіберіңіз. Сатушыға тексеруге жіберемін.",
+  orderAwaitsPayment: (no) =>
+    `#${no} тапсырыс төлемді күтуде — қалай төлеу керегі жоғарыдағы хабарламада. Тапсырысты тоқтату үшін «Отмена» деп жазыңыз. Басқа тауар керек болса — оның нөмірін тағы бір рет жіберіңіз.`,
+  resendOldAsk: (no, date, items, email) =>
+    `Соңғы тапсырысыңыз — №${no}, ${date} (${items}). Оны ${email} поштасына қайта жіберейін бе? «Иә» деп жауап беріңіз. Басқа материал күтіп жүрсеңіз, қайсысын жазыңыз — сатушыға жіберемін.`,
   smartSearchResults: (q, n) => `🤖 «${q}» сұрауының мағынасы бойынша таңдалды: ${n}`,
   rateBtn: (no) => `⭐ Бағалау (#${no})`,
   chooseProductToRate: "Осы тапсырыстан қай тауарды бағалайсыз?",
@@ -1339,6 +1363,14 @@ const en: Msg = {
   thanksReply: "Happy to help! Have great lessons 🌷",
   foreignPayReply:
     "We are setting up payments from your country right now. Your question has been passed to the seller, who will write here how to pay.",
+  payFailedReply:
+    "It looks like the payment didn't go through. Please try paying again or tell us which bank you use, and the seller will suggest how to pay.",
+  receiptTextOffer:
+    "You can do it without a screenshot: copy the full receipt text from your banking app here, with the transaction number and amount. I'll pass it to the seller for checking.",
+  orderAwaitsPayment: (no) =>
+    `Order #${no} is waiting for payment — how to pay is in the message above. To cancel the order, type “Отмена”. Need another product? Send its number again.`,
+  resendOldAsk: (no, date, items, email) =>
+    `Your last order is #${no} from ${date} (${items}). Send it again to ${email}? Reply “yes”. If you're waiting for a different material, tell us which one and I'll pass it to the seller.`,
   smartSearchResults: (q, n) => `🤖 Picked by meaning for “${q}”: ${n}`,
   rateBtn: (no) => `⭐ Rate (#${no})`,
   chooseProductToRate: "Which product from this order are you rating?",
@@ -1699,6 +1731,14 @@ const uz: Msg = {
   thanksReply: "Yordam berganimdan xursandman! Darslaringiz yaxshi o‘tsin 🌷",
   foreignPayReply:
     "Davlatingizdan to‘lovni hozir ulayapmiz. Savolingiz sotuvchiga yuborildi — u shu yerda qanday to‘lashni yozadi.",
+  payFailedReply:
+    "To‘lov o‘tmaganga o‘xshaydi. Qayta to‘lab ko‘ring yoki qaysi bankdan foydalanishingizni yozing — sotuvchi qanday to‘lashni aytadi.",
+  receiptTextOffer:
+    "Skrinshotsiz ham bo‘ladi: bank ilovasidagi chekning to‘liq matnini operatsiya raqami va summasi bilan shu yerga nusxalab yuboring. Sotuvchiga tekshiruvga yuboraman.",
+  orderAwaitsPayment: (no) =>
+    `#${no} buyurtma to‘lovni kutmoqda — qanday to‘lash yuqoridagi xabarda. Buyurtmani bekor qilish uchun «Отмена» deb yozing. Boshqa mahsulot kerak bo‘lsa — uning raqamini yana bir bor yuboring.`,
+  resendOldAsk: (no, date, items, email) =>
+    `Oxirgi buyurtmangiz — №${no}, ${date} (${items}). Uni ${email} manziliga qayta yuboraymi? «Ha» deb javob bering. Boshqa material kutayotgan bo‘lsangiz, qaysi ekanini yozing — sotuvchiga yuboraman.`,
   smartSearchResults: (q, n) => `🤖 «${q}» so‘rovi ma’nosi bo‘yicha tanlandi: ${n}`,
   rateBtn: (no) => `⭐ Baholash (#${no})`,
   chooseProductToRate: "Ushbu buyurtmadan qaysi mahsulotni baholaysiz?",

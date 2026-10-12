@@ -16,6 +16,8 @@ import { serverFailure } from "@/lib/server-failure";
 import { parseSpend } from "@/core/postpay/postpay";
 import {
   CHAT_FOREIGN_PAY_KEY,
+  CHAT_PAY_FAILED_KEY,
+  CHAT_RECEIPT_TEXT_OFFER_KEY,
   CHAT_SKIP_CHATTER_KEY,
   TRIAGE_CAP_KEY,
   TRIAGE_MAX_TEXT,
@@ -26,6 +28,8 @@ import {
   TRIAGE_TOOL,
   foreignPayOn,
   parseTriage,
+  payFailedOn,
+  receiptTextOfferOn,
   parseTriageCap,
   skipChatterOn,
   triageCostUsd,
@@ -101,16 +105,35 @@ async function recentLines(ctx: TenantContext, telegramId: number): Promise<Tria
   return rows.slice(0, HISTORY);
 }
 
-/** Что включено у клиента: обе настройки выключены — модель не зовём. */
-export async function triageSwitches(
-  ctx: TenantContext,
-): Promise<{ chatter: boolean; foreignPay: boolean }> {
-  const [chatter, foreignPay] = await Promise.all([
+export type TriageSwitches = {
+  chatter: boolean;
+  foreignPay: boolean;
+  payFailed: boolean;
+  receiptTextOffer: boolean;
+};
+
+/** Что включено у клиента: всё выключено — модель не зовём. */
+export async function triageSwitches(ctx: TenantContext): Promise<TriageSwitches> {
+  const [chatter, foreignPay, payFailed, offer] = await Promise.all([
     getSetting(ctx, CHAT_SKIP_CHATTER_KEY),
     getSetting(ctx, CHAT_FOREIGN_PAY_KEY),
+    getSetting(ctx, CHAT_PAY_FAILED_KEY),
+    getSetting(ctx, CHAT_RECEIPT_TEXT_OFFER_KEY),
   ]);
-  return { chatter: skipChatterOn(chatter), foreignPay: foreignPayOn(foreignPay) };
+  return {
+    chatter: skipChatterOn(chatter),
+    foreignPay: foreignPayOn(foreignPay),
+    payFailed: payFailedOn(payFailed),
+    receiptTextOffer: receiptTextOfferOn(offer),
+  };
 }
+
+const SWITCH_OF: Record<Exclude<Triage["kind"], "other">, keyof TriageSwitches> = {
+  chatter: "chatter",
+  foreign_pay: "foreignPay",
+  payment_failed: "payFailed",
+  cant_send_receipt: "receiptTextOffer",
+};
 
 /**
  * Что это за сообщение. Выключенный вид становится «other»: решение
@@ -118,12 +141,12 @@ export async function triageSwitches(
  */
 export async function triageMessage(
   ctx: TenantContext,
-  p: { customer: Customer; text: string; now?: number },
+  p: { customer: Customer; text: string; now?: number; withPhoto?: boolean },
 ): Promise<Triage> {
   const text = p.text.trim();
   if (!text || text.length > TRIAGE_MAX_TEXT) return TRIAGE_OTHER;
   const on = await triageSwitches(ctx);
-  if (!on.chatter && !on.foreignPay) return TRIAGE_OTHER;
+  if (!Object.values(on).some(Boolean)) return TRIAGE_OTHER;
   if (!modelReady()) return TRIAGE_OTHER;
   const date = todayInZone(ctx.timezone, new Date(p.now ?? Date.now()));
   const key = triageSpendKey(date);
@@ -132,7 +155,10 @@ export async function triageMessage(
   const lines = await recentLines(ctx, p.customer.telegramId);
   let answer: Awaited<ReturnType<CallTriageModel>>;
   try {
-    answer = await (modelOverride ?? liveModel)(TRIAGE_SYSTEM, triageUserPrompt({ text, lines }));
+    answer = await (modelOverride ?? liveModel)(
+      TRIAGE_SYSTEM,
+      triageUserPrompt({ text, lines, withPhoto: p.withPhoto }),
+    );
   } catch (e) {
     console.warn(`[triage:${ctx.tenant.id}] модель: ${String(e)}`);
     return TRIAGE_OTHER;
@@ -143,7 +169,6 @@ export async function triageMessage(
     return JSON.stringify({ usd: Math.round((s.usd + usd) * 1e6) / 1e6, calls: s.calls + 1 });
   }).catch((e: unknown) => console.warn(`[triage:${ctx.tenant.id}] расход: ${String(e)}`));
   const t = parseTriage(answer.input);
-  if (t.kind === "chatter" && !on.chatter) return TRIAGE_OTHER;
-  if (t.kind === "foreign_pay" && !on.foreignPay) return TRIAGE_OTHER;
+  if (t.kind !== "other" && !on[SWITCH_OF[t.kind]]) return TRIAGE_OTHER;
   return t;
 }
