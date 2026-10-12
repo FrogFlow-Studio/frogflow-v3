@@ -214,6 +214,24 @@ export const SETTINGS_REGISTRY: readonly SettingsEntry[] = [
     fields: ["settings.receiptText.label"],
   }),
   E({
+    id: "pay-chat",
+    sellsOnly: true,
+    theme: "payment",
+    title: "settings.payChat.title",
+    keys: [
+      "chat_pay_failed",
+      "chat_receipt_text_offer",
+      "chat_unpaid_number",
+      "resend_old_confirm",
+    ],
+    fields: [
+      "settings.payChat.failedLabel",
+      "settings.payChat.offerLabel",
+      "settings.payChat.numberLabel",
+      "settings.payChat.resendLabel",
+    ],
+  }),
+  E({
     id: "stars",
     sellsOnly: true,
     theme: "payment",

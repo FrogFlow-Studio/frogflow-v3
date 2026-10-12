@@ -28,6 +28,10 @@ export const BOT_TEXT_KEYS = [
   "email_retry",
   "thanks_reply",
   "foreign_pay_reply",
+  "pay_failed_reply",
+  "receipt_text_offer",
+  "order_awaits_payment",
+  "resend_old_ask",
 ] as const;
 export type BotTextKey = (typeof BOT_TEXT_KEYS)[number];
 
@@ -52,6 +56,10 @@ export const DIRECT_KEYS = [
   "email_retry",
   "thanks_reply",
   "foreign_pay_reply",
+  "pay_failed_reply",
+  "receipt_text_offer",
+  "order_awaits_payment",
+  "resend_old_ask",
 ] as const satisfies readonly BotTextKey[];
 
 /**
@@ -84,6 +92,10 @@ export const MSG_PROPS: Partial<Record<BotTextKey, readonly string[]>> = {
   email_retry: ["emailHint"],
   thanks_reply: ["thanksReply"],
   foreign_pay_reply: ["foreignPayReply"],
+  pay_failed_reply: ["payFailedReply"],
+  receipt_text_offer: ["receiptTextOffer"],
+  order_awaits_payment: ["orderAwaitsPayment"],
+  resend_old_ask: ["resendOldAsk"],
 };
 
 /** Тексты про заказ: у консультанта без продаж их не показываем. */
@@ -108,6 +120,10 @@ export const BOT_TEXT_VARS: Record<BotTextKey, readonly string[]> = {
   email_retry: [],
   thanks_reply: [],
   foreign_pay_reply: [],
+  pay_failed_reply: [],
+  receipt_text_offer: [],
+  order_awaits_payment: ["order"],
+  resend_old_ask: ["order", "date", "items", "email"],
 };
 
 /**
@@ -215,6 +231,8 @@ export function sampleVars(shopName: string, hours: WorkHours | null): Record<st
     shop: shopName,
     order: "1234",
     email: "anna@mail.ru",
+    date: "10.09",
+    items: "Части речи",
     from: hhmm(hours?.open ?? 10),
     to: hhmm(hours?.close ?? 21),
   };

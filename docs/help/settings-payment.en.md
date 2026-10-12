@@ -62,6 +62,26 @@ On (the default): if the buyer answers the email question with “WhatsApp”, �
 
 Kaspi sometimes blocks screenshots, so the buyer pastes the receipt text from the app: “Оплата совершена 800 ₸ … № чека QR…”. On (the default): the bot treats text as a receipt when it has an operation number, or an amount with a currency together with receipt words (“оплата совершена”, “перевод выполнен”, “получатель”). The buyer gets “Got the receipt, passing it on for checking”, and you get the order notification with the receipt text and the «Подтвердить и выдать» button. The same operation number on another order is not accepted. Automatic checking does not read text: check the payment yourself. “I paid 800 tg” is not a receipt: the bot asks for a screenshot. Off: text at the payment step comes to you as a question.
 
+## Payment and receipts in chat {#pay-chat}
+
+A card for Instagram and WhatsApp. AI, not a word list, understands what the buyer wrote; the message always stays in “Chat”. AI cost is a fraction of a cent per message, within the same daily cap as “Messages without a question” ($0.3 per day per shop). All four switches are on by default. Reply texts are edited in “Settings → Bot texts → Instagram”.
+
+## Payment didn't go through {#pay-failed}
+
+“Don't accept a receipt if the buyer says the payment failed”. The buyer sends a photo captioned “doesn't go through”, or a photo followed by “doesn't go through”, “error”, “declined”. That is a screenshot of an error, not a receipt: the bot replies “It looks like the payment didn't go through. Please try paying again or tell us which bank you use”, the order stays “awaiting payment” and the question comes to you. If the receipt was already recorded (the photo came no more than 15 minutes earlier), it is withdrawn: the order is waiting for payment again, the order history shows “Receipt withdrawn”, and you get a notification “don't confirm until the money arrives”. A photo sent later is a new attempt and is accepted as a receipt. Off — the photo is accepted as a receipt, as before.
+
+## Screenshot won't send {#receipt-text-offer}
+
+“Offer a text receipt if the screenshot won't send”. The buyer writes “the screenshot won't upload”, “I can't send the receipt here”, “can I send it on WhatsApp?”. Once per order the bot replies: “You can do it without a screenshot: copy the full receipt text from your banking app here, with the transaction number and amount” — and accepts that text as a receipt (see “Receipt as text”). If the buyer writes about it again, the message comes to you. Works only when “Accept receipts as text” is on. Off — the bot explains how to attach a screenshot, as before.
+
+## Product number right after an order {#unpaid-number}
+
+“Product number right after an order — about the order first”. Within 30 minutes of an order that isn't paid yet, the buyer types a single digit or number (“3”). More often it answers an earlier question rather than asks for a new product: the bot doesn't open product 003 but replies “Order #N is waiting for payment — how to pay is in the message above. To cancel the order, type “Отмена”. Need another product? Send its number again”. Once per order: the number sent again opens the product. Off — the number opens the product right away.
+
+## Resending an old order {#resend-old}
+
+“Ask before resending an order older than 14 days”. The buyer sent an email or asks for the materials, and the post-payment AI is about to send the email again, but the buyer's last order is older than 14 days. They may be waiting for another material they bought from you directly. The bot asks: “Your last order is #N from 10.09 (…). Send it again to your email? Reply “yes”. If you're waiting for a different material, tell us which one” — and sends the email only after “yes” (within 30 minutes). Any other reply comes to you. Off — the email goes out right away.
+
 ## Telegram Stars {#stars}
 
 Available with the "Telegram Stars payments" module. In the Telegram bot the buyer pays with stars in one tap, without cards or payment details. Stars go to the bot's balance; you can withdraw them via Fragment.

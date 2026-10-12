@@ -142,6 +142,13 @@ import { cancelFreshOrder, emailOptional, filesHereOnce, textReceipt } from "./e
 import { looksLikeEmailAttempt, wantsFilesHere } from "@/core/orders/email-ask";
 import { countryAnswer, countryFromChat } from "./country.server";
 import { triageQuestion } from "./triage.server";
+import {
+  cantSendReceipt,
+  confirmOldResend,
+  numberWhileUnpaid,
+  payFailedCaption,
+  payFailedText,
+} from "./pay-trouble.server";
 
 export async function handleShopMessage(
   ctx: TenantContext,
@@ -291,6 +298,8 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
         msg.platformMessageId && index != null
           ? { platformMessageId: msg.platformMessageId, index }
           : null;
+      // Фото с подписью «не проходит» — скриншот ошибки, а не чек (AATeach 12.10, #1435).
+      if (text && (await payFailedCaption(s, orderId, text))) return "question";
       await receiveProof(s, url, orderId, again);
       return "handled";
     }
@@ -319,6 +328,14 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
   // Текст чека из Kaspi («Оплата совершена 800 ₸ … № чека QR…»): скриншот
   // приложение не даёт — чек принимается текстом (AATeach 11.10, #1391).
   if (await textReceipt(s, mode, text)) return "handled";
+
+  // «Да» на «прислать ещё раз заказ №N от …?» (заказ старше 14 дней, AATeach 12.10).
+  const resent = await confirmOldResend(s, text);
+  if (resent) return resent;
+
+  // «Не проходит» сразу после фото: чек снимается, заказ снова ждёт оплату.
+  // Что платёж не прошёл, решает модель (AATeach 12.10, kopats23 #1435).
+  if (await payFailedText(s, text)) return "question";
 
   // Просьба об оценке (core/reviews/ask): цифра 1–5 в окне ответа — оценка, любой
   // другой текст — обычная переписка, шаг снимается. Раньше шага «устарел»: просьба
@@ -684,6 +701,10 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
     case "choose_pay":
     case "awaiting_payment": {
       if (isPaymentComplaint(text)) return "question";
+      // «Скриншот не загружается», «можно чек на ватсап?» — чек можно текстом,
+      // а не второй раз про скрепку (AATeach 12.10, asya_6465, galinka.iva).
+      const offered = await cantSendReceipt(s, text);
+      if (offered) return offered;
       // «Не знаю как», «как отправить чек»: объяснить, как приложить скриншот,
       // а не молчать (строгий режим) и не повторять «пришлите чек» (#72, 10.10).
       if (mode === "awaiting_proof" && isReceiptHowQuestion(text)) {
@@ -725,6 +746,9 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
         await reply(s, s.m.payTroubleHandoff, { force: true });
         return "question";
       }
+      // «3» сразу после заказа — не товар 003: сначала про ждущий оплаты заказ
+      // (AATeach 12.10, tskhay_sasha: #1432, затем второй заказ #1434).
+      if (await numberWhileUnpaid(s, text)) return "handled";
       const rm = parseRemoveCommand(text);
       if (!rm && extractProductNumber(text) === null && !matchDirectCommand(text)) {
         // «Оплатила», «перевела на каспи» — сообщение об оплате: напомним про

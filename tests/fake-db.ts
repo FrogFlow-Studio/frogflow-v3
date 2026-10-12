@@ -438,7 +438,10 @@ class Query implements PromiseLike<Result> {
         const row =
           this.table === "orders"
             ? { id: 100_000 + ++seq, created_at: new Date().toISOString(), ...r }
-            : { id: `row-${++seq}`, ...r };
+            : // События заказа: время записи ставит база (по нему — окна «недавно»).
+              this.table === "zernio_logs" && String(r.event_type ?? "").startsWith("order.")
+              ? { id: `row-${++seq}`, created_at: new Date().toISOString(), ...r }
+              : { id: `row-${++seq}`, ...r };
         if (this.conflict(row))
           return {
             data: null,

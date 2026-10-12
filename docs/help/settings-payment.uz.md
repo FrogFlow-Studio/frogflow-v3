@@ -62,6 +62,26 @@ Yoqilgan (standart) — pochta haqidagi savolga xaridor «vatsap», «shu yerga�
 
 Kaspi ba’zan skrinshot qilishga ruxsat bermaydi va xaridor ilovadan chek matnini qo‘yadi: «Оплата совершена 800 ₸ … № чека QR…». Yoqilgan (standart) — matnda operatsiya raqami yoki chek so‘zlari («оплата совершена», «перевод выполнен», «получатель») bilan birga valyutali summa bo‘lsa, bot uni chek deb hisoblaydi. Xaridorga — «Chekni qabul qildim, tekshiruvga yuboraman», sizga — chek matni va «Подтвердить и выдать» tugmasi bilan buyurtma xabari. Boshqa buyurtma bo‘yicha o‘sha operatsiya raqami qabul qilinmaydi. Avtotekshiruv matnni o‘qimaydi: pul tushganini o‘zingiz tekshiring. «800 tg to‘ladim» — chek emas: bot skrinshot so‘raydi. O‘chirilgan — to‘lov bosqichidagi matn sizga savol sifatida keladi.
 
+## Yozishmadagi to‘lov va cheklar {#pay-chat}
+
+Instagram va WhatsApp uchun kartochka. Xaridor nima yozganini so‘zlar ro‘yxati emas, SI tushunadi; xabar har doim «Chat»da qoladi. SI xarajati — bir xabarga sentning ulushi, «Savolsiz xabarlar» bilan bir xil kunlik chegarada (do‘konga kuniga 0,3 $). To‘rtala almashtirgich ham sukut bo‘yicha yoqilgan. Javob matnlari «Sozlamalar → Bot matni → Instagram» bo‘limida o‘zgartiriladi.
+
+## To‘lov o‘tmadi {#pay-failed}
+
+«Xaridor to‘lov o‘tmaganini yozsa, chekni qabul qilmaslik». Xaridor «O‘tmayapti» yozuvli rasm yoki rasm va ketidan «O‘tmayapti», «xato», «rad etildi» deb yuboradi. Bu chek emas, xato skrinshoti: bot «To‘lov o‘tmaganga o‘xshaydi. Qayta to‘lab ko‘ring yoki qaysi bankdan foydalanishingizni yozing» deb javob beradi, buyurtma «to‘lovni kutmoqda» holatida qoladi, savol sizga keladi. Agar chek yozilib ulgurgan bo‘lsa (rasm 15 daqiqadan oldin kelmagan bo‘lsa), u olib tashlanadi: buyurtma yana to‘lovni kutadi, buyurtma tarixida — «Chek olib tashlandi», sizga — «pul tushmaguncha tasdiqlamang» xabari. Keyinroq yuborilgan rasm — yangi urinish, u chek sifatida qabul qilinadi. O‘chirilgan — rasm avvalgidek chek sifatida qabul qilinadi.
+
+## Skrinshot yuborilmayapti {#receipt-text-offer}
+
+«Skrinshot yuborilmasa, chekni matn bilan taklif qilish». Xaridor «skrinshot yuklanmayapti», «chekni bu yerga yubora olmayapman», «WhatsApp’ga mumkinmi?» deb yozadi. Bot bir buyurtmaga bir marta «Skrinshotsiz ham bo‘ladi: bank ilovasidagi chekning to‘liq matnini operatsiya raqami va summasi bilan shu yerga nusxalab yuboring» deb javob beradi va bunday matnni chek sifatida qabul qiladi («Chek matn bilan» bo‘limiga qarang). Xaridor bu haqda yana yozsa, xabar sizga keladi. Faqat «Chekni matn bilan qabul qilish» yoqilganda ishlaydi. O‘chirilgan — bot avvalgidek skrinshotni qanday biriktirishni tushuntiradi.
+
+## Buyurtmadan keyin darhol mahsulot raqami {#unpaid-number}
+
+«Buyurtmadan keyin darhol mahsulot raqami — avval buyurtma haqida». Hali to‘lanmagan buyurtmadan keyingi dastlabki 30 daqiqada xaridor bitta raqam yoki son («3») yozadi. Ko‘pincha bu yangi mahsulot emas, oldingi savolga javob: bot 003 mahsulotni ochmaydi, «#N buyurtma to‘lovni kutmoqda — qanday to‘lash yuqoridagi xabarda. Buyurtmani bekor qilish uchun «Отмена» deb yozing. Boshqa mahsulot kerak bo‘lsa — uning raqamini yana bir bor yuboring» deb javob beradi. Bir buyurtmaga bir marta: qayta yuborilgan raqam mahsulotni ochadi. O‘chirilgan — raqam darhol mahsulotni ochadi.
+
+## Eski buyurtmani qayta yuborish {#resend-old}
+
+«14 kundan eski buyurtmani qayta yuborishdan oldin so‘rash». Xaridor pochta yubordi yoki materiallarni so‘raydi, to‘lovdan keyingi SI xatni qayta yubormoqchi, lekin xaridorning oxirgi buyurtmasiga 14 kundan oshgan. Ehtimol, u sizdan to‘g‘ridan-to‘g‘ri sotib olgan boshqa materialni kutmoqda. Bot «Oxirgi buyurtmangiz — №N, 10.09 (…). Uni pochtaga qayta yuboraymi? «Ha» deb javob bering. Boshqa material kutayotgan bo‘lsangiz, qaysi ekanini yozing» deb so‘raydi va xatni faqat «ha» deganidan keyin (30 daqiqa ichida) yuboradi. Boshqa javob sizga keladi. O‘chirilgan — xat darhol ketadi.
+
 ## Telegram Stars {#stars}
 
 «Telegram Stars orqali to‘lov» moduli bo‘lganda bor. Telegram-botda xaridor yulduzlar bilan bir bosishda, kartasiz va rekvizitsiz to‘laydi. Yulduzlar bot balansiga tushadi; ularni Fragment orqali yechib olish mumkin.
