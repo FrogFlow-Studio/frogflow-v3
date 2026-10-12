@@ -31,7 +31,7 @@ import {
   parseState,
   pickDialogs,
   pruneSignals,
-  sellerSignalText,
+  sellerSignal,
   windowOf,
   type ChatLine,
   type Finding,
@@ -77,7 +77,11 @@ export type LogEntry = {
 
 type Deps = {
   callModel?: (system: string, user: string, timeoutMs: number) => Promise<ModelAnswer>;
-  notifySeller?: (ctx: TenantContext, html: string) => Promise<number>;
+  notifySeller?: (
+    ctx: TenantContext,
+    html: string,
+    buttons?: Array<Array<{ text: string; url: string }>>,
+  ) => Promise<number>;
   alertOperator?: (html: string) => Promise<{ ok: boolean }>;
   now?: () => number;
 };
@@ -181,7 +185,9 @@ async function recentOrders(
     (a, b) =>
       ctx.db
         .from("orders")
-        .select("id, order_no, display_no, status, total, currency, created_at")
+        .select(
+          "id, order_no, display_no, status, total, currency, created_at, order_items(name_snapshot)",
+        )
         .eq("telegram_id", tid)
         .gte("created_at", since)
         .order("id")
@@ -194,6 +200,9 @@ async function recentOrders(
     total: Number(o.total),
     currency: o.currency,
     at: o.created_at,
+    items: ((o.order_items ?? []) as Array<{ name_snapshot: string | null }>)
+      .map((i) => i.name_snapshot ?? "")
+      .filter(Boolean),
   }));
 }
 
@@ -237,6 +246,7 @@ async function loadDialog(
   return {
     telegramId: tid,
     who: whoOf(c, tid),
+    ...(c ? { contact: { platform: c.platform ?? "telegram", username: c.username ?? null } } : {}),
     lines,
     orders,
     ...(waiting != null ? { waitingMin: waiting } : {}),
@@ -465,15 +475,26 @@ async function runLeased(
 
   const notifySeller =
     deps.notifySeller ??
-    (async (c: TenantContext, html: string) =>
-      (await import("@/channels/telegram/notify")).notifyAdminsHtml(c, html, { kind: "question" }));
+    (async (
+      c: TenantContext,
+      html: string,
+      buttons?: Array<Array<{ text: string; url: string }>>,
+    ) =>
+      (await import("@/channels/telegram/notify")).notifyAdminsHtml(c, html, {
+        kind: "question",
+        ...(buttons?.length ? { replyMarkup: { inline_keyboard: buttons } } : {}),
+      }));
   for (const f of toSeller) {
     const d = byId.get(f.telegramId)!;
     try {
-      await notifySeller(
-        ctx,
-        sellerSignalText(locale, f, d.who, `${ctx.appUrl}/admin/chat?c=${f.telegramId}`),
+      const signal = sellerSignal(
+        locale,
+        f,
+        d,
+        `${ctx.appUrl}/admin/chat?c=${f.telegramId}`,
+        ctx.timezone,
       );
+      await notifySeller(ctx, signal.html, signal.buttons);
       summary.sent++;
     } catch (e) {
       // Не повторяем: сообщение могло дойти (CLAUDE.md, «Внешние вызовы»).

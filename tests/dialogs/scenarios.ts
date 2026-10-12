@@ -3291,6 +3291,39 @@ export const SCENARIOS: Scenario[] = [
     ],
   },
   {
+    id: "rf-card-failed-reoffers-choice-ig-ru",
+    title:
+      "«Картой РФ» снова и «Не получается оплатить» — не жалоба «оплатила и не получила»: ответ «передал продавцу» и ещё раз выбор оплаты с Kaspi",
+    origin:
+      "Копилка 12.10 16:59, sofronovaaaaaa #131: второй раз «💳 Картой РФ» и «Здравствуйте Не получается оплатить» — бот повторил ссылку Продамуса, на текст промолчал, обращение #138",
+    channel: "instagram",
+    locale: "ru",
+    modules: { prodamus: true },
+    triage: [{ kind: "payment_failed" }],
+    state: {
+      mode: "awaiting_payment",
+      pending_order_id: 15,
+      pending_display_no: 15,
+      pay_link: "pdm",
+    },
+    arrange: (r) => {
+      prodamusOrder(r);
+      r.db.tables.orders!.find((o) => o.id === 15)!.country_code = "KZ";
+      r.db.tables.payment_methods![0]!.instructions = "Kaspi Gold 4400 4302 1234 5678, Кристина У.";
+    },
+    steps: [
+      {
+        say: { text: "Здравствуйте \nНе получается оплатить" },
+        expect: {
+          count: 2,
+          says: [(c) => c.payTroubleHandoff, "только карты российских банков"],
+          buttons: [COPY.ru.payKaspiBtn, "💳 Картой РФ"],
+          state: { mode: "choose_pay", pending_order_id: 15 },
+        },
+      },
+    ],
+  },
+  {
     id: "checkout-again-shows-pending-order-ig-ru",
     title:
       "заказ ждёт выбора оплаты, снова «Оформить заказ» — тот же заказ с кнопками оплаты, а не «Корзина пуста»",

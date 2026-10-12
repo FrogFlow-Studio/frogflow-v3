@@ -1,4 +1,5 @@
 import type { Locale } from "@/core/i18n/locale";
+import { formatMoney } from "@/core/money/money";
 import { parsePlan } from "@/core/plans/registry";
 
 /**
@@ -160,8 +161,18 @@ export type ObservedDialog = {
   telegramId: number;
   /** «Instagram · @user» — для модели и для сообщения продавцу. */
   who: string;
+  /** Площадка и ник покупателя — ссылки на профиль и переписку в подсказке продавцу. */
+  contact?: { platform: string; username: string | null };
   lines: Array<ChatLine & { fresh: boolean }>;
-  orders: Array<{ no: number; status: string; total: number; currency: string; at: string }>;
+  orders: Array<{
+    no: number;
+    status: string;
+    total: number;
+    currency: string;
+    at: string;
+    /** Названия товаров заказа. */
+    items?: string[];
+  }>;
   /** Покупатель молчит в ответ уже столько минут (последняя реплика — его). */
   waitingMin?: number;
 };
@@ -485,19 +496,187 @@ const SELLER_WORDS: Record<Locale, { title: string; reply: string; open: string;
   },
 };
 
-export function sellerSignalText(locale: Locale, f: Finding, who: string, link: string): string {
+const CONTEXT_WORDS: Record<
+  Locale,
+  {
+    last: string;
+    sender: Record<string, string>;
+    order: string;
+    status: { awaiting: string; check: string; paid: string; closed: string };
+    profile: string;
+    direct: string;
+    telegram: string;
+  }
+> = {
+  ru: {
+    last: "Последние сообщения",
+    sender: { customer: "Покупатель", bot: "Бот", manager: "Вы" },
+    order: "Заказ",
+    status: {
+      awaiting: "ждёт оплаты",
+      check: "чек на проверке",
+      paid: "оплачен",
+      closed: "отменён",
+    },
+    profile: "👤 Профиль",
+    direct: "✉️ Написать в Direct",
+    telegram: "✉️ Написать в Telegram",
+  },
+  kk: {
+    last: "Соңғы хабарламалар",
+    sender: { customer: "Сатып алушы", bot: "Бот", manager: "Сіз" },
+    order: "Тапсырыс",
+    status: {
+      awaiting: "төлемді күтуде",
+      check: "чек тексерілуде",
+      paid: "төленді",
+      closed: "тоқтатылды",
+    },
+    profile: "👤 Профиль",
+    direct: "✉️ Direct-ке жазу",
+    telegram: "✉️ Telegram-ға жазу",
+  },
+  en: {
+    last: "Latest messages",
+    sender: { customer: "Buyer", bot: "Bot", manager: "You" },
+    order: "Order",
+    status: {
+      awaiting: "awaiting payment",
+      check: "receipt under review",
+      paid: "paid",
+      closed: "cancelled",
+    },
+    profile: "👤 Profile",
+    direct: "✉️ Message in Direct",
+    telegram: "✉️ Message in Telegram",
+  },
+  uz: {
+    last: "So‘nggi xabarlar",
+    sender: { customer: "Xaridor", bot: "Bot", manager: "Siz" },
+    order: "Buyurtma",
+    status: {
+      awaiting: "to‘lov kutilmoqda",
+      check: "chek tekshirilmoqda",
+      paid: "to‘langan",
+      closed: "bekor qilingan",
+    },
+    profile: "👤 Profil",
+    direct: "✉️ Direct’da yozish",
+    telegram: "✉️ Telegram’da yozish",
+  },
+};
+
+/** Сколько последних реплик показать продавцу и сколько знаков от каждой. */
+export const SIGNAL_LINES = 3;
+const SIGNAL_LINE_CHARS = 160;
+/** Telegram режет сообщение больше 4096 знаков; держим запас под разметку. */
+export const SIGNAL_MAX_CHARS = 3800;
+
+/** Ник Instagram: буквы, цифры, точка, подчёркивание; голые цифры — это id Meta, не ник. */
+const IG_USERNAME = /^(?!\d+$)[A-Za-z0-9._]{1,30}$/;
+const TG_USERNAME = /^[A-Za-z][A-Za-z0-9_]{3,31}$/;
+
+/**
+ * Ссылки продавцу: профиль покупателя и его переписка в приложении. В
+ * Instagram ig.me/m/<ник> открывает Direct с этим человеком под аккаунтом,
+ * в котором продавец вошёл (Кристина 12.10: «не могу его найти в Instagram»).
+ */
+export function contactLinks(
+  c: ObservedDialog["contact"] | undefined,
+): { profile: string; chat: string; platform: "instagram" | "telegram" } | null {
+  const u = c?.username?.trim().replace(/^@/, "") ?? "";
+  if (c?.platform === "instagram" && IG_USERNAME.test(u))
+    return {
+      profile: `https://instagram.com/${u}`,
+      chat: `https://ig.me/m/${u}`,
+      platform: "instagram",
+    };
+  if ((c?.platform ?? "telegram") === "telegram" && TG_USERNAME.test(u))
+    return { profile: `https://t.me/${u}`, chat: `https://t.me/${u}`, platform: "telegram" };
+  return null;
+}
+
+function orderStatusWord(locale: Locale, status: string): string {
+  const w = CONTEXT_WORDS[locale].status;
+  if (AWAITING.has(status)) return status === "awaiting_confirmation" ? w.check : w.awaiting;
+  return CLOSED.has(status) ? w.closed : w.paid;
+}
+
+export type SignalDialog = Pick<ObservedDialog, "who" | "lines" | "orders" | "contact">;
+
+/**
+ * Подсказка продавцу: что случилось, о каком заказе, последние реплики (на
+ * что покупатель отвечал), готовый ответ; под сообщением — кнопки «Профиль»
+ * и «Написать в Direct», чтобы найти человека без сайта.
+ */
+export function sellerSignal(
+  locale: Locale,
+  f: Finding,
+  d: SignalDialog,
+  link: string,
+  timezone: string,
+): { html: string; buttons: Array<Array<{ text: string; url: string }>> } {
   const w = SELLER_WORDS[locale];
-  return [
+  const c = CONTEXT_WORDS[locale];
+  const time = (iso: string) =>
+    new Date(iso).toLocaleString("ru", {
+      timeZone: timezone,
+      day: "2-digit",
+      month: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  // Заказ, о котором речь: ждущий оплаты, иначе последний.
+  const order = [...d.orders].reverse().find((o) => AWAITING.has(o.status)) ?? d.orders.at(-1);
+  const orderLine = order
+    ? `🧾 ${c.order} #${order.no}${order.items?.length ? ` · ${esc(clip(order.items.join(", "), 120))}` : ""} · ${esc(formatMoney(order.total, order.currency))} · ${orderStatusWord(locale, order.status)}`
+    : null;
+  const last = d.lines.slice(-SIGNAL_LINES);
+  const norm = (t: string) => t.replace(/\s+/g, " ").trim();
+  const lines = last.length
+    ? `<b>${c.last}:</b>\n${last
+        .map(
+          (l) =>
+            `<i>${c.sender[l.sender] ?? esc(l.sender)}, ${time(l.at)}:</i> ${esc(clip(norm(l.text), SIGNAL_LINE_CHARS))}`,
+        )
+        .join("\n")}`
+    : null;
+  // Цитата уже видна среди последних реплик — второй раз не повторяем.
+  const quoteShown = f.quote && last.some((l) => norm(l.text).includes(norm(f.quote)));
+  const links = contactLinks(d.contact);
+  const parts = [
     `🔎 <b>${w.title}</b> · ${KIND_LABEL[locale][f.kind]}`,
-    esc(who),
-    f.quote ? `«${esc(f.quote)}»` : null,
+    [esc(d.who), orderLine].filter(Boolean).join("\n"),
+    lines,
+    f.quote && !quoteShown ? `«${esc(f.quote)}»` : null,
     f.summary ? esc(f.summary) : null,
     f.reply ? `💬 <b>${w.reply}:</b>\n${esc(f.reply)}` : null,
     `<a href="${esc(link)}">${w.open}</a>`,
     `<i>${w.note}</i>`,
-  ]
-    .filter(Boolean)
-    .join("\n\n");
+  ];
+  let html = parts.filter(Boolean).join("\n\n");
+  // Предел Telegram: длинное — без последних реплик (они есть по «Открыть диалог»).
+  if (html.length > SIGNAL_MAX_CHARS)
+    html = parts
+      .filter((p) => p !== lines)
+      .filter(Boolean)
+      .join("\n\n")
+      .slice(0, SIGNAL_MAX_CHARS);
+  const buttons = links
+    ? [
+        [
+          { text: c.profile, url: links.profile },
+          { text: links.platform === "instagram" ? c.direct : c.telegram, url: links.chat },
+        ],
+        [{ text: w.open, url: link }],
+      ]
+    : [];
+  return { html, buttons };
+}
+
+/** Прежний вид (только текст) — для журнала и тестов, где контекста диалога нет. */
+export function sellerSignalText(locale: Locale, f: Finding, who: string, link: string): string {
+  return sellerSignal(locale, f, { who, lines: [], orders: [] }, link, "Asia/Almaty").html;
 }
 
 /** Оператору — все находки «сбой платформы» прогона одним сообщением. */
