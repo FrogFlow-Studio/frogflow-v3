@@ -353,6 +353,10 @@ export type Msg = {
   thanksReply: string;
   /** Оплата из страны, для которой у магазина нет способа оплаты (Direct, core/inbox/triage). */
   foreignPayReply: string;
+  /** «Не получится» оплатить Kaspi у покупателя из страны без своего способа оплаты (Direct). */
+  kaspiForeignReply: (country: string) => string;
+  /** «Как получить?» после карточки с «Купить», заказа нет (Direct, core/inbox/triage). */
+  howToBuyReply: (button: string) => string;
   /** Покупатель пишет, что платёж не прошёл (Direct, core/inbox/triage): чек не принят. */
   payFailedReply: string;
   /** Скриншот не отправляется — чек можно текстом (Direct, core/inbox/triage). */
@@ -489,6 +493,10 @@ const ru: Msg = {
   thanksReply: "Рада помочь! Хороших уроков 🌷",
   foreignPayReply:
     "Оплату из вашей страны сейчас подключаем. Ваш вопрос уже у продавца: вам напишут здесь, как оплатить.",
+  kaspiForeignReply: (country) =>
+    `Kaspi принимает только карты Казахстана. Оплату из вашей страны (${country}) сейчас подключаем: продавец напишет вам здесь, как оплатить.`,
+  howToBuyReply: (button) =>
+    `Чтобы получить материал, нажмите «${button}» под сообщением: я оформлю заказ и пришлю способы оплаты.`,
   payFailedReply:
     "Похоже, платёж не прошёл. Попробуйте оплатить ещё раз или напишите, какой у вас банк, — продавец подскажет, как оплатить.",
   receiptTextOffer:
@@ -1044,6 +1052,10 @@ const kk: Msg = {
   thanksReply: "Көмектескеніме қуаныштымын! Сабақтарыңыз сәтті өтсін 🌷",
   foreignPayReply:
     "Сіздің елден төлем қабылдауды қазір қосып жатырмыз. Сұрағыңыз сатушыға жіберілді — ол осында қалай төлеуге болатынын жазады.",
+  kaspiForeignReply: (country) =>
+    `Kaspi тек Қазақстан карталарын қабылдайды. Сіздің елден (${country}) төлем қабылдауды қазір қосып жатырмыз: сатушы осында қалай төлеуге болатынын жазады.`,
+  howToBuyReply: (button) =>
+    `Материалды алу үшін хабарламадағы «${button}» түймесін басыңыз: тапсырысты рәсімдеп, төлем тәсілдерін жіберемін.`,
   payFailedReply:
     "Төлем өтпеген сияқты. Қайта төлеп көріңіз немесе қай банк екенін жазыңыз — сатушы қалай төлеуге болатынын айтады.",
   receiptTextOffer:
@@ -1363,6 +1375,10 @@ const en: Msg = {
   thanksReply: "Happy to help! Have great lessons 🌷",
   foreignPayReply:
     "We are setting up payments from your country right now. Your question has been passed to the seller, who will write here how to pay.",
+  kaspiForeignReply: (country) =>
+    `Kaspi only accepts cards from Kazakhstan. We are setting up payments from your country (${country}) right now: the seller will write here how to pay.`,
+  howToBuyReply: (button) =>
+    `To get the material, tap “${button}” under the message: I’ll place the order and send you the ways to pay.`,
   payFailedReply:
     "It looks like the payment didn't go through. Please try paying again or tell us which bank you use, and the seller will suggest how to pay.",
   receiptTextOffer:
@@ -1731,6 +1747,10 @@ const uz: Msg = {
   thanksReply: "Yordam berganimdan xursandman! Darslaringiz yaxshi o‘tsin 🌷",
   foreignPayReply:
     "Davlatingizdan to‘lovni hozir ulayapmiz. Savolingiz sotuvchiga yuborildi — u shu yerda qanday to‘lashni yozadi.",
+  kaspiForeignReply: (country) =>
+    `Kaspi faqat Qozog‘iston kartalarini qabul qiladi. Davlatingizdan (${country}) to‘lovni hozir ulayapmiz: sotuvchi shu yerda qanday to‘lashni yozadi.`,
+  howToBuyReply: (button) =>
+    `Materialni olish uchun xabar ostidagi «${button}» tugmasini bosing: buyurtmani rasmiylashtirib, to‘lov usullarini yuboraman.`,
   payFailedReply:
     "To‘lov o‘tmaganga o‘xshaydi. Qayta to‘lab ko‘ring yoki qaysi bankdan foydalanishingizni yozing — sotuvchi qanday to‘lashni aytadi.",
   receiptTextOffer:

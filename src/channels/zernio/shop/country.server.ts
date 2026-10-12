@@ -25,7 +25,7 @@ const MAX_TEXT = 200;
 const SELLER_ACTIVE_MS = 30 * 60_000;
 
 /** Как в route: не прочитали переписку — считаем, что продавец не писал. */
-async function sellerWroteRecently(s: Shop): Promise<boolean> {
+export async function sellerWroteRecently(s: Shop): Promise<boolean> {
   try {
     const tail = await s.transport.tail(s.accountId, s.conversationId);
     const ours = memory(s.customer).last_reply;

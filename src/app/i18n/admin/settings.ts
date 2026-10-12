@@ -486,6 +486,11 @@ export const ru = {
   "settings.triage.foreignLabel": "Отвечать про оплату из других стран",
   "settings.triage.foreignHint":
     "Покупатель спрашивает, как оплатить из страны, для которой у вас нет способа оплаты («В бел. руб можно?», «я из Узбекистана, как оплатить?»). Бот раз в сутки отвечает, что оплату оттуда подключают и вы напишете, а вопрос приходит вам обращением. Текст — «Настройки → Текст бота → Instagram → Оплата из другой страны». Россия сюда не входит: у неё своя оплата.",
+  "settings.triage.kaspiForeign":
+    "Покупатель из такой страны выбрал перевод Kaspi и пишет «Не получится» — бот один раз на заказ отвечает, что Kaspi принимает только карты Казахстана и оплату из его страны подключают, банк не спрашивает. Текст — «Текст бота → Instagram → Kaspi из другой страны».",
+  "settings.triage.howToBuyLabel": "Отвечать на «как получить?» после кнопки «Купить»",
+  "settings.triage.howToBuyHint":
+    "Покупатель получил сообщение с кнопкой «Купить» и спрашивает «Как можно получить?», «как заказать?», а заказа ещё нет. Бот отвечает «Чтобы получить материал, нажмите «Купить» под сообщением: я оформлю заказ и пришлю способы оплаты» и присылает кнопку ещё раз, не чаще раза в 30 минут. Пока заказ ждёт оплату, бот так не отвечает. Текст — «Текст бота → Instagram → Как получить материал».",
   "settings.ocr.intro":
     "Чек, присланный в бот, читает ИИ: сумма, валюта, дата, номер операции, получатель. Бот сверяет его с заказом, реквизитами и прошлыми чеками и пишет вам в уведомлении и в карточке заказа: «совпал», «подозрительный» с причинами (следы правки, «в обработке», чек раньше заказа) или «повтор». Скрин без оплаты или с ошибкой платежа бот просит прислать заново. Банк чек не подтверждает — поступление денег смотрите у себя в банке. Стоимость — около $1 за 1000 чеков с ИИ-баланса.",
   "settings.ocr.noKey":
@@ -1038,6 +1043,12 @@ export const kk: SectionDict<typeof ru> = {
   "settings.triage.foreignLabel": "Басқа елдерден төлем туралы жауап беру",
   "settings.triage.foreignHint":
     "Сатып алушы сізде төлем тәсілі жоқ елден қалай төлеуге болатынын сұрайды («Беларусь рублімен бола ма?», «Өзбекстаннанмын, қалай төлеймін?»). Бот тәулігіне бір рет ол жерден төлем қосылып жатқанын және сіз жазатыныңызды айтады, ал сұрақ сізге өтініш болып келеді. Мәтін — «Баптаулар → Бот мәтіні → Instagram → Басқа елден төлеу». Ресей бұған кірмейді: оның өз төлемі бар.",
+  "settings.triage.kaspiForeign":
+    "Осындай елдің сатып алушысы Kaspi аударымын таңдап, «Болмайды» деп жазса — бот бір тапсырысқа бір рет Kaspi тек Қазақстан карталарын қабылдайтынын және оның елінен төлем қосылып жатқанын айтады, банкті сұрамайды. Мәтін — «Бот мәтіні → Instagram → Басқа елден Kaspi».",
+  "settings.triage.howToBuyLabel":
+    "«Купить» түймесінен кейін «қалай алуға болады?» сұрағына жауап беру",
+  "settings.triage.howToBuyHint":
+    "Сатып алушы «Купить» түймесі бар хабарлама алып, «Қалай алуға болады?», «қалай тапсырыс беремін?» деп сұрайды, ал тапсырыс әлі жоқ. Бот «Материалды алу үшін хабарламадағы «Купить» түймесін басыңыз» деп жауап беріп, түймені қайта жібереді, 30 минутта бір реттен жиі емес. Тапсырыс төлемді күтіп тұрғанда бот бұлай жауап бермейді. Мәтін — «Бот мәтіні → Instagram → Материалды қалай алуға болады».",
   "settings.ocr.intro":
     "Ботқа жіберілген чекті ЖИ оқиды: сома, валюта, күні, операция нөмірі, алушы. Бот оны тапсырыспен, деректемелермен және бұрынғы чектермен салыстырып, хабарламада және тапсырыс картасында жазады: «сәйкес», себептерімен «күмәнді» (түзету іздері, «өңделуде», чек тапсырыстан бұрын) немесе «қайталау». Төлемсіз немесе төлем қатесі бар скринді бот қайта жіберуді сұрайды. Чекті банк растамайды — ақшаның түскенін өз банкіңізден қараңыз. Құны — ЖИ балансынан 1000 чекке шамамен $1.",
   "settings.ocr.noKey":
@@ -1585,6 +1596,11 @@ export const en: SectionDict<typeof ru> = {
   "settings.triage.foreignLabel": "Reply about payment from other countries",
   "settings.triage.foreignHint":
     "The buyer asks how to pay from a country you have no payment method for (“Can I pay in Belarusian rubles?”, “I’m from Uzbekistan, how do I pay?”). Once a day the bot replies that payments from there are being set up and you will write, and the question comes to you as a ticket. Text: “Settings → Bot texts → Instagram → Payment from another country”. Russia is not included: it has its own payment.",
+  "settings.triage.kaspiForeign":
+    "If a buyer from such a country chose a Kaspi transfer and writes “It won't work”, once per order the bot replies that Kaspi only accepts cards from Kazakhstan and payments from their country are being set up; it doesn't ask for the bank. Text: “Bot texts → Instagram → Kaspi from another country”.",
+  "settings.triage.howToBuyLabel": "Answer “how do I get it?” after the “Buy” button",
+  "settings.triage.howToBuyHint":
+    "The buyer got a message with the “Buy” button and asks “How can I get it?” or “how do I order?”, with no order yet. The bot replies “To get the material, tap “Buy” under the message” and sends the button again, at most once every 30 minutes. While an order awaits payment, the bot doesn't reply this way. Text: “Bot texts → Instagram → How to get the material”.",
   "settings.ocr.intro":
     "AI reads every receipt sent to the bot: amount, currency, date, operation number, recipient. The bot checks it against the order, your payment details and earlier receipts and tells you in the notification and on the order card: “matched”, “suspicious” with the reasons (signs of editing, “processing”, a receipt dated before the order) or “repeat”. A screenshot without a payment or with a failed payment is asked to be resent. The bank does not confirm the receipt — check that the money arrived in your bank. Cost — about $1 per 1,000 receipts from the AI balance.",
   "settings.ocr.noKey":
@@ -2140,6 +2156,12 @@ export const uz: SectionDict<typeof ru> = {
   "settings.triage.foreignLabel": "Boshqa davlatlardan to‘lov haqida javob berish",
   "settings.triage.foreignHint":
     "Xaridor sizda to‘lov usuli yo‘q davlatdan qanday to‘lashni so‘raydi («Belarus rublida bo‘ladimi?», «O‘zbekistondanman, qanday to‘layman?»). Bot sutkada bir marta u yerdan to‘lov ulanayotganini va siz yozishingizni aytadi, savol esa sizga murojaat bo‘lib keladi. Matn — «Sozlamalar → Bot matni → Instagram → Boshqa davlatdan to‘lov». Rossiya bunga kirmaydi: uning o‘z to‘lovi bor.",
+  "settings.triage.kaspiForeign":
+    "Shunday davlatdan xaridor Kaspi o‘tkazmasini tanlab, «Bo‘lmaydi» deb yozsa — bot bir buyurtmaga bir marta Kaspi faqat Qozog‘iston kartalarini qabul qilishini va uning davlatidan to‘lov ulanayotganini aytadi, bankni so‘ramaydi. Matn — «Bot matni → Instagram → Boshqa davlatdan Kaspi».",
+  "settings.triage.howToBuyLabel":
+    "«Купить» tugmasidan keyin «qanday olaman?» savoliga javob berish",
+  "settings.triage.howToBuyHint":
+    "Xaridor «Купить» tugmali xabarni oldi va «Qanday olsa bo‘ladi?», «qanday buyurtma beraman?» deb so‘raydi, buyurtma esa hali yo‘q. Bot «Materialni olish uchun xabar ostidagi «Купить» tugmasini bosing» deb javob beradi va tugmani qayta yuboradi, 30 daqiqada bir martadan ko‘p emas. Buyurtma to‘lovni kutayotganda bot bunday javob bermaydi. Matn — «Bot matni → Instagram → Materialni qanday olish mumkin».",
   "settings.ocr.intro":
     "Botga yuborilgan chekni SI o‘qiydi: summa, valyuta, sana, operatsiya raqami, qabul qiluvchi. Bot uni buyurtma, rekvizitlaringiz va oldingi cheklar bilan solishtiradi va xabarnomada hamda buyurtma kartasida yozadi: «mos keldi», sabablari bilan «shubhali» (tahrir izlari, «ishlov berilmoqda», chek buyurtmadan oldin) yoki «takror». To‘lovsiz yoki to‘lov xatosi bor skrinni bot qayta yuborishni so‘raydi. Chekni bank tasdiqlamaydi — pul tushganini o‘z bankingizda tekshiring. Narxi — SI balansidan 1000 ta chek uchun taxminan $1.",
   "settings.ocr.noKey":

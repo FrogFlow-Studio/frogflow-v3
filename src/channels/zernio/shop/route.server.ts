@@ -146,6 +146,7 @@ import { triageQuestion } from "./triage.server";
 import {
   cantSendReceipt,
   confirmOldResend,
+  kaspiForeignTrouble,
   dropPaidStep,
   numberWhileUnpaid,
   payFailedCaption,
@@ -692,6 +693,13 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
         return "handled";
       }
       await setMode(s, { mode: "idle" });
+      // Шаг остался с давнего оформления, а корзины уже нет: адрес — о прошлом
+      // заказе, а не к оформлению («🛒 Корзина пуста.» lady_brown_hair_pp,
+      // AATeach 12.10). Разбирает ИИ после оплаты; не о заказе — продавцу.
+      if ((await listCart(s.ctx, s.customer)).length === 0) {
+        const { postPayAssist } = await import("./postpay.server");
+        return (await postPayAssist(s, text)) ?? "question";
+      }
       const cc = s.customer.state.country_code;
       if (!cc) return askCountry(s, true).then(() => "handled" as const);
       await finishCheckout(s, cc);
@@ -748,6 +756,9 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
           (await choosePayment(s, "pdm", { ruCard: true }))
         )
           return "handled";
+        // Покупатель из Кыргызстана, Узбекистана… на переводе Kaspi: Kaspi берёт
+        // только карты Казахстана — так и сказать (Копилка 12.10, kramiliia #159).
+        if (!isFromRussia(text) && (await kaspiForeignTrouble(s, text))) return "question";
         s.handoff = true;
         await reply(s, s.m.payTroubleHandoff, { force: true });
         // Не прошла оплата «Картой РФ»: форма берёт только карты российских
@@ -789,7 +800,12 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
         // Без отметки «передал»: бот ничего не сказал, и «оплатила» потом
         // по-прежнему получит просьбу о чеке. «Спасибо», эмодзи, оплата из
         // страны без способа оплаты — разбирает модель (shop/triage).
-        return (await triageQuestion(s, text)) ?? "question";
+        return (
+          (await triageQuestion(s, text, {
+            username: msg.senderUsername,
+            senderId: msg.senderId,
+          })) ?? "question"
+        );
       }
       break;
     }
@@ -868,7 +884,10 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
       if (after) return after;
       // «Спасибо», эмодзи, «+» — без обращения; оплата из страны без способа
       // оплаты — честный ответ и вопрос продавцу (Копилка 12.10, shop/triage).
-      return (await triageQuestion(s, text)) ?? "question";
+      return (
+        (await triageQuestion(s, text, { username: msg.senderUsername, senderId: msg.senderId })) ??
+        "question"
+      );
     }
   }
 }
@@ -887,6 +906,17 @@ async function listWordsHint(s: Shop): Promise<boolean> {
   if (!(Date.now() - listAt < LIST_TTL_MS)) return false;
   // Список — последнее, что прислал бот (его отметка ставится перед отправкой).
   if (!Number.isFinite(replyAt) || replyAt - listAt > 60_000) return false;
+  // Несколько реплик разом (вебхуки идут параллельно) — подсказка одна: её
+  // получает тот, кто первым поставил метку на этот список (AATeach 12.10, три
+  // одинаковых подсказки dusembina_irina). Остальные и сбой метки — как вопрос.
+  const { claimZernioMessage } = await import("../message-claim.server");
+  const claim = await claimZernioMessage(
+    s.ctx,
+    `list-hint:${s.customer.userKey}:${list.at}`,
+    crypto.randomUUID(),
+    s.conversationId,
+  );
+  if (claim !== "won") return false;
   s.hint = true;
   return reply(s, s.m.listNumberHint, { force: true });
 }

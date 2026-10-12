@@ -262,6 +262,23 @@ export async function upsertCustomer(
     .maybeSingle();
   if (existingError) throw serverFailure(`Покупатели: ${existingError.message}`);
   if (existing) {
+    // Строки Instagram из августа 2026 (1158 шт., 370 у AATeach) записаны без
+    // telegram_id: оформление ищет покупателя по нему и отвечает «Оформление уже
+    // выполняется» на каждое «Купить» (tambieva_74, 12.10). Дописываем тот же
+    // id, что получил бы новый покупатель, — только если его нет.
+    if (existing.telegram_id == null && platform !== "telegram") {
+      const id = syntheticTelegramId(key);
+      const { data: fixed, error: fixError } = await ctx.db
+        .from("bot_users")
+        .update({ telegram_id: id })
+        .eq("user_key", key)
+        .is("telegram_id", null)
+        .select("telegram_id")
+        .maybeSingle();
+      // Сбой записи не обрывает разговор: ответ уйдёт, оформление попробует снова.
+      if (fixError) console.error(`[customers] ${key} без telegram_id: ${fixError.message}`);
+      else existing.telegram_id = fixed?.telegram_id ?? id;
+    }
     const metadata = mergeMetadata(existing.metadata, profile.metadata);
     const patch = {
       username: profile.username ?? existing.username,
