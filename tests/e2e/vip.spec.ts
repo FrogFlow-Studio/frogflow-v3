@@ -157,8 +157,13 @@ test("VIP: первый вход по чеку → ссылка в группу 
   const buyer = buyerOf(info);
   const DAY = 86_400_000;
 
-  // Новый покупатель видит «первый вход», а не общий список тарифов.
+  // Первый /start: сначала язык, тарифы — после выбора и уже на нём.
   await say(request, buyer, { text: "/start" });
+  await waitSent(request, buyer, 0, (s) =>
+    buttons(s).some((b) => b.callback_data === "vip_locale:ru:s"),
+  );
+  await press(request, buyer, "vip_locale:ru:s");
+  // Новый покупатель видит «первый вход», а не общий список тарифов.
   const offer = await waitSent(request, buyer, 0, (s) =>
     buttons(s).some((b) => b.callback_data === `buy_tariff:${F.VIP_ENTRY_ID}`),
   );

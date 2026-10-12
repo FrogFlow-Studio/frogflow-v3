@@ -75,16 +75,47 @@ async function sayMenu(v: Vip, text: string) {
   await say(v, text, { reply_markup: menu(v.locale) });
 }
 
-async function askLanguage(v: Vip) {
+/**
+ * Выбор языка. `then` — что показать после выбора (первый /start: сначала
+ * язык, потом тарифы на нём, а не тарифы по-русски и вопрос о языке под ними):
+ * «s» — старт, «r» — продление, «t_<id>» — ссылка на тариф.
+ */
+async function askLanguage(v: Vip, then?: string) {
   await v.api.call("sendMessage", {
     chat_id: v.chatId,
     text: vipCopy.ru.chooseLanguage,
     reply_markup: {
       inline_keyboard: SUPPORTED_LOCALES.map((l) => [
-        { text: localeNames[l], callback_data: `vip_locale:${l}` },
+        { text: localeNames[l], callback_data: `vip_locale:${l}${then ? `:${then}` : ""}` },
       ]),
     },
   });
+}
+
+const TARIFF_PAYLOAD = /^t_[0-9a-f-]{36}$/i;
+
+/** Продолжение после выбора языка из callback_data (см. askLanguage). */
+function startAfterLanguage(then: string): string | null {
+  if (then === "s") return "";
+  if (then === "r") return "renew";
+  return TARIFF_PAYLOAD.test(then) ? then : null;
+}
+
+/** /start с пейлоадом: ссылка на тариф, «renew» или обычный старт. */
+async function startCommand(v: Vip, payload: string) {
+  const t = c(v);
+  if (TARIFF_PAYLOAD.test(payload)) {
+    await sayMenu(v, t.vipMenuPinned);
+    const tariff = await getTariff(v.ctx, payload.slice(2));
+    if (!tariff || !tariff.is_active) await say(v, t.tariffLinkNotFound);
+    else {
+      if (tariff.is_public === false && !tariff.is_entry)
+        await assignMemberTariff(v.ctx, v.from.id, v.from, tariff.id, "deep_link");
+      await buyTariff(v, tariff.id);
+    }
+    return;
+  }
+  await startFlow(v, payload === "renew");
 }
 
 async function inGroup(v: Vip): Promise<boolean> {
@@ -173,22 +204,64 @@ async function showEntryOffer(v: Vip) {
   );
 }
 
-async function sendPaymentInstructions(v: Vip, text: string, qrPath: string) {
+async function sendPaymentInstructions(
+  v: Vip,
+  text: string,
+  qrPath: string,
+  extra: Record<string, unknown> = {},
+) {
   if (qrPath) {
     const photo = imageUrl(v.ctx, qrPath);
     if (text.length <= 1024) {
       // Обрыв или 5xx: подпись могла дойти — текст вторым экземпляром не шлём.
       await sendPhotoOrText(
         v.api,
-        { chat_id: v.chatId, photo, caption: text, parse_mode: "HTML" },
-        () => say(v, text),
+        { chat_id: v.chatId, photo, caption: text, parse_mode: "HTML", ...extra },
+        () => say(v, text, extra),
       );
       return;
     } else {
       await v.api.call("sendPhoto", { chat_id: v.chatId, photo });
     }
   }
-  await say(v, text);
+  await say(v, text, extra);
+}
+
+/**
+ * Кнопка «Картой РФ» (Продамус продавца, core/vip/prodamus-payment): есть,
+ * если касса подключена и принимает валюту тарифа. Оплата по ней открывает
+ * подписку сама; чек по реквизитам остаётся.
+ */
+async function prodamusButton(
+  v: Vip,
+  subscriptionId: string,
+  tariff: TariffRow,
+): Promise<{ line: string; markup: Record<string, unknown> } | null> {
+  try {
+    const { prodamusFor } = await import("@/core/payments/payment");
+    const cfg = await prodamusFor(v.ctx, tariff.currency);
+    if (!cfg.ready) return null;
+    const { vipProdamusLink } = await import("@/core/vip/prodamus-payment");
+    const username = v.ctx.tenant.settings.vip?.username;
+    const link = await vipProdamusLink(v.ctx, cfg, {
+      subscriptionId,
+      tariff,
+      back: username ? `https://t.me/${username}` : v.ctx.appUrl,
+    });
+    if (!link) return null;
+    const t = c(v);
+    // Форма *.kz принимает только карты РФ (Копилка, 10.10).
+    const rf = cfg.currency === "KZT";
+    const btn = rf ? t.prodamusBtnRf : t.prodamusBtnCard;
+    return {
+      line: fmt(rf ? t.prodamusLineRf : t.prodamusLineCard, { btn }),
+      markup: { reply_markup: { inline_keyboard: [[{ text: btn, url: link.url }]] } },
+    };
+  } catch (e) {
+    // Без кнопки остаётся оплата по реквизитам — заявку не роняем.
+    console.error(`[vip:${v.ctx.tenant.id}] ссылка Продамуса`, e);
+    return null;
+  }
 }
 
 async function buyTariff(v: Vip, tariffId: string) {
@@ -204,16 +277,19 @@ async function buyTariff(v: Vip, tariffId: string) {
   if (tariff.is_public === false && !tariff.is_entry)
     await assignMemberTariff(v.ctx, v.from.id, user, tariff.id, "deep_link");
   const settings = await vipSettings(v.ctx);
+  let pending: { id: string };
   try {
-    await startPending(v.ctx, v.from.id, user, tariff.id);
+    pending = await startPending(v.ctx, v.from.id, user, tariff.id);
   } catch (e) {
     console.error("[vip] start pending failed", e);
     return say(v, t.createRequestFailed);
   }
+  const card = await prodamusButton(v, pending.id, tariff);
   const text =
     `${t.paymentChosenLabel} <b>${escapeHtml(tariff.name)}</b>\n${t.paymentDueLabel} <b>${escapeHtml(String(tariff.price))} ${escapeHtml(tariff.currency)}</b>\n\n` +
-    `${escapeHtml(settings.instructions || t.defaultPaymentInstructions)}\n\n${t.paymentAfterPay}`;
-  await sendPaymentInstructions(v, text, settings.qrPath);
+    `${escapeHtml(settings.instructions || t.defaultPaymentInstructions)}\n\n${t.paymentAfterPay}` +
+    (card ? `\n\n${card.line}` : "");
+  await sendPaymentInstructions(v, text, settings.qrPath, card?.markup);
 }
 
 /** /start, /start renew, «Продлить». */
@@ -419,24 +495,16 @@ async function vipUpdate(ctx: TenantContext, api: TelegramApi, update: TelegramU
     const stored = await memberLocale(ctx, msg.from.id);
     const v: Vip = { ctx, api, chatId: msg.chat.id, from: msg.from, locale: stored ?? "ru" };
     const text = (msg.text ?? "").trim();
-    const t = c(v);
 
     if (text.startsWith("/start")) {
       const payload = text.split(/\s+/).slice(1).join(" ").trim();
-      if (payload.startsWith("t_") && /^[0-9a-f-]{36}$/i.test(payload.slice(2))) {
-        await sayMenu(v, t.vipMenuPinned);
-        const tariff = await getTariff(ctx, payload.slice(2));
-        if (!tariff || !tariff.is_active) await say(v, t.tariffLinkNotFound);
-        else {
-          if (tariff.is_public === false && !tariff.is_entry)
-            await assignMemberTariff(ctx, v.from.id, v.from, tariff.id, "deep_link");
-          await buyTariff(v, tariff.id);
-        }
-      } else {
-        await startFlow(v, payload === "renew");
-      }
-      if (!stored) await askLanguage(v);
-      return;
+      // Язык не выбран — сначала язык, тарифы и реквизиты потом уже на нём.
+      if (!stored)
+        return askLanguage(
+          v,
+          TARIFF_PAYLOAD.test(payload) ? payload : payload === "renew" ? "r" : "s",
+        );
+      return startCommand(v, payload);
     }
     if (isButton(text, "btnLang") || text === "/language") return askLanguage(v);
     if (text === "/id" || text.startsWith("/id@") || isButton(text, "btnId")) return showMyId(v);
@@ -459,11 +527,14 @@ async function vipUpdate(ctx: TenantContext, api: TelegramApi, update: TelegramU
   const v: Vip = { ctx, api, chatId: cq.message.chat.id, from: cq.from, locale };
 
   if (data.startsWith("vip_locale:")) {
-    const l = data.slice("vip_locale:".length);
+    const [l = "", then = ""] = data.slice("vip_locale:".length).split(/:(.*)/s);
     if (!isLocale(l)) return;
     await setMemberLocale(ctx, cq.from.id, cq.from, l);
     v.locale = l;
-    return sayMenu(v, vipCopy[l].languageSaved);
+    await sayMenu(v, vipCopy[l].languageSaved);
+    const next = then ? startAfterLanguage(then) : null;
+    if (next !== null) await startCommand(v, next);
+    return;
   }
   if (data.startsWith("buy_tariff:")) return buyTariff(v, data.slice("buy_tariff:".length));
   if (data === "buy_renew") return startFlow(v, true);

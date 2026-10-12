@@ -60,6 +60,27 @@ async function handle(request: Request, rawBotId: string): Promise<Response> {
     await trace("bad_sign", { has_sign: Boolean(request.headers.get("sign")) });
     return new Response("bad sign", { status: 400 });
   }
+  // Оплата VIP-подписки (кнопка «Картой РФ» в VIP-боте): order_num — vipChargeRef.
+  const { parseVipChargeRef } = await import("@/core/payments/prodamus");
+  const vip = parseVipChargeRef(cfg, n.order_num);
+  if (vip) {
+    if (prodamusOutcome(n) === "ignore") {
+      await trace("not_success", { vip: vip.subscriptionId });
+      return new Response("success");
+    }
+    const { applyVipProdamusPayment } = await import("@/core/vip/prodamus-payment");
+    const { vipTelegramApi } = await import("@/channels/telegram/vip/handle");
+    const { vipGroupApi } = await import("@/channels/telegram/vip/group");
+    const outcome = await applyVipProdamusPayment(
+      ctx,
+      cfg,
+      vipGroupApi(vipTelegramApi(ctx)),
+      vip,
+      n,
+    );
+    await trace(outcome, { vip: vip.subscriptionId });
+    return new Response("success");
+  }
   // order_num — наш chargeRef: заказ и выставленная сумма под нашей подписью.
   // Чужой формат (оплата не из FrogFlow) или подделка — не наш платёж.
   const charge = parseChargeRef(cfg, n.order_num);
@@ -172,6 +193,6 @@ async function traceProdamus(
   } catch (e) {
     console.warn(`[prodamus:${botId}] журнал не записан`, e);
   }
-  if (outcome !== "paid" && outcome !== "already_done")
+  if (!["paid", "already_done", "vip_paid", "vip_already_done"].includes(outcome))
     console.warn(`[prodamus:${botId}] уведомление: ${outcome}`);
 }
