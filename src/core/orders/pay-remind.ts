@@ -6,9 +6,22 @@ import { amountDueNow } from "@/core/fulfillment/fulfillment";
 import { getSetting } from "@/core/settings/settings";
 import { eachPage } from "@/core/db/page";
 import { isInvoiceLink } from "./invoice-link";
-import { PAY_REMIND_EVENT_KEY, PAY_REMIND_KEY, parsePayRemindHours } from "./pay-remind-settings";
+import { openTicketFor } from "@/core/helpdesk/tickets";
+import {
+  PAY_REMIND_EVENT_KEY,
+  PAY_REMIND_HOLD_KEY,
+  PAY_REMIND_KEY,
+  parsePayRemindHours,
+  payRemindHoldOn,
+} from "./pay-remind-settings";
 
-export { PAY_REMIND_HOURS, PAY_REMIND_KEY, parsePayRemindHours } from "./pay-remind-settings";
+export {
+  PAY_REMIND_HOLD_KEY,
+  PAY_REMIND_HOURS,
+  PAY_REMIND_KEY,
+  parsePayRemindHours,
+  payRemindHoldOn,
+} from "./pay-remind-settings";
 
 /**
  * Напоминание об оплате заказа, оформленного в боте, Instagram или WhatsApp
@@ -103,19 +116,100 @@ export function claimPayReminder(
   );
 }
 
+/**
+ * Почему напоминание по заказу придержано (#40 Копилки): у покупателя открыто
+ * обращение — он спрашивал продавца о другом товаре или чек ушёл мимо бота;
+ * или после этого заказа он оформил другой. Напомнить «оплатите Палитру»
+ * человеку, которому нужны карты Онегина, — хуже, чем промолчать: решает
+ * продавец, отменить заказ или подтвердить оплату.
+ */
+export type PayRemindHold =
+  { reason: "ticket"; ticket: number } | { reason: "later_order"; laterNo: number };
+
+/** Обращение старше заказа на столько и без движения с тех пор — не про этот заказ (33 незакрытых у Копилки). */
+export const HOLD_TICKET_STALE_MS = 3 * 24 * 3600_000;
+
+export async function payRemindHoldReason(
+  ctx: TenantContext,
+  o: Pick<PayReminderOrder, "id" | "telegram_id" | "created_at">,
+): Promise<PayRemindHold | null> {
+  const ticket = await openTicketFor(ctx, Number(o.telegram_id));
+  if (ticket) {
+    const last = Math.max(
+      Date.parse(ticket.createdAt),
+      ...ticket.history.map((h) => Date.parse(h.at)).filter(Number.isFinite),
+    );
+    if (last >= Date.parse(o.created_at) - HOLD_TICKET_STALE_MS)
+      return { reason: "ticket", ticket: ticket.number };
+  }
+  // Есть ли вообще более поздний заказ — одной строки достаточно.
+  const { data, error } = await ctx.db
+    .from("orders")
+    .select("id, order_no, display_no")
+    .eq("telegram_id", Number(o.telegram_id))
+    .neq("id", o.id)
+    .gt("created_at", o.created_at)
+    .order("created_at")
+    .order("id")
+    .limit(1);
+  if (error) throw serverFailure(`Заказы: напоминание: ${error.message}`);
+  const later = data?.[0];
+  return later ? { reason: "later_order", laterNo: later.display_no ?? later.order_no } : null;
+}
+
+/** Отметка «напоминание придержано»: одна на заказ, у крона и при гонке двух прогонов. */
+async function remindHeldBefore(ctx: TenantContext, orderId: number): Promise<boolean> {
+  const { data, error } = await ctx.db
+    .from("zernio_logs")
+    .select("id")
+    .eq("event_id", `order:${orderId}:remind_held:${PAY_REMIND_EVENT_KEY}`)
+    .maybeSingle();
+  if (error) throw serverFailure(`Заказы: напоминание: ${error.message}`);
+  return data != null;
+}
+
 export async function remindChatOrders(
   ctx: TenantContext,
   send: (r: PayReminder) => Promise<boolean>,
   now = new Date(),
-): Promise<{ sent: number; failed: number; skipped: number } | { off: true }> {
+  /** Напоминание придержано (впервые по заказу): подсказать продавцу «отмените или подтвердите». */
+  onHeld?: (o: PayReminderOrder, why: PayRemindHold) => Promise<void>,
+): Promise<{ sent: number; failed: number; skipped: number; held: number } | { off: true }> {
   // Мягкое чтение: пусто безопасно — сработает срок напоминания по умолчанию, денег это не двигает.
   const hours = parsePayRemindHours(await getSetting(ctx, PAY_REMIND_KEY));
   if (hours === null) return { off: true };
-  const out = { sent: 0, failed: 0, skipped: 0 };
+  // Пусто — включено: лишнее напоминание хуже пропущенного, продавцу всё равно придёт подсказка.
+  const holdOn = payRemindHoldOn(await getSetting(ctx, PAY_REMIND_HOLD_KEY));
+  const out = { sent: 0, failed: 0, skipped: 0, held: 0 };
   const remind = async (o: PayReminderOrder) => {
     const platform = o.platform ?? "telegram";
     const zernio = platform === "instagram" || platform === "whatsapp";
     if (!zernio && Number(o.telegram_id) <= 0) return;
+    if (holdOn) {
+      const why = await payRemindHoldReason(ctx, o);
+      if (why) {
+        // Первая отметка — подсказка продавцу; дальше по этому заказу молчим.
+        const first = await claimOrderEvent(
+          ctx,
+          o.id,
+          "remind_held",
+          PAY_REMIND_EVENT_KEY,
+          { ...why },
+          "bot",
+        );
+        if (first) {
+          out.held++;
+          await onHeld?.(o, why).catch((e) =>
+            console.error(
+              `[pay-remind:${ctx.tenant.id}] подсказка по заказу ${o.id}: ${String(e)}`,
+            ),
+          );
+        }
+        return;
+      }
+      // Обращение закрыли, а заказ так и висит: продавец уже получил подсказку — решает он.
+      if (await remindHeldBefore(ctx, o.id)) return;
+    }
     if (zernio && !(await chatWindowOpen(ctx, o, now))) {
       out.skipped++;
       return;

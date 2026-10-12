@@ -1,6 +1,6 @@
 import type { Tenant } from "@/core/tenant/types";
 import type { TenantContext } from "@/core/tenant/resolve.server";
-import type { PayReminder } from "@/core/orders/pay-remind";
+import type { PayRemindHold, PayReminder, PayReminderOrder } from "@/core/orders/pay-remind";
 
 /**
  * Крон: напоминание об оплате заказов из бота, Instagram и WhatsApp
@@ -11,13 +11,47 @@ export async function runChatPayReminders(tenant: Tenant) {
   const { tenantContext } = await import("@/core/tenant/resolve.server");
   const ctx = tenantContext(tenant);
   const { remindChatOrders } = await import("@/core/orders/pay-remind");
-  return remindChatOrders(ctx, async (r) => {
-    const { getOrder } = await import("@/core/orders/orders");
-    const order = await getOrder(ctx, r.orderId);
-    if (!order) return false;
-    const { notifyCustomer } = await import("@/app/admin/admin.server");
-    return notifyCustomer(ctx, order, await reminderText(ctx, r));
-  });
+  return remindChatOrders(
+    ctx,
+    async (r) => {
+      const { getOrder } = await import("@/core/orders/orders");
+      const order = await getOrder(ctx, r.orderId);
+      if (!order) return false;
+      const { notifyCustomer } = await import("@/app/admin/admin.server");
+      return notifyCustomer(ctx, order, await reminderText(ctx, r));
+    },
+    undefined,
+    (o, why) => heldNotice(ctx, o, why),
+  );
+}
+
+/**
+ * Напоминание придержано (обращение покупателя или более поздний заказ):
+ * продавцу — одно сообщение со ссылкой на заказ, «отмените или подтвердите».
+ */
+export async function heldNotice(
+  ctx: TenantContext,
+  o: PayReminderOrder,
+  why: PayRemindHold,
+): Promise<void> {
+  const { escapeHtml } = await import("@/channels/telegram/copy");
+  const { noticeLocale } = await import("@/core/helpdesk/seller-texts");
+  const { getCustomerByTelegramId } = await import("@/core/customers/customers");
+  const { payRemindHeldText } = await import("@/core/orders/pay-remind-hold-texts");
+  const { notifyAdminsHtml } = await import("@/channels/telegram/notify");
+  const buyer = await getCustomerByTelegramId(ctx, Number(o.telegram_id)).catch(() => null);
+  const who = buyer?.username ? `@${buyer.username}` : (buyer?.firstName ?? "—");
+  await notifyAdminsHtml(
+    ctx,
+    payRemindHeldText(
+      await noticeLocale(ctx),
+      o.display_no ?? o.order_no,
+      why,
+      escapeHtml(who),
+      `${ctx.appUrl}/admin/orders/${o.id}`,
+    ),
+    { orderId: o.id, kind: "new_order" },
+  );
 }
 
 /**

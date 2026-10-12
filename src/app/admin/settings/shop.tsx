@@ -19,9 +19,11 @@ import {
   type WeeklySection,
 } from "@/core/analytics/weekly";
 import {
+  PAY_REMIND_HOLD_KEY,
   PAY_REMIND_HOURS,
   PAY_REMIND_KEY,
   parsePayRemindHours,
+  payRemindHoldOn,
 } from "@/core/orders/pay-remind-settings";
 import { settingsRoute } from "./route";
 import { roleAllows } from "@/core/auth/roles";
@@ -390,16 +392,21 @@ export function ReceiptTextCard({ settings }: { settings: Record<string, string>
   );
 }
 
-/** Напоминание об оплате заказов из бота, Instagram и WhatsApp (core/orders/pay-remind). */
+/**
+ * Напоминание об оплате заказов из бота, Instagram и WhatsApp (core/orders/pay-remind)
+ * и «не напоминать по спорным заказам» (обращение или более поздний заказ).
+ */
 export function PayReminderCard({ settings }: { settings: Record<string, string> }) {
   const router = useRouter();
   const { shop } = settingsRoute.useRouteContext();
   const t = adminT(shop.locale);
   const current = String(parsePayRemindHours(settings[PAY_REMIND_KEY]) ?? "");
-  const save = useAction(async (v: string) => {
-    await saveSettingsFn({ data: { [PAY_REMIND_KEY]: v } });
+  const hold = payRemindHoldOn(settings[PAY_REMIND_HOLD_KEY]);
+  const save = useAction(async (key: string, v: string) => {
+    await saveSettingsFn({ data: { [key]: v } });
     await router.invalidate();
   });
+  const readOnly = save.busy || !roleAllows(shop.role, "admin");
   return (
     <Card title={t("settings.payRemind.title")}>
       <p className="mb-3 text-sm text-muted">{t("settings.payRemind.intro")}</p>
@@ -407,8 +414,8 @@ export function PayReminderCard({ settings }: { settings: Record<string, string>
         className="input"
         aria-label={t("settings.payRemind.title")}
         value={current}
-        disabled={save.busy || !roleAllows(shop.role, "admin")}
-        onChange={(e) => void save.run(e.target.value).catch(() => {})}
+        disabled={readOnly}
+        onChange={(e) => void save.run(PAY_REMIND_KEY, e.target.value).catch(() => {})}
       >
         <option value="">{t("settings.payRemind.off")}</option>
         {PAY_REMIND_HOURS.map((n) => (
@@ -417,6 +424,17 @@ export function PayReminderCard({ settings }: { settings: Record<string, string>
           </option>
         ))}
       </select>
+      <div className="mt-3 flex items-center gap-3">
+        <Switch
+          checked={hold}
+          disabled={readOnly}
+          onChange={(v) => void save.run(PAY_REMIND_HOLD_KEY, v ? "true" : "false").catch(() => {})}
+          label={t("settings.payRemindHold.label")}
+        />
+        <span className="text-sm">{t("settings.payRemindHold.label")}</span>
+        <HelpTip article="settings-payment" anchor="pay-remind-hold" />
+      </div>
+      <p className="mt-1 text-xs text-muted">{t("settings.payRemindHold.hint")}</p>
       <ErrorBox error={save.error} />
     </Card>
   );

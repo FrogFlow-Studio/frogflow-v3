@@ -194,7 +194,8 @@ export const SETTINGS_REGISTRY: readonly SettingsEntry[] = [
     sellsOnly: true,
     theme: "payment",
     title: "settings.payRemind.title",
-    keys: ["chat_pay_reminder_hours"],
+    keys: ["chat_pay_reminder_hours", "chat_pay_reminder_hold"],
+    fields: ["settings.payRemindHold.label"],
   }),
   E({
     id: "email-ask",
