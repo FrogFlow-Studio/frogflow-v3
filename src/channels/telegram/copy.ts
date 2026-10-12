@@ -351,6 +351,8 @@ export type Msg = {
   receiptVerified: (no: string) => string;
   /** Ответ на благодарность после выдачи заказа (Direct, ИИ после оплаты). */
   thanksReply: string;
+  /** Оплата из страны, для которой у магазина нет способа оплаты (Direct, core/inbox/triage). */
+  foreignPayReply: string;
   smartSearchResults: (q: string, n: number) => string;
   rateBtn: (no: string) => string;
   chooseProductToRate: string;
@@ -477,6 +479,8 @@ const ru: Msg = {
     `📨 Чек по заказу #${no} получен, но автоматическая проверка не прошла. Заказ отправлен продавцу на ручную проверку — файлы придут после подтверждения.`,
   receiptVerified: (no) => `✅ Спасибо! Чек проверен. Заказ #${no} — отправляю файлы…`,
   thanksReply: "Рада помочь! Хороших уроков 🌷",
+  foreignPayReply:
+    "Оплату из вашей страны сейчас подключаем. Ваш вопрос уже у продавца: вам напишут здесь, как оплатить.",
   smartSearchResults: (q, n) => `🤖 По смыслу запроса «${q}» подобрано: ${n}`,
   rateBtn: (no) => `⭐ Оценить (#${no})`,
   chooseProductToRate: "Какой товар из этого заказа оцениваете?",
@@ -1022,6 +1026,8 @@ const kk: Msg = {
     `📨 #${no} тапсырысы бойынша чек алынды, бірақ автоматты тексеру өтпеді. Тапсырыс сатушыға қолмен тексеруге жіберілді — файлдар растаудан кейін келеді.`,
   receiptVerified: (no) => `✅ Рақмет! Чек тексерілді. Тапсырыс #${no} — файлдарды жіберудемін…`,
   thanksReply: "Көмектескеніме қуаныштымын! Сабақтарыңыз сәтті өтсін 🌷",
+  foreignPayReply:
+    "Сіздің елден төлем қабылдауды қазір қосып жатырмыз. Сұрағыңыз сатушыға жіберілді — ол осында қалай төлеуге болатынын жазады.",
   smartSearchResults: (q, n) => `🤖 «${q}» сұрауының мағынасы бойынша таңдалды: ${n}`,
   rateBtn: (no) => `⭐ Бағалау (#${no})`,
   chooseProductToRate: "Осы тапсырыстан қай тауарды бағалайсыз?",
@@ -1331,6 +1337,8 @@ const en: Msg = {
     `📨 Receipt received for order #${no}, but automatic verification failed. The order was sent to the seller for manual review — files will arrive after confirmation.`,
   receiptVerified: (no) => `✅ Thank you! Receipt verified. Order #${no} — sending files…`,
   thanksReply: "Happy to help! Have great lessons 🌷",
+  foreignPayReply:
+    "We are setting up payments from your country right now. Your question has been passed to the seller, who will write here how to pay.",
   smartSearchResults: (q, n) => `🤖 Picked by meaning for “${q}”: ${n}`,
   rateBtn: (no) => `⭐ Rate (#${no})`,
   chooseProductToRate: "Which product from this order are you rating?",
@@ -1689,6 +1697,8 @@ const uz: Msg = {
     `📨 #${no} buyurtmasi uchun chek qabul qilindi, lekin avtomatik tekshiruv o‘tmadi. Buyurtma sotuvchiga qo‘lda tekshirish uchun yuborildi — fayllar tasdiqlangandan so‘ng keladi.`,
   receiptVerified: (no) => `✅ Rahmat! Chek tekshirildi. Buyurtma #${no} — fayllar yuborilmoqda…`,
   thanksReply: "Yordam berganimdan xursandman! Darslaringiz yaxshi o‘tsin 🌷",
+  foreignPayReply:
+    "Davlatingizdan to‘lovni hozir ulayapmiz. Savolingiz sotuvchiga yuborildi — u shu yerda qanday to‘lashni yozadi.",
   smartSearchResults: (q, n) => `🤖 «${q}» so‘rovi ma’nosi bo‘yicha tanlandi: ${n}`,
   rateBtn: (no) => `⭐ Baholash (#${no})`,
   chooseProductToRate: "Ushbu buyurtmadan qaysi mahsulotni baholaysiz?",

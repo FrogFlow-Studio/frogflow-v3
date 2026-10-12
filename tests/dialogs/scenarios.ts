@@ -328,6 +328,11 @@ export interface Scenario {
    * ключа ИИ нет, работает запасной разбор по названиям.
    */
   countryAi?: Array<{ country: string; answer_only: boolean }>;
+  /**
+   * Разбор реплики перед обращением (core/inbox/triage): ответы инструмента
+   * triage по вызовам — маршрут настоящий, подменён только ответ API модели.
+   */
+  triage?: Array<{ kind: "chatter" | "foreign_pay" | "other"; country?: string }>;
   /** Instagram/WhatsApp: ник покупателя во входящем. */
   username?: string;
   /** Instagram (только `full`): правила комментариев Zernio клиента (список /comment-automations). */
@@ -554,6 +559,165 @@ export const SCENARIOS: Scenario[] = [
       {
         say: { text: "Спасибо" },
         expect: { notSays: [(c) => c.thanksReply], sellerNotices: 0 },
+      },
+    ],
+  },
+  // ───── «Спасибо», эмодзи, «+» без обращения; оплата из страны без способа (Копилка 12.10) ─────
+  {
+    id: "triage-chatter-no-ticket-ig-ru",
+    title:
+      "«Благодарю! 🌹» и «🔥» без заказа — бот молчит, обращение не открывается; вопрос после них уходит продавцу обращением",
+    origin:
+      "Копилка 12.10, разбор 133 обращений: 22 обращения на «Благодарю! 🌹» (#123), «Браво!» (#116), «🔥» (#65), «Я подписан(а)»",
+    channel: "instagram",
+    locale: "ru",
+    products: PRODUCTS,
+    full: true,
+    modules: { helpdesk: true, manager_chat: true },
+    triage: [{ kind: "chatter" }, { kind: "chatter" }, { kind: "other" }],
+    steps: [
+      { say: { text: "Благодарю! 🌹" }, expect: { silent: true, sellerNotices: 0 } },
+      { say: { text: "🔥🔥" }, expect: { silent: true, sellerNotices: 0 } },
+      {
+        say: { text: "Есть папка МО русского языка?" },
+        expect: { silent: true, sellerNotices: 1 },
+      },
+    ],
+  },
+  {
+    id: "triage-chatter-switch-off-ig-ru",
+    title:
+      "«Не открывать обращение на «спасибо»» выключено — «Благодарю! 🌹» открывает обращение, как раньше",
+    origin: "Яков 11.10: новое поведение бота — переключатель в настройках",
+    channel: "instagram",
+    locale: "ru",
+    products: PRODUCTS,
+    full: true,
+    modules: { helpdesk: true, manager_chat: true },
+    triage: [{ kind: "chatter" }],
+    arrange: (r) => {
+      r.db.tables.app_settings!.push({ key: "chat_skip_chatter", value: "false" });
+    },
+    steps: [{ say: { text: "Благодарю! 🌹" }, expect: { sellerNotices: 1 } }],
+  },
+  {
+    id: "triage-foreign-pay-belarus-ig-ru",
+    title:
+      "«В бел. руб можно» — один ответ «оплату из вашей страны подключаем», вопрос продавцу обращением; второй такой вопрос — без повторного ответа",
+    origin:
+      "Копилка 12.10, обращение #118: кулик виктория «В бел. руб можно» — бот молчал, она ушла: «Жаль(спасибо.»",
+    channel: "instagram",
+    locale: "ru",
+    products: PRODUCTS,
+    full: true,
+    modules: { helpdesk: true, manager_chat: true },
+    triage: [
+      { kind: "foreign_pay", country: "BY" },
+      { kind: "foreign_pay", country: "BY" },
+    ],
+    steps: [
+      {
+        say: { text: "В бел. руб можно" },
+        expect: {
+          count: 1,
+          says: [(c) => c.foreignPayReply],
+          notSays: ["Передал ваш вопрос продавцу", /Обращение #/],
+          sellerNotices: 1,
+        },
+      },
+      {
+        say: { text: "А картой Беларусбанка можно оплатить?" },
+        expect: { silent: true, sellerNotices: 0 },
+      },
+    ],
+  },
+  {
+    id: "triage-foreign-pay-race-ig-ru",
+    title:
+      "два вопроса об оплате из Беларуси одновременно и повтор вебхука — ответ «оплату подключаем» уходит один раз",
+    origin: "CLAUDE.md «Один раз»: двойная доставка, два сообщения подряд",
+    channel: "instagram",
+    locale: "ru",
+    products: PRODUCTS,
+    full: true,
+    modules: { helpdesk: true, manager_chat: true },
+    triage: [
+      { kind: "foreign_pay", country: "BY" },
+      { kind: "foreign_pay", country: "BY" },
+      { kind: "foreign_pay", country: "BY" },
+    ],
+    steps: [
+      {
+        say: { burst: ["В бел. руб можно", "Я из Минска"] },
+        expect: { count: 1, says: [(c) => c.foreignPayReply] },
+      },
+      { say: { repeat: true }, expect: { silent: true } },
+    ],
+  },
+  {
+    id: "triage-foreign-pay-uzbekistan-strict-ig-ru",
+    title:
+      "«Только по заказам» (по умолчанию): «я из Узбекистана, как оплатить?» — бот отвечает «оплату подключаем», а не молчит",
+    origin: "Копилка 12.10, обращения #122, #125 (Узбекистан): бот молчал, оплата мимо бота",
+    channel: "instagram",
+    locale: "ru",
+    products: PRODUCTS,
+    full: true,
+    modules: { helpdesk: true, manager_chat: true },
+    triage: [{ kind: "foreign_pay", country: "UZ" }],
+    steps: [
+      {
+        say: { text: "Здравствуйте, я из Узбекистана, как оплатить?" },
+        expect: { count: 1, says: [(c) => c.foreignPayReply], sellerNotices: 1 },
+      },
+    ],
+  },
+  {
+    id: "triage-foreign-pay-method-exists-ig-ru",
+    title:
+      "у магазина есть способ оплаты для Кыргызстана — «оплату подключаем» не пишем, вопрос идёт прежним путём",
+    origin: "ожидание: ответ только для стран без способа оплаты",
+    channel: "instagram",
+    locale: "ru",
+    products: PRODUCTS,
+    full: true,
+    modules: { helpdesk: true, manager_chat: true },
+    triage: [{ kind: "foreign_pay", country: "KG" }],
+    arrange: (r) => {
+      r.db.tables.payment_methods!.push({
+        id: "pm-kg",
+        bot_id: r.db.tables.payment_methods![0]!.bot_id,
+        is_active: true,
+        sort_order: 2,
+        country_code: "KG",
+        country_name: "Кыргызстан",
+        currency: "KGS",
+      });
+    },
+    steps: [
+      {
+        say: { text: "Можно посчитать в сомах?" },
+        expect: { notSays: [(c) => c.foreignPayReply], sellerNotices: 1 },
+      },
+    ],
+  },
+  {
+    id: "triage-foreign-pay-switch-off-ig-ru",
+    title: "«Отвечать про оплату из других стран» выключено — бот не отвечает, вопрос продавцу",
+    origin: "Яков 11.10: новое поведение бота — переключатель в настройках",
+    channel: "instagram",
+    locale: "ru",
+    products: PRODUCTS,
+    full: true,
+    modules: { helpdesk: true, manager_chat: true },
+    triage: [{ kind: "foreign_pay", country: "BY" }],
+    arrange: (r) => {
+      r.db.tables.app_settings!.push({ key: "chat_foreign_pay", value: "false" });
+    },
+    steps: [
+      {
+        say: { text: "В бел. руб можно" },
+        expect: { notSays: [(c) => c.foreignPayReply], sellerNotices: 1 },
       },
     ],
   },

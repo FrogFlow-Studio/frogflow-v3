@@ -141,6 +141,7 @@ import { receiveProof, showOrders, showPoints } from "./receipt.server";
 import { cancelFreshOrder, emailOptional, filesHereOnce, textReceipt } from "./evening.server";
 import { looksLikeEmailAttempt, wantsFilesHere } from "@/core/orders/email-ask";
 import { countryAnswer, countryFromChat } from "./country.server";
+import { triageQuestion } from "./triage.server";
 
 export async function handleShopMessage(
   ctx: TenantContext,
@@ -745,8 +746,9 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
         // фото чека по-прежнему принимается (выше). «Пришлите чек» на «точно
         // придёт? боюсь мошенников» и «вместе сколько?» отпугивало (AATeach 11.10).
         // Без отметки «передал»: бот ничего не сказал, и «оплатила» потом
-        // по-прежнему получит просьбу о чеке.
-        return "question";
+        // по-прежнему получит просьбу о чеке. «Спасибо», эмодзи, оплата из
+        // страны без способа оплаты — разбирает модель (shop/triage).
+        return (await triageQuestion(s, text)) ?? "question";
       }
       break;
     }
@@ -821,7 +823,11 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
       if (await listWordsHint(s)) return "handled";
       // После оплаты: «отправьте на почту», «не пришло» — понимает модель (core/postpay).
       const { postPayAssist } = await import("./postpay.server");
-      return (await postPayAssist(s, text)) ?? "question";
+      const after = await postPayAssist(s, text);
+      if (after) return after;
+      // «Спасибо», эмодзи, «+» — без обращения; оплата из страны без способа
+      // оплаты — честный ответ и вопрос продавцу (Копилка 12.10, shop/triage).
+      return (await triageQuestion(s, text)) ?? "question";
     }
   }
 }

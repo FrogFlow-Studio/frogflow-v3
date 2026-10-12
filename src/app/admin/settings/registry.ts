@@ -326,6 +326,15 @@ export const SETTINGS_REGISTRY: readonly SettingsEntry[] = [
   }),
   E({ id: "ice-breakers", theme: "channels", title: "settings.ib.title", module: "instagram" }),
   E({
+    id: "direct-triage",
+    sellsOnly: true,
+    theme: "channels",
+    title: "settings.triage.title",
+    anyModule: ["instagram", "whatsapp"],
+    keys: ["chat_skip_chatter", "chat_foreign_pay"],
+    fields: ["settings.triage.chatterLabel", "settings.triage.foreignLabel"],
+  }),
+  E({
     id: "dbot-whatsapp",
     theme: "channels",
     title: "settings.dbot.title",

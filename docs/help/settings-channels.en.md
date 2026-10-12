@@ -90,3 +90,15 @@ The same settings as for Instagram: the switch, "What to reply to", commands, re
 "Template for messages outside the 24-hour window": WhatsApp allows writing to a buyer in free text only within a day after their message. For order notifications to arrive later as well, enter a Meta-approved template with one parameter and the language after a colon, for example order_update:ru. Without a template the bot tries to send a regular message, and WhatsApp may not let it through.
 
 A cart from the Meta catalog: for the bot to place such an order itself, put the product id, its number or its exact name from the admin panel as the SKU in the Meta catalog.
+
+## Messages without a question and payment from other countries {#direct-triage}
+
+A card in “Payment and settings” when Instagram or WhatsApp and the in-chat shop are on. AI, not a word list, decides what kind of message arrived; the message always stays in “Chat”. AI cost is a fraction of a cent per message, at most $0.30 a day per shop.
+
+## Messages without a question {#direct-chatter}
+
+“Don’t open a ticket for “thank you”, emoji and “+”” is on by default. When a Direct or WhatsApp message has neither a question nor a request (“Thank you! 🌹”, “Bravo!”, “🔥”, “+”, “I’ve subscribed”), the bot stays silent and opens no ticket. AI decides what the message is from the message and the conversation, not from a word list. The message is still visible in “Chat”. To “thank you” after a delivered order the bot still replies once with the “Reply to thank you” text (Settings → Bot texts → Instagram). “Thanks, when will it arrive?” is a question and comes to you as a ticket. Off: every such message opens a ticket, as before.
+
+## Payment from other countries {#direct-foreign-pay}
+
+“Reply about payment from other countries” is on by default. The buyer asks whether they can pay from their country or in their currency (“Can I pay in Belarusian rubles?”, “I’m from Uzbekistan, how do I pay?”, “How much in som?”), and you have no payment method for that country. Once a day the bot replies: “We are setting up payments from your country right now. Your question has been passed to the seller, who will write here how to pay”, and the question comes to you as a ticket so you can send the payment details yourself. Change the text in “Settings → Bot texts → Instagram → Payment from another country”. If the country has a payment method, the bot takes the buyer through the usual path. Russia is not included: Russian card payment or your own details work for it. Off: the bot does not answer such questions, they come to you as tickets.
