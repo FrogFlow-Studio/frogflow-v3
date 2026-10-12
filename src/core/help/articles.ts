@@ -179,14 +179,16 @@ export function searchHelp(query: string, locale: Locale): HelpArticle[] {
 
 /**
  * «Возможно, вам поможет»: до трёх статей по тексту вопроса. Берём только
- * уверенные совпадения (не меньше двух баллов), чтобы не предлагать случайное.
+ * уверенные совпадения (не меньше двух баллов и хотя бы одно слово в ключевых
+ * словах или заголовке), чтобы не предлагать случайное: «спасибо большое»
+ * находило в тексте «Каналов» «спасибо» и «больше» — два балла из одного тела.
  */
 export function suggestHelp(text: string, locale: Locale, max = 3): HelpArticle[] {
   const words = queryWords(text);
   if (!words.length) return [];
   return helpList(locale)
     .map((a) => ({ a, s: scoreArticle(a, words) }))
-    .filter((x) => x.s >= 2)
+    .filter((x) => x.s >= 2 && scoreArticle({ ...x.a, body: "" }, words) > 0)
     .sort((x, y) => y.s - x.s || x.a.slug.localeCompare(y.a.slug))
     .slice(0, max)
     .map((x) => x.a);

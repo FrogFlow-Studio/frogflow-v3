@@ -1108,8 +1108,8 @@
     "скрин сообщения бота с той же суммой — not_receipt, не автовыдача": "src/core/receipts/pure.test.ts › чек, скрин бота и неудачный платёж",
     "чек в другой валюте — переводим сумму заказа и сверяем": "src/core/receipts/verify.server.test.ts › на экране только 227 ₽ — переводим заказ 1100 ₸ и принимаем",
     "чек в другой валюте, сумма после курса не сошлась — amount_mismatch": "src/core/receipts/verify.server.test.ts › сумма после курса не сошлась — amount_mismatch, к продавцу",
-    "PDF идёт в files:annotate и проходит ту же сверку суммы": "src/core/receipts/verify.server.test.ts › PDF идёт в files:annotate и проходит ту же сверку суммы",
-    "картинка по-прежнему идёт в images:annotate": "src/core/receipts/verify.server.test.ts › картинка идёт в images:annotate"
+    "PDF идёт в files:annotate и проходит ту же сверку суммы": "src/core/receipts/verify.server.test.ts › PDF без текстового слоя уходит в модель документом и проходит ту же сверку суммы",
+    "картинка по-прежнему идёт в images:annotate": "src/core/receipts/verify.server.test.ts › картинка уходит в модель картинкой с типом по байтам"
   },
   "tests/reviews-server.test.ts": {
     "возвращает уникальные товары доставленного заказа этого покупателя": "src/core/reviews/reviews.test.ts › возвращает уникальные товары доставленного заказа этого покупателя",
