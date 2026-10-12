@@ -212,6 +212,10 @@ export async function handleZernioMessage(
       await new Promise((r) => setTimeout(r, PLUS_WAIT.ms));
       delivered = await pending();
       ack = delivered || (await justDelivered());
+      // Первое сообщение, отправленное вручную, Zernio показывает в переписке
+      // не сразу: читаем её ещё раз (Копилка 12.10, maryyyyisaaaa: «Палитру»
+      // прислали ответом на старый комментарий, «+» ушёл в обращение #147).
+      if (!ack && !inStep) ack = await deliverTwoStepFromDm(ctx, who);
     }
     if (!toShop && isTwoStepAcknowledgement(m.text) && ack)
       return processed("второе сообщение по комментарию");
@@ -242,7 +246,13 @@ export async function handleZernioMessage(
       (await sells())
     ) {
       const { plusAnswersUnknownPrompt } = await import("./automations.server");
-      const asked = await plusAnswersUnknownPrompt(ctx, who);
+      const asked = await plusAnswersUnknownPrompt(
+        ctx,
+        who,
+        undefined,
+        undefined,
+        m.text?.trim() === "+",
+      );
       if (asked === "asked") return processed("«+» без правила — вопрос о товаре уже задан");
       if (asked === "ask") {
         const locale = customer.state.locale ?? ctx.tenant.settings.default_locale ?? "ru";

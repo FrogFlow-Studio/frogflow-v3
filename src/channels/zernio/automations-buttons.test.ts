@@ -493,6 +493,19 @@ describe("Comment-to-DM: прежний призыв по умолчанию м�
     expect(await plusAnswersUnknownPrompt(ctx, who, api)).toBeNull();
   });
 
+  it("голый «+», а наших сообщений в переписке Zernio нет — один вопрос о товаре в сутки (Копилка 12.10, maryyyyisaaaa)", async () => {
+    const { plusAnswersUnknownPrompt } = await import("./automations.server");
+    const { ctx, db, api, tail } = promptSetup("v2");
+    const who = { accountId: "acc-1", conversationId: "conv-9", username: "2484239145397793" };
+    tail.mockResolvedValue([]);
+    // Не голый «+» («да», «хочу») без сообщения бота — прежний путь.
+    expect(await plusAnswersUnknownPrompt(ctx, who, api)).toBeNull();
+    expect(await plusAnswersUnknownPrompt(ctx, who, api, undefined, true)).toBe("ask");
+    expect(await plusAnswersUnknownPrompt(ctx, who, api, undefined, true)).toBe("asked");
+    const trail = db.tables.zernio_logs!.filter((l) => l.event_type === "two_step_dm_unmatched");
+    expect(trail).toHaveLength(1);
+  });
+
   it("продавец сам убрал призыв из текста — правило не трогаем", async () => {
     const { listAutomations, getAutomationsMeta } = await import("./automations.server");
     const { ctx, api, update } = promptSetup("v2", "Свой текст без призыва");

@@ -13,6 +13,7 @@ import { handoffReply, pricelistHandoffReply, unavailableReply } from "@/core/co
 import { VOICE_WRITE_TEXT } from "@/channels/zernio/nontext";
 import { rateLimitKey } from "@/core/storefront/rate-limit";
 import { CLIENT_CALLS } from "@/core/consultant/rate.server";
+import { PLUS_WAIT } from "@/channels/zernio/handle-message";
 
 /** Позиция прайса консультанта BOVI (consultant_catalog_json). */
 export interface PricelistItem {
@@ -4253,6 +4254,46 @@ export const SCENARIOS: Scenario[] = [
       {
         say: { text: "Каспий банк РК" },
         expect: { notSays: ["Kaspi Gold 4400 4302 1234 5678"] },
+      },
+    ],
+  },
+  {
+    id: "plus-hand-sent-first-dm-ig-ru",
+    title:
+      "«+» на первое сообщение, отправленное вручную (в переписке Zernio его нет): вопрос «какой материал?» с «Каталогом», а не обращение",
+    origin:
+      "Копилка 12.10 18:29, maryyyyisaaaa: «Палитру» прислали ответом на старый комментарий «Уголок», «+» → обращение #147, «Купить» не пришла",
+    channel: "instagram",
+    locale: "ru",
+    full: true,
+    modules: { helpdesk: true, manager_chat: true },
+    username: "2484239145397793",
+    tenantSettings: { zernio: { profile_id: "prof-1", account_ids: ["acc-1"] } },
+    products: [{ id: P1, name: "Палитра средств выразительности", price: 1700 }],
+    automations: [
+      {
+        id: "pal",
+        name: "Палитра",
+        accountId: "acc-1",
+        trigger: "comment",
+        keywords: [],
+        isActive: true,
+        postTitle: 'Пишите в комментариях слово "Палитра" и я вышлю подробную информацию.',
+        dmMessage: "Спасибо за интерес к материалу «Палитра средств выразительности»",
+        buttons: [{ type: "postback", title: "Купить", payload: `PROD:${P1}` }],
+      },
+    ],
+    arrange: () => {
+      PLUS_WAIT.ms = 0;
+    },
+    steps: [
+      {
+        say: { text: "+" },
+        expect: { says: [(c) => c.plusWhichProduct], sellerNotices: 0 },
+      },
+      {
+        say: { text: "+" },
+        expect: { notSays: [(c) => c.plusWhichProduct] },
       },
     ],
   },
