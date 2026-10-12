@@ -10,6 +10,7 @@ import {
   receiptPaymentNo,
 } from "./auto-check";
 import { getSubscription, type VipGroup } from "./vip";
+import { mockReceiptModel, resetReceiptModel } from "../../../tests/receipt-model";
 
 /**
  * Автопроверка чека за VIP-подписку: по настройке продавца (по умолчанию
@@ -57,30 +58,22 @@ function setup(opts: { auto?: boolean } = {}) {
   return { db, ctx, group, sub };
 }
 
-function mockVision(text: string) {
-  const fetchMock = vi.fn(
-    async () =>
-      new Response(JSON.stringify({ responses: [{ fullTextAnnotation: { text } }] }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      }),
-  );
-  vi.stubGlobal("fetch", fetchMock);
-  return fetchMock;
-}
+/** Модель «прочитала» в чеке этот текст. */
+const mockRead = (text: string) => mockReceiptModel(text);
 
 const file = (n: number) => ({ bytes: new Uint8Array([9, 8, n]), mime: "image/jpeg" });
 
-beforeEach(() => setEnvForTests({ GOOGLE_VISION_API_KEY: "test-key" }));
+beforeEach(() => setEnvForTests({ ANTHROPIC_API_KEY: "test-key" }));
 afterEach(() => {
   setEnvForTests(undefined);
   vi.unstubAllGlobals();
+  resetReceiptModel();
 });
 
 describe("автопроверка чека VIP-подписки", () => {
   it("по умолчанию выключена — чек не читаем, решает продавец", async () => {
     const { ctx, group, sub } = setup({ auto: false });
-    const fetchMock = mockVision("Сумма: 5000 KZT");
+    const fetchMock = mockRead("Сумма: 5000 KZT");
     expect(await autoCheckVipProof(ctx, group, await sub(), file(1))).toEqual({ status: "off" });
     expect(fetchMock).not.toHaveBeenCalled();
     expect((await sub()).status).toBe("pending_payment");
@@ -88,7 +81,7 @@ describe("автопроверка чека VIP-подписки", () => {
 
   it("чек на цену тарифа — подписка оформлена сама, ссылка покупателю, запись в журнале", async () => {
     const { db, ctx, group, sub } = setup();
-    mockVision("Перевод выполнен 27.09.2026 12:00. № квитанции 123456789. Сумма: 5 000 ₸");
+    mockRead("Перевод выполнен 27.09.2026 12:00. № квитанции 123456789. Сумма: 5 000 ₸");
     const r = await autoCheckVipProof(ctx, group, await sub(), file(1));
     expect(r).toMatchObject({
       status: "confirmed",
@@ -113,7 +106,7 @@ describe("автопроверка чека VIP-подписки", () => {
 
   it("недоплата в той же валюте — к продавцу с причиной, подписка ждёт", async () => {
     const { ctx, group, sub } = setup();
-    mockVision("Перевод выполнен 27.09.2026 12:00. Сумма: 4 999 ₸");
+    mockRead("Перевод выполнен 27.09.2026 12:00. Сумма: 4 999 ₸");
     const r = await autoCheckVipProof(ctx, group, await sub(), file(1));
     expect(r.status).toBe("manual");
     expect((await sub()).status).toBe("pending_payment");
@@ -122,7 +115,7 @@ describe("автопроверка чека VIP-подписки", () => {
 
   it("тот же файл по другой заявке — не продлевает второй раз", async () => {
     const { ctx, group, sub } = setup();
-    mockVision("Перевод выполнен 27.09.2026 12:00. Сумма: 5 000 ₸");
+    mockRead("Перевод выполнен 27.09.2026 12:00. Сумма: 5 000 ₸");
     expect((await autoCheckVipProof(ctx, group, await sub(), file(1))).status).toBe("confirmed");
     const again = await autoCheckVipProof(ctx, group, await sub(SUB2), file(1));
     expect(again).toMatchObject({
@@ -140,14 +133,14 @@ describe("автопроверка чека VIP-подписки", () => {
       order_no: 5,
       payment_proof_hash: proofHashes(file(1).bytes).stored,
     });
-    mockVision("Перевод выполнен 27.09.2026 12:00. Сумма: 5 000 ₸");
+    mockRead("Перевод выполнен 27.09.2026 12:00. Сумма: 5 000 ₸");
     const r = await autoCheckVipProof(ctx, group, await sub(), file(1));
     expect(r).toMatchObject({ status: "manual", reason: expect.stringMatching(/заказу №5/) });
   });
 
   it("не чек или сбой разбора — к продавцу, без продления", async () => {
     const { ctx, group, sub } = setup();
-    mockVision("котик на диване");
+    mockRead("котик на диване");
     expect((await autoCheckVipProof(ctx, group, await sub(), file(2))).status).toBe("manual");
     expect((await sub()).status).toBe("pending_payment");
   });
@@ -156,19 +149,19 @@ describe("автопроверка чека VIP-подписки", () => {
     const { ctx, group, sub } = setup();
     // Приём чека занял отпечаток за первой заявкой, продавец подтвердил её сам.
     await markVipProof(ctx, SUB, file(3).bytes);
-    mockVision("Перевод выполнен 27.09.2026 12:00. Сумма: 5 000 ₸");
+    mockRead("Перевод выполнен 27.09.2026 12:00. Сумма: 5 000 ₸");
     const r = await autoCheckVipProof(ctx, group, await sub(SUB2), file(3));
     expect(r).toMatchObject({ status: "manual", reason: expect.stringMatching(/другой заявке/) });
   });
 
   it("чек старше заявки или без даты — к продавцу", async () => {
     const { ctx, group, sub } = setup();
-    mockVision("Перевод выполнен 20.08.2026 12:00. Сумма: 5 000 ₸");
+    mockRead("Перевод выполнен 20.08.2026 12:00. Сумма: 5 000 ₸");
     expect(await autoCheckVipProof(ctx, group, await sub(), file(4))).toMatchObject({
       status: "manual",
       reason: expect.stringMatching(/раньше заявки/),
     });
-    mockVision("Перевод выполнен. Сумма: 5 000 ₸");
+    mockRead("Перевод выполнен. Сумма: 5 000 ₸");
     expect(await autoCheckVipProof(ctx, group, await sub(), file(5))).toMatchObject({
       status: "manual",
       reason: expect.stringMatching(/не нашлась дата/),
@@ -179,7 +172,7 @@ describe("автопроверка чека VIP-подписки", () => {
   it("чек, присланный за VIP, заказ магазина не оплачивает автоматически", async () => {
     const { ctx } = setup();
     await markVipProof(ctx, SUB, file(6).bytes);
-    mockVision("Перевод выполнен 27.09.2026 12:00. Сумма: 5 000 ₸");
+    mockRead("Перевод выполнен 27.09.2026 12:00. Сумма: 5 000 ₸");
     const { verifyReceipt } = await import("@/core/receipts/verify.server");
     const r = await verifyReceipt(ctx, {
       bytes: file(6).bytes,

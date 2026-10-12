@@ -1,5 +1,4 @@
 import { PREVIEW_AI_OFF, previewReadonly } from "@/lib/preview";
-import { env } from "@/config/env";
 import { proofHashes } from "@/core/orders/proof-hash";
 import { operationKey, receiptOperationId } from "@/core/billing/invoice-check";
 import type { TenantContext } from "@/core/tenant/resolve.server";
@@ -23,28 +22,50 @@ import {
   isPdf,
   looksLikeReceipt,
   pdfFromHeader,
-  visionUnreadableImage,
+  unreadableReceiptImage,
   extractMoneyAmounts,
+  receiptBeforeOrder,
   type ReceiptAnalysis,
 } from "./pure";
-import { serverFailure } from "@/lib/server-failure";
 import { sha256Hex } from "@/lib/hash";
+import { sniffProofMime } from "@/core/orders/proof-file";
+import {
+  RECEIPT_AI_CAP_KEY,
+  RECEIPT_AI_DAILY_USD,
+  RECEIPT_AI_MAX_IMAGE_BYTES,
+  RECEIPT_AI_RESERVE_USD,
+  parseReceiptReading,
+  readingText,
+  receiptCostUsd,
+  readingSummary,
+  receiptImageType,
+  type ReceiptReading,
+} from "./reader";
+import { callReceiptModel, receiptModelConfigured, type ReceiptFile } from "./reader.server";
 
 /**
  * Автопроверка чека — не то же, что модуль receipt_ocr. Модуль значит «тариф
- * покрывает и у платформы есть Vision», переключатель receipt_ocr_auto —
- * продавец сам решает, гонять ли OCR прямо сейчас (ключ отсутствует → включено).
+ * покрывает и у платформы есть ключ ИИ», переключатель receipt_ocr_auto —
+ * продавец сам решает, проверять ли чеки прямо сейчас (ключ отсутствует → включено).
+ * Читает чек модель (reader.ts), сверяют с заказом прежние правила (pure.ts).
  */
 export const OCR_AUTO_KEY = "receipt_ocr_auto";
 export const OCR_USAGE_KEY = "receipt_ocr_usage";
+/**
+ * «on» — чек, который совпал с заказом, выдаёт заказ сам. По умолчанию
+ * выключено (решение 12.10): совпавший чек уходит продавцу с пометкой
+ * «совпал», подтверждает он кнопкой.
+ */
+export const OCR_DELIVER_KEY = "receipt_ocr_deliver";
 const MAX_PDF_BYTES = 7 * 1024 * 1024;
 
-export function visionConfigured(): boolean {
-  return Boolean(env().GOOGLE_VISION_API_KEY?.trim());
+/** Читать чеки есть чем: ключ модели у платформы. */
+export function receiptReaderConfigured(): boolean {
+  return receiptModelConfigured();
 }
 
 export async function receiptOcrAutoEnabled(ctx: TenantContext): Promise<boolean> {
-  if (!ctx.tenant.modules.receipt_ocr || !visionConfigured()) return false;
+  if (!ctx.tenant.modules.receipt_ocr || !receiptReaderConfigured()) return false;
   // Чек уже принят, покупателя не бросаем: настройку или счётчик не прочитали —
   // авто-проверки нет, чек уходит продавцу на ручную (безопасная сторона); сбой — в Sentry.
   try {
@@ -53,6 +74,16 @@ export async function receiptOcrAutoEnabled(ctx: TenantContext): Promise<boolean
     return !(await receiptLimitReached(ctx));
   } catch (e) {
     await reportError(e, { where: "receipt.ocr-gate", botId: ctx.tenant.id });
+    return false;
+  }
+}
+
+/** Совпавший чек выдаёт заказ сам (переключатель продавца, по умолчанию нет). */
+export async function receiptAutoDeliver(ctx: TenantContext): Promise<boolean> {
+  try {
+    return (await getSettingStrict(ctx, OCR_DELIVER_KEY))?.trim() === "on";
+  } catch (e) {
+    await reportError(e, { where: "receipt.deliver-gate", botId: ctx.tenant.id });
     return false;
   }
 }
@@ -88,83 +119,34 @@ export function parseUsage(
 }
 
 /** Прибавка атомарная: альбом из нескольких фото не теряет вызовы в месячном счётчике. */
-async function recordVisionCall(ctx: TenantContext): Promise<void> {
+async function recordReceiptCall(ctx: TenantContext): Promise<void> {
   await updateSettingAtomic(ctx, OCR_USAGE_KEY, (raw) => {
     const u = parseUsage(raw);
     return JSON.stringify({ ...u, count: u.count + 1, monthCount: u.monthCount + 1 });
   });
 }
 
-type VisionPage = {
-  error?: { message?: string };
-  fullTextAnnotation?: { text?: string };
-  textAnnotations?: Array<{ description?: string }>;
-};
-const pageText = (p: VisionPage | undefined) =>
-  p?.fullTextAnnotation?.text?.trim() || p?.textAnnotations?.[0]?.description?.trim() || "";
-
-async function visionImage(bytes: Uint8Array, apiKey: string): Promise<string> {
-  const res = await fetch(
-    `https://vision.googleapis.com/v1/images:annotate?key=${encodeURIComponent(apiKey)}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      signal: AbortSignal.timeout(15_000),
-      body: JSON.stringify({
-        requests: [
-          {
-            image: { content: Buffer.from(bytes).toString("base64") },
-            features: [{ type: "DOCUMENT_TEXT_DETECTION" }],
-          },
-        ],
-      }),
-    },
-  );
-  const json = (await res.json()) as { error?: { message?: string }; responses?: VisionPage[] };
-  if (!res.ok) throw new Error(json.error?.message || `Vision HTTP ${res.status}`);
-  const first = json.responses?.[0];
-  if (first?.error?.message) throw serverFailure(first.error.message);
-  return pageText(first);
+/**
+ * Потолок дня на чтение чеков, $: расход берём из того же учёта ИИ-баланса
+ * (`ai_charges:<день>`, вид receipt_ocr). Не прочитали — считаем потолок
+ * достигнутым: чек смотрит продавец.
+ */
+async function receiptDailyCapReached(ctx: TenantContext): Promise<boolean> {
+  const { AI_CHARGES_PREFIX } = await import("@/core/ai/balance");
+  const { parseCharges } = await import("@/core/ai/pure");
+  const date = new Date().toISOString().slice(0, 10);
+  const capRaw = Number((await getSettingStrict(ctx, RECEIPT_AI_CAP_KEY))?.trim());
+  const cap = Number.isFinite(capRaw) && capRaw >= 0 ? capRaw : RECEIPT_AI_DAILY_USD;
+  const spent = parseCharges(await getSettingStrict(ctx, `${AI_CHARGES_PREFIX}${date}`), date).uses
+    .receipt_ocr?.usd;
+  return (spent ?? 0) >= cap;
 }
 
-/** PDF — files:annotate (до 5 страниц синхронно). Банковский чек из РФ/РБ часто PDF. */
-async function visionPdf(bytes: Uint8Array, apiKey: string): Promise<string> {
-  if (bytes.length > MAX_PDF_BYTES) throw new Error("PDF слишком большой для онлайн-OCR");
-  const res = await fetch(
-    `https://vision.googleapis.com/v1/files:annotate?key=${encodeURIComponent(apiKey)}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      signal: AbortSignal.timeout(20_000),
-      body: JSON.stringify({
-        requests: [
-          {
-            inputConfig: {
-              content: Buffer.from(bytes).toString("base64"),
-              mimeType: "application/pdf",
-            },
-            features: [{ type: "DOCUMENT_TEXT_DETECTION" }],
-            pages: [1, 2, 3, 4, 5],
-          },
-        ],
-      }),
-    },
-  );
-  const json = (await res.json()) as {
-    error?: { message?: string };
-    responses?: Array<{ error?: { message?: string }; responses?: VisionPage[] }>;
-  };
-  if (!res.ok) throw new Error(json.error?.message || `Vision HTTP ${res.status}`);
-  const file = json.responses?.[0];
-  if (file?.error?.message) throw serverFailure(file.error.message);
-  return (file?.responses ?? []).map(pageText).filter(Boolean).join("\n");
-}
-
-/** Текст, уже лежащий в PDF (Kaspi — вектор, не скан): бесплатно и точнее Vision. */
+/** Текст, уже лежащий в PDF (Kaspi — вектор, не скан): бесплатно и точнее модели. */
 async function embeddedPdfText(bytes: Uint8Array): Promise<string> {
   try {
     const { extractText } = await import("unpdf");
-    // Копия: pdf.js забирает (detach) буфер, а байты нужны дальше — Vision и отпечаток чека.
+    // Копия: pdf.js забирает (detach) буфер, а байты нужны дальше — модели и отпечатку чека.
     const { text } = await extractText(bytes.slice(), { mergePages: true });
     return text.trim();
   } catch {
@@ -172,47 +154,79 @@ async function embeddedPdfText(bytes: Uint8Array): Promise<string> {
   }
 }
 
-export async function readReceiptText(
+/** Прочитанный чек: текст для правил и, если читала модель, её разбор. */
+export type ReceiptRead = { text: string; reading: ReceiptReading | null };
+
+export async function readReceipt(
   ctx: TenantContext,
   bytes: Uint8Array,
   mime: string,
   /** Чек за подписку платформе — не проверка клиента, в его лимит не идёт. */
   opts: { countUsage?: boolean } = {},
-): Promise<string> {
+): Promise<ReceiptRead> {
   const pdf = isPdf(mime, bytes);
-  // Без вызова и без списания лимита: ответ Vision всё равно был бы ошибкой.
-  if (!pdf && visionUnreadableImage(bytes))
+  // Без вызова и без списания лимита: такой файл модель не примет.
+  if (!pdf && unreadableReceiptImage(bytes))
     throw new Error("Фото в формате HEIC/AVIF автопроверка не читает — чек посмотрит продавец");
+  let file: ReceiptFile;
   if (pdf) {
     bytes = pdfFromHeader(bytes);
     const embedded = await embeddedPdfText(bytes);
-    if (looksLikeReceipt(embedded) && extractMoneyAmounts(embedded).length >= 1) return embedded;
+    if (looksLikeReceipt(embedded) && extractMoneyAmounts(embedded).length >= 1)
+      return { text: embedded, reading: null };
+    if (bytes.length > MAX_PDF_BYTES) throw new Error("PDF слишком большой для автопроверки");
+    file = { kind: "pdf", base64: Buffer.from(bytes).toString("base64") };
+  } else {
+    const mediaType = receiptImageType(sniffProofMime(bytes), mime);
+    if (!mediaType) throw new Error("Формат файла автопроверка не читает — чек посмотрит продавец");
+    if (bytes.length > RECEIPT_AI_MAX_IMAGE_BYTES)
+      throw new Error("Фото больше 5 МБ — чек посмотрит продавец");
+    file = { kind: "image", mediaType, base64: Buffer.from(bytes).toString("base64") };
   }
   if (previewReadonly()) throw new Error(PREVIEW_AI_OFF);
-  const apiKey = env().GOOGLE_VISION_API_KEY?.trim();
-  if (!apiKey) throw new Error("GOOGLE_VISION_API_KEY не задан");
-  const read = () => (pdf ? visionPdf(bytes, apiKey) : visionImage(bytes, apiKey));
+  if (!receiptReaderConfigured()) throw new Error("ИИ-ключ платформы не задан");
+  const read = async (): Promise<{ r: ReceiptRead; usd: number }> => {
+    const answer = await callReceiptModel(file);
+    const reading = parseReceiptReading(answer.input);
+    if (!reading) throw new Error("ИИ не вернул разбор чека — чек посмотрит продавец");
+    return { r: { text: readingText(reading), reading }, usd: receiptCostUsd(answer.usage) };
+  };
   // Чек за подписку платформе — не за счёт клиента: ни лимита, ни ИИ-баланса.
-  if (opts.countUsage === false) return read();
+  if (opts.countUsage === false) return (await read()).r;
+  if (await receiptDailyCapReached(ctx))
+    throw new Error("Дневной потолок расхода на чтение чеков исчерпан — чек посмотрит продавец");
   // ИИ-баланс клиента (core/ai/balance): кончился — чек посмотрит продавец.
   const { aiReserve, aiSettle, aiRelease } = await import("@/core/ai/balance");
-  const { VISION_USD_PER_CALL } = await import("./audit");
-  const hold = await aiReserve(ctx, "receipt_ocr", VISION_USD_PER_CALL);
+  const hold = await aiReserve(ctx, "receipt_ocr", RECEIPT_AI_RESERVE_USD);
   if (hold === "short") throw new Error("ИИ-баланс магазина закончился — чек посмотрит продавец");
   if (hold === "failed") throw new Error("Сбой учёта ИИ-баланса — чек посмотрит продавец");
-  await recordVisionCall(ctx);
-  let text: string;
+  await recordReceiptCall(ctx);
+  let done: { r: ReceiptRead; usd: number };
   try {
-    text = await read();
+    done = await read();
   } catch (e) {
     await aiRelease(ctx, hold);
     throw e;
   }
-  await aiSettle(ctx, hold, VISION_USD_PER_CALL);
-  return text;
+  await aiSettle(ctx, hold, done.usd);
+  return done.r;
 }
 
-export type VerifyResult = ReceiptAnalysis & { extractedText?: string };
+/** Только текст чека — для сверки счёта подписки (core/billing). */
+export async function readReceiptText(
+  ctx: TenantContext,
+  bytes: Uint8Array,
+  mime: string,
+  opts: { countUsage?: boolean } = {},
+): Promise<string> {
+  return (await readReceipt(ctx, bytes, mime, opts)).text;
+}
+
+export type VerifyResult = ReceiptAnalysis & {
+  extractedText?: string;
+  /** Разбор модели (сумма, дата, номер, получатель) — продавцу в уведомление. */
+  reading?: ReceiptReading | null;
+};
 
 /**
  * Чек только в чужой валюте (покупатель платил рублями за заказ в тенге):
@@ -262,11 +276,13 @@ export async function verifyReceipt(
     now?: Date;
     /** Страна способа оплаты заказа: задана — получатель в чеке сверяется с реквизитами продавца. */
     recipientCountry?: string | null;
+    /** Когда создан заказ: чек, выписанный раньше, — подозрительный. */
+    orderCreatedAt?: string | null;
   },
 ): Promise<VerifyResult> {
-  let text: string;
+  let read: ReceiptRead;
   try {
-    text = await readReceiptText(ctx, p.bytes, p.mime || "image/jpeg", {
+    read = await readReceipt(ctx, p.bytes, p.mime || "image/jpeg", {
       countUsage: p.countUsage,
     });
   } catch (e) {
@@ -276,17 +292,49 @@ export async function verifyReceipt(
       detail: e instanceof Error ? e.message : String(e),
     };
   }
-  // Своя валюта — без недоплаты; чужая (withFx) — прежний допуск по курсу.
-  const analysis = await withFx(
-    analyzeReceiptText(text, p.expectedAmount, p.currency, {
-      underpay: SAME_CURRENCY_UNDERPAY,
-      now: p.now,
-    }),
-    text,
-    p,
-  );
+  const { text, reading } = read;
   const extractedText = text.slice(0, 2000);
-  if (!analysis.ok) return { ...analysis, extractedText };
+  const base = { extractedText, reading };
+  // Что модель поняла по картинке, важнее слов-маркеров: «не чек» и «платёж
+  // не прошёл» — покупателя просим прислать чек успешной оплаты.
+  if (reading && !reading.isReceipt)
+    return {
+      ok: false,
+      reason: "not_receipt",
+      detail: "ИИ: в файле нет подтверждения платежа (не чек банка).",
+      ...base,
+    };
+  if (reading?.status === "failed")
+    return {
+      ok: false,
+      reason: "payment_failed",
+      detail: "ИИ: на скриншоте банк пишет, что платёж не прошёл.",
+      ...base,
+    };
+  // Своя валюта — без недоплаты; чужая (withFx) — прежний допуск по курсу.
+  const analyze = (t: string) =>
+    withFx(
+      analyzeReceiptText(t, p.expectedAmount, p.currency, {
+        underpay: SAME_CURRENCY_UNDERPAY,
+        now: p.now,
+      }),
+      t,
+      p,
+    );
+  let analysis = await analyze(text);
+  // Модель видит чек, а в тексте нет привычных слов («оплата», «перевод»):
+  // сверяем сумму, которую прочитала модель, теми же правилами.
+  if (!analysis.ok && analysis.reason === "not_receipt" && reading?.amount != null) {
+    const labeled = `${text}\nСумма: ${reading.amount} ${reading.currency ?? ""}\nПлатёж выполнен`;
+    analysis = await analyze(labeled);
+    if (!analysis.ok && analysis.reason === "not_receipt")
+      analysis = {
+        ok: false,
+        reason: "amount_mismatch",
+        detail: "ИИ видит чек, но сверить его с заказом не удалось — проверьте вручную.",
+      };
+  }
+  if (!analysis.ok) return { ...analysis, ...base };
   if (p.recipientCountry) {
     // Получатель в чеке против реквизитов способа оплаты, которым платил покупатель.
     const { data: method, error: methodError } = await ctx.db
@@ -303,7 +351,7 @@ export async function verifyReceipt(
         ok: false,
         reason: "ocr_unavailable",
         detail: "Не удалось прочитать реквизиты способа оплаты — чек посмотрит продавец.",
-        extractedText,
+        ...base,
       };
     const hints = recipientHintsFromInstructions(method?.instructions ?? "");
     if (checkReceiptRecipient(text, hints) === "mismatch")
@@ -311,7 +359,7 @@ export async function verifyReceipt(
         ok: false,
         reason: "recipient_mismatch",
         detail: "Получатель в чеке не совпадает с реквизитами способа оплаты — проверьте вручную.",
-        extractedText,
+        ...base,
       };
   }
   const { data: reuse, error: reuseError } = await ctx.db
@@ -327,14 +375,14 @@ export async function verifyReceipt(
       ok: false,
       reason: "receipt_reused",
       detail: "Не удалось сверить чек с прежними заказами — чек посмотрит продавец.",
-      extractedText,
+      ...base,
     };
   if (reuse)
     return {
       ok: false,
       reason: "receipt_reused",
       detail: `Этот же чек уже был принят по заказу №${reuse.display_no ?? reuse.order_no ?? reuse.id}.`,
-      extractedText,
+      ...base,
     };
   // Чек заказа, уже присланный за VIP-подписку (core/vip/auto-check). У VIP
   // номер «заказа» отрицательный — свои отпечатки он сверяет сам.
@@ -355,16 +403,39 @@ export async function verifyReceipt(
         detail: vipError
           ? "Не удалось сверить чек с заявками VIP."
           : "Этот же чек уже был прислан за VIP-подписку.",
-        extractedText,
+        ...base,
       };
   }
   // Тот же перевод новым скриншотом: файл другой, номер квитанции тот же.
   // Аудит чеков оператора (countUsage: false) отметок не оставляет.
   if (p.orderId > 0 && p.countUsage !== false) {
     const taken = await claimReceiptNumber(ctx, p.orderId, text);
-    if (taken) return { ok: false, reason: "receipt_reused", detail: taken, extractedText };
+    if (taken) return { ok: false, reason: "receipt_reused", detail: taken, ...base };
   }
-  return { ...analysis, extractedText };
+  // Сумма сошлась и повтора нет — остались признаки подделки без банка.
+  const doubts = receiptDoubts(text, reading, p.orderCreatedAt);
+  if (doubts.length)
+    return {
+      ok: false,
+      reason: "receipt_suspicious",
+      detail: `Сумма сошлась, но чек подозрительный: ${doubts.join("; ")}.`,
+      ...base,
+    };
+  return { ...analysis, ...base };
+}
+
+/** Признаки, по которым совпавший чек всё же смотрит продавец. */
+export function receiptDoubts(
+  text: string,
+  reading: ReceiptReading | null,
+  orderCreatedAt?: string | null,
+): string[] {
+  const out: string[] = [];
+  if (reading?.status === "pending") out.push("платёж в обработке, не выполнен");
+  if (reading?.editSigns.length) out.push(...reading.editSigns.map((s) => `ИИ: ${s}`));
+  if (orderCreatedAt && receiptBeforeOrder(text, orderCreatedAt))
+    out.push("дата в чеке раньше создания заказа");
+  return out;
 }
 
 /** Ключ отметки номера квитанции в app_settings: хэш цифр номера, сам номер не храним. */
@@ -417,7 +488,7 @@ export async function claimReceiptNumber(
 }
 
 /**
- * Проверка чека покупателя с его лимитом: сверх лимита Vision не зовём, чек
+ * Проверка чека покупателя с его лимитом: сверх лимита модель не зовём, чек
  * уходит продавцу. Попытка записывается до вызова одной атомарной записью
  * (сравнение и замена): альбом из десяти фото — десять параллельных
  * обработчиков — не проскочит мимо счётчика.
@@ -464,4 +535,16 @@ export async function verifyCustomerReceipt(
       now: p.ageCheck === false ? undefined : (p.now ?? now),
     }),
   };
+}
+
+/**
+ * Итог проверки для продавца — в заметку заказа и уведомление. Совпавший чек
+ * банк не подтверждал: «совпал» значит сумма, получатель и даты сошлись и
+ * повтора нет; деньги продавец смотрит у себя в банке.
+ */
+export function sellerReceiptNote(v: VerifyResult): string {
+  const seen = v.reading ? readingSummary(v.reading) : "";
+  if (v.ok)
+    return `✅ Чек совпал с заказом${seen ? `: ${seen}` : `: сумма ${v.matchedAmount}`}. Повтора нет. Проверьте поступление в банке и подтвердите заказ.`;
+  return `${v.detail}${seen ? ` Прочитано: ${seen}.` : ""}`;
 }

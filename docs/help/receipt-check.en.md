@@ -13,7 +13,7 @@ While automatic receipt checking is not working, any picture the buyer sent at t
 
 ## Automatic receipt checking {#auto}
 
-If "Receipt recognition" is connected, a receipt with a matching amount is confirmed by itself, and a doubtful one comes to you with the reason. If recognition is not set up on the platform, the "Receipt recognition" block in [Payment and settings](/admin/settings#receipt-ocr) says so, and all receipts come to you for manual review. Even with automatic checking, compare the incoming payments from time to time: a picture can be faked.
+If "Receipt recognition" is connected, AI reads the receipt and checks it against the order: the notification and the order card show "matched", "suspicious" with the reasons, or "repeat", and you confirm with the button. You can turn on delivering the order right away for a matching receipt in the same block: "Deliver the order right away if the receipt matches". If recognition is not set up on the platform, the "Receipt recognition" block in [Payment and settings](/admin/settings#receipt-ocr) says so, and all receipts come to you for manual review. Even with automatic checking, compare the incoming payments from time to time: a picture can be faked.
 
 ## The buyer sent a file, not a picture {#file}
 

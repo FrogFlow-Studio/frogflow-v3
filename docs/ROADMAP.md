@@ -51,7 +51,7 @@ v2 работают одновременно, поломку у живого к�
 получения, дата с `lead_time_days`, зоны и комиссия, адрес, примечание,
 задаток и `on_receipt`), статусы `accepted → in_production → ready →
 delivered` в боте и админке, напоминание за сутки покупателю и продавцу
-(`/api/cron/fulfillment-reminder`), автопроверка чеков (Google Vision +
+(`/api/cron/fulfillment-reminder`), автопроверка чеков (Claude Haiku 5.5 с 12.10, раньше Google Vision; +
 текст из PDF, правила в `src/core/receipts/pure.ts`, переключатель и
 счётчик в настройках). Для переезда кондитерских и цветочных — работа
 продавца с физическим заказом (`src/core/orders/physical-admin.ts`): заказ

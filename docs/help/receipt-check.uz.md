@@ -13,7 +13,7 @@ Cheklarni avtotekshiruv ishlamayotgan paytda xaridor to‘lov bosqichida yuborga
 
 ## Cheklarni avtotekshiruv {#auto}
 
-«Cheklarni aniqlash» ulangan bo‘lsa, summasi mos kelgan chek o‘zi tasdiqlanadi, shubhalisi esa sababi bilan sizga keladi. Platformada aniqlash sozlanmagan bo‘lsa, [To‘lov va sozlamalar](/admin/settings#receipt-ocr) sahifasidagi «Cheklarni aniqlash» blokida bu haqda yozilgan va barcha cheklar sizga qo‘lda tekshirish uchun keladi. Avtotekshiruvda ham tushumlarni vaqti-vaqti bilan solishtirib turing: rasmni soxtalashtirish mumkin.
+«Cheklarni aniqlash» ulangan bo‘lsa, chekni SI o‘qiydi va buyurtma bilan solishtiradi: xabarnomada va buyurtma kartasida «mos keldi», sabablari bilan «shubhali» yoki «takror» ko‘rinadi, siz esa tugma bilan tasdiqlaysiz. Mos chek bo‘yicha buyurtmani darhol berishni o‘sha yerda yoqish mumkin: «Chek mos kelsa, buyurtmani darhol berish». Platformada aniqlash sozlanmagan bo‘lsa, [To‘lov va sozlamalar](/admin/settings#receipt-ocr) sahifasidagi «Cheklarni aniqlash» blokida bu haqda yozilgan va barcha cheklar sizga qo‘lda tekshirish uchun keladi. Avtotekshiruvda ham tushumlarni vaqti-vaqti bilan solishtirib turing: rasmni soxtalashtirish mumkin.
 
 ## Xaridor rasm emas, fayl yubordi {#file}
 

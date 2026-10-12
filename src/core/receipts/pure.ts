@@ -1,6 +1,6 @@
 import { sniffProofMime } from "@/core/orders/proof-file";
 /**
- * Проверка чека по распознанному тексту — чистые правила, без Vision и базы.
+ * Проверка чека по распознанному тексту — чистые правила, без модели и базы.
  * Допуск ±30% (v1) — для чека в чужой валюте: курс и спред банка дают сумму
  * рядом с заказом. В валюте заказа недоплата не проходит совсем
  * (SAME_CURRENCY_UNDERPAY), переплата — до +30%: скрин карточки товара на
@@ -399,6 +399,20 @@ export function isStaleReceipt(
 }
 
 /** Реквизиты продавца, найденные в тексте способа оплаты: хвосты номеров и имя. */
+/**
+ * Чек выписан раньше заказа: все полные даты в нём раньше дня создания заказа
+ * больше чем на сутки (запас на часовые пояса: 23:10 по Москве — уже следующий
+ * день в Алматы). Дат нет — не знаем, правило молчит.
+ */
+export function receiptBeforeOrder(text: string, orderCreatedAt: string | Date): boolean {
+  const created = new Date(orderCreatedAt).getTime();
+  if (!Number.isFinite(created)) return false;
+  const dates = extractFullDates(text);
+  if (dates.length === 0) return false;
+  const createdDay = Math.floor((created + ALMATY_OFFSET_MS) / 86_400_000);
+  return dates.every((d) => d < createdDay - 1);
+}
+
 export type RecipientHints = { tails: string[]; names: string[] };
 
 const NAME_STOPWORDS = new Set(["ип", "тоо", "ао", "ооо", "kaspi", "gold", "карта", "карты"]);
@@ -480,7 +494,9 @@ export type ReceiptReason =
   /** Все полные даты в чеке старше RECEIPT_MAX_AGE_DAYS по Алматы — чек смотрит продавец. */
   | "receipt_stale"
   /** Покупатель исчерпал автопроверки (src/core/receipts/attempts) — чек смотрит продавец. */
-  | "check_limit";
+  | "check_limit"
+  /** Сумма сошлась, но есть признаки правки, «в обработке» или чек раньше заказа — продавцу. */
+  | "receipt_suspicious";
 
 export type ReceiptAnalysis =
   | {
@@ -579,7 +595,7 @@ export function analyzeReceiptText(
 
 /**
  * PDF начиная с метки «%PDF»: мусор перед ней (до 1024 байт, см.
- * orders/proof-file) Vision и разбор текста не понимают.
+ * orders/proof-file) модель и разбор текста не понимают.
  */
 export function pdfFromHeader(bytes: Uint8Array): Uint8Array {
   const head = String.fromCharCode(...bytes.subarray(0, 1024));
@@ -587,8 +603,8 @@ export function pdfFromHeader(bytes: Uint8Array): Uint8Array {
   return at > 0 ? bytes.subarray(at) : bytes;
 }
 
-/** Фото, которые Vision не читает (HEIC, AVIF): такой чек сразу смотрит продавец. */
-export function visionUnreadableImage(bytes: Uint8Array): boolean {
+/** Фото, которые автопроверка не читает (HEIC, AVIF): такой чек сразу смотрит продавец. */
+export function unreadableReceiptImage(bytes: Uint8Array): boolean {
   const t = sniffProofMime(bytes);
   return t === "image/heic" || t === "image/avif";
 }

@@ -23,7 +23,7 @@ vi.mock("@/core/tenant/resolve.server", () => ({
   tenantContext: (t: unknown) => ({ tenant: t, db: base }),
 }));
 vi.mock("@/core/receipts/verify.server", () => ({
-  visionConfigured: () => true,
+  receiptReaderConfigured: () => true,
   receiptOcrAutoEnabled: async () => true,
 }));
 
@@ -103,7 +103,7 @@ describe("scanNextReceipt — аудит чеков оператора", () => {
     expect(JSON.stringify(base.tables.orders)).toBe(before);
   });
 
-  it("файла нет в Storage — строка «не прочитан», Vision не зовём, идём к следующему", async () => {
+  it("файла нет в Storage — строка «не прочитан», модель не зовём, идём к следующему", async () => {
     base.tables.orders = [order(5), order(6)];
     const { scanNextReceipt } = await import("./receipt-audit.server");
     const d = deps({ [`${BOT}/order-5/1.jpg`]: JPEG }, { ok: true, matchedAmount: 1000 });

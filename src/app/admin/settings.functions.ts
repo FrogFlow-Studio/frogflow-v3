@@ -46,7 +46,7 @@ export const settingsFn = createServerFn({ method: "GET" }).handler(async () => 
     return [] as string[];
   });
   const { platformHasKey } = await import("@/core/search/smart.server");
-  const { visionConfigured } = await import("@/core/receipts/verify.server");
+  const { receiptReaderConfigured } = await import("@/core/receipts/verify.server");
   return {
     settings,
     methods,
@@ -55,7 +55,7 @@ export const settingsFn = createServerFn({ method: "GET" }).handler(async () => 
     pdfWatermark: ctx.tenant.settings.delivery?.pdf_watermark === true,
     recentKeys,
     smartSearchKey: platformHasKey(),
-    visionKey: visionConfigured(),
+    ocrKey: receiptReaderConfigured(),
   };
 });
 

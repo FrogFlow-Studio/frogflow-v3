@@ -468,8 +468,13 @@ export function ReceiptOcrCard({
   const { shop } = settingsRoute.useRouteContext();
   const t = adminT(shop.locale);
   const enabled = settings.receipt_ocr_auto !== "false";
+  const deliver = settings.receipt_ocr_deliver === "on";
   const toggle = useAction(async (v: boolean) => {
     await saveSettingsFn({ data: { receipt_ocr_auto: v ? "true" : "false" } });
+    await router.invalidate();
+  });
+  const toggleDeliver = useAction(async (v: boolean) => {
+    await saveSettingsFn({ data: { receipt_ocr_deliver: v ? "on" : "off" } });
     await router.invalidate();
   });
   let usage = { count: 0, monthCount: 0, month: "" };
@@ -497,13 +502,24 @@ export function ReceiptOcrCard({
         <span className="text-sm">{enabled ? t("settings.ocr.on") : t("settings.ocr.off")}</span>
         <HelpTip article="settings-payment" anchor="receipt-ocr" />
       </div>
+      <div className="mt-3 flex items-center gap-3">
+        <Switch
+          checked={deliver}
+          disabled={toggleDeliver.busy || !hasKey || !enabled}
+          onChange={(v) => void toggleDeliver.run(v).catch(() => {})}
+          label={t("settings.ocr.deliver")}
+        />
+        <span className="text-sm">
+          {deliver ? t("settings.ocr.deliverOn") : t("settings.ocr.deliverOff")}
+        </span>
+      </div>
       <dl className="mt-4 grid grid-cols-2 gap-2 text-sm">
         <dt className="text-muted">{t("settings.ocr.month")}</dt>
         <dd className="tabular-nums">{thisMonth}</dd>
         <dt className="text-muted">{t("settings.ocr.total")}</dt>
         <dd className="tabular-nums">{usage.count}</dd>
       </dl>
-      <ErrorBox error={toggle.error} />
+      <ErrorBox error={toggle.error ?? toggleDeliver.error} />
     </Card>
   );
 }

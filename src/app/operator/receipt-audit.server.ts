@@ -12,7 +12,7 @@ import {
   OCR_REASON_LABEL,
   ocrWouldFromVerify,
   proofPathCandidates,
-  VISION_USD_PER_CALL,
+  RECEIPT_USD_PER_CALL,
   type OcrFailReason,
   type ReceiptAuditInventory,
   type ReceiptAuditRow,
@@ -40,7 +40,7 @@ type OrderProofRow = {
 const ORDER_COLS =
   "id, display_no, order_no, status, total, currency, fulfillment_kind, payment_proof_path, payment_proof_hash, admin_note, created_at";
 
-/** Подряд без файла — быстро, Vision не зовём. Потом один чек с файлом. */
+/** Подряд без файла — быстро, модель не зовём. Потом один чек с файлом. */
 const MAX_MISSING_PER_CALL = 20;
 
 /** Чек — это файл в Storage: путь с папкой. Пусто, NULL и «robokassa» отсеиваются. */
@@ -98,12 +98,13 @@ async function countWithProof(botId: string, beforeId = 0): Promise<number> {
 
 export async function receiptAuditInventory(botId: string): Promise<ReceiptAuditInventory> {
   const ctx = await auditContext(botId);
-  const { visionConfigured, receiptOcrAutoEnabled } = await import("@/core/receipts/verify.server");
+  const { receiptReaderConfigured, receiptOcrAutoEnabled } =
+    await import("@/core/receipts/verify.server");
   const withFile = await countWithProof(botId);
   return {
     withFile,
-    estimatedUsd: Math.round(withFile * VISION_USD_PER_CALL * 100) / 100,
-    visionConfigured: visionConfigured(),
+    estimatedUsd: Math.round(withFile * RECEIPT_USD_PER_CALL * 100) / 100,
+    readerConfigured: receiptReaderConfigured(),
     moduleEnabled: Boolean(ctx.tenant.modules.receipt_ocr),
     autoEnabled: await receiptOcrAutoEnabled(ctx),
   };
@@ -186,8 +187,8 @@ function withSessionReuse(result: VerifyResult, seen: SeenReceiptHash | undefine
 }
 
 /**
- * С новых заказов к старым. Подряд без файла отдаём пачкой (Vision не
- * зовём); как только файл скачался — одна проверка и выход: Vision бывает
+ * С новых заказов к старым. Подряд без файла отдаём пачкой (модель не
+ * зовём); как только файл скачался — одна проверка и выход: модель бывает
  * медленным, а каждый шаг — отдельный запрос из панели.
  */
 export async function scanNextReceipt(
@@ -196,7 +197,7 @@ export async function scanNextReceipt(
   deps: AuditDeps = defaultDeps,
 ): Promise<ReceiptAuditScanResult> {
   const ctx = await auditContext(botId);
-  const { visionConfigured } = await import("@/core/receipts/verify.server");
+  const { receiptReaderConfigured } = await import("@/core/receipts/verify.server");
   const { amountDueNow } = await import("@/core/fulfillment/fulfillment");
   const { servedByV2 } = await import("@/core/tenant/directory");
   const { proofHashes } = await import("@/core/orders/proof-hash");
@@ -212,7 +213,7 @@ export async function scanNextReceipt(
       afterId,
       remaining: left,
       done: left === 0,
-      visionConfigured: visionConfigured(),
+      readerConfigured: receiptReaderConfigured(),
     };
   };
 

@@ -22,7 +22,7 @@ const AUDIT_TONE: Record<AuditSeverity, "ok" | "warn" | "neutral" | "danger"> = 
   skip: "neutral",
 };
 
-/** Сколько чеков с файлом прогоняет одна кнопка — чтобы не сжечь Vision на весь архив сразу. */
+/** Сколько чеков с файлом прогоняет одна кнопка — чтобы не сжечь ИИ на весь архив сразу. */
 const AUDIT_BATCH = 20;
 
 /**
@@ -64,8 +64,8 @@ export function ReceiptAuditCard({ c }: { c: C }) {
     <Card title="Аудит чеков" className="mt-4">
       <p className="mb-3 text-sm text-muted">
         Прогоняет присланные чеки через автопроверку по текущим правилам и сравнивает с тем, как
-        заказ обработан на самом деле. Заказы не меняются, лимит проверок клиента не тратится —
-        Vision идёт с ключа платформы.
+        заказ обработан на самом деле. Заказы не меняются, лимит проверок клиента не тратится — ИИ
+        идёт с ключа платформы.
       </p>
       {!inv ? (
         <button
@@ -79,7 +79,7 @@ export function ReceiptAuditCard({ c }: { c: C }) {
         <div className="space-y-3">
           <p className="text-sm">
             Чеков с файлом: <b>{inv.withFile}</b> · полный прогон ≈ ${inv.estimatedUsd}
-            {!inv.visionConfigured && <Badge tone="danger">ключ Vision не задан</Badge>}{" "}
+            {!inv.readerConfigured && <Badge tone="danger">ключ ИИ не задан</Badge>}{" "}
             {inv.moduleEnabled ? (
               <Badge tone={inv.autoEnabled ? "ok" : "warn"}>
                 {inv.autoEnabled ? "автопроверка включена" : "автопроверка выключена"}
@@ -91,7 +91,7 @@ export function ReceiptAuditCard({ c }: { c: C }) {
           <div className="flex flex-wrap items-center gap-2">
             <button
               className="btn-secondary"
-              disabled={scan.busy || cursor.done || !inv.visionConfigured}
+              disabled={scan.busy || cursor.done || !inv.readerConfigured}
               onClick={() => void scan.run().catch(() => {})}
             >
               {scan.busy

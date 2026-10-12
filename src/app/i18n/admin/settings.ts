@@ -487,12 +487,15 @@ export const ru = {
   "settings.triage.foreignHint":
     "Покупатель спрашивает, как оплатить из страны, для которой у вас нет способа оплаты («В бел. руб можно?», «я из Узбекистана, как оплатить?»). Бот раз в сутки отвечает, что оплату оттуда подключают и вы напишете, а вопрос приходит вам обращением. Текст — «Настройки → Текст бота → Instagram → Оплата из другой страны». Россия сюда не входит: у неё своя оплата.",
   "settings.ocr.intro":
-    "Чек, присланный в бот, читается автоматически: если сумма и признаки оплаты сошлись — файлы уходят покупателю сразу, без вашего участия; сомнительный чек попадает к вам с причиной; скрин без оплаты бот просит прислать заново. Тариф — $2 за 1000 распознаваний.",
+    "Чек, присланный в бот, читает ИИ: сумма, валюта, дата, номер операции, получатель. Бот сверяет его с заказом, реквизитами и прошлыми чеками и пишет вам в уведомлении и в карточке заказа: «совпал», «подозрительный» с причинами (следы правки, «в обработке», чек раньше заказа) или «повтор». Скрин без оплаты или с ошибкой платежа бот просит прислать заново. Банк чек не подтверждает — поступление денег смотрите у себя в банке. Стоимость — около $1 за 1000 чеков с ИИ-баланса.",
   "settings.ocr.noKey":
-    "На платформе не задан ключ Google Vision — чеки идут на ручную проверку, пока оператор его не добавит.",
+    "На платформе не задан ключ ИИ — чеки идут на ручную проверку, пока оператор его не добавит.",
   "settings.ocr.auto": "Автопроверка чеков",
   "settings.ocr.on": "Автопроверка включена",
   "settings.ocr.off": "Выключена — проверяете сами",
+  "settings.ocr.deliver": "Выдавать заказ сразу, если чек совпал",
+  "settings.ocr.deliverOn": "Совпавший чек выдаёт заказ сам, без вашей кнопки",
+  "settings.ocr.deliverOff": "Выключено — вы подтверждаете кнопкой, бот только подсказывает",
   "settings.watermark.title": "Защита PDF от перепродажи",
   "settings.watermark.intro":
     "На каждой странице выдаваемого PDF пишется, кто купил: имя латиницей, @логин или почта и номер заказа. Оригинал в каталоге не меняется.",
@@ -1036,12 +1039,15 @@ export const kk: SectionDict<typeof ru> = {
   "settings.triage.foreignHint":
     "Сатып алушы сізде төлем тәсілі жоқ елден қалай төлеуге болатынын сұрайды («Беларусь рублімен бола ма?», «Өзбекстаннанмын, қалай төлеймін?»). Бот тәулігіне бір рет ол жерден төлем қосылып жатқанын және сіз жазатыныңызды айтады, ал сұрақ сізге өтініш болып келеді. Мәтін — «Баптаулар → Бот мәтіні → Instagram → Басқа елден төлеу». Ресей бұған кірмейді: оның өз төлемі бар.",
   "settings.ocr.intro":
-    "Ботқа жіберілген чек автоматты түрде оқылады: сома мен төлем белгілері сәйкес келсе — файлдар сізге қатыссыз бірден сатып алушыға кетеді; күмәнді чек себебімен сізге түседі; төлемсіз скринді бот қайта жіберуді сұрайды. Тариф — 1000 тануға $2.",
+    "Ботқа жіберілген чекті ЖИ оқиды: сома, валюта, күні, операция нөмірі, алушы. Бот оны тапсырыспен, деректемелермен және бұрынғы чектермен салыстырып, хабарламада және тапсырыс картасында жазады: «сәйкес», себептерімен «күмәнді» (түзету іздері, «өңделуде», чек тапсырыстан бұрын) немесе «қайталау». Төлемсіз немесе төлем қатесі бар скринді бот қайта жіберуді сұрайды. Чекті банк растамайды — ақшаның түскенін өз банкіңізден қараңыз. Құны — ЖИ балансынан 1000 чекке шамамен $1.",
   "settings.ocr.noKey":
-    "Платформада Google Vision кілті берілмеген — оператор оны қосқанша чектер қолмен тексеруге кетеді.",
+    "Платформада ЖИ кілті берілмеген — оператор оны қосқанша чектер қолмен тексеруге кетеді.",
   "settings.ocr.auto": "Чектерді автотексеру",
   "settings.ocr.on": "Автотексеру қосулы",
   "settings.ocr.off": "Өшірулі — өзіңіз тексересіз",
+  "settings.ocr.deliver": "Чек сәйкес келсе, тапсырысты бірден беру",
+  "settings.ocr.deliverOn": "Сәйкес чек тапсырысты сіздің батырмаңызсыз өзі береді",
+  "settings.ocr.deliverOff": "Өшірулі — сіз батырмамен растайсыз, бот тек кеңес береді",
   "settings.watermark.title": "PDF-ті қайта сатудан қорғау",
   "settings.watermark.intro":
     "Берілетін PDF-тің әр бетіне кім сатып алғаны жазылады: латынша аты, @логин немесе пошта және тапсырыс нөмірі. Каталогтағы түпнұсқа өзгермейді.",
@@ -1580,12 +1586,15 @@ export const en: SectionDict<typeof ru> = {
   "settings.triage.foreignHint":
     "The buyer asks how to pay from a country you have no payment method for (“Can I pay in Belarusian rubles?”, “I’m from Uzbekistan, how do I pay?”). Once a day the bot replies that payments from there are being set up and you will write, and the question comes to you as a ticket. Text: “Settings → Bot texts → Instagram → Payment from another country”. Russia is not included: it has its own payment.",
   "settings.ocr.intro":
-    "A receipt sent to the bot is read automatically: if the amount and payment markers match, the files go to the customer right away without you; a doubtful receipt comes to you with the reason; a screenshot without payment is asked to be resent. Rate — $2 per 1,000 recognitions.",
+    "AI reads every receipt sent to the bot: amount, currency, date, operation number, recipient. The bot checks it against the order, your payment details and earlier receipts and tells you in the notification and on the order card: “matched”, “suspicious” with the reasons (signs of editing, “processing”, a receipt dated before the order) or “repeat”. A screenshot without a payment or with a failed payment is asked to be resent. The bank does not confirm the receipt — check that the money arrived in your bank. Cost — about $1 per 1,000 receipts from the AI balance.",
   "settings.ocr.noKey":
-    "No Google Vision key is set on the platform — receipts go to manual review until the operator adds it.",
+    "No AI key is set on the platform — receipts go to manual review until the operator adds it.",
   "settings.ocr.auto": "Auto-check receipts",
   "settings.ocr.on": "Auto-check is on",
   "settings.ocr.off": "Off — you check them yourself",
+  "settings.ocr.deliver": "Deliver the order right away if the receipt matches",
+  "settings.ocr.deliverOn": "A matching receipt delivers the order without your button",
+  "settings.ocr.deliverOff": "Off — you confirm with the button, the bot only hints",
   "settings.watermark.title": "Protect PDFs from resale",
   "settings.watermark.intro":
     "Every page of a delivered PDF shows who bought it: name in Latin letters, @username or email, and the order number. The original in the catalogue stays unchanged.",
@@ -2132,12 +2141,16 @@ export const uz: SectionDict<typeof ru> = {
   "settings.triage.foreignHint":
     "Xaridor sizda to‘lov usuli yo‘q davlatdan qanday to‘lashni so‘raydi («Belarus rublida bo‘ladimi?», «O‘zbekistondanman, qanday to‘layman?»). Bot sutkada bir marta u yerdan to‘lov ulanayotganini va siz yozishingizni aytadi, savol esa sizga murojaat bo‘lib keladi. Matn — «Sozlamalar → Bot matni → Instagram → Boshqa davlatdan to‘lov». Rossiya bunga kirmaydi: uning o‘z to‘lovi bor.",
   "settings.ocr.intro":
-    "Botga yuborilgan chek avtomatik o‘qiladi: summa va to‘lov belgilari mos kelsa — fayllar sizning ishtirokingizsiz darhol xaridorga ketadi; shubhali chek sababi bilan sizga tushadi; to‘lovsiz skrinni bot qayta yuborishni so‘raydi. Tarif — 1000 ta aniqlash uchun $2.",
+    "Botga yuborilgan chekni SI o‘qiydi: summa, valyuta, sana, operatsiya raqami, qabul qiluvchi. Bot uni buyurtma, rekvizitlaringiz va oldingi cheklar bilan solishtiradi va xabarnomada hamda buyurtma kartasida yozadi: «mos keldi», sabablari bilan «shubhali» (tahrir izlari, «ishlov berilmoqda», chek buyurtmadan oldin) yoki «takror». To‘lovsiz yoki to‘lov xatosi bor skrinni bot qayta yuborishni so‘raydi. Chekni bank tasdiqlamaydi — pul tushganini o‘z bankingizda tekshiring. Narxi — SI balansidan 1000 ta chek uchun taxminan $1.",
   "settings.ocr.noKey":
-    "Platformada Google Vision kaliti berilmagan — operator qo‘shmaguncha cheklar qo‘lda tekshiruvga ketadi.",
+    "Platformada SI kaliti berilmagan — operator qo‘shmaguncha cheklar qo‘lda tekshiruvga ketadi.",
   "settings.ocr.auto": "Cheklarni avtotekshirish",
   "settings.ocr.on": "Avtotekshirish yoqilgan",
   "settings.ocr.off": "O‘chirilgan — o‘zingiz tekshirasiz",
+  "settings.ocr.deliver": "Chek mos kelsa, buyurtmani darhol berish",
+  "settings.ocr.deliverOn": "Mos chek buyurtmani sizning tugmangizsiz o‘zi beradi",
+  "settings.ocr.deliverOff":
+    "O‘chirilgan — siz tugma bilan tasdiqlaysiz, bot faqat maslahat beradi",
   "settings.watermark.title": "PDF’ni qayta sotishdan himoya",
   "settings.watermark.intro":
     "Beriladigan PDF’ning har bir sahifasiga kim sotib olgani yoziladi: lotincha ism, @login yoki pochta va buyurtma raqami. Katalogdagi asl fayl o‘zgarmaydi.",

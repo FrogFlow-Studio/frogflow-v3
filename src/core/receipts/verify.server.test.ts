@@ -7,14 +7,19 @@ import { setFxProvider, resetPricingCache, defaultFxProvider } from "@/core/pric
 import { isRetryReason } from "./pure";
 import {
   OCR_AUTO_KEY,
+  OCR_DELIVER_KEY,
   OCR_USAGE_KEY,
   parseUsage,
+  receiptAutoDeliver,
   receiptOcrAutoEnabled,
+  sellerReceiptNote,
   verifyCustomerReceipt,
   verifyReceipt,
 } from "./verify.server";
+import { setReceiptModelForTests } from "./reader.server";
 import { RECEIPT_CHECKS_PER_ORDER, receiptChecksKey } from "./attempts";
 import type { Customer } from "@/core/customers/customers";
+import { mockReceiptModel, resetReceiptModel } from "../../../tests/receipt-model";
 
 const BOT = "00000000-0000-0000-0000-000000000001";
 const sha = (b: Uint8Array) => createHash("sha256").update(b).digest("hex");
@@ -36,26 +41,17 @@ function setup(opts: { ocrModule?: boolean; auto?: string } = {}) {
   return { db, ctx };
 }
 
-/** Ответ Vision на картинку. */
-const visionImage = (text: string) =>
-  new Response(JSON.stringify({ responses: [{ fullTextAnnotation: { text } }] }), {
-    status: 200,
-    headers: { "Content-Type": "application/json" },
-  });
-
-function mockVision(text: string) {
-  const fetchMock = vi.fn(async () => visionImage(text));
-  vi.stubGlobal("fetch", fetchMock);
-  return fetchMock;
-}
+/** Модель «прочитала» в чеке этот текст. */
+const mockRead = (text: string) => mockReceiptModel(text);
 
 const IMG = new Uint8Array([1, 2, 3]);
 const base = { bytes: IMG, mime: "image/jpeg", expectedAmount: 1000, currency: "KZT", orderId: 99 };
 
-beforeEach(() => setEnvForTests({ GOOGLE_VISION_API_KEY: "test-key" }));
+beforeEach(() => setEnvForTests({ ANTHROPIC_API_KEY: "test-key" }));
 afterEach(() => {
   setEnvForTests(undefined);
   vi.unstubAllGlobals();
+  resetReceiptModel();
 });
 
 describe("receiptOcrAutoEnabled — тумблер автопроверки продавца", () => {
@@ -73,7 +69,7 @@ describe("receiptOcrAutoEnabled — тумблер автопроверки пр
   it("тумблер выключен — обычный заказ, OCR нет", async () => {
     expect(await receiptOcrAutoEnabled(setup({ auto: "false" }).ctx)).toBe(false);
   });
-  it("без модуля receipt_ocr или ключа Vision — выключено", async () => {
+  it("без модуля receipt_ocr или ключа ИИ — выключено", async () => {
     expect(await receiptOcrAutoEnabled(setup({ ocrModule: false }).ctx)).toBe(false);
     setEnvForTests({});
     expect(await receiptOcrAutoEnabled(setup().ctx)).toBe(false);
@@ -84,7 +80,7 @@ describe("verifyReceipt — повтор чека по хешу файла", () 
   it("чек уже принят по другому заказу — receipt_reused, автовыдачи нет", async () => {
     const { db, ctx } = setup();
     db.tables.orders = [{ id: 42, display_no: 42, order_no: 42, payment_proof_hash: sha(IMG) }];
-    mockVision("Оплата успешно. Сумма: 1000 KZT");
+    mockRead("Оплата успешно. Сумма: 1000 KZT");
     const r = await verifyReceipt(ctx, base);
     expect(r.ok).toBe(false);
     if (!r.ok) {
@@ -97,7 +93,7 @@ describe("verifyReceipt — повтор чека по хешу файла", () 
     db.tables.orders = [
       { id: 42, display_no: 42, payment_proof_hash: sha(new Uint8Array([1, 2, 4])) },
     ];
-    mockVision("Оплата успешно. Сумма: 1000 KZT");
+    mockRead("Оплата успешно. Сумма: 1000 KZT");
     expect(await verifyReceipt(ctx, base)).toMatchObject({ ok: true, matchedAmount: 1000 });
   });
   it("тот же JPEG с байтами в хвосте — всё равно повтор, и старый хэш сырых байтов узнаётся", async () => {
@@ -105,13 +101,13 @@ describe("verifyReceipt — повтор чека по хешу файла", () 
     const tampered = new Uint8Array([...jpeg, 0x00, 0x01, 0xff, 0xd9]);
     const { db, ctx } = setup();
     db.tables.orders = [{ id: 42, display_no: 42, order_no: 42, payment_proof_hash: sha(jpeg) }];
-    mockVision("Оплата успешно. Сумма: 1000 KZT");
+    mockRead("Оплата успешно. Сумма: 1000 KZT");
     expect(await verifyReceipt(ctx, { ...base, bytes: tampered })).toMatchObject({
       ok: false,
       reason: "receipt_reused",
     });
     db.tables.orders = [{ id: 42, display_no: 42, payment_proof_hash: sha(tampered) }];
-    mockVision("Оплата успешно. Сумма: 1000 KZT");
+    mockRead("Оплата успешно. Сумма: 1000 KZT");
     expect(await verifyReceipt(ctx, { ...base, bytes: tampered })).toMatchObject({
       ok: false,
       reason: "receipt_reused",
@@ -120,22 +116,22 @@ describe("verifyReceipt — повтор чека по хешу файла", () 
   it("чек новый — автовыдача; свой же хеш (записан при приёме чека) не считается повтором", async () => {
     const { db, ctx } = setup();
     db.tables.orders = [{ id: 99, display_no: 99, payment_proof_hash: sha(IMG) }];
-    mockVision("Оплата успешно. Сумма: 1000 KZT");
+    mockRead("Оплата успешно. Сумма: 1000 KZT");
     expect(await verifyReceipt(ctx, base)).toMatchObject({ ok: true, matchedAmount: 1000 });
   });
 });
 
 describe("чек в валюте заказа — без недоплаты (решение 27.09)", () => {
   it("ровная сумма — автопроверка проходит", async () => {
-    mockVision("Перевод выполнен. Сумма: 1000 KZT");
+    mockRead("Перевод выполнен. Сумма: 1000 KZT");
     expect(await verifyReceipt(setup().ctx, base)).toMatchObject({ ok: true, matchedAmount: 1000 });
   });
   it("переплата — проходит", async () => {
-    mockVision("Перевод выполнен. Сумма: 1100 KZT");
+    mockRead("Перевод выполнен. Сумма: 1100 KZT");
     expect(await verifyReceipt(setup().ctx, base)).toMatchObject({ ok: true, matchedAmount: 1100 });
   });
   it("недоплата на 1 ₸ — к продавцу, не автовыдача и не «пришлите заново»", async () => {
-    mockVision("Перевод выполнен. Сумма: 999 KZT");
+    mockRead("Перевод выполнен. Сумма: 999 KZT");
     const r = await verifyReceipt(setup().ctx, base);
     expect(r).toMatchObject({ ok: false, reason: "amount_mismatch" });
     if (!r.ok) {
@@ -148,19 +144,19 @@ describe("чек в валюте заказа — без недоплаты (р�
     ["Перевод выполнен. 4 990 ₸. Остаток 5 400 ₸", 5000],
     ["Перевод выполнен. Комиссия 0 ₸. Номер квитанции 1204", 1000],
   ])("номер квитанции или остаток рядом с недоплатой не сходят за оплату: %s", async (t, sum) => {
-    mockVision(t);
+    mockRead(t);
     const r = await verifyReceipt(setup().ctx, { ...base, expectedAmount: sum });
     expect(r).toMatchObject({ ok: false, reason: "amount_mismatch" });
   });
   it("Kaspi: сумма и «Комиссия 0 ₸» — проходит", async () => {
-    mockVision("Перевод выполнен. 5 000 ₸. Комиссия 0 ₸. Квитанция № 12345");
+    mockRead("Перевод выполнен. 5 000 ₸. Комиссия 0 ₸. Квитанция № 12345");
     expect(await verifyReceipt(setup().ctx, { ...base, expectedAmount: 5000 })).toMatchObject({
       ok: true,
       matchedAmount: 5000,
     });
   });
   it("чек без знака валюты — считается валютой заказа, недоплата тоже к продавцу", async () => {
-    mockVision("Оплата успешно проведена. Сумма 900");
+    mockRead("Оплата успешно проведена. Сумма 900");
     expect(await verifyReceipt(setup().ctx, base)).toMatchObject({
       ok: false,
       reason: "amount_mismatch",
@@ -168,58 +164,43 @@ describe("чек в валюте заказа — без недоплаты (р�
   });
 });
 
-describe("verifyReceipt — разбор текста и маршрут в Vision", () => {
+describe("verifyReceipt — разбор текста и маршрут в модель", () => {
   it("успешный чек с фразой «в случае ошибки» — автовыдача", async () => {
     const { ctx } = setup();
-    mockVision("Оплата успешно проведена. Сумма: 1000 KZT. В случае ошибки обратитесь в банк.");
+    mockRead("Оплата успешно проведена. Сумма: 1000 KZT. В случае ошибки обратитесь в банк.");
     expect(await verifyReceipt(ctx, base)).toMatchObject({ ok: true, matchedAmount: 1000 });
   });
   it("скрин карточки товара вместо чека — not_receipt, просим прислать заново", async () => {
     const { ctx } = setup();
-    mockVision("039. Математический тренажёр. 2000 ₸. Продолжить оплату. 0 в корзине.");
+    mockRead("039. Математический тренажёр. 2000 ₸. Продолжить оплату. 0 в корзине.");
     const r = await verifyReceipt(ctx, { ...base, expectedAmount: 800 });
     expect(r).toMatchObject({ ok: false, reason: "not_receipt" });
   });
   it("чек в чужой валюте далеко от суммы заказа — к продавцу, не автовыдача", async () => {
     const { ctx } = setup();
-    mockVision("Чек по операции. Сумма в местной валюте 400 KZT.");
+    mockRead("Чек по операции. Сумма в местной валюте 400 KZT.");
     const r = await verifyReceipt(ctx, { ...base, expectedAmount: 152, currency: "RUB" });
     expect(r.ok).toBe(false);
     if (!r.ok) expect(isRetryReason(r.reason)).toBe(false);
   });
-  it("PDF идёт в files:annotate и проходит ту же сверку суммы", async () => {
+  it("PDF без текстового слоя уходит в модель документом и проходит ту же сверку суммы", async () => {
     const { ctx } = setup();
-    const fetchMock = vi.fn(
-      async () =>
-        new Response(
-          JSON.stringify({
-            responses: [
-              { responses: [{ fullTextAnnotation: { text: "Оплата успешно. Сумма: 1000 KZT" } }] },
-            ],
-          }),
-          { status: 200 },
-        ),
-    );
-    vi.stubGlobal("fetch", fetchMock);
+    const model = mockRead("Оплата успешно. Сумма: 1000 KZT");
     const pdf = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x34]);
     const r = await verifyReceipt(ctx, { ...base, bytes: pdf, mime: "application/pdf" });
     expect(r).toMatchObject({ ok: true, matchedAmount: 1000 });
-    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
-    expect(url).toContain("files:annotate");
-    const body = JSON.parse(String(init.body));
-    expect(body.requests[0].inputConfig.mimeType).toBe("application/pdf");
-    expect(body.requests[0].pages).toEqual([1, 2, 3, 4, 5]);
-    // Разбор встроенного текста (pdf.js) не должен забрать буфер: в Vision уходит сам файл.
-    expect(body.requests[0].inputConfig.content).toBe(Buffer.from(pdf).toString("base64"));
+    const file = model.mock.calls[0]![0];
+    expect(file.kind).toBe("pdf");
+    // Разбор встроенного текста (pdf.js) не должен забрать буфер: в модель уходит сам файл.
+    expect(file.base64).toBe(Buffer.from(pdf).toString("base64"));
     expect(pdf.byteLength).toBe(8);
   });
-  it("картинка идёт в images:annotate", async () => {
+  it("картинка уходит в модель картинкой с типом по байтам", async () => {
     const { ctx } = setup();
-    const fetchMock = mockVision("Оплата успешно. Сумма: 1000 KZT");
-    await verifyReceipt(ctx, base);
-    expect(String((fetchMock.mock.calls[0] as unknown as [string])[0])).toContain(
-      "images:annotate",
-    );
+    const model = mockRead("Оплата успешно. Сумма: 1000 KZT");
+    const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    await verifyReceipt(ctx, { ...base, bytes: png, mime: "image/jpeg" });
+    expect(model.mock.calls[0]![0]).toMatchObject({ kind: "image", mediaType: "image/png" });
   });
 });
 
@@ -234,32 +215,32 @@ describe("чек в чужой валюте — сумма заказа пере
   });
 
   it("на экране только 227 ₽ — переводим заказ 1100 ₸ и принимаем", async () => {
-    mockVision("Платёж выполнен. Перевод по номеру телефона. 227 ₽");
+    mockRead("Платёж выполнен. Перевод по номеру телефона. 227 ₽");
     const r = await verifyReceipt(setup().ctx, { ...base, expectedAmount: 1100, currency: "KZT" });
     expect(r).toMatchObject({ ok: true, matchedAmount: 227, matchedCurrency: "RUB" });
   });
 
   it("Сбер «местная валюта» 1077.30 KZT на заказ 228 ₽ — принимаем (спред банка)", async () => {
-    mockVision("Чек по операции. Перевод выполнен. Сумма в местной валюте 1077.30 KZT");
+    mockRead("Чек по операции. Перевод выполнен. Сумма в местной валюте 1077.30 KZT");
     const r = await verifyReceipt(setup().ctx, { ...base, expectedAmount: 228, currency: "RUB" });
     expect(r).toMatchObject({ ok: true, matchedAmount: 1077.3, matchedCurrency: "KZT" });
   });
 
   it("чек в другой валюте ниже суммы заказа по курсу — допуск ±30% остаётся", async () => {
     // Заказ 1100 ₸ ≈ 227 ₽; 200 ₽ — на 12% меньше, но в допуске.
-    mockVision("Платёж выполнен. Перевод по номеру телефона. 200 ₽");
+    mockRead("Платёж выполнен. Перевод по номеру телефона. 200 ₽");
     const r = await verifyReceipt(setup().ctx, { ...base, expectedAmount: 1100, currency: "KZT" });
     expect(r).toMatchObject({ ok: true, matchedAmount: 200, matchedCurrency: "RUB" });
   });
 
   it("Сбер 661.50 KZT на заказ 152 ₽ — ниже рыночного курса, но в допуске ±30%", async () => {
-    mockVision("Чек по операции. Перевод выполнен. Сумма в местной валюте 661.50 KZT");
+    mockRead("Чек по операции. Перевод выполнен. Сумма в местной валюте 661.50 KZT");
     const r = await verifyReceipt(setup().ctx, { ...base, expectedAmount: 152, currency: "RUB" });
     expect(r).toMatchObject({ ok: true, matchedAmount: 661.5 });
   });
 
   it("сумма после курса не сошлась — amount_mismatch, к продавцу", async () => {
-    mockVision("Чек по операции. Перевод выполнен. Сумма в местной валюте 400 KZT");
+    mockRead("Чек по операции. Перевод выполнен. Сумма в местной валюте 400 KZT");
     const r = await verifyReceipt(setup().ctx, { ...base, expectedAmount: 152, currency: "RUB" });
     expect(r).toMatchObject({ ok: false, reason: "amount_mismatch" });
     if (!r.ok) expect(r.detail).toContain("по курсу");
@@ -268,10 +249,10 @@ describe("чек в чужой валюте — сумма заказа пере
   it("мелкая валюта: сумма по курсу не округляется до целого — недоплата не проходит", async () => {
     // 700 ₸ ≈ 1,46 $. С округлением до 1 $ окно было 0,70–1,30 $: чек на 0,80 $
     // (55% цены) принимался, а честный 1,46 $ уходил продавцу.
-    mockVision("Payment successful. Transfer completed. Amount 0.80 USD");
+    mockRead("Payment successful. Transfer completed. Amount 0.80 USD");
     const low = await verifyReceipt(setup().ctx, { ...base, expectedAmount: 700, currency: "KZT" });
     expect(low).toMatchObject({ ok: false, reason: "amount_mismatch" });
-    mockVision("Payment successful. Transfer completed. Amount 1.46 USD");
+    mockRead("Payment successful. Transfer completed. Amount 1.46 USD");
     const fair = await verifyReceipt(setup().ctx, {
       ...base,
       expectedAmount: 700,
@@ -284,20 +265,20 @@ describe("чек в чужой валюте — сумма заказа пере
     setFxProvider(async () => {
       throw new Error("нет сети");
     });
-    mockVision("Платёж выполнен. Перевод по номеру телефона. 227 ₽");
+    mockRead("Платёж выполнен. Перевод по номеру телефона. 227 ₽");
     const r = await verifyReceipt(setup().ctx, { ...base, expectedAmount: 1100, currency: "KZT" });
     expect(r).toMatchObject({ ok: false, reason: "currency_mismatch" });
   });
 });
 
-describe("что уходит в Vision", () => {
+describe("что уходит в модель", () => {
   const box = (brand: string) =>
     new Uint8Array([0, 0, 0, 0x18, ...new TextEncoder().encode(`ftyp${brand}`)]);
 
-  it("HEIC и AVIF Vision не читает — не зовём, лимит не тратим, сразу продавцу", async () => {
+  it("HEIC и AVIF модель не читает — не зовём, лимит не тратим, сразу продавцу", async () => {
     for (const brand of ["heic", "avif"]) {
       const { db, ctx } = setup();
-      const fetchMock = mockVision("Kaspi Успешно 1 000 ₸");
+      const fetchMock = mockRead("Kaspi Успешно 1 000 ₸");
       const r = await verifyReceipt(ctx, { ...base, bytes: box(brand), mime: "image/jpeg" });
       expect(r).toMatchObject({ ok: false, reason: "ocr_unavailable" });
       expect(fetchMock).not.toHaveBeenCalled();
@@ -305,24 +286,15 @@ describe("что уходит в Vision", () => {
     }
   });
 
-  it("PDF с мусором перед %PDF уходит в Vision с %PDF в начале", async () => {
+  it("PDF с мусором перед %PDF уходит в модель с %PDF в начале", async () => {
     const { ctx } = setup();
-    const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
-      void init;
-      return new Response(
-        JSON.stringify({ responses: [{ responses: [{ fullTextAnnotation: { text: "чек" } }] }] }),
-        { status: 200, headers: { "Content-Type": "application/json" } },
-      );
-    });
-    vi.stubGlobal("fetch", fetchMock);
+    const model = mockRead("чек");
     const bytes = new TextEncoder().encode("\n\r junk %PDF-1.7 body");
     await verifyReceipt(ctx, { ...base, bytes, mime: "application/octet-stream" });
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    const body = JSON.parse(String(fetchMock.mock.calls[0]![1]!.body)) as {
-      requests: Array<{ inputConfig: { content: string } }>;
-    };
-    const sent = Buffer.from(body.requests[0]!.inputConfig.content, "base64").toString("latin1");
-    expect(sent).toBe("%PDF-1.7 body");
+    expect(model).toHaveBeenCalledTimes(1);
+    const file = model.mock.calls[0]![0];
+    expect(file.kind).toBe("pdf");
+    expect(Buffer.from(file.base64, "base64").toString("latin1")).toBe("%PDF-1.7 body");
   });
 });
 
@@ -343,9 +315,9 @@ describe("verifyCustomerReceipt — лимит проверок на покуп�
   const buyer = (): Customer =>
     ({ userKey: "tg_1", telegramId: 1, platform: "telegram", state: {} }) as unknown as Customer;
 
-  it("«не чек» по кругу: сверх лимита заказа Vision не зовём, чек уходит продавцу", async () => {
+  it("«не чек» по кругу: сверх лимита заказа модель не зовём, чек уходит продавцу", async () => {
     const { db, ctx } = setup();
-    const fetchMock = mockVision("котик на диване");
+    const fetchMock = mockRead("котик на диване");
     let customer = buyer();
     for (let i = 0; i < RECEIPT_CHECKS_PER_ORDER; i++) {
       const r = await verifyCustomerReceipt(ctx, customer, base);
@@ -366,9 +338,9 @@ describe("verifyCustomerReceipt — лимит проверок на покуп�
     });
   });
 
-  it("альбом из 10 фото разом: Vision вызван не больше лимита заказа, счётчик учёл каждое", async () => {
+  it("альбом из 10 фото разом: модель вызвана не больше лимита заказа, счётчик учёл каждое", async () => {
     const { db, ctx } = setup();
-    const fetchMock = mockVision("котик на диване");
+    const fetchMock = mockRead("котик на диване");
     const results = await Promise.all(
       Array.from({ length: 10 }, () => verifyCustomerReceipt(ctx, buyer(), base)),
     );
@@ -385,7 +357,7 @@ describe("verifyCustomerReceipt — лимит проверок на покуп�
 
   it("настоящий чек в пределах лимита проходит как раньше", async () => {
     const { ctx } = setup();
-    mockVision("Kaspi Перевод успешно выполнен\nСумма 1 000 ₸\nКвитанция № 123");
+    mockRead("Kaspi Перевод успешно выполнен\nСумма 1 000 ₸\nКвитанция № 123");
     const r = await verifyCustomerReceipt(ctx, buyer(), base);
     expect(r.result.ok).toBe(true);
   });
@@ -395,16 +367,16 @@ describe("verifyCustomerReceipt — лимит проверок на покуп�
     const text = (date: string) =>
       `Kaspi Перевод успешно выполнен\nСумма 1 000 ₸\n${date} 14:12\nКвитанция № 123`;
     const { ctx } = setup();
-    mockVision(text("03.09.2026"));
+    mockRead(text("03.09.2026"));
     const old = await verifyCustomerReceipt(ctx, buyer(), base, now);
     expect(old.result).toMatchObject({ ok: false, reason: "receipt_stale" });
-    mockVision(text("02.10.2026"));
+    mockRead(text("02.10.2026"));
     const fresh = await verifyCustomerReceipt(ctx, buyer(), { ...base, orderId: 100 }, now);
     expect(fresh.result).toMatchObject({ ok: true, matchedAmount: 1000 });
   });
 
   it("аудит оператора (без now) старый чек не отсекает", async () => {
-    mockVision("Kaspi Перевод успешно выполнен\nСумма 1 000 ₸\n03.09.2026 14:12\nКвитанция № 123");
+    mockRead("Kaspi Перевод успешно выполнен\nСумма 1 000 ₸\n03.09.2026 14:12\nКвитанция № 123");
     expect(await verifyReceipt(setup().ctx, base)).toMatchObject({ ok: true });
   });
 });
@@ -420,24 +392,24 @@ describe("verifyReceipt — получатель в чеке", () => {
   const opts = { ...base, recipientCountry: "KZ" };
   it("получатель совпал — чек принят", async () => {
     const { ctx } = withMethod("Получатель: Иванов Иван, Kaspi +7 705 123-45-67");
-    mockVision("Оплата успешно\nПолучатель: Иван И.\nСумма: 1000 KZT");
+    mockRead("Оплата успешно\nПолучатель: Иван И.\nСумма: 1000 KZT");
     expect(await verifyReceipt(ctx, opts)).toMatchObject({ ok: true, matchedAmount: 1000 });
   });
   it("получатель другой — recipient_mismatch, чек уходит продавцу", async () => {
     const { ctx } = withMethod("Получатель: Иванов Иван, Kaspi +7 705 123-45-67");
-    mockVision("Оплата успешно\nПолучатель: Пётр С.\nСумма: 1000 KZT");
+    mockRead("Оплата успешно\nПолучатель: Пётр С.\nСумма: 1000 KZT");
     const r = await verifyReceipt(ctx, opts);
     expect(r).toMatchObject({ ok: false, reason: "recipient_mismatch" });
     expect(isRetryReason("recipient_mismatch")).toBe(false);
   });
   it("без страны способа оплаты получатель не сверяется", async () => {
     const { ctx } = withMethod("Получатель: Иванов Иван");
-    mockVision("Оплата успешно\nПолучатель: Пётр С.\nСумма: 1000 KZT");
+    mockRead("Оплата успешно\nПолучатель: Пётр С.\nСумма: 1000 KZT");
     expect(await verifyReceipt(ctx, base)).toMatchObject({ ok: true });
   });
   it("в реквизитах нечего сверять — чек принят по сумме, как раньше", async () => {
     const { ctx } = withMethod("Переводом на счёт");
-    mockVision("Оплата успешно\nПолучатель: Пётр С.\nСумма: 1000 KZT");
+    mockRead("Оплата успешно\nПолучатель: Пётр С.\nСумма: 1000 KZT");
     expect(await verifyReceipt(ctx, opts)).toMatchObject({ ok: true });
   });
 });
@@ -449,7 +421,7 @@ describe("verifyReceipt — повтор того же перевода по н�
   it("тот же номер, другой файл, другой заказ — receipt_reused со ссылкой на первый заказ", async () => {
     const { db, ctx } = setup();
     db.tables.orders = [{ id: 98, display_no: 98, order_no: 98 }];
-    mockVision(KASPI);
+    mockRead(KASPI);
     expect(await verifyReceipt(ctx, { ...base, orderId: 98 })).toMatchObject({ ok: true });
     const r = await verifyReceipt(ctx, { ...base, bytes: FILE_B, orderId: 99 });
     expect(r).toMatchObject({ ok: false, reason: "receipt_reused" });
@@ -461,7 +433,7 @@ describe("verifyReceipt — повтор того же перевода по н�
 
   it("тот же заказ присылает чек ещё раз — не повтор", async () => {
     const { ctx } = setup();
-    mockVision(KASPI);
+    mockRead(KASPI);
     await verifyReceipt(ctx, { ...base, orderId: 98 });
     expect(await verifyReceipt(ctx, { ...base, bytes: FILE_B, orderId: 98 })).toMatchObject({
       ok: true,
@@ -470,9 +442,9 @@ describe("verifyReceipt — повтор того же перевода по н�
 
   it("формат с пробелами и буквами («QR 123 456 7890») — тот же номер", async () => {
     const { ctx } = setup();
-    mockVision(KASPI);
+    mockRead(KASPI);
     await verifyReceipt(ctx, { ...base, orderId: 98 });
-    mockVision("Kaspi Pay\nСумма операции 1 000 ₸\nКвитанция № QR 12 345 67890");
+    mockRead("Kaspi Pay\nСумма операции 1 000 ₸\nКвитанция № QR 12 345 67890");
     expect(await verifyReceipt(ctx, { ...base, bytes: FILE_B, orderId: 99 })).toMatchObject({
       ok: false,
       reason: "receipt_reused",
@@ -481,7 +453,7 @@ describe("verifyReceipt — повтор того же перевода по н�
 
   it("два заказа одновременно — номер достаётся одному", async () => {
     const { ctx } = setup();
-    mockVision(KASPI);
+    mockRead(KASPI);
     const [a, b] = await Promise.all([
       verifyReceipt(ctx, { ...base, orderId: 98 }),
       verifyReceipt(ctx, { ...base, bytes: FILE_B, orderId: 99 }),
@@ -491,12 +463,166 @@ describe("verifyReceipt — повтор того же перевода по н�
 
   it("чека без номера — работает как раньше; аудит оператора номер не занимает", async () => {
     const { db, ctx } = setup();
-    mockVision("Оплата успешно. Сумма: 1000 KZT");
+    mockRead("Оплата успешно. Сумма: 1000 KZT");
     expect(await verifyReceipt(ctx, base)).toMatchObject({ ok: true });
-    mockVision(KASPI);
+    mockRead(KASPI);
     await verifyReceipt(ctx, { ...base, orderId: 98, countUsage: false });
     expect(db.tables.app_settings!.some((x) => String(x.key).startsWith("receipt_no:"))).toBe(
       false,
     );
+  });
+});
+
+describe("чек читает модель: статус, признаки подделки, расход", () => {
+  const OK = "Kaspi Перевод успешно выполнен\nСумма 1 000 ₸\n12.10.2026 10:05";
+  const setting = (db: FakeDb, key: string) =>
+    db.tables.app_settings!.find((r) => r.key === key)?.value;
+
+  it("фото ошибки платежа и «Не проходит» (kopats23, #1435) — не «чек получен», а «платёж не прошёл»", async () => {
+    const { ctx } = setup();
+    // На экране — сумма заказа, но банк пишет об отказе другими словами.
+    mockReceiptModel("Беларусбанк\nПеревод\n7,00 BYN\nОперация не может быть выполнена", {
+      status: "failed",
+      amount: 7,
+      currency: "BYN",
+    });
+    const r = await verifyReceipt(ctx, { ...base, expectedAmount: 7, currency: "BYN" });
+    expect(r).toMatchObject({ ok: false, reason: "payment_failed" });
+    if (!r.ok) expect(isRetryReason(r.reason)).toBe(true);
+  });
+
+  it("модель видит не чек (скрин заказа с суммой) — not_receipt, хоть сумма и есть", async () => {
+    const { ctx } = setup();
+    mockReceiptModel("Ваш заказ\nСумма: 1000 KZT\nОплата переводом", { is_receipt: false });
+    const r = await verifyReceipt(ctx, base);
+    expect(r).toMatchObject({ ok: false, reason: "not_receipt" });
+  });
+
+  it("сумма сошлась, но модель видит следы правки — подозрительный, с причиной, продавцу", async () => {
+    const { ctx } = setup();
+    mockReceiptModel(OK, { status: "success", edit_signs: ["сумма другим шрифтом"] });
+    const r = await verifyReceipt(ctx, base);
+    expect(r).toMatchObject({ ok: false, reason: "receipt_suspicious" });
+    if (!r.ok) {
+      expect(r.detail).toContain("сумма другим шрифтом");
+      expect(isRetryReason(r.reason)).toBe(false);
+    }
+  });
+
+  it("платёж «в обработке» — подозрительный, не «совпал»", async () => {
+    const { ctx } = setup();
+    mockReceiptModel(OK, { status: "pending" });
+    const r = await verifyReceipt(ctx, base);
+    expect(r).toMatchObject({ ok: false, reason: "receipt_suspicious" });
+    if (!r.ok) expect(r.detail).toContain("в обработке");
+  });
+
+  it("чек выписан раньше заказа больше чем на сутки — подозрительный; накануне — совпал", async () => {
+    const { ctx } = setup();
+    mockReceiptModel("Kaspi Перевод успешно выполнен\nСумма 1 000 ₸\n05.10.2026 10:05");
+    const old = await verifyReceipt(ctx, { ...base, orderCreatedAt: "2026-10-12T05:00:00Z" });
+    expect(old).toMatchObject({ ok: false, reason: "receipt_suspicious" });
+    if (!old.ok) expect(old.detail).toContain("раньше создания заказа");
+    // 23:10 по Москве 11.10 — в Алматы уже 12.10: запас в сутки.
+    mockReceiptModel("Сбербанк\nПлатёж выполнен\nСумма 1 000 ₸\n11.10.2026 23:10");
+    const late = await verifyReceipt(ctx, {
+      ...base,
+      orderId: 100,
+      orderCreatedAt: "2026-10-11T20:05:00Z",
+    });
+    expect(late).toMatchObject({ ok: true, matchedAmount: 1000 });
+  });
+
+  it("в тексте нет слов-маркеров, но модель видит чек и сумму — сверка по сумме модели", async () => {
+    const { ctx } = setup();
+    mockReceiptModel("Kaspi Gold\n1 000\nАнастасия К.", {
+      status: "success",
+      amount: 1000,
+      currency: "KZT",
+    });
+    const r = await verifyReceipt(ctx, base);
+    expect(r).toMatchObject({ ok: true, matchedAmount: 1000 });
+  });
+
+  it("номер операции из разбора модели ловит тот же перевод другим скриншотом", async () => {
+    const { ctx } = setup();
+    mockReceiptModel(OK, { status: "success", operation_id: "QR 98765 4321" });
+    expect(await verifyReceipt(ctx, base)).toMatchObject({ ok: true });
+    const other = new Uint8Array([4, 5, 6]);
+    const r = await verifyReceipt(ctx, { ...base, bytes: other, orderId: 100 });
+    expect(r).toMatchObject({ ok: false, reason: "receipt_reused" });
+  });
+
+  it("модель ответила не по схеме — ocr_unavailable, бронь баланса вернулась", async () => {
+    const { db, ctx } = setup();
+    setReceiptModelForTests(async () => ({ input: null }));
+    const r = await verifyReceipt(ctx, base);
+    expect(r).toMatchObject({ ok: false, reason: "ocr_unavailable" });
+    expect(JSON.parse(String(setting(db, "ai_balance"))).usd).toBe(5);
+  });
+
+  it("списывается фактическая цена ответа и пишется в расход дня по чекам", async () => {
+    const { db, ctx } = setup();
+    mockReceiptModel(OK);
+    await verifyReceipt(ctx, base);
+    // 1 600 токенов входа × $0,10 + 200 вывода × $0,50 за миллион.
+    const date = new Date().toISOString().slice(0, 10);
+    const day = JSON.parse(String(setting(db, `ai_charges:${date}`)));
+    expect(day.uses.receipt_ocr).toEqual({ usd: 0.00026, calls: 1 });
+    expect(JSON.parse(String(setting(db, "ai_balance"))).usd).toBeCloseTo(5 - 0.00026, 6);
+  });
+
+  it("дневной потолок исчерпан — модель не зовём, чек продавцу", async () => {
+    const { db, ctx } = setup();
+    const date = new Date().toISOString().slice(0, 10);
+    db.tables.app_settings!.push(
+      { bot_id: BOT, key: "receipt_ocr_daily_usd", value: "0.5" },
+      {
+        bot_id: BOT,
+        key: `ai_charges:${date}`,
+        value: JSON.stringify({ date, uses: { receipt_ocr: { usd: 0.5, calls: 600 } } }),
+      },
+    );
+    const model = mockReceiptModel(OK);
+    const r = await verifyReceipt(ctx, base);
+    expect(r).toMatchObject({ ok: false, reason: "ocr_unavailable" });
+    if (!r.ok) expect(r.detail).toContain("потолок");
+    expect(model).not.toHaveBeenCalled();
+  });
+
+  it("без ключа ИИ — модель не зовём, автопроверка выключена", async () => {
+    resetReceiptModel();
+    setEnvForTests({});
+    const { ctx } = setup();
+    expect(await receiptOcrAutoEnabled(ctx)).toBe(false);
+    const r = await verifyReceipt(ctx, base);
+    expect(r).toMatchObject({ ok: false, reason: "ocr_unavailable" });
+  });
+
+  it("продавцу: совпал — с тем, что прочитано, и напоминанием проверить банк", async () => {
+    const { ctx } = setup();
+    mockReceiptModel(OK, {
+      status: "success",
+      amount: 1000,
+      currency: "KZT",
+      operation_id: "123456789",
+      recipient: "Анастасия К.",
+    });
+    const r = await verifyReceipt(ctx, base);
+    expect(r.ok).toBe(true);
+    const note = sellerReceiptNote(r);
+    expect(note).toContain("Чек совпал");
+    expect(note).toContain("1000 KZT");
+    expect(note).toContain("№ 123456789");
+    expect(note).toContain("Проверьте поступление в банке");
+  });
+});
+
+describe("выдача сразу — переключатель продавца", () => {
+  it("по умолчанию выключена, «on» включает", async () => {
+    expect(await receiptAutoDeliver(setup().ctx)).toBe(false);
+    const { db, ctx } = setup();
+    db.tables.app_settings!.push({ bot_id: BOT, key: OCR_DELIVER_KEY, value: "on" });
+    expect(await receiptAutoDeliver(ctx)).toBe(true);
   });
 });

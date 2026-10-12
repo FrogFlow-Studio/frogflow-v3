@@ -105,9 +105,11 @@ Rossiya kassasi uchun: «54-FZ chekini yuborish (Robokassa onlayn-kassasi)», «
 
 ## Cheklarni tanish {#receipt-ocr}
 
-«Chekni aniqlash» moduli bo‘lganda bor. Botga yuborilgan chek avtomatik o‘qiladi: summa va to‘lov belgilari mos kelsa, fayllar xaridorga sizsiz darhol ketadi; shubhali chek sizga sababi bilan keladi; to‘lovsiz skrinshotni bot qayta yuborishni so‘raydi.
+«Chekni aniqlash» moduli bo‘lganda bor. Botga yuborilgan chekni SI o‘qiydi: summa, valyuta, sana, operatsiya raqami, qabul qiluvchi. Bot uni buyurtma, to‘lov usuli rekvizitlari va oldingi cheklar bilan solishtiradi va xabarnomada hamda buyurtma kartasida yozadi: «mos keldi», sabablari bilan «shubhali» (tahrir izlari, to‘lov «ishlov berilmoqda», chek buyurtmadan oldin) yoki «takror» (o‘sha fayl yoki operatsiya raqami avval bo‘lgan). To‘lovsiz yoki to‘lov xatosi bor skrinshotni bot qayta yuborishni so‘raydi. Chekni bank tasdiqlamaydi: pul tushganini o‘z bankingizda tekshiring.
 
-«Cheklarni avtotekshirish» yoqilgan — shunday ishlaydi. O‘chirilgan — barcha cheklar sizga qo‘lda tekshirish uchun keladi.
+«Cheklarni avtotekshirish» yoqilgan — shunday ishlaydi. O‘chirilgan — barcha cheklar sizga tekshiruvsiz keladi.
+
+«Chek mos kelsa, buyurtmani darhol berish» sukut bo‘yicha o‘chirilgan: buyurtmani siz tugma bilan tasdiqlaysiz. Yoqsangiz — mos chek fayllarni xaridorga o‘zi beradi, shubhali chek va takror baribir sizga keladi.
 
 Cheklovlar haqida rostini aytsak: platformada tanish kaliti hali berilmagan bo‘lsa, karta bu haqda yozadi, kalit mavjud emas va operator uni qo‘shmaguncha barcha cheklar qo‘lda tekshirishga ketadi. Tarifingizning oylik chegarasidan oshganda va [SI balansi](/admin/ai-balance) tugaganda ham cheklarni o‘zingiz tekshirasiz. Kartaning pastida — shu oyda va jami nechta chek tanilgani.
 

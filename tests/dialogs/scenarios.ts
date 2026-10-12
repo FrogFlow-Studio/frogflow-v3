@@ -323,6 +323,12 @@ export interface Scenario {
   /** Instagram/WhatsApp: фото чека скачивается — чек принимается. */
   receipts?: boolean;
   /**
+   * Чтение чека моделью (core/receipts/reader): ответы инструмента receipt по
+   * вызовам — модуль «Распознавание чека» включён, маршрут настоящий, подменён
+   * только ответ API модели.
+   */
+  receiptAi?: Array<Record<string, unknown>>;
+  /**
    * ИИ после оплаты (core/postpay): ответы инструмента decide по вызовам —
    * маршрут и исполнение настоящие, подменён только ответ API модели.
    */
@@ -1050,6 +1056,80 @@ export const SCENARIOS: Scenario[] = [
         expect: {
           says: [(c) => c.proofReceivedNeedEmail(82)],
           state: { mode: "awaiting_order_email" },
+        },
+      },
+    ],
+  },
+  {
+    id: "receipt-payment-failed-ig-ru",
+    title:
+      "фото с ошибкой платежа и «Не проходит» — бот не пишет «чек получен», просит чек успешной оплаты, заказ ждёт оплату",
+    origin:
+      "AATeach 11.10 23:27, kopats23 (#1435, Беларусь, 7 BYN): фото и «Не проходит» → «✅ Чек по заказу получен», заказ 13 часов у продавца как оплаченный",
+    channel: "instagram",
+    locale: "ru",
+    products: PRODUCTS,
+    receipts: true,
+    receiptAi: [
+      {
+        is_receipt: true,
+        status: "failed",
+        amount: 1700,
+        currency: "KZT",
+        edit_signs: [],
+        text: "Перевод\n1 700 ₸\nОперация отклонена банком",
+      },
+    ],
+    state: { mode: "awaiting_proof", pending_order_id: 82 },
+    arrange: paidOrder({ status: "awaiting_payment" }),
+    steps: [
+      {
+        say: { photo: true },
+        expect: {
+          says: [(c) => c.receiptPaymentFailed("82")],
+          notSays: [(c) => c.proofReceived(82), (c) => c.proofReceivedNeedEmail(82)],
+          orders: { 82: { status: "awaiting_payment" } },
+          sellerNotices: 0,
+        },
+      },
+    ],
+  },
+  {
+    id: "receipt-matched-hint-ig-ru",
+    title:
+      "чек совпал — покупателю обычное «чек получен», продавцу «✅ Чек совпал», заказ сам не выдаётся (выдача сразу выключена)",
+    origin: "Яков 12.10: проверка чеков без банка; продавец по-прежнему подтверждает кнопкой",
+    channel: "instagram",
+    locale: "ru",
+    products: PRODUCTS,
+    receipts: true,
+    mail: true,
+    receiptAi: [
+      {
+        is_receipt: true,
+        status: "success",
+        amount: 1700,
+        currency: "KZT",
+        operation_id: "123456789",
+        edit_signs: [],
+        text: "Kaspi\nПеревод успешно выполнен\nСумма 1 700 ₸\nКвитанция № 123456789",
+      },
+    ],
+    state: { mode: "awaiting_proof", pending_order_id: 82 },
+    arrange: paidOrder({ status: "awaiting_payment" }),
+    steps: [
+      {
+        say: { photo: true },
+        expect: {
+          says: [(c) => c.proofReceivedNeedEmail(82)],
+          notSays: [(c) => c.receiptVerified("82")],
+          orders: {
+            82: {
+              status: "awaiting_confirmation",
+              admin_note:
+                "OCR: ✅ Чек совпал с заказом: 1700 KZT, № 123456789. Повтора нет. Проверьте поступление в банке и подтвердите заказ.",
+            },
+          },
         },
       },
     ],

@@ -187,9 +187,12 @@ export async function receiveProof(b: Bot, msg: TelegramMessage, orderId: number
 
   // Автопроверка чека (модуль receipt_ocr): цифровой заказ выдаётся сам,
   // сомнительный — продавцу с причиной, не-чек — просим прислать заново.
+  // Итог автопроверки для продавца, когда заказ сам не выдаётся (см. ниже).
+  let reviewReason: string | undefined;
   const { receiptOcrAutoEnabled } = await import("@/core/receipts/verify.server");
   if (res.order.fulfillment_kind !== "physical" && (await receiptOcrAutoEnabled(b.ctx))) {
-    const { verifyCustomerReceipt } = await import("@/core/receipts/verify.server");
+    const { verifyCustomerReceipt, receiptAutoDeliver, sellerReceiptNote } =
+      await import("@/core/receipts/verify.server");
     const { isRetryReason } = await import("@/core/receipts/pure");
     const checked = await verifyCustomerReceipt(b.ctx, b.customer, {
       bytes: file.bytes,
@@ -198,6 +201,7 @@ export async function receiveProof(b: Bot, msg: TelegramMessage, orderId: number
       currency: res.order.currency,
       orderId,
       recipientCountry: res.order.country_code,
+      orderCreatedAt: res.order.created_at,
     });
     b.customer = checked.customer;
     const v = checked.result;
@@ -215,53 +219,64 @@ export async function receiveProof(b: Bot, msg: TelegramMessage, orderId: number
       );
       return;
     }
-    b.customer = await setState(b.ctx, b.customer, { ...b.customer.state, mode: "idle" });
-    if (!v.ok) {
+    if (!(await receiptAutoDeliver(b.ctx))) {
+      // Выдача кнопкой продавца (по умолчанию): покупателю — обычное «чек
+      // получен», продавцу — итог проверки: совпал, подозрительный, повтор.
+      reviewReason = sellerReceiptNote(v);
       await b.ctx.db
         .from("orders")
-        .update({ admin_note: `OCR: ${v.detail}`.slice(0, 500) })
+        .update({ admin_note: `OCR: ${reviewReason}`.slice(0, 500) })
         .eq("id", orderId);
-      await send(b, b.m.receiptManualReview(String(no)), { reply_markup: mainMenu(b) });
-      await notifyAdminNewOrder(b.ctx, b.api, res.order, proof, { reviewReason: v.detail });
-      return;
-    }
-    const verified = await markProofVerified(
-      b.ctx,
-      orderId,
-      res.hash,
-      `OCR ok: сумма ${v.matchedAmount}${v.matchedCurrency ? ` ${v.matchedCurrency} (по курсу)` : ""}`,
-      { amount: v.matchedAmount, currency: v.matchedCurrency },
-    );
-    if (!verified) {
-      await b.ctx.db
-        .from("orders")
-        .update({ admin_note: PROOF_SWAPPED_NOTE })
-        .eq("id", orderId)
-        .eq("status", "awaiting_confirmation");
-      await send(b, b.m.receiptManualReview(String(no)), { reply_markup: mainMenu(b) });
-      await notifyAdminNewOrder(b.ctx, b.api, res.order, proof, {
-        reviewReason: PROOF_SWAPPED_NOTE,
+    } else {
+      b.customer = await setState(b.ctx, b.customer, { ...b.customer.state, mode: "idle" });
+      if (!v.ok) {
+        await b.ctx.db
+          .from("orders")
+          .update({ admin_note: `OCR: ${v.detail}`.slice(0, 500) })
+          .eq("id", orderId);
+        await send(b, b.m.receiptManualReview(String(no)), { reply_markup: mainMenu(b) });
+        await notifyAdminNewOrder(b.ctx, b.api, res.order, proof, { reviewReason: v.detail });
+        return;
+      }
+      const verified = await markProofVerified(
+        b.ctx,
+        orderId,
+        res.hash,
+        `OCR ok: сумма ${v.matchedAmount}${v.matchedCurrency ? ` ${v.matchedCurrency} (по курсу)` : ""}`,
+        { amount: v.matchedAmount, currency: v.matchedCurrency },
+      );
+      if (!verified) {
+        await b.ctx.db
+          .from("orders")
+          .update({ admin_note: PROOF_SWAPPED_NOTE })
+          .eq("id", orderId)
+          .eq("status", "awaiting_confirmation");
+        await send(b, b.m.receiptManualReview(String(no)), { reply_markup: mainMenu(b) });
+        await notifyAdminNewOrder(b.ctx, b.api, res.order, proof, {
+          reviewReason: PROOF_SWAPPED_NOTE,
+        });
+        return;
+      }
+      await send(b, b.m.receiptVerified(String(no)), { reply_markup: mainMenu(b) });
+      const r = await deliverOrder(b.ctx, orderId, telegramMaterialSender(b.api, b.chatId, b.m), {
+        lang: b.locale,
+        ask: telegramLanguageAsker(b.api, b.chatId, b.m),
       });
+      if (r.failed === 0 && r.pending === 0 && !r.alreadyDelivered)
+        await send(b, b.m.orderDelivered(no));
+      if (r.failed > 0) await notifyDeliveryFailure(b.ctx, res.order, r);
+      if (r.pointsEarned > 0) await send(b, b.m.pointsEarned(r.pointsEarned));
+      await notifyReferral(b.ctx, b.api, r.referral);
+      const fresh = (await getOrder(b.ctx, orderId)) ?? res.order;
+      await notifyAdminNewOrder(b.ctx, b.api, fresh, proof, { autoDelivered: r.failed === 0 });
       return;
     }
-    await send(b, b.m.receiptVerified(String(no)), { reply_markup: mainMenu(b) });
-    const r = await deliverOrder(b.ctx, orderId, telegramMaterialSender(b.api, b.chatId, b.m), {
-      lang: b.locale,
-      ask: telegramLanguageAsker(b.api, b.chatId, b.m),
-    });
-    if (r.failed === 0 && r.pending === 0 && !r.alreadyDelivered)
-      await send(b, b.m.orderDelivered(no));
-    if (r.failed > 0) await notifyDeliveryFailure(b.ctx, res.order, r);
-    if (r.pointsEarned > 0) await send(b, b.m.pointsEarned(r.pointsEarned));
-    await notifyReferral(b.ctx, b.api, r.referral);
-    const fresh = (await getOrder(b.ctx, orderId)) ?? res.order;
-    await notifyAdminNewOrder(b.ctx, b.api, fresh, proof, { autoDelivered: r.failed === 0 });
-    return;
   }
 
   b.customer = await setState(b.ctx, b.customer, { ...b.customer.state, mode: "idle" });
   await send(b, b.m.proofReceived(no), { reply_markup: mainMenu(b) });
-  await notifyAdminNewOrder(b.ctx, b.api, res.order, proof);
+  if (reviewReason) await notifyAdminNewOrder(b.ctx, b.api, res.order, proof, { reviewReason });
+  else await notifyAdminNewOrder(b.ctx, b.api, res.order, proof);
 }
 
 /**
