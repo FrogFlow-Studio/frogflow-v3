@@ -8,6 +8,9 @@ import {
   observerInPlan,
   parseFindings,
   sellerSignalText,
+  sellerSignal,
+  contactLinks,
+  SIGNAL_MAX_CHARS,
 } from "@/core/observer/observer";
 import { SUPPORTED_LOCALES } from "@/core/i18n/locale";
 
@@ -148,7 +151,9 @@ describe("наблюдатель: прогон", () => {
     expect(x.calls[0]!.user).toContain("* [");
     expect(x.calls[0]!.user).toContain("Как оплатить из Беларуси?");
     expect(x.seller).toHaveLength(1);
-    expect(x.seller[0]).toContain("«Как оплатить из Беларуси?»");
+    // Цитата — среди последних реплик, второй раз отдельно не повторяется.
+    expect(x.seller[0]).toContain("Последние сообщения");
+    expect(x.seller[0]).toContain("Как оплатить из Беларуси?");
     expect(x.seller[0]).toContain("Пришлю реквизиты");
     expect(x.seller[0]).toContain("https://app.test/admin/chat?c=77");
     expect(x.operator).toHaveLength(0);
@@ -160,6 +165,115 @@ describe("наблюдатель: прогон", () => {
     expect(state.spend.usd).toBeCloseTo(0.006);
     // Покупателю — ни одной новой реплики.
     expect(db.tables.manager_chat_messages).toHaveLength(4);
+  });
+
+  it("подсказка по Instagram: профиль и Direct кнопками, заказ с товаром, три последние реплики", async () => {
+    db.tables.bot_users!.push({
+      user_key: "ig:1838791457529399",
+      bot_id: KOPILKA,
+      telegram_id: 131,
+      platform: "instagram",
+      username: "sofronovaaaaaa",
+      first_name: "KATERINA",
+      state: {},
+    });
+    db.tables.orders!.push({
+      id: 4241,
+      bot_id: KOPILKA,
+      telegram_id: 131,
+      order_no: 131,
+      display_no: 131,
+      status: "awaiting_payment",
+      total: 1700,
+      currency: "KZT",
+      created_at: new Date(NOW - 26 * 3600_000).toISOString(),
+      order_items: [{ name_snapshot: "Палитра средств выразительности" }],
+    });
+    say(131, "bot", 60, "🧾 Заказ #131 оформлен. Выберите способ оплаты.");
+    say(131, "customer", 7, "💳 Картой РФ");
+    say(131, "customer", 7, "Здравствуйте Не получается оплатить");
+    say(131, "bot", 7, "Откройте ссылку и оплатите картой российского банка.");
+    const buttons: unknown[] = [];
+    const x = deps(() => ({
+      findings: [
+        {
+          dialog_id: "131",
+          kind: "card_trouble",
+          audience: "seller",
+          quote: "Здравствуйте Не получается оплатить",
+          summary: "Второй раз не может оплатить картой РФ.",
+          reply: "Уточните, что происходит при оплате.",
+        },
+      ],
+    }));
+    const notify = x.d.notifySeller;
+    x.d.notifySeller = async (c: unknown, html: string, b?: unknown) => {
+      buttons.push(b);
+      return notify(c, html);
+    };
+    await runDialogObserver(tenant(), budget, x.d);
+    const t = x.seller[0]!;
+    expect(t).toContain("Instagram · @sofronovaaaaaa");
+    expect(t).toContain("🧾 Заказ #131 · Палитра средств выразительности · 1700 ₸ · ждёт оплаты");
+    // Три последние реплики, первая (оформление заказа) уже не влезает.
+    expect(t).toContain("<i>Покупатель, ");
+    expect(t).toContain("💳 Картой РФ");
+    expect(t).toContain("<i>Бот, ");
+    expect(t).not.toContain("Выберите способ оплаты");
+    // Цитата уже среди реплик — отдельной строкой «…» не дублируется.
+    expect(t).not.toContain("«Здравствуйте Не получается оплатить»");
+    expect(t.length).toBeLessThan(4096);
+    expect(buttons[0]).toEqual([
+      [
+        { text: "👤 Профиль", url: "https://instagram.com/sofronovaaaaaa" },
+        { text: "✉️ Написать в Direct", url: "https://ig.me/m/sofronovaaaaaa" },
+      ],
+      [{ text: "Открыть диалог", url: "https://app.test/admin/chat?c=131" }],
+    ]);
+  });
+
+  it("ссылки на покупателя: ник Instagram и Telegram, id Meta вместо ника — без ссылок", () => {
+    expect(contactLinks({ platform: "instagram", username: "a.b_c" })?.chat).toBe(
+      "https://ig.me/m/a.b_c",
+    );
+    expect(contactLinks({ platform: "instagram", username: "1098354232682939" })).toBeNull();
+    expect(contactLinks({ platform: "telegram", username: "kristina_u" })?.profile).toBe(
+      "https://t.me/kristina_u",
+    );
+    expect(contactLinks({ platform: "whatsapp", username: "77001234567" })).toBeNull();
+    expect(contactLinks(undefined)).toBeNull();
+  });
+
+  it("длинная переписка и ответ — подсказка не длиннее предела Telegram", () => {
+    const long = "я".repeat(5000);
+    const r = sellerSignal(
+      "ru",
+      {
+        telegramId: 1,
+        kind: "upset",
+        audience: "seller",
+        quote: long.slice(0, 300),
+        summary: long.slice(0, 500),
+        reply: long.slice(0, 700),
+      },
+      {
+        who: "Instagram · @a",
+        contact: { platform: "instagram", username: "a" },
+        lines: [1, 2, 3].map((i) => ({
+          id: String(i),
+          telegramId: 1,
+          sender: "customer",
+          text: long,
+          at: new Date(NOW).toISOString(),
+          fresh: true,
+        })),
+        orders: [],
+      },
+      "https://x/admin/chat?c=1",
+      "Asia/Almaty",
+    );
+    expect(r.html.length).toBeLessThanOrEqual(SIGNAL_MAX_CHARS);
+    expect(r.buttons).toHaveLength(2);
   });
 
   it("по тому же диалогу через 15 минут — в журнал, продавцу второй раз не пишем", async () => {

@@ -808,7 +808,7 @@ function itemsLine(items: string[] | undefined): string {
  * выбора оплаты: показываем этот заказ с кнопками оплаты, а не «Корзина
  * пуста» (заказ #19 Копилки русоведа, 09.10). true — показали.
  */
-async function resumePendingPayChoice(s: Shop): Promise<boolean> {
+export async function resumePendingPayChoice(s: Shop): Promise<boolean> {
   if (s.customer.state.mode !== "choose_pay") return false;
   const orderId = Number(s.customer.state.pending_order_id);
   const order = orderId ? await getOrder(s.ctx, orderId) : null;

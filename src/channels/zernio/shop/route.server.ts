@@ -133,6 +133,7 @@ import {
   proceedToFulfillmentOrPlace,
   proceedToLanguageOrPlace,
   resumeExpressOrder,
+  resumePendingPayChoice,
   saveOrderEmail,
   startCheckout,
   startQuiz,
@@ -749,6 +750,17 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
           return "handled";
         s.handoff = true;
         await reply(s, s.m.payTroubleHandoff, { force: true });
+        // Не прошла оплата «Картой РФ»: форма берёт только карты российских
+        // банков, а у покупателя чаще карта Казахстана — ещё раз выбор оплаты
+        // с Kaspi, а не тишина (Копилка 12.10, sofronovaaaaaa #131).
+        if (
+          mode === "awaiting_payment" &&
+          s.customer.state.pay_link === "pdm" &&
+          !isFromRussia(text)
+        ) {
+          await setMode(s, { mode: "choose_pay" });
+          if (!(await resumePendingPayChoice(s))) await setMode(s, { mode: "awaiting_payment" });
+        }
         return "question";
       }
       // «3» сразу после заказа — не товар 003: сначала про ждущий оплаты заказ

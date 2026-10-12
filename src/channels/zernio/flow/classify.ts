@@ -70,11 +70,16 @@ export function isReceiptHowQuestion(text: string): boolean {
   return RECEIPT_HOW.test(t) || BARE_DONT_KNOW.test(t);
 }
 
+/** «Не получается оплатить», «оплата не проходит» — ещё не оплатил, это не жалоба (Копилка 12.10, #131). */
+const CANT_PAY_MARKERS =
+  /(не\s*(смог|могу|можу|получ|проход|прош|выход)\p{L}*\s*(оплат|заплат|перев)|(оплат|заплат)\p{L}*\s*не\s*(смог|могу|получ|прош|проход|выход))/iu;
+
 /** Оплатил и не получил, требует деньги назад — единственный случай, когда бот зовёт человека немедленно. */
 export function isPaymentComplaint(text: string): boolean {
   const value = text.trim();
   if (!value) return false;
   if (REFUND_MARKERS.test(value)) return true;
+  if (CANT_PAY_MARKERS.test(value)) return false;
   if (!MISSING_MARKERS.test(value)) return false;
   return PAID_MARKERS.test(value) || SUBJECT_MARKERS.test(value);
 }
