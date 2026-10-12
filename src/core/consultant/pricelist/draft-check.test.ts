@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ConsultantProduct } from "./catalog";
 import {
+  askedBefore,
   brandCountries,
   countryMistakes,
   cyrillicBrands,
@@ -126,5 +127,49 @@ describe("сверка черновика", () => {
         "160*200*25",
       ),
     ).toEqual([]);
+  });
+});
+
+describe("второе уточнение подряд и фото без поиска (BOVI 12.10, anjellaakaeva)", () => {
+  const recent = (...t: Array<["customer" | "assistant", string]>) =>
+    t.map(([role, text]) => ({ role, text }));
+
+  it("уточнение после уточнения — только на второй вопрос, приветствие не в счёт", () => {
+    expect(
+      askedBefore(recent(["customer", "Здравствуйте"], ["assistant", "Что подсказать?"])),
+    ).toBe(false);
+    expect(
+      askedBefore(
+        recent(
+          ["customer", "Здравствуйте"],
+          ["assistant", "Что подсказать?"],
+          ["customer", "Есть этот комплект?"],
+          ["assistant", "Уточните название?"],
+        ),
+      ),
+    ).toBe(true);
+    expect(
+      askedBefore(
+        recent(
+          ["customer", "Здравствуйте"],
+          ["assistant", "Что подсказать?"],
+          ["customer", "Полотенце"],
+          ["assistant", "Uchino 50x100 — 9 000 ₸."],
+        ),
+      ),
+    ).toBe(false);
+  });
+
+  it("вопрос без поиска после вопроса или на фото — проблема; с поиском или без вопроса — нет", () => {
+    const kinds = (text: string, ctx: Parameters<typeof draftProblems>[2]) =>
+      draftProblems(text, [], ctx).map((p) => p.kind);
+    expect(kinds("Уточните марку?", { askedBefore: true })).toContain("clarify");
+    expect(kinds("Какой размер?", { photo: true })).toContain("clarify");
+    expect(kinds("Уточните марку?", { askedBefore: true, searched: true })).not.toContain(
+      "clarify",
+    );
+    expect(kinds("Такого нет.", { askedBefore: true })).not.toContain("clarify");
+    expect(kinds("Уточните марку?", {})).not.toContain("clarify");
+    expect(draftFixNote([{ kind: "clarify", detail: "photo" }])).toContain("search_products");
   });
 });

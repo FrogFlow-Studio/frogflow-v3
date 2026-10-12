@@ -28,7 +28,8 @@
  *   Weseta швейцарская;
  * - марка кириллицей: «Травматина мягкая» вместо Traumina;
  * - свойство, которого нет в данных магазина, и наматрасник не по высоте
- *   матраса (живой диалог BOVI 27.09, ниже).
+ *   матраса (живой диалог BOVI 27.09, ниже);
+ * - второе уточнение подряд или фото покупателя без поиска (BOVI 12.10).
  *
  * Черновик проверяется, только когда модель менеджера не звала.
  */
@@ -50,7 +51,8 @@ export type DraftProblem = {
     | "country"
     | "latin"
     | "property"
-    | "height";
+    | "height"
+    | "clarify";
   detail: string;
 };
 
@@ -280,7 +282,25 @@ export type DraftContext = {
   evidence?: string;
   /** Что покупатель писал в этом диалоге — высота матраса для наматрасника. */
   customerText?: string;
+  /** В этот ход модель искала по прайсу (search_products). */
+  searched?: boolean;
+  /** Прошлый ответ бота уже был уточняющим вопросом (не ответ на первое сообщение). */
+  askedBefore?: boolean;
+  /** Покупатель прислал фото в этот ход. */
+  photo?: boolean;
 };
+
+/**
+ * Прошлая реплика бота — уточняющий вопрос: в ней «?», и она не ответ на
+ * первое сообщение диалога («Здравствуйте. Что подсказать?» — приветствие, а
+ * не уточнение).
+ */
+export function askedBefore(recent: { role: "customer" | "assistant"; text: string }[]): boolean {
+  let i = recent.length - 1;
+  while (i >= 0 && recent[i]!.role !== "assistant") i--;
+  if (i < 0 || !recent[i]!.text.includes("?")) return false;
+  return recent.slice(0, i).filter((t) => t.role === "customer").length >= 2;
+}
 
 export function draftProblems(
   text: string,
@@ -310,6 +330,10 @@ export function draftProblems(
   if (properties.length) problems.push({ kind: "property", detail: properties.join(", ") });
   const heights = ctx.customerText ? heightMismatches(text, ctx.customerText) : [];
   if (heights.length) problems.push({ kind: "height", detail: heights.join("; ") });
+  // Два уточнения подряд или фото без поиска: правило промпта, которое модель
+  // нарушала (BOVI 12.10: четыре вопроса подряд, ни одного поиска и цены).
+  if (!ctx.searched && (ctx.askedBefore || ctx.photo) && text.includes("?"))
+    problems.push({ kind: "clarify", detail: ctx.photo ? "photo" : "again" });
   return problems;
 }
 
@@ -341,6 +365,10 @@ export function draftFixNote(problems: DraftProblem[]): string {
         return `• «${p.detail}» — этого нет ни в прайсе, ни в базе знаний. Не утверждайте: скажите, что в описании позиции этого не указано.`;
       case "height":
         return `• Не та высота: ${p.detail}. Скажите, что эта позиция на другую высоту матраса, и как подходящую не предлагайте.`;
+      case "clarify":
+        return p.detail === "photo"
+          ? "• Покупатель прислал фото, а вы только переспрашиваете. Если речь о товаре — поймите по фото вид вещи, цвет и узор, найдите похожее поиском (search_products) и назовите 1–3 варианта с ценами; уточнить можно одним вопросом после. Не нашлось — так и скажите."
+          : "• Вы уже задавали уточняющий вопрос, это было бы второе подряд. Если речь о товаре — найдите поиском (search_products) по тому, что уже известно (вид вещи, цвет, размер), и назовите 1–3 варианта с ценами; уточнить можно одним вопросом после. Не нашлось — так и скажите. Если вопрос не о товаре (оплата, доставка) — оставьте свой ответ как есть.";
       case "promise":
         return "• Вы обещаете покупателю менеджера, но не вызвали handoff_to_manager. Нужен менеджер — вызовите его с причиной; не нужен — не обещайте.";
     }

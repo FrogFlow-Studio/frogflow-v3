@@ -14,7 +14,13 @@ import { findProducts, type ConsultantProduct } from "./catalog";
 import { loadPricelist } from "./catalog.server";
 import { storyHits } from "./story-hits";
 import { currencyAsked, tengeToRubles, wantsRubles } from "./currency";
-import { brandCountries, catalogBrands, draftFixNote, draftProblems } from "./draft-check";
+import {
+  askedBefore as replyAskedBefore,
+  brandCountries,
+  catalogBrands,
+  draftFixNote,
+  draftProblems,
+} from "./draft-check";
 import { finalizePricelistText, withModelCategories, writesRubles } from "./finalize";
 import { russianPlaceIn } from "./geo";
 import { fetchImage, MAX_IMAGES_PER_TURN, type V2Image } from "./images";
@@ -442,6 +448,7 @@ async function decide(data: PricelistData, input: PricelistInput): Promise<Price
       ...(state.recent ?? []).filter((t) => t.role === "customer").map((t) => t.text),
       text,
     ].join("\n"),
+    askedBefore: replyAskedBefore(state.recent ?? []),
   };
   const system = buildV2SystemPrompt({
     catalogSection: formatAssortmentMapForV2(catalog),
@@ -553,6 +560,12 @@ async function decide(data: PricelistData, input: PricelistInput): Promise<Price
   let rublesRetried = false;
   let markupRetried = false;
   let draftChecked = false;
+  // Что модель сделала в этот ход — для проверки «уточнение без поиска».
+  const turnDraftCtx = () => ({
+    ...draftCtx,
+    searched: toolsUsed.some((t) => t.startsWith("search_products")),
+    photo: customerPhotos > 0,
+  });
   let contactAsked = false;
   const attachments: PricelistDecision["attachments"] = [];
   const mediaSent: string[] = [];
@@ -617,7 +630,7 @@ async function decide(data: PricelistData, input: PricelistInput): Promise<Price
       // переписывает сама (может и поискать заново).
       if (!draftChecked && !handoff && lastText) {
         draftChecked = true;
-        const problems = draftProblems(lastText, catalog, draftCtx);
+        const problems = draftProblems(lastText, catalog, turnDraftCtx());
         if (problems.length) {
           maxRounds += 2;
           toolsUsed.push(`fix:draft:${[...new Set(problems.map((p) => p.kind))].join("+")}`);
@@ -726,7 +739,7 @@ async function decide(data: PricelistData, input: PricelistInput): Promise<Price
   if (rublesRetried && writesRubles(lastText)) toolsUsed.push("fix:rubles_by_model_again");
   let priceBlocked = false;
   if (toolsUsed.some((t) => t.startsWith("fix:draft:")) && !handoff) {
-    const left = draftProblems(lastText, catalog, draftCtx);
+    const left = draftProblems(lastText, catalog, turnDraftCtx());
     if (left.length)
       toolsUsed.push(`fix:draft_again:${[...new Set(left.map((p) => p.kind))].join("+")}`);
     // Цена не по прайсу и после переписывания — покупателю не уходит (как
