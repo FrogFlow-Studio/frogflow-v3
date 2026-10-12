@@ -64,6 +64,10 @@ export type VipCopyKey =
   | "paymentChosenLabel"
   | "paymentDueLabel"
   | "paymentAfterPay"
+  | "prodamusBtnRf"
+  | "prodamusBtnCard"
+  | "prodamusLineRf"
+  | "prodamusLineCard"
   | "noPendingTariff"
   | "proofResubmitNotified"
   | "proofResubmitQuiet"
@@ -142,6 +146,12 @@ export const vipCopy: Record<Locale, Record<VipCopyKey, string>> = {
     paymentDueLabel: "К оплате:",
     paymentAfterPay:
       "После оплаты отправьте чек прямо в этот чат — фото или файлом (PDF тоже подойдёт).",
+    prodamusBtnRf: "💳 Картой РФ",
+    prodamusBtnCard: "💳 Оплатить картой",
+    prodamusLineRf:
+      "Или нажмите «{btn}» — оплата картой российского банка. Доступ откроется сам сразу после оплаты, чек присылать не нужно. Карту Казахстана или другой страны форма не примет.",
+    prodamusLineCard:
+      "Или нажмите «{btn}» — доступ откроется сам сразу после оплаты, чек присылать не нужно.",
     noPendingTariff: "У вас нет ожидающих оплаты тарифов. Нажмите /start чтобы выбрать тариф.",
     proofResubmitNotified:
       "✅ Новый чек получен! Предыдущий заменён. Ожидайте подтверждения администратором.",
@@ -220,6 +230,12 @@ export const vipCopy: Record<Locale, Record<VipCopyKey, string>> = {
     paymentDueLabel: "Төлеуге тиіс:",
     paymentAfterPay:
       "Төлегеннен кейін чекті осы чатқа тікелей жіберіңіз — фото немесе файл түрінде (PDF де жарайды).",
+    prodamusBtnRf: "💳 РФ картасымен",
+    prodamusBtnCard: "💳 Картамен төлеу",
+    prodamusLineRf:
+      "Немесе «{btn}» батырмасын басыңыз — Ресей банкінің картасымен төлем. Төлегеннен кейін қолжетімділік бірден өзі ашылады, чек жіберудің қажеті жоқ. Қазақстан немесе басқа елдің картасын форма қабылдамайды.",
+    prodamusLineCard:
+      "Немесе «{btn}» батырмасын басыңыз — төлегеннен кейін қолжетімділік бірден өзі ашылады, чек жіберудің қажеті жоқ.",
     noPendingTariff: "Сізде төлемді күтетін тарифтер жоқ. Тариф таңдау үшін /start басыңыз.",
     proofResubmitNotified: "✅ Жаңа чек алынды! Алдыңғысы ауыстырылды. Әкімші растауын күтіңіз.",
     proofResubmitQuiet:
@@ -298,6 +314,12 @@ export const vipCopy: Record<Locale, Record<VipCopyKey, string>> = {
     paymentDueLabel: "Amount due:",
     paymentAfterPay:
       "After paying, send the receipt directly to this chat — as a photo or a file (PDF works too).",
+    prodamusBtnRf: "💳 Russian card",
+    prodamusBtnCard: "💳 Pay by card",
+    prodamusLineRf:
+      "Or tap «{btn}» to pay with a card issued by a Russian bank. Access opens automatically right after payment, no receipt needed. Cards from Kazakhstan or other countries are not accepted by this form.",
+    prodamusLineCard:
+      "Or tap «{btn}»: access opens automatically right after payment, no receipt needed.",
     noPendingTariff: "You have no plans awaiting payment. Tap /start to choose a plan.",
     proofResubmitNotified:
       "✅ New receipt received! The previous one was replaced. Awaiting admin confirmation.",
@@ -378,6 +400,12 @@ export const vipCopy: Record<Locale, Record<VipCopyKey, string>> = {
     paymentDueLabel: "To‘lash summasi:",
     paymentAfterPay:
       "To‘lovdan so‘ng chekni to‘g‘ridan-to‘g‘ri shu chatga yuboring — foto yoki fayl sifatida (PDF ham bo‘ladi).",
+    prodamusBtnRf: "💳 Rossiya kartasi",
+    prodamusBtnCard: "💳 Karta bilan to‘lash",
+    prodamusLineRf:
+      "Yoki «{btn}» tugmasini bosing — Rossiya banki kartasi bilan to‘lov. To‘lovdan so‘ng kirish darhol o‘zi ochiladi, chek yuborish shart emas. Qozog‘iston yoki boshqa davlat kartasini forma qabul qilmaydi.",
+    prodamusLineCard:
+      "Yoki «{btn}» tugmasini bosing — to‘lovdan so‘ng kirish darhol o‘zi ochiladi, chek yuborish shart emas.",
     noPendingTariff:
       "Sizda to‘lovni kutayotgan tariflar yo‘q. Tarif tanlash uchun /start ni bosing.",
     proofResubmitNotified:

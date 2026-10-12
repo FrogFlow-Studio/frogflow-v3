@@ -28,6 +28,15 @@ const AMOUNT =
 const RECEIPT_WORDS =
   /(оплата\s+(совершена|прошла|выполнена|успешн)|перевод\s+(выполнен|совершен|успешн|отправлен)|платеж\p{L}*\s+(проведен|выполнен|успешн)|платёж\p{L}*\s+(проведён|выполнен|успешн)|успешно|квитанци|получатель|отправитель|комисси|дата\s+и\s+время|төлем\s+жасалды|сәтті|to[‘'`]?lov\s+amalga|muvaffaqiyatli|payment\s+(successful|completed))/iu;
 
+/**
+ * В тексте есть сумма с валютой: тогда это может быть уведомление банка без
+ * слов чека («Покупка: 1 700 ₸ / ИП … / Доступно: …») — решает модель
+ * (core/inbox/triage, text_receipt). Без суммы модель не зовём.
+ */
+export function mentionsAmount(text: string): boolean {
+  return AMOUNT.test(text);
+}
+
 /** Номер операции для отпечатка чека: тот же номер по другому заказу — повтор. */
 export function receiptOperationNo(text: string): string | null {
   const m = KASPI_QR.exec(text) ?? OPERATION_NO.exec(text);

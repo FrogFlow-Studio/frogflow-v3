@@ -156,6 +156,45 @@ export function parseChargeRef(
   return { orderId, amount: minor / 100, currency: cfg.currency };
 }
 
+/**
+ * order_id для оплаты VIP-подписки: у заявки uuid, а не номер заказа, поэтому
+ * свой формат — `vip-<uuid без дефисов>-<копейки>-<mac>`; подпись по заявке,
+ * сумме и валюте, как у заказов (поправить сумму без ключа нельзя).
+ */
+export function vipChargeRef(
+  cfg: ProdamusConfig,
+  subscriptionId: string,
+  charge: { amount: number; currency: string },
+): string {
+  const hex = subscriptionId.replace(/-/g, "").toLowerCase();
+  const minor = Math.round(charge.amount * 100);
+  return `vip-${hex}-${minor}-${vipMac(cfg.secretKey, hex, minor, charge.currency)}`;
+}
+
+function vipMac(secret: string, hex: string, minor: number, currency: string): string {
+  return createHmac("sha256", secret)
+    .update(`frogflow:vip:${hex}:${minor}:${currency}`)
+    .digest("hex")
+    .slice(0, 16);
+}
+
+/** Из order_num уведомления: заявка VIP и выставленная сумма; null — не наш VIP-платёж. */
+export function parseVipChargeRef(
+  cfg: ProdamusConfig,
+  ref: unknown,
+): { subscriptionId: string; amount: number; currency: ProdamusCurrency } | null {
+  const m = /^vip-([0-9a-f]{32})-(\d+)-([0-9a-f]{16})$/.exec(String(ref ?? "").trim());
+  if (!m) return null;
+  const hex = m[1]!;
+  const minor = Number(m[2]);
+  if (!Number.isSafeInteger(minor)) return null;
+  const expected = Buffer.from(vipMac(cfg.secretKey, hex, minor, cfg.currency));
+  const got = Buffer.from(m[3]!);
+  if (got.length !== expected.length || !timingSafeEqual(got, expected)) return null;
+  const subscriptionId = `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+  return { subscriptionId, amount: minor / 100, currency: cfg.currency };
+}
+
 type Json = string | Json[] | { [k: string]: Json };
 
 /** Значения строками, ключи по порядку на каждом уровне; null/undefined выпадают. */
@@ -258,6 +297,10 @@ export function buildProdamusLink(
     /** Сумма в валюте кассы. */
     amount: number;
     orderId: number;
+    /** Свой order_id (VIP-подписка, vipChargeRef) вместо chargeRef по заказу. */
+    ref?: string;
+    /** Позиция в чеке Продамуса; по умолчанию — номер заказа. */
+    sku?: string;
     description: string;
     notifyUrl: string;
     successUrl: string;
@@ -267,13 +310,13 @@ export function buildProdamusLink(
 ): string {
   const data: Record<string, unknown> = {
     do: "pay",
-    order_id: chargeRef(cfg, p.orderId, { amount: p.amount, currency: cfg.currency }),
+    order_id: p.ref ?? chargeRef(cfg, p.orderId, { amount: p.amount, currency: cfg.currency }),
     products: [
       {
         name: p.description.slice(0, 250),
         price: money(p.amount),
         quantity: "1",
-        sku: String(p.orderId),
+        sku: p.sku ?? String(p.orderId),
       },
     ],
     currency: cfg.currency.toLowerCase(),

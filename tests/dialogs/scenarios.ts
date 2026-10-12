@@ -344,7 +344,14 @@ export interface Scenario {
    * triage по вызовам — маршрут настоящий, подменён только ответ API модели.
    */
   triage?: Array<{
-    kind: "chatter" | "foreign_pay" | "payment_failed" | "cant_send_receipt" | "other";
+    kind:
+      | "chatter"
+      | "foreign_pay"
+      | "payment_failed"
+      | "cant_send_receipt"
+      | "text_receipt"
+      | "how_to_pay"
+      | "other";
     country?: string;
   }>;
   /** Instagram/WhatsApp: ник покупателя во входящем. */
@@ -4139,6 +4146,113 @@ export const SCENARIOS: Scenario[] = [
       {
         say: { text: "Хочу Палитру средств выразительности" },
         expect: { ruleMessages: 1 },
+      },
+    ],
+  },
+  // ───── Копилка 12.10, рилс «Матрёшки» (§94): оплата и выдача в переписке ─────
+  {
+    id: "kaspi-push-text-receipt-ig-ru",
+    title:
+      "текст уведомления Kaspi «Покупка: 1 700 ₸ / ИП …» — чек текстом: «Принял чек», заказ продавцу на подтверждение",
+    origin:
+      "Копилка 12.10, taurgalievna #148: «Оплатила», бот попросил фото чека, она вставила текст пуша Kaspi — тишина, заказ висел неоплаченным",
+    channel: "instagram",
+    locale: "ru",
+    products: PRODUCTS,
+    triage: [{ kind: "text_receipt" }],
+    state: { mode: "awaiting_proof", pending_order_id: 82 },
+    arrange: paidOrder({ status: "awaiting_payment" }),
+    steps: [
+      {
+        say: { text: "Покупка: 1 700 ₸\nИП КОПИЛКА РУСОВЕДА\nДоступно: 3 668,67 ₸" },
+        expect: {
+          says: [EVENING_COPY.ru.textReceiptTaken(82)],
+          orders: {
+            82: {
+              status: "awaiting_confirmation",
+              payment_proof_path: "Чек текстом",
+              admin_note: expect.stringContaining("ИП КОПИЛКА РУСОВЕДА"),
+            },
+          },
+        },
+      },
+    ],
+  },
+  {
+    id: "kaspi-push-text-receipt-model-says-no-ig-ru",
+    title:
+      "сумма в рассказе «я перевела 1700 ₸, когда пришлёте?» — модель говорит «не чек»: заказ не трогаем",
+    origin: "ожидание к kaspi-push-text-receipt-ig-ru (Копилка 12.10, #148)",
+    channel: "instagram",
+    locale: "ru",
+    products: PRODUCTS,
+    triage: [{ kind: "other" }, { kind: "other" }],
+    state: { mode: "awaiting_proof", pending_order_id: 82 },
+    arrange: paidOrder({ status: "awaiting_payment" }),
+    steps: [
+      {
+        say: { text: "я перевела 1700 ₸, когда пришлёте?" },
+        expect: {
+          notSays: [EVENING_COPY.ru.textReceiptTaken(82)],
+          orders: { 82: { status: "awaiting_payment" } },
+        },
+      },
+    ],
+  },
+  {
+    id: "paid-by-link-then-email-ask-ig-ru",
+    title:
+      "оплатила по ссылке, файлы выданы, шаг «жду оплату» остался: «можно на почту?» разбирает ИИ после оплаты — спрашивает почту и шлёт письмо",
+    origin:
+      "Копилка 12.10, _marina_lyalina_ #149: картой РФ, выдано за 4 минуты, «А можно отправить на почту?», адрес, «Не могу скачать по ссылкам» — тишина, обращение",
+    channel: "instagram",
+    locale: "ru",
+    products: PRODUCTS,
+    full: true,
+    mail: true,
+    postpay: [{ action: "status" }],
+    state: { mode: "awaiting_payment", pending_order_id: 82, pay_link: "pdm" },
+    arrange: paidOrder(),
+    steps: [
+      {
+        say: { text: "А можно отправить на почту?" },
+        expect: {
+          count: 1,
+          says: ["82"],
+          mails: [],
+          state: { mode: "awaiting_order_email", pending_order_id: 82 },
+        },
+      },
+      {
+        say: { text: "anna@mail.ru" },
+        expect: { says: ["anna@mail.ru"], mails: ["anna@mail.ru"] },
+      },
+    ],
+  },
+  {
+    id: "how-to-pay-resends-kaspi-step-ig-ru",
+    title:
+      "после «не получается» и вопроса о банке «Как перейти на оплату?» — ещё раз реквизиты Kaspi; «Каспий банк РК» следом — без второго повтора",
+    origin:
+      "Копилка 12.10, janat021265 #147: «Не получается» → «напишите, какой у вас банк» → «Как перейти на оплату?», «Каспий банк РК» — тишина",
+    channel: "instagram",
+    locale: "ru",
+    products: PRODUCTS,
+    triage: [{ kind: "how_to_pay" }, { kind: "how_to_pay" }],
+    state: { mode: "awaiting_proof", pending_order_id: 82 },
+    arrange: (r) => {
+      paidOrder({ status: "awaiting_payment" })(r);
+      r.db.tables.orders![0]!.country_code = "KZ";
+      r.db.tables.payment_methods![0]!.instructions = "Kaspi Gold 4400 4302 1234 5678, Кристина У.";
+    },
+    steps: [
+      {
+        say: { text: "Как перейти на оплату?" },
+        expect: { says: ["Kaspi Gold 4400 4302 1234 5678"], state: { mode: "awaiting_proof" } },
+      },
+      {
+        say: { text: "Каспий банк РК" },
+        expect: { notSays: ["Kaspi Gold 4400 4302 1234 5678"] },
       },
     ],
   },

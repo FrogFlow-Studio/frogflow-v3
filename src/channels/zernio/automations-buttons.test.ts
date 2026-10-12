@@ -1894,6 +1894,52 @@ describe("Comment-to-DM: работает только последнее вид
     expect(statusOf(db, "bread")).toMatchObject({ status: "skipped", error_message: RULE_GONE });
   });
 
+  it("правило пересохранено (новый id, тот же товар «Купить») — обещанная карточка уходит (Копилка 12.10, toktobiubiudzhaparova)", async () => {
+    const { ctx, db, inbox } = withRules([]);
+    const buy = [{ type: "postback", title: "Купить", payload: "PROD:matr" }];
+    const rules = (product: string) =>
+      ({
+        list: async () => [
+          {
+            id: "matr-new",
+            name: "Матрешки",
+            accountId: "acc-1",
+            keywords: [],
+            dmMessage: "x",
+            buttons: [{ type: "postback", title: "Купить", payload: `PROD:${product}` }],
+          },
+        ],
+        inbox,
+        tail: vi.fn(async () => []),
+      }) as unknown as AutomationApi;
+    db.tables.zernio_logs!.push({
+      ...row("matr", "matr-old", "Для перехода нажмите кнопку ниже 👇", 30_000),
+      payload: {
+        username: "anya",
+        automationId: "matr-old",
+        secondText: "Для перехода нажмите кнопку ниже 👇",
+        buttons: buy,
+      },
+    });
+    expect(await deliverPendingTwoStepDm(ctx, who, rules("matr"))).toBe(true);
+    expect(inbox).toHaveBeenCalledWith(
+      "conv-1",
+      "acc-1",
+      "Для перехода нажмите кнопку ниже 👇",
+      expect.anything(),
+    );
+    expect(statusOf(db, "matr").status).toBe("processed");
+
+    // Товар в пересохранённом правиле другой — прежняя «Купить» не уходит.
+    db.tables.zernio_logs!.push({
+      ...row("matr2", "matr-old", "Для перехода нажмите кнопку ниже 👇", 30_000),
+      payload: { username: "bob", automationId: "matr-old", secondText: "y", buttons: buy },
+    });
+    const bob = { ...who, username: "bob", conversationId: "conv-2" };
+    expect(await deliverPendingTwoStepDm(ctx, bob, rules("palitra"))).toBe(false);
+    expect(statusOf(db, "matr2")).toMatchObject({ status: "skipped", error_message: RULE_GONE });
+  });
+
   it("новый комментарий при живой переписке — второе уходит сразу, прежнее из очереди закрыто", async () => {
     const { ctx, db, api, inbox } = withRules(["padezhi", "hleb"]);
     db.tables.zernio_logs!.push(row("old", "padezhi", "Падежи", 3 * 3600_000));
