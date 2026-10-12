@@ -21,6 +21,7 @@ export const SETTING_KEYS = [
   "chat_receipt_text",
   "chat_skip_chatter",
   "chat_foreign_pay",
+  "chat_how_to_buy",
   "chat_pay_failed",
   "chat_receipt_text_offer",
   "chat_unpaid_number",

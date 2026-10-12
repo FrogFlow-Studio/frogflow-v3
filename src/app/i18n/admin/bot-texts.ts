@@ -54,6 +54,12 @@ export const ru = {
   "botTexts.key.foreign_pay_reply": "Оплата из другой страны",
   "botTexts.key.foreign_pay_reply.hint":
     "Покупатель спрашивает, как оплатить из страны, для которой у магазина нет способа оплаты (например, Беларусь, Узбекистан, Кыргызстан). Бот отвечает один раз в сутки, вопрос уходит вам обращением.",
+  "botTexts.key.kaspi_foreign_reply": "Kaspi из другой страны",
+  "botTexts.key.kaspi_foreign_reply.hint":
+    "Покупатель из страны, для которой у магазина нет способа оплаты (например, Кыргызстан), выбрал перевод Kaspi и пишет, что оплатить не получится. Бот один раз на заказ отвечает, что Kaspi принимает только карты Казахстана, и не спрашивает банк; вопрос уходит вам обращением.",
+  "botTexts.key.how_to_buy_reply": "Как получить материал",
+  "botTexts.key.how_to_buy_reply.hint":
+    "Покупатель получил сообщение с кнопкой «Купить» и спрашивает, как получить или купить материал, а заказа ещё нет. Бот зовёт нажать кнопку и присылает её ещё раз, не чаще раза в 30 минут.",
   "botTexts.key.pay_failed_reply": "Платёж не прошёл",
   "botTexts.key.pay_failed_reply.hint":
     "Покупатель пишет, что оплата не прошла («Не проходит», «ошибка»), в том числе подписью к фото. Чек не принимается, заказ ждёт оплату, вопрос уходит вам. Включается в «Оплата и настройки → Оплата и чеки в переписке».",
@@ -74,6 +80,8 @@ export const ru = {
   "botTexts.var.email": "{email} — почта покупателя",
   "botTexts.var.date": "{date} — дата заказа",
   "botTexts.var.items": "{items} — товары заказа",
+  "botTexts.var.country": "{country} — страна покупателя",
+  "botTexts.var.button": "{button} — название кнопки «Купить»",
   "botTexts.unknownVar": "Нет такой подстановки: {name}. Она останется в тексте как есть.",
   "botTexts.custom": "Свой текст",
   "botTexts.standard": "Стандартный",
@@ -153,6 +161,12 @@ export const kk: SectionDict<typeof ru> = {
   "botTexts.key.foreign_pay_reply": "Басқа елден төлеу",
   "botTexts.key.foreign_pay_reply.hint":
     "Сатып алушы дүкенде төлем тәсілі жоқ елден (мысалы, Беларусь, Өзбекстан, Қырғызстан) қалай төлеуге болатынын сұрайды. Бот тәулігіне бір рет жауап береді, сұрақ сізге өтініш болып келеді.",
+  "botTexts.key.kaspi_foreign_reply": "Басқа елден Kaspi",
+  "botTexts.key.kaspi_foreign_reply.hint":
+    "Дүкенде төлем тәсілі жоқ елден (мысалы, Қырғызстан) сатып алушы Kaspi аударымын таңдап, төлей алмайтынын жазады. Бот бір тапсырысқа бір рет Kaspi тек Қазақстан карталарын қабылдайтынын айтады, банкті сұрамайды; сұрақ сізге өтініш болып келеді.",
+  "botTexts.key.how_to_buy_reply": "Материалды қалай алуға болады",
+  "botTexts.key.how_to_buy_reply.hint":
+    "Сатып алушы «Купить» түймесі бар хабарлама алып, материалды қалай алуға немесе сатып алуға болатынын сұрайды, ал тапсырыс әлі жоқ. Бот түймені басуды сұрап, оны қайта жібереді, 30 минутта бір реттен жиі емес.",
   "botTexts.key.pay_failed_reply": "Төлем өтпеді",
   "botTexts.key.pay_failed_reply.hint":
     "Сатып алушы төлем өтпегенін жазады («Өтпей жатыр», «қате»), соның ішінде фото астындағы жазумен. Чек қабылданбайды, тапсырыс төлемді күтеді, сұрақ сізге келеді. «Төлем және баптаулар → Хат алмасудағы төлем мен чектер» ішінде қосылады.",
@@ -173,6 +187,8 @@ export const kk: SectionDict<typeof ru> = {
   "botTexts.var.email": "{email} — сатып алушының поштасы",
   "botTexts.var.date": "{date} — тапсырыс күні",
   "botTexts.var.items": "{items} — тапсырыстағы тауарлар",
+  "botTexts.var.country": "{country} — сатып алушының елі",
+  "botTexts.var.button": "{button} — «Купить» түймесінің атауы",
   "botTexts.unknownVar": "Мұндай ауыстыру жоқ: {name}. Ол мәтінде өзгеріссіз қалады.",
   "botTexts.custom": "Өз мәтіні",
   "botTexts.standard": "Стандартты",
@@ -254,6 +270,12 @@ export const en: SectionDict<typeof ru> = {
   "botTexts.key.foreign_pay_reply": "Payment from another country",
   "botTexts.key.foreign_pay_reply.hint":
     "The buyer asks how to pay from a country the shop has no payment method for (for example, Belarus, Uzbekistan, Kyrgyzstan). The bot replies once a day and the question comes to you as a ticket.",
+  "botTexts.key.kaspi_foreign_reply": "Kaspi from another country",
+  "botTexts.key.kaspi_foreign_reply.hint":
+    "A buyer from a country the shop has no payment method for (for example, Kyrgyzstan) chose a Kaspi transfer and writes that they can't pay. Once per order the bot replies that Kaspi only accepts cards from Kazakhstan and doesn't ask for the bank; the question comes to you as a ticket.",
+  "botTexts.key.how_to_buy_reply": "How to get the material",
+  "botTexts.key.how_to_buy_reply.hint":
+    "The buyer got a message with the “Buy” button and asks how to get or buy the material, with no order yet. The bot asks them to tap the button and sends it again, at most once every 30 minutes.",
   "botTexts.key.pay_failed_reply": "Payment didn't go through",
   "botTexts.key.pay_failed_reply.hint":
     "The buyer writes that the payment failed (“doesn't go through”, “error”), including as a photo caption. The receipt is not accepted, the order keeps waiting for payment and the question comes to you. Turned on in “Payment and settings → Payment and receipts in chat”.",
@@ -274,6 +296,8 @@ export const en: SectionDict<typeof ru> = {
   "botTexts.var.email": "{email} — buyer’s email",
   "botTexts.var.date": "{date} — order date",
   "botTexts.var.items": "{items} — order items",
+  "botTexts.var.country": "{country} — buyer's country",
+  "botTexts.var.button": "{button} — name of the “Buy” button",
   "botTexts.unknownVar": "No such placeholder: {name}. It will stay in the text as is.",
   "botTexts.custom": "Your text",
   "botTexts.standard": "Standard",
@@ -355,6 +379,12 @@ export const uz: SectionDict<typeof ru> = {
   "botTexts.key.foreign_pay_reply": "Boshqa davlatdan to‘lov",
   "botTexts.key.foreign_pay_reply.hint":
     "Xaridor do‘konda to‘lov usuli yo‘q davlatdan (masalan, Belarus, O‘zbekiston, Qirg‘iziston) qanday to‘lashni so‘raydi. Bot sutkada bir marta javob beradi, savol sizga murojaat bo‘lib keladi.",
+  "botTexts.key.kaspi_foreign_reply": "Boshqa davlatdan Kaspi",
+  "botTexts.key.kaspi_foreign_reply.hint":
+    "Do‘konda to‘lov usuli yo‘q davlatdan (masalan, Qirg‘iziston) xaridor Kaspi o‘tkazmasini tanlab, to‘lay olmasligini yozadi. Bot bir buyurtmaga bir marta Kaspi faqat Qozog‘iston kartalarini qabul qilishini aytadi va bankni so‘ramaydi; savol sizga murojaat bo‘lib keladi.",
+  "botTexts.key.how_to_buy_reply": "Materialni qanday olish mumkin",
+  "botTexts.key.how_to_buy_reply.hint":
+    "Xaridor «Купить» tugmali xabarni oldi va materialni qanday olish yoki sotib olishni so‘raydi, buyurtma esa hali yo‘q. Bot tugmani bosishni so‘raydi va uni qayta yuboradi, 30 daqiqada bir martadan ko‘p emas.",
   "botTexts.key.pay_failed_reply": "To‘lov o‘tmadi",
   "botTexts.key.pay_failed_reply.hint":
     "Xaridor to‘lov o‘tmaganini yozadi («O‘tmayapti», «xato»), shu jumladan rasm ostidagi yozuv bilan. Chek qabul qilinmaydi, buyurtma to‘lovni kutadi, savol sizga keladi. «To‘lov va sozlamalar → Yozishmadagi to‘lov va cheklar» bo‘limida yoqiladi.",
@@ -375,6 +405,8 @@ export const uz: SectionDict<typeof ru> = {
   "botTexts.var.email": "{email} — xaridor pochtasi",
   "botTexts.var.date": "{date} — buyurtma sanasi",
   "botTexts.var.items": "{items} — buyurtmadagi mahsulotlar",
+  "botTexts.var.country": "{country} — xaridorning davlati",
+  "botTexts.var.button": "{button} — «Купить» tugmasining nomi",
   "botTexts.unknownVar": "Bunday almashtirish yoʻq: {name}. U matnda oʻz holicha qoladi.",
   "botTexts.custom": "Oʻz matni",
   "botTexts.standard": "Standart",

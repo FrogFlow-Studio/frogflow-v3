@@ -13,6 +13,13 @@ import { reply, type Shop, type ShopOutcome } from "./context.server";
 
 /** Ответ «оплату из вашей страны подключаем» — не чаще раза в это время. */
 export const FOREIGN_PAY_REPLY_MS = 24 * 60 * 60_000;
+/** «Нажмите «Купить»» на «как получить?» — не чаще раза в это время. */
+export const HOW_TO_BUY_REPLY_MS = 30 * 60_000;
+/** Вторая такая реплика раньше этого — продолжение первой, ей ответ уже ушёл. */
+const HOW_TO_BUY_BURST_MS = 2 * 60_000;
+
+/** Кто пишет: по нему находится кнопка «Купить», ушедшая ему в Direct. */
+export type Sender = { username?: string | null; senderId?: string | null };
 
 /**
  * Разбор реплики моделью — один раз на сообщение: шаг оплаты, «платёж не
@@ -29,13 +36,18 @@ export function triageOnce(s: Shop, text: string, withPhoto = false): Promise<Tr
   return result;
 }
 
-export async function triageQuestion(s: Shop, text: string): Promise<ShopOutcome | null> {
+export async function triageQuestion(
+  s: Shop,
+  text: string,
+  who?: Sender,
+): Promise<ShopOutcome | null> {
   const t = await triageOnce(s, text);
   if (!t || t.kind === "other") return null;
+  if (t.kind === "how_to_buy") return howToBuyReply(s, who);
   // Платёж не прошёл, скриншот не отправляется — про заказ, ждущий оплаты (AATeach 12.10).
   if (t.kind === "payment_failed" || t.kind === "cant_send_receipt") {
     const { payTroubleReply } = await import("./pay-trouble.server");
-    return payTroubleReply(s, t.kind);
+    return payTroubleReply(s, t.kind, t.country);
   }
   // «Как перейти на оплату?», банк в ответ на «какой у вас банк» — шаг оплаты ещё раз (Копилка 12.10).
   if (t.kind === "how_to_pay") {
@@ -63,20 +75,78 @@ export async function triageQuestion(s: Shop, text: string): Promise<ShopOutcome
   // Один ответ в сутки: отметка — условной записью до отправки. Вместе с ней
   // forwarded_at: «Передал ваш вопрос продавцу» (handle-message) вторым
   // сообщением не уйдёт.
+  // Страну покупателя запоминаем: «Не получится» на переводе Kaspi потом
+  // получит честный ответ, а не «какой у вас банк» (Копилка 12.10, kramiliia).
   const now = new Date();
+  let won = false;
   const claimed = await claimStateSection(s.ctx, s.customer, "direct", (cur) => {
     const at = Date.parse(String(cur.foreign_pay_at ?? ""));
-    if (Number.isFinite(at) && now.getTime() - at < FOREIGN_PAY_REPLY_MS) return null;
-    return { ...cur, foreign_pay_at: now.toISOString(), forwarded_at: now.toISOString() };
+    won = !(Number.isFinite(at) && now.getTime() - at < FOREIGN_PAY_REPLY_MS);
+    if (!won)
+      return cur.foreign_country === t.country ? null : { ...cur, foreign_country: t.country };
+    return {
+      ...cur,
+      foreign_country: t.country,
+      foreign_pay_at: now.toISOString(),
+      forwarded_at: now.toISOString(),
+    };
   }).catch((e) => {
     console.warn(`[triage:${s.ctx.tenant.id}] отметка оплаты из-за рубежа: ${String(e)}`);
     return null;
   });
+  if (claimed) s.customer = claimed;
   // Уже отвечали сегодня (или отметку не поставить): вопрос продавцу молча.
-  if (!claimed) return "question";
-  s.customer = claimed;
+  if (!claimed || !won) return "question";
   s.handoff = true;
   s.why = `оплата из страны без способа оплаты (${countryNameRu(t.country!)}) — ответили, вопрос продавцу`;
   await reply(s, s.m.foreignPayReply, { force: true });
   return "question";
+}
+
+/**
+ * «Как можно получить?» после второго сообщения правила с «Купить», заказа
+ * нет: позвать нажать кнопку и прислать её ещё раз — раз в HOW_TO_BUY_REPLY_MS
+ * (условная отметка до отправки). boranbaeva__ainur (Копилка 12.10) после
+ * карточки «Матрёшек» спросила, как получить, — тишина. Кнопки «Купить» за
+ * сутки не было, есть заказ или продавец сейчас пишет сам — прежний путь
+ * (null). Повтор в течение получаса — вопрос продавцу молча.
+ */
+async function howToBuyReply(s: Shop, who?: Sender): Promise<ShopOutcome | null> {
+  const mode = s.customer.state.mode;
+  // Шаг оплаты: «как оплатить» разбирает он сам (how_to_pay), здесь не мешаем (#109).
+  if (mode && mode !== "idle") return null;
+  if (s.customer.state.pending_order_id) return null;
+  const { recentAwaitingPaymentOrder } = await import("@/core/orders/orders");
+  if (await recentAwaitingPaymentOrder(s.ctx, s.customer)) return null;
+  const { recentBuyDmButton } = await import("../automations.server");
+  const button = await recentBuyDmButton(s.ctx, {
+    username: who?.username ?? s.customer.username,
+    senderId: who?.senderId,
+  }).catch((e: unknown) => {
+    console.warn(`[triage:${s.ctx.tenant.id}] кнопка «Купить»: ${String(e)}`);
+    return null;
+  });
+  if (!button) return null;
+  const { sellerWroteRecently } = await import("./country.server");
+  if (await sellerWroteRecently(s)) return null;
+  const now = Date.now();
+  let prev = NaN;
+  const claimed = await claimStateSection(s.ctx, s.customer, "direct", (cur) => {
+    prev = Date.parse(String(cur.how_to_buy_at ?? ""));
+    if (Number.isFinite(prev) && now - prev < HOW_TO_BUY_REPLY_MS) return null;
+    return { ...cur, how_to_buy_at: new Date(now).toISOString() };
+  }).catch((e: unknown) => {
+    console.warn(`[triage:${s.ctx.tenant.id}] отметка «как получить»: ${String(e)}`);
+    return null;
+  });
+  // Две реплики подряд («Как получить?», «Как заказать?»): ответ только что
+  // ушёл на первую — вторая без «Обращение создано». Позже — вопрос продавцу.
+  if (!claimed) return now - prev < HOW_TO_BUY_BURST_MS ? "handled" : "question";
+  s.customer = claimed;
+  s.why = `спрашивает, как получить, — заказа нет, кнопка «${button.title}» выше`;
+  await reply(s, s.m.howToBuyReply(button.title), {
+    force: true,
+    buttons: [{ type: "postback", title: button.title, payload: button.payload }],
+  });
+  return "handled";
 }

@@ -1705,6 +1705,19 @@ export async function recentBuyButton(
   who: { username?: string | null; senderId?: string | null },
   now = Date.now(),
 ): Promise<string | null> {
+  return (await recentBuyDmButton(ctx, who, now))?.title ?? null;
+}
+
+/**
+ * Сама кнопка «Купить» (название и PROD:<id>) последнего второго сообщения
+ * правила этому покупателю за BUY_BUTTON_RECENT_MS; нет — null. На «Как
+ * можно получить» бот присылает её ещё раз (Копилка 12.10, boranbaeva__ainur).
+ */
+export async function recentBuyDmButton(
+  ctx: TenantContext,
+  who: { username?: string | null; senderId?: string | null },
+  now = Date.now(),
+): Promise<{ title: string; payload: string } | null> {
   const username = who.username?.toLowerCase() ?? "";
   if (!username && !who.senderId) return null;
   const data = await pageAll(
@@ -1732,7 +1745,7 @@ export async function recentBuyButton(
       (b) =>
         b?.type === "postback" && typeof b.payload === "string" && b.payload.startsWith("PROD:"),
     );
-    if (buy?.title) return buy.title;
+    if (buy?.title) return { title: buy.title, payload: buy.payload! };
   }
   return null;
 }

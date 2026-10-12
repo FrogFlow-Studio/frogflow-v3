@@ -19,8 +19,10 @@ import {
 } from "@/core/inbox/pay-chat";
 import {
   CHAT_FOREIGN_PAY_KEY,
+  CHAT_HOW_TO_BUY_KEY,
   CHAT_SKIP_CHATTER_KEY,
   foreignPayOn,
+  howToBuyOn,
   skipChatterOn,
 } from "@/core/inbox/triage";
 import { useRouter } from "@tanstack/react-router";
@@ -468,6 +470,7 @@ export function DirectTriageCard({ settings }: { settings: Record<string, string
   const t = adminT(shop.locale);
   const chatter = skipChatterOn(settings[CHAT_SKIP_CHATTER_KEY]);
   const foreign = foreignPayOn(settings[CHAT_FOREIGN_PAY_KEY]);
+  const howToBuy = howToBuyOn(settings[CHAT_HOW_TO_BUY_KEY]);
   const toggle = useAction(async (key: string, v: boolean) => {
     await saveSettingsFn({ data: { [key]: v ? "true" : "false" } });
     await router.invalidate();
@@ -498,6 +501,18 @@ export function DirectTriageCard({ settings }: { settings: Record<string, string
         <HelpTip article="settings-channels" anchor="direct-foreign-pay" />
       </div>
       <p className="mt-1 text-xs text-muted">{t("settings.triage.foreignHint")}</p>
+      <p className="mt-1 text-xs text-muted">{t("settings.triage.kaspiForeign")}</p>
+      <div className="mt-3 flex items-center gap-3">
+        <Switch
+          checked={howToBuy}
+          disabled={readOnly}
+          onChange={(v) => void toggle.run(CHAT_HOW_TO_BUY_KEY, v).catch(() => {})}
+          label={t("settings.triage.howToBuyLabel")}
+        />
+        <span className="text-sm">{t("settings.triage.howToBuyLabel")}</span>
+        <HelpTip article="settings-channels" anchor="direct-how-to-buy" />
+      </div>
+      <p className="mt-1 text-xs text-muted">{t("settings.triage.howToBuyHint")}</p>
       <ErrorBox error={toggle.error} />
     </Card>
   );
