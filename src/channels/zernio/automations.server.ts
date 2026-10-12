@@ -1883,6 +1883,8 @@ export async function deliverTwoStepForDmKeyword(
 ): Promise<boolean> {
   const t = text.trim();
   if (!p.username || !t || t.length > DM_KEYWORD_MAX_LEN) return false;
+  // «Палитру я у вас покупала» — рассказ о купленном, не просьба (#146).
+  if (mentionsOwnedProduct(t)) return false;
   const all = await listAutomations(ctx, api);
   const rules = all.filter(
     (a) =>
@@ -1973,6 +1975,32 @@ const GENERIC_DM_WORDS = new Set(
   ).split(" "),
 );
 
+/**
+ * Слова просьбы рядом с названием в Direct («Хочу Палитру», «Палитра нужна,
+ * пришлите»): с ними реплика остаётся просьбой. Любое другое слово делает её
+ * рассказом или вопросом о товаре — продажу не начинаем.
+ */
+const DM_REQUEST_WORDS = new Set(
+  (
+    "нужна нужно нужен нужны надо дайте пришлите отправьте скиньте вышлите " +
+    "интересует интересно хотела хотел хотим подробнее информация информацию " +
+    "давайте"
+  ).split(" "),
+);
+
+/**
+ * Покупатель говорит, что товар у него уже есть или был куплен
+ * («Выразит.средства я у вас покупала», «Палитру уже оплатила»): это рассказ,
+ * а не просьба — ни сообщения с «Купить», ни быстрой покупки (Копилка, заказ
+ * #146, 12.10).
+ */
+const ALREADY_OWNS =
+  /(?:^|[^\p{L}])(?:по|при|за|о)?(?:купил|куплен|купал|брал|оплатил|оплачен|оплачивал|приобрел|приобрёл|заказывал|получил|пришла|пришел|пришло)\p{L}*|уже\s+есть|у\s+меня\s+есть|есть\s+у\s+меня|сатып\s+алдым/iu;
+
+export function mentionsOwnedProduct(text: string): boolean {
+  return ALREADY_OWNS.test(text.toLowerCase().replace(/ё/g, "е"));
+}
+
 function dmWords(text: string): string[] {
   return text
     .toLowerCase()
@@ -2048,19 +2076,30 @@ async function ruleNamedInDm(
       if (error) console.warn(`[comment-dm] товар правила не прочитан: ${error.message}`);
       productName = data?.name ?? null;
     }
-    const names = dmWords(
-      [
-        a.name,
-        productName,
-        ...quotedWords(a.postTitle),
-        ...quotedWords(a.firstMessage ?? a.dmMessage),
-      ]
-        .filter((x): x is string => typeof x === "string")
-        .join(" "),
-    ).filter((w) => !GENERIC_DM_WORDS.has(w));
-    if (words.some((w) => names.some((r) => sameWord(w, r)))) return a;
+    const names = [
+      a.name,
+      productName,
+      ...quotedWords(a.postTitle),
+      ...quotedWords(a.firstMessage ?? a.dmMessage),
+    ].filter((x): x is string => typeof x === "string");
+    if (names.some((n) => dmNamesWhole(words, n))) return a;
   }
   return undefined;
+}
+
+/**
+ * Реплика называет товар целиком: в ней все слова названия («Палитра
+ * средств выразительности» — все три, «Палитра» — одно), а остальные слова —
+ * только просьба («хочу», «пришлите»). Одно слово из длинного названия
+ * («средства») или рассказ вокруг названия правило не включают: на «Выразит.
+ * средства я у вас покупала» бот прислал Палитру с «Купить», и вышел заказ
+ * #146 на уже купленный материал (Копилка, 12.10).
+ */
+function dmNamesWhole(words: string[], name: string): boolean {
+  const nameWords = dmWords(name).filter((w) => !GENERIC_DM_WORDS.has(w));
+  if (!nameWords.length) return false;
+  if (!nameWords.every((n) => words.some((w) => sameWord(w, n)))) return false;
+  return words.every((w) => DM_REQUEST_WORDS.has(w) || nameWords.some((n) => sameWord(w, n)));
 }
 
 function hasKeywords(a: Pick<CommentAutomation, "keywords">): boolean {
@@ -2089,6 +2128,8 @@ export function expressAllowed(
   >,
   extra: Array<string | null | undefined> = [],
 ): boolean {
+  // «Палитра у меня уже есть» — не заказ, даже если слово правила совпало (#146).
+  if (mentionsOwnedProduct(commentText)) return false;
   if (hasKeywords(rule)) return true;
   const words = dmWords(commentText).filter((w) => !GENERIC_DM_WORDS.has(w));
   return words.length > 0 && wordsNameRule(words, rule, extra);

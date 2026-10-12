@@ -279,6 +279,11 @@ export interface Expect {
   modelSees?: Says[];
   /** Заказы после реплики: id → подмножество полей строки orders. */
   orders?: Record<number, Record<string, unknown>>;
+  /**
+   * Сообщений правил Zernio (второй шаг с кнопками, уходит через Zernio, а не
+   * ответом бота) на эту реплику — сценарии с `automations`.
+   */
+  ruleMessages?: number;
 }
 
 export interface Scenario {
@@ -3707,6 +3712,47 @@ export const SCENARIOS: Scenario[] = [
       {
         say: { text: "Папки" },
         expect: { says: ["Папка профориентатора — 2500"] },
+      },
+    ],
+  },
+  {
+    id: "dm-word-of-product-name-not-rule-ig-ru",
+    title:
+      "слово из длинного названия товара и рассказ о покупке в Direct не присылают «Купить» правила; полное название — присылает",
+    origin:
+      "заказ #146 Копилки русоведа 12.10 10:51 (Гульнара Асабаева): «Выразит.средства я у вас покупала» → сообщение Палитры с «Купить» → заказ на уже купленный материал",
+    channel: "instagram",
+    locale: "ru",
+    full: true,
+    modules: { helpdesk: true, manager_chat: true },
+    username: "kopilka_buyer146",
+    tenantSettings: { zernio: { profile_id: "prof-1", account_ids: ["acc-1"] } },
+    products: [{ id: P1, name: "Палитра средств выразительности", price: 1700 }],
+    automations: [
+      {
+        id: "pal",
+        name: "Палитра",
+        accountId: "acc-1",
+        trigger: "comment",
+        keywords: [],
+        isActive: true,
+        postTitle: 'Пишите в комментариях слово "Палитра" и я вышлю подробную информацию.',
+        dmMessage: "Таблички к оформлению кабинета и к праздникам",
+        buttons: [{ type: "postback", title: "Купить", payload: `PROD:${P1}` }],
+      },
+    ],
+    steps: [
+      {
+        say: { text: "Выразит.средства я у вас покупала" },
+        expect: { ruleMessages: 0 },
+      },
+      {
+        say: { text: "средства выразительности" },
+        expect: { ruleMessages: 0 },
+      },
+      {
+        say: { text: "Хочу Палитру средств выразительности" },
+        expect: { ruleMessages: 1 },
       },
     ],
   },

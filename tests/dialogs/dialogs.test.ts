@@ -226,6 +226,9 @@ describe("золотые диалоги", () => {
         const before = notices.count;
         const mailsBefore = mailbox.to.length;
         const queuedBefore = r.sellerQueued();
+        const ruleSent = () =>
+          (r.db.tables.zernio_logs ?? []).filter((l) => l.event_type === "two_step_dm_sent").length;
+        const ruleBefore = ruleSent();
         modelSeen.calls = [];
         await r.say(say);
         const where = `шаг ${step} ${JSON.stringify(say)}`;
@@ -256,6 +259,8 @@ describe("золотые диалоги", () => {
           expect(r.reasons().length, `${where}: причины ответов`).toBeGreaterThanOrEqual(e.reasons);
         if (e.sellerNotices !== undefined)
           expect(notices.count - before, where).toBe(e.sellerNotices);
+        if (e.ruleMessages !== undefined)
+          expect(ruleSent() - ruleBefore, `${where}: сообщений правил Zernio`).toBe(e.ruleMessages);
         if (e.sellerQueued !== undefined)
           expect(r.sellerQueued() - queuedBefore, `${where}: в очереди продавцу`).toBe(
             e.sellerQueued,

@@ -10,6 +10,8 @@ import {
   deliverPendingTwoStepDm,
   deliverTwoStepFromDm,
   deliverTwoStepForDmKeyword,
+  expressAllowed,
+  mentionsOwnedProduct,
   twoStepJustDelivered,
   handleCommentReceived,
   type AutomationApi,
@@ -1669,12 +1671,59 @@ describe("Comment-to-DM: кодовое слово прямо в Direct (Коп�
       expect(await deliverTwoStepForDmKeyword(ctx, who, word, api)).toBe(false);
       expect(inbox).not.toHaveBeenCalled();
     }
-    for (const word of ["Палитра", "средства выразительности"]) {
+    for (const word of ["Палитра", "Палитра средств выразительности", "Хочу палитру"]) {
       const { ctx, db, api, inbox } = kwSetup([rule]);
       db.tables.products = [{ id: "p-pal", bot_id: BOT, name: "Палитра средств выразительности" }];
       expect(await deliverTwoStepForDmKeyword(ctx, who, word, api)).toBe(true);
       expect(inbox).toHaveBeenCalledTimes(1);
     }
+  });
+
+  it("часть длинного названия или рассказ о покупке — не правило (Копилка, заказ #146)", async () => {
+    const rule = {
+      id: "pal146",
+      name: "Палитра",
+      accountId: "acc-1",
+      keywords: [],
+      twoStepDm: true,
+      dmMessage: "Материал для оформления кабинета",
+      buttons: [{ type: "postback", title: "Купить", payload: "PROD:p-pal" }],
+    };
+    for (const word of [
+      "Выразит.средства я у вас покупала",
+      "средства выразительности",
+      "средства",
+      "Палитра у меня уже есть",
+      "Палитру оплатила вчера",
+      "Палитра не открывается",
+    ]) {
+      const { ctx, db, api, inbox } = kwSetup([rule]);
+      db.tables.products = [{ id: "p-pal", bot_id: BOT, name: "Палитра средств выразительности" }];
+      expect(await deliverTwoStepForDmKeyword(ctx, who, word, api), word).toBe(false);
+      expect(inbox).not.toHaveBeenCalled();
+    }
+    // Кодовое слово продавца тоже не продаёт тому, кто пишет о купленном.
+    const kw = kwSetup([palette]);
+    expect(await deliverTwoStepForDmKeyword(kw.ctx, who, "Палитра уже куплена", kw.api)).toBe(
+      false,
+    );
+    expect(kw.inbox).not.toHaveBeenCalled();
+  });
+
+  it("рассказ о купленном и просьбы различаются", () => {
+    for (const t of [
+      "я у вас покупала",
+      "Купила палитру",
+      "уже оплатила",
+      "у меня есть",
+      "Приобрела",
+    ])
+      expect(mentionsOwnedProduct(t), t).toBe(true);
+    for (const t of ["Купить", "Палитра", "пришлите палитру", "Хочу купить", "Покупка"])
+      expect(mentionsOwnedProduct(t), t).toBe(false);
+    const rule = { name: "Палитра", keywords: ["палитра"] };
+    expect(expressAllowed("Палитра", rule)).toBe(true);
+    expect(expressAllowed("Палитра у меня уже есть", rule)).toBe(false);
   });
 
   it("правило без поля keywords не роняет разбор, промах оставляет след с правилами", async () => {
