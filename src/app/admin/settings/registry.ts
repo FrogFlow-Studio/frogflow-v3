@@ -250,7 +250,7 @@ export const SETTINGS_REGISTRY: readonly SettingsEntry[] = [
     theme: "payment",
     title: "settings.ocr.title",
     module: "receipt_ocr",
-    keys: ["receipt_ocr_auto", "receipt_ocr_usage"],
+    keys: ["receipt_ocr_auto", "receipt_ocr_deliver", "receipt_ocr_usage"],
   }),
   E({
     id: "crypto",

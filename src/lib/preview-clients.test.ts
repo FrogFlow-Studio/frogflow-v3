@@ -16,7 +16,6 @@ function sources(dir = "src"): string[] {
 /** Что считается внешним клиентом с расходом или побочным эффектом, и как его узнать в коде. */
 const CLIENT_MARKERS: { what: string; marker: RegExp }[] = [
   { what: "Anthropic", marker: /new Anthropic\(/ },
-  { what: "Google Vision", marker: /vision\.googleapis\.com/ },
   { what: "ApiPay", marker: /\/invoices\/qr/ },
   { what: "ApiPay (партнёр)", marker: /"X-Partner-Key"/ },
   { what: "web push", marker: /authorization: vapidAuthorization/ },

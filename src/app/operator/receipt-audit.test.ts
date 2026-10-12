@@ -23,7 +23,7 @@ vi.mock("@/core/tenant/resolve.server", () => ({
   tenantContext: (t: unknown) => ({ tenant: t, db: base }),
 }));
 vi.mock("@/core/receipts/verify.server", () => ({
-  visionConfigured: () => true,
+  receiptReaderConfigured: () => true,
   receiptOcrAutoEnabled: async () => true,
 }));
 

@@ -2088,7 +2088,8 @@ export const uz: SectionDict<typeof ru> = {
   "settings.ocr.off": "O‘chirilgan — o‘zingiz tekshirasiz",
   "settings.ocr.deliver": "Chek mos kelsa, buyurtmani darhol berish",
   "settings.ocr.deliverOn": "Mos chek buyurtmani sizning tugmangizsiz o‘zi beradi",
-  "settings.ocr.deliverOff": "O‘chirilgan — siz tugma bilan tasdiqlaysiz, bot faqat maslahat beradi",
+  "settings.ocr.deliverOff":
+    "O‘chirilgan — siz tugma bilan tasdiqlaysiz, bot faqat maslahat beradi",
   "settings.watermark.title": "PDF’ni qayta sotishdan himoya",
   "settings.watermark.intro":
     "Beriladigan PDF’ning har bir sahifasiga kim sotib olgani yoziladi: lotincha ism, @login yoki pochta va buyurtma raqami. Katalogdagi asl fayl o‘zgarmaydi.",
