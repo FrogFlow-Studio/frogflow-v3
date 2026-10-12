@@ -1050,6 +1050,31 @@ export const SCENARIOS: Scenario[] = [
     ],
   },
   {
+    id: "stale-email-step-empty-cart-ig-ru",
+    title:
+      "шаг «почта перед заказом» остался с прошлого месяца, корзина пуста — на адрес не «Корзина пуста», а вопрос о старом заказе",
+    origin:
+      "AATeach 12.10 16:25, lady_brown_hair_pp: не успела скачать «Состав слова» (#1160 от 24.09), прислала почту — бот: «🛒 Корзина пуста.»",
+    channel: "instagram",
+    locale: "ru",
+    products: PRODUCTS,
+    full: true,
+    mail: true,
+    state: { mode: "awaiting_email", country_code: "RU" },
+    postpay: [{ action: "resend", email: "kitten@mail.ru" }],
+    arrange: paidOrder({ email: "old@mail.ru", daysAgo: 18 }),
+    steps: [
+      {
+        say: { text: "kitten@mail.ru" },
+        expect: {
+          says: ["№82", "kitten@mail.ru"],
+          notSays: [(c) => c.cartEmpty],
+          mails: [],
+        },
+      },
+    ],
+  },
+  {
     id: "resend-old-order-switch-off-ig-ru",
     title:
       "«Спрашивать перед повторной отправкой» выключено — письмо по старому заказу уходит сразу, как раньше",
@@ -1900,6 +1925,27 @@ export const SCENARIOS: Scenario[] = [
         expect: { notSays: ["напишите номер из списка"] },
       },
       { say: { text: "1" }, expect: { says: ["018. Прописи"] } },
+    ],
+  },
+  {
+    id: "list-words-hint-burst-ig-ru",
+    title: "после списка три реплики словами разом — подсказка про номер одна, а не три",
+    origin:
+      "AATeach 12.10 15:23 dusembina_irina: «Напишите пожалуйста точно цену», «Оформление на доску», «Не понятно» — три одинаковых «напишите номер из списка»",
+    channel: "instagram",
+    locale: "ru",
+    full: true,
+    modules: { helpdesk: true, manager_chat: true },
+    products: PRODUCTS,
+    steps: [
+      { say: { text: "каталог" }, expect: { says: ["018. Прописи"] } },
+      {
+        say: { burst: ["Напишите пожалуйста точно цену", "Оформление на доску", "Не понятно"] },
+        expect: {
+          says: ["напишите номер из списка"],
+          notSays: [/номер из списка[\s\S]*номер из списка/],
+        },
+      },
     ],
   },
   // ───── Продавец вмешался (Б3) ─────
