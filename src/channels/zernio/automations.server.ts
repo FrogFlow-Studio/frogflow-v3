@@ -65,6 +65,7 @@ import {
 import type { ZernioInboxMessage } from "./inbox-types";
 import { ZernioApiError, classifyZernioFailure, type ZernioFailure } from "./errors";
 import { serverFailure } from "@/lib/server-failure";
+import { fill, type UserErrorVars } from "@/core/i18n/user-error";
 import { pageAll } from "@/core/db/page";
 import { toJson } from "@/core/json";
 
@@ -536,11 +537,17 @@ export type SaveAutomationInput = AutomationInput & {
  * при их смене правило пересоздаётся (и теряет счётчики); «все посты» в
  * обеих формах (null/undefined) — одно и то же «нет поста».
  */
+const POST_TAKEN_KEY = "err.instagram.postTaken";
+const POST_TAKEN_TEXT =
+  "На этот пост уже есть правило «{name}». Измените его или выключите, потом сохраните это.";
+
 export async function saveAutomation(
   ctx: TenantContext,
   input: SaveAutomationInput,
   api: AutomationApi = liveAutomationApi,
-): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+): Promise<
+  { ok: true; id: string } | { ok: false; error: string; key?: string; vars?: UserErrorVars }
+> {
   if (!ownsZernioAccount(ctx, input.accountId))
     return { ok: false, error: "Этот аккаунт Instagram не подключён к вашему магазину." };
   if (input.platformPostId && input.platformPostId === input.accountId)
@@ -607,9 +614,45 @@ export async function saveAutomation(
       await api.update(id, { ...patch, buttons: [] });
       savedId = id;
     } else {
-      const created = await api.create(body);
+      // Zernio держит одно активное правило на пост (409 «An active automation
+      // already exists for this post»). Чужое правило на этом посте — отказ
+      // продавцу с его названием; своё (пост переставили или у поста сменился
+      // id) — выключаем на время создания и включаем обратно, если создать
+      // не вышло: правило не должно пропасть из-за неудачного сохранения.
+      let pausedOld = false;
+      if (data.platformPostId) {
+        const onPost = (await api.list(data.profileId)).filter(
+          (a) =>
+            ownsZernioAccount(ctx, a.accountId) &&
+            a.isActive !== false &&
+            a.platformPostId === data.platformPostId &&
+            (a.trigger || "comment") === (data.trigger || "comment"),
+        );
+        const other = onPost.find((a) => automationId(a) !== id);
+        if (other)
+          return {
+            ok: false,
+            error: fill(POST_TAKEN_TEXT, { name: other.name }),
+            key: POST_TAKEN_KEY,
+            vars: { name: other.name },
+          };
+        if (id && onPost.some((a) => automationId(a) === id)) {
+          await api.update(id, { isActive: false });
+          pausedOld = true;
+        }
+      }
+      let created: CommentAutomation;
+      try {
+        created = await api.create(body);
+      } catch (e) {
+        if (pausedOld && id) await api.update(id, { isActive: true });
+        throw e;
+      }
       savedId = automationId(created);
-      if (!savedId) return { ok: false, error: "Zernio не вернул id правила" };
+      if (!savedId) {
+        if (pausedOld && id) await api.update(id, { isActive: true });
+        return { ok: false, error: "Zernio не вернул id правила" };
+      }
       if (id) {
         await api.remove(id);
         await setAutomationMeta(ctx, id, null);

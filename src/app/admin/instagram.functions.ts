@@ -198,7 +198,7 @@ export const saveAutomationFn = createServerFn({ method: "POST" })
     const ctx = await igWrite();
     const { saveAutomation } = await import("@/channels/zernio/automations.server");
     const r = await saveAutomation(ctx, data);
-    if (!r.ok) throw new Error(r.error);
+    if (!r.ok) throw r.key ? new UserError(r.key, r.error, r.vars) : new Error(r.error);
     return { id: r.id };
   });
 
