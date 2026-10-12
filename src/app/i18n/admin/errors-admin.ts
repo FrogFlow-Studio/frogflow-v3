@@ -57,6 +57,8 @@ export const ru = {
   "err.admin.loginFormat": "Логин: латиница, цифры, точка, дефис и «_», от 3 до 40 символов.",
   "err.admin.loginIsOwner": "Это логин владельца магазина.",
   "err.admin.loginTaken": "Логин «{login}» уже занят.",
+  "err.instagram.postTaken":
+    "На этот пост уже есть правило «{name}». Измените его или выключите, потом сохраните это.",
   "err.admin.passwordRequired": "Для нового пользователя нужен пароль.",
   "err.admin.passwordShort": "Пароль — не короче 8 символов.",
   "err.admin.teamLimit": "Не больше 20 пользователей у магазина.",
@@ -305,6 +307,8 @@ export const kk: SectionDict<typeof ru> = {
     "Логин: латын әріптері, цифрлар, нүкте, дефис және «_», 3-тен 40 таңбаға дейін.",
   "err.admin.loginIsOwner": "Бұл — дүкен иесінің логині.",
   "err.admin.loginTaken": "«{login}» логині бос емес.",
+  "err.instagram.postTaken":
+    "Бұл постта «{name}» ережесі бар. Соны өзгертіңіз немесе өшіріңіз, содан кейін осыны сақтаңыз.",
   "err.admin.passwordRequired": "Жаңа пайдаланушыға құпиясөз қажет.",
   "err.admin.passwordShort": "Құпиясөз кемінде 8 таңбадан тұруы керек.",
   "err.admin.teamLimit": "Бір дүкенде 20-дан артық пайдаланушы болмайды.",
@@ -550,6 +554,8 @@ export const en: SectionDict<typeof ru> = {
     "Login: Latin letters, digits, dot, hyphen and “_”, from 3 to 40 characters.",
   "err.admin.loginIsOwner": "This is the shop owner's login.",
   "err.admin.loginTaken": "The login “{login}” is already taken.",
+  "err.instagram.postTaken":
+    "This post already has the rule “{name}”. Edit it or switch it off, then save this one.",
   "err.admin.passwordRequired": "A new user needs a password.",
   "err.admin.passwordShort": "The password must be at least 8 characters.",
   "err.admin.teamLimit": "A shop can have no more than 20 users.",
@@ -798,6 +804,8 @@ export const uz: SectionDict<typeof ru> = {
     "Login: lotin harflari, raqamlar, nuqta, defis va «_», 3 tadan 40 tagacha belgi.",
   "err.admin.loginIsOwner": "Bu doʻkon egasining logini.",
   "err.admin.loginTaken": "«{login}» logini band.",
+  "err.instagram.postTaken":
+    "Bu postda «{name}» qoidasi allaqachon bor. Uni o‘zgartiring yoki o‘chiring, keyin buni saqlang.",
   "err.admin.passwordRequired": "Yangi foydalanuvchi uchun parol kerak.",
   "err.admin.passwordShort": "Parol kamida 8 ta belgidan iborat boʻlishi kerak.",
   "err.admin.teamLimit": "Bitta doʻkonda 20 tadan ortiq foydalanuvchi boʻlmaydi.",
