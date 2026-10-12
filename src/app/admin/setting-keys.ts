@@ -15,6 +15,7 @@ export const SETTING_KEYS = [
   "cart_reminder_hours",
   "marketing_daily_cap",
   "chat_pay_reminder_hours",
+  "chat_pay_reminder_hold",
   "chat_email_ask",
   "chat_email_optional",
   "chat_receipt_text",

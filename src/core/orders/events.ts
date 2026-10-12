@@ -24,6 +24,8 @@ export type OrderEventKind =
   | "delivery_failed"
   | "rejected"
   | "reminded"
+  /** Напоминание об оплате придержано: у покупателя открыто обращение или более поздний заказ. */
+  | "remind_held"
   | "status"
   | "notify_failed"
   | "email_sent"
@@ -400,6 +402,11 @@ export function describeOrderEvent(e: Pick<OrderEvent, "kind" | "actor" | "paylo
       return p.channel === "email"
         ? { text: `Напоминание об оплате — письмом на ${str(p.to)}`, tone: "neutral" }
         : { text: `Напоминание об оплате отправлено${who}`, tone: "neutral" };
+    case "remind_held":
+      return {
+        text: `Напоминание об оплате не отправлено: ${p.reason === "ticket" ? `у покупателя открыто обращение #${num(p.ticket)}` : `покупатель позже оформил заказ №${num(p.laterNo)}`} — отмените заказ или подтвердите оплату`,
+        tone: "warn",
+      };
     case "status":
       return { text: `Статус: ${str(p.to)}${who}`, tone: "neutral" };
     case "email_sent":

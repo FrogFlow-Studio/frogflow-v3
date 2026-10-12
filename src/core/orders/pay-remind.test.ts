@@ -9,7 +9,8 @@ vi.mock("@/core/fulfillment/fulfillment", () => ({
     o.fulfillment_kind === "physical" ? o.total / 2 : o.total,
 }));
 
-const { remindChatOrders, parsePayRemindHours, PAY_REMIND_KEY } = await import("./pay-remind");
+const { remindChatOrders, parsePayRemindHours, PAY_REMIND_KEY, PAY_REMIND_HOLD_KEY } =
+  await import("./pay-remind");
 
 const BOT = "00000000-0000-0000-0000-0000000000aa";
 const NOW = new Date("2026-09-27T12:00:00Z");
@@ -73,7 +74,12 @@ describe("напоминание об оплате в боте, Instagram и Wha
 
   it("через N часов — одно сообщение с суммой и реквизитами; повторный прогон не пишет", async () => {
     const { db, ctx, sent, send } = setup([{}]);
-    expect(await remindChatOrders(ctx, send, NOW)).toEqual({ sent: 1, failed: 0, skipped: 0 });
+    expect(await remindChatOrders(ctx, send, NOW)).toEqual({
+      sent: 1,
+      failed: 0,
+      skipped: 0,
+      held: 0,
+    });
     expect(sent).toEqual([
       {
         orderId: 100,
@@ -124,7 +130,12 @@ describe("напоминание об оплате в боте, Instagram и Wha
       { platform: "manual" },
       { telegram_id: -5 },
     ]);
-    expect(await remindChatOrders(ctx, send, NOW)).toEqual({ sent: 0, failed: 0, skipped: 0 });
+    expect(await remindChatOrders(ctx, send, NOW)).toEqual({
+      sent: 0,
+      failed: 0,
+      skipped: 0,
+      held: 0,
+    });
     expect(send).not.toHaveBeenCalled();
   });
 
@@ -134,7 +145,12 @@ describe("напоминание об оплате в боте, Instagram и Wha
       { platform: "whatsapp", telegram_id: -200, created_at: ago(19 * H) },
     ]);
     expect(db.tables.manager_chat_messages).toEqual([]);
-    expect(await remindChatOrders(ctx, send, NOW)).toEqual({ sent: 2, failed: 0, skipped: 0 });
+    expect(await remindChatOrders(ctx, send, NOW)).toEqual({
+      sent: 2,
+      failed: 0,
+      skipped: 0,
+      held: 0,
+    });
     expect(sent.map((r) => r.platform)).toEqual(["whatsapp", "instagram"]);
   });
 
@@ -153,7 +169,12 @@ describe("напоминание об оплате в боте, Instagram и Wha
       { id: "m2", bot_id: BOT, telegram_id: -200, direction: "in", created_at: ago(30 * H) },
       { id: "m3", bot_id: BOT, telegram_id: -200, direction: "out", created_at: ago(1 * H) },
     ];
-    expect(await remindChatOrders(ctx, send, NOW)).toEqual({ sent: 1, failed: 0, skipped: 1 });
+    expect(await remindChatOrders(ctx, send, NOW)).toEqual({
+      sent: 1,
+      failed: 0,
+      skipped: 1,
+      held: 0,
+    });
     expect(sent.map((r) => r.platform)).toEqual(["instagram"]);
     // Пропущенный заказ не помечен: напишет покупатель — напомним.
     expect(db.tables.zernio_logs!.map((l) => l.event_id)).toEqual(["order:100:reminded:chat"]);
@@ -192,7 +213,111 @@ describe("напоминание об оплате в боте, Instagram и Wha
   it("сбой отправки считается, прогон не падает", async () => {
     const { ctx } = setup([{}, {}]);
     const send = vi.fn().mockRejectedValueOnce(new Error("сеть")).mockResolvedValueOnce(false);
-    expect(await remindChatOrders(ctx, send, NOW)).toEqual({ sent: 0, failed: 2, skipped: 0 });
+    expect(await remindChatOrders(ctx, send, NOW)).toEqual({
+      sent: 0,
+      failed: 2,
+      skipped: 0,
+      held: 0,
+    });
+  });
+
+  // №40 Копилки (12.10): u.ishmetova — «Да» после ссылки Kaspi открыло обращение #127,
+  // чек ушёл в WhatsApp, в 06:00 пришло «оплатите #143»; gritsevichnadezhda —
+  // спрашивала карты Онегина (обращение #124), а в 09:00 получила «оплатите Палитру» по #144.
+  const ticket = (telegramId: number, number: number, at: string, status = "open") => ({
+    id: `t${number}`,
+    bot_id: BOT,
+    event_id: `ticket:${number}`,
+    event_type: "ticket",
+    status,
+    created_at: at,
+    payload: {
+      number,
+      telegram_id: telegramId,
+      platform: "instagram",
+      subject: "Как можно приобрести карточки по Онегину?",
+      history: [{ at, actor: "customer", action: "opened" }],
+    },
+  });
+
+  it("открыто обращение покупателя — напоминания нет, продавцу одна подсказка, повтор молчит", async () => {
+    const { db, ctx, send } = setup([{ platform: "instagram", telegram_id: -144 }]);
+    db.tables.zernio_logs!.push(ticket(-144, 124, ago(10 * H)));
+    const onHeld = vi.fn(async () => {});
+    expect(await remindChatOrders(ctx, send, NOW, onHeld)).toEqual({
+      sent: 0,
+      failed: 0,
+      skipped: 0,
+      held: 1,
+    });
+    expect(send).not.toHaveBeenCalled();
+    expect(onHeld).toHaveBeenCalledWith(expect.objectContaining({ id: 100 }), {
+      reason: "ticket",
+      ticket: 124,
+    });
+    const held = db.tables.zernio_logs!.find((l) => l.event_id === "order:100:remind_held:chat");
+    expect(held).toMatchObject({ event_type: "order.remind_held" });
+    expect(held!.payload).toMatchObject({ order_id: 100, reason: "ticket", ticket: 124 });
+    // Следующий прогон: ни напоминания, ни второй подсказки.
+    await remindChatOrders(ctx, send, NOW, onHeld);
+    expect(send).not.toHaveBeenCalled();
+    expect(onHeld).toHaveBeenCalledTimes(1);
+  });
+
+  it("обращение закрыли, заказ висит — напоминания всё равно нет: решает продавец", async () => {
+    const { db, ctx, send } = setup([{ platform: "instagram", telegram_id: -143 }]);
+    db.tables.zernio_logs!.push(ticket(-143, 127, ago(5 * H)));
+    await remindChatOrders(ctx, send, NOW, async () => {});
+    db.tables.zernio_logs!.find((l) => l.event_id === "ticket:127")!.status = "closed";
+    expect(await remindChatOrders(ctx, send, NOW)).toMatchObject({ sent: 0, held: 0 });
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it("два крона одновременно по спорному заказу — одна подсказка", async () => {
+    const { db, ctx, send } = setup([{ platform: "instagram", telegram_id: -144 }]);
+    db.tables.zernio_logs!.push(ticket(-144, 124, ago(10 * H)));
+    const onHeld = vi.fn(async () => {});
+    await Promise.all([
+      remindChatOrders(ctx, send, NOW, onHeld),
+      remindChatOrders(ctx, send, NOW, onHeld),
+    ]);
+    expect(onHeld).toHaveBeenCalledTimes(1);
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it("после заказа покупатель оформил другой — по первому не напоминаем", async () => {
+    const { db, ctx, sent, send } = setup([
+      { telegram_id: 7, created_at: ago(5 * H) },
+      { telegram_id: 7, created_at: ago(4 * H), display_no: 777 },
+    ]);
+    const onHeld = vi.fn(async () => {});
+    expect(await remindChatOrders(ctx, send, NOW, onHeld)).toMatchObject({ sent: 1, held: 1 });
+    expect(sent.map((r) => r.orderId)).toEqual([101]);
+    expect(onHeld).toHaveBeenCalledWith(expect.objectContaining({ id: 100 }), {
+      reason: "later_order",
+      laterNo: 777,
+    });
+    expect(db.tables.zernio_logs!.map((l) => l.event_id).sort()).toEqual([
+      "order:100:remind_held:chat",
+      "order:101:reminded:chat",
+    ]);
+  });
+
+  it("закрытое или давнее обращение и чужое обращение не мешают напоминанию", async () => {
+    const { db, ctx, send } = setup([{ telegram_id: 42 }]);
+    db.tables.zernio_logs!.push(
+      ticket(42, 1, ago(5 * H), "closed"),
+      ticket(42, 2, ago(10 * 24 * H)),
+      ticket(43, 3, ago(5 * H)),
+    );
+    expect(await remindChatOrders(ctx, send, NOW)).toMatchObject({ sent: 1, held: 0 });
+  });
+
+  it("переключатель выключен — напоминаем, как раньше", async () => {
+    const { db, ctx, send } = setup([{ telegram_id: 42 }]);
+    db.tables.zernio_logs!.push(ticket(42, 5, ago(5 * H)));
+    db.tables.app_settings!.push({ bot_id: BOT, key: PAY_REMIND_HOLD_KEY, value: "false" });
+    expect(await remindChatOrders(ctx, send, NOW)).toMatchObject({ sent: 1, held: 0 });
   });
 
   it("нет способа оплаты для страны — реквизитов нет, сообщение всё равно уходит", async () => {

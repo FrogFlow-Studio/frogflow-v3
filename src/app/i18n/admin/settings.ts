@@ -447,6 +447,9 @@ export const ru = {
   "settings.payRemind.intro":
     "Если заказ из бота, Instagram или WhatsApp не оплачен, бот один раз напомнит покупателю сумму и реквизиты. В Instagram и WhatsApp — только если покупатель писал магазину в последние сутки.",
   "settings.payRemind.off": "Не напоминать",
+  "settings.payRemindHold.label": "Не напоминать по спорным заказам",
+  "settings.payRemindHold.hint":
+    "Если у покупателя открыто обращение (спрашивал о другом товаре, прислал чек вам напрямую) или после этого заказа он оформил другой, бот не напоминает об оплате. Вам приходит сообщение: отмените заказ или подтвердите оплату.",
   "settings.payRemind.after": "Через {n} ч после оформления",
   "settings.emailAsk.title": "Почта после оплаты (Instagram)",
   "settings.emailAsk.intro":
@@ -969,6 +972,9 @@ export const kk: SectionDict<typeof ru> = {
   "settings.payRemind.intro":
     "Боттағы, Instagram немесе WhatsApp-тағы тапсырыс төленбесе, бот сатып алушыға соманы мен деректемелерді бір рет еске салады. Instagram мен WhatsApp-та — сатып алушы соңғы тәулікте дүкенге жазған болса ғана.",
   "settings.payRemind.off": "Еске салмау",
+  "settings.payRemindHold.label": "Даулы тапсырыстар бойынша еске салмау",
+  "settings.payRemindHold.hint":
+    "Сатып алушыда ашық өтініш болса (басқа тауар туралы сұраған, чекті сізге тікелей жіберген) немесе осы тапсырыстан кейін басқасын рәсімдесе, бот төлем туралы еске салмайды. Сізге хабар келеді: тапсырысты болдырмаңыз немесе төлемді растаңыз.",
   "settings.payRemind.after": "Рәсімдегеннен кейін {n} сағ",
   "settings.emailAsk.title": "Төлемнен кейін пошта (Instagram)",
   "settings.emailAsk.intro":
@@ -1486,6 +1492,9 @@ export const en: SectionDict<typeof ru> = {
   "settings.payRemind.intro":
     "If an order from the bot, Instagram or WhatsApp is not paid, the bot reminds the buyer once of the amount and payment details. In Instagram and WhatsApp only if the buyer wrote to the shop within the last day.",
   "settings.payRemind.off": "Don't remind",
+  "settings.payRemindHold.label": "Don't remind for doubtful orders",
+  "settings.payRemindHold.hint":
+    "If the customer has an open request (asked about another product, sent the receipt to you directly) or placed another order after this one, the bot does not send the payment reminder. You get a message: cancel the order or confirm the payment.",
   "settings.payRemind.after": "{n} h after checkout",
   "settings.emailAsk.title": "Email after payment (Instagram)",
   "settings.emailAsk.intro":
@@ -2010,6 +2019,9 @@ export const uz: SectionDict<typeof ru> = {
   "settings.payRemind.intro":
     "Botdagi, Instagram yoki WhatsApp’dagi buyurtma to‘lanmasa, bot xaridorga summa va rekvizitlarni bir marta eslatadi. Instagram va WhatsApp’da — faqat xaridor so‘nggi sutkada do‘konga yozgan bo‘lsa.",
   "settings.payRemind.off": "Eslatmaslik",
+  "settings.payRemindHold.label": "Shubhali buyurtmalar bo‘yicha eslatmaslik",
+  "settings.payRemindHold.hint":
+    "Agar xaridorda ochiq murojaat bo‘lsa (boshqa mahsulot haqida so‘ragan, chekni sizga to‘g‘ridan-to‘g‘ri yuborgan) yoki bu buyurtmadan keyin boshqasini rasmiylashtirgan bo‘lsa, bot to‘lov haqida eslatmaydi. Sizga xabar keladi: buyurtmani bekor qiling yoki to‘lovni tasdiqlang.",
   "settings.payRemind.after": "Rasmiylashtirilgandan {n} soat keyin",
   "settings.emailAsk.title": "To‘lovdan keyin pochta (Instagram)",
   "settings.emailAsk.intro":

@@ -46,6 +46,10 @@ Bot, sayt va Instagram/WhatsApp’dagi do‘kon bundan kam summaga buyurtma beri
 
 Botdan, Instagram yoki WhatsApp’dan kelgan buyurtma to‘lanmasa, bot tanlangan vaqtdan keyin xaridorga summa va rekvizitlarni bir marta eslatadi: rasmiylashtirilgandan 1, 2, 3, 6 yoki 12 soat keyin. «Eslatmaslik» — o‘chirilgan. Instagram va WhatsApp’da eslatma faqat xaridor so‘nggi sutkada do‘konga yozgan bo‘lsa yuboriladi: aks holda Instagram va WhatsApp birinchi bo‘lib yozishga ruxsat bermaydi. Darhol saqlanadi.
 
+## Shubhali buyurtmalar bo‘yicha eslatmaslik {#pay-remind-hold}
+
+Yoqilgan (standart) — xaridorda ochiq murojaat bo‘lsa (boshqa mahsulot haqida so‘ragan yoki chekni sizga to‘g‘ridan-to‘g‘ri, masalan WhatsApp’da yuborgan) yoki bu buyurtmadan keyin boshqasini rasmiylashtirgan bo‘lsa, eslatma yuborilmaydi. Uning o‘rniga sizga buyurtma havolasi bilan «№… buyurtma: to‘lov eslatmasi yuborilmadi» xabari keladi, buyurtma tarixida ham shu belgi chiqadi: buyurtmani bekor qiling yoki to‘lovni tasdiqlang. Buyurtmadan 3 kundan ko‘proq oldin ochilgan va yangi xabarsiz murojaat hisobga olinmaydi. O‘chirilgan — bot avvalgidek eslatadi.
+
 ## To‘lovdan keyin pochta (Instagram) {#email-ask}
 
 Materiallar har doim yozishmaga keladi. «Chekdan keyin pochtani so‘rash» yoqilgan — chekdan keyin bot pochtani so‘raydi va u yerga nusxasini yuboradi. O‘chirilgan — so‘ramaydi; xaridor pochtaga yuborishni o‘zi so‘rasa, bot manzilni so‘rab, xat yuboradi.

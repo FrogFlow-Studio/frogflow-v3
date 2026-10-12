@@ -46,6 +46,10 @@ The bot, the website and the Instagram/WhatsApp shop will not let an order below
 
 If an order from the bot, Instagram or WhatsApp is not paid, the bot reminds the buyer of the amount and payment details once, after the chosen time: 1, 2, 3, 6 or 12 hours after checkout. "Don't remind" turns it off. In Instagram and WhatsApp the reminder goes only if the buyer wrote to the shop within the last day: otherwise Instagram and WhatsApp do not allow writing first. Saved immediately.
 
+## Don't remind for doubtful orders {#pay-remind-hold}
+
+On (the default) — the reminder is not sent if the customer has an open request (they asked about another product or sent the receipt to you directly, e.g. in WhatsApp) or placed another order after this one. Instead you get a message "Order #…: payment reminder not sent" with a link to the order, and the order history shows the same note: cancel the order or confirm the payment. A request opened more than 3 days before the order with no new messages does not count. Off — the bot reminds as before.
+
 ## Email after payment (Instagram) {#email-ask}
 
 Materials always come into the chat. "Ask for email after the receipt" on: after the receipt the bot asks for an email and sends a copy there. Off: it does not ask; if the buyer asks to get it by email, the bot asks for the address and sends the email.
