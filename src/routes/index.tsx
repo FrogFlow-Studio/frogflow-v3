@@ -9,6 +9,7 @@ import { landingT, type LandingKey, type LandingT } from "@/app/i18n/landing";
 import {
   CLIENTS,
   DEMO_URL,
+  OG_IMAGE_META,
   OG_LOCALE,
   REVIEWS,
   TRIAL_DAYS,
@@ -58,6 +59,7 @@ export const Route = createFileRoute("/")({
         { property: "og:url", content: landingUrl(locale) },
         { property: "og:locale", content: OG_LOCALE[locale] },
         { property: "og:site_name", content: "FrogFlow" },
+        ...OG_IMAGE_META,
         ...yandexVerificationMeta(loaderData?.yandex),
       ],
       scripts: [

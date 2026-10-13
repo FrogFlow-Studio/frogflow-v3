@@ -13,7 +13,7 @@ import {
   isArticleSlug,
   type ArticleSlug,
 } from "@/app/landing/articles";
-import { OG_LOCALE } from "@/app/landing/config";
+import { OG_IMAGE_META, OG_LOCALE } from "@/app/landing/config";
 import type { NichePage } from "@/app/landing/niches";
 import {
   Footer,
@@ -61,6 +61,7 @@ export const Route = createFileRoute("/blog/$slug")({
         { property: "og:url", content: url },
         { property: "og:locale", content: OG_LOCALE[locale] },
         { property: "og:site_name", content: "FrogFlow" },
+        ...OG_IMAGE_META,
       ],
       scripts: [
         jsonLdScript(

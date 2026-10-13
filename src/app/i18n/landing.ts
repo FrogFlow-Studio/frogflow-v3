@@ -7,7 +7,7 @@
 import type { Locale } from "@/core/i18n/locale";
 
 const ru = {
-  "meta.title": "FrogFlow — магазин в Telegram, WhatsApp и Instagram",
+  "meta.title": "Бот для продаж в Instagram, Telegram и WhatsApp с оплатой Kaspi — FrogFlow",
   "meta.description":
     "Бот сам принимает заказы, сверяет чеки и выдаёт товар, а вы подтверждаете оплату одной кнопкой. Запуск за вечер, без программиста. {days} дней бесплатно.",
   "nav.how": "Как работает",
@@ -339,7 +339,7 @@ type Dict = Record<LandingKey, string>;
 export const LANDING_KEYS = Object.keys(ru) as LandingKey[];
 
 const kk: Dict = {
-  "meta.title": "FrogFlow — Telegram, WhatsApp және Instagram-дағы дүкен",
+  "meta.title": "Instagram, Telegram және WhatsApp-қа сату боты, Kaspi арқылы төлем — FrogFlow",
   "meta.description":
     "Бот тапсырыстарды қабылдайды, чектерді салыстырады және тауарды береді, ал сіз төлемді бір батырмамен растайсыз. Бір кеште іске қосу, бағдарламашысыз. {days} күн тегін.",
   "nav.how": "Қалай жұмыс істейді",
@@ -671,7 +671,7 @@ const kk: Dict = {
 };
 
 const en: Dict = {
-  "meta.title": "FrogFlow — a shop in Telegram, WhatsApp and Instagram",
+  "meta.title": "Sales bot for Instagram, Telegram and WhatsApp with Kaspi payments — FrogFlow",
   "meta.description":
     "The bot takes orders, checks receipts and delivers, and you confirm payment with one button. Launch in an evening, no developer needed. {days} days free.",
   "nav.how": "How it works",
@@ -1004,7 +1004,7 @@ const en: Dict = {
 };
 
 const uz: Dict = {
-  "meta.title": "FrogFlow — Telegram, WhatsApp va Instagramdagi do‘kon",
+  "meta.title": "Instagram, Telegram va WhatsApp uchun savdo boti — FrogFlow",
   "meta.description":
     "Bot buyurtmalarni qabul qiladi, cheklarni solishtiradi va mahsulotni beradi, siz esa to‘lovni bitta tugma bilan tasdiqlaysiz. Bir kechada ishga tushirish, dasturchisiz. {days} kun bepul.",
   "nav.how": "Qanday ishlaydi",

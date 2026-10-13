@@ -30,7 +30,7 @@ import {
 import { SUPPORTED_LOCALES, isLocale, type Locale } from "@/core/i18n/locale";
 import { jsonLdScript } from "@/core/storefront/seo";
 import { landingJsonLd } from "@/app/landing/structured-data";
-import { OG_LOCALE } from "@/app/landing/config";
+import { OG_IMAGE_META, OG_LOCALE } from "@/app/landing/config";
 import { TIER_TITLES } from "@/core/plans/registry";
 
 /**
@@ -66,6 +66,7 @@ export const Route = createFileRoute("/for/$niche")({
         { property: "og:url", content: url },
         { property: "og:locale", content: OG_LOCALE[locale] },
         { property: "og:site_name", content: "FrogFlow" },
+        ...OG_IMAGE_META,
       ],
       scripts: [jsonLdScript(landingJsonLd({ url, name: title, description, locale }))],
       links: [
