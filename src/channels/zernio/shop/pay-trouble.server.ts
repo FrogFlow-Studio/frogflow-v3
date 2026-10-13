@@ -17,13 +17,14 @@
  * Каждый ответ — с условной отметкой до отправки: повтор события и два
  * сообщения подряд дают один ответ.
  */
-import { claimStateSection } from "@/core/customers/customers";
+import { claimStateSection, setState, type DialogState } from "@/core/customers/customers";
 import { getSetting } from "@/core/settings/settings";
 import { claimOrderEvent, listOrderEvents, recordOrderEvent } from "@/core/orders/events";
 import {
   CHAT_FOREIGN_PAY_KEY,
   countryName,
   countryNameRu,
+  foreignOrderApplies,
   foreignPayOn,
   kaspiForeignApplies,
 } from "@/core/inbox/triage";
@@ -54,7 +55,7 @@ import { notifyAdminsHtml } from "@/channels/telegram/notify";
 import { PLATFORM_LABEL } from "../platform";
 import { isCancel } from "../flow/replies";
 import { matchDirectCommand } from "../flow/commands";
-import { SELLER_PROOF_WITHDRAWN } from "../phone-notice";
+import { SELLER_FOREIGN_ORDER, SELLER_PROOF_WITHDRAWN } from "../phone-notice";
 import { memory, reply, setMode, type Shop, type ShopOutcome } from "./context.server";
 import { CANCEL_FRESH_MS } from "./evening.server";
 import { triageOnce } from "./triage.server";
@@ -458,4 +459,94 @@ export async function payHowToReply(s: Shop): Promise<ShopOutcome | null> {
   const { choosePayment } = await import("./checkout.server");
   await choosePayment(s, kind, { asText: true });
   return "handled";
+}
+
+/**
+ * Заказ оформлен, а покупатель раньше сказал, что он из страны без способа
+ * оплаты (direct.foreign_country — бот уже ответил «оплату из вашей страны
+ * подключаем»): Kaspi и карту РФ не показываем. Копилка 13.10, #188: «Сколько
+ * будет в сомах?+» → «оплату подключаем» → «Купить» → кнопки Kaspi и «Картой
+ * РФ», ни одна не подходит. Заказ ждёт оплату (шаг «жду чек»: если продавец
+ * пришлёт реквизиты сам, чек примется), покупателю — номер заказа и «продавец
+ * напишет», продавцу — обращение (или уведомление) один раз на заказ:
+ * условная отметка foreign_wait до отправки. Выключено «Отвечать про оплату
+ * из других стран», способ для страны появился, способы не прочитались —
+ * прежний путь (false). true — ответили (или уже отвечали по этому заказу).
+ */
+export async function foreignOrderHold(
+  s: Shop,
+  order: OrderWithItems,
+  /** Состояние после оформления (без шагов оформления) — к нему шаг «жду чек». */
+  base: DialogState,
+): Promise<boolean> {
+  const country = memory(s.customer).foreign_country;
+  if (typeof country !== "string" || !country) return false;
+  if (!foreignPayOn(await getSetting(s.ctx, CHAT_FOREIGN_PAY_KEY))) return false;
+  const methods = await listActivePaymentMethods(s.ctx).catch(() => null);
+  if (!methods) return false;
+  if (
+    !foreignOrderApplies(
+      country,
+      methods.map((m) => m.country_code),
+    )
+  )
+    return false;
+  const no = displayNo(order);
+  s.customer = await setState(s.ctx, s.customer, {
+    ...base,
+    mode: "awaiting_proof",
+    pending_order_id: order.id,
+    pending_display_no: no,
+  });
+  s.handoff = true;
+  s.why = `заказ из страны без способа оплаты (${countryNameRu(country)}) — способы оплаты не показаны, вопрос продавцу`;
+  if (!(await claimOrderEvent(s.ctx, order.id, "foreign_wait", country, { country }))) return true;
+  await reply(s, s.m.foreignOrderReply(no, countryName(country, s.locale)), { force: true });
+  await foreignOrderToSeller(s, no, country);
+  return true;
+}
+
+/** Продавцу: обращение (поддержка и «Чат» включены) или уведомление в Telegram. */
+async function foreignOrderToSeller(s: Shop, no: number, country: string): Promise<void> {
+  const { sellerLocale } = await import("@/core/catalog/low-stock");
+  const locale = await sellerLocale(s.ctx).catch(
+    () => s.ctx.tenant.settings.default_locale ?? "ru",
+  );
+  const who = s.customer.username
+    ? `@${s.customer.username}`
+    : s.customer.firstName || s.customer.userKey;
+  const text = SELLER_FOREIGN_ORDER[locale](
+    escapeHtml(who),
+    PLATFORM_LABEL[s.platform],
+    no,
+    escapeHtml(countryName(country, locale)),
+  );
+  if (s.ctx.tenant.modules.helpdesk && s.ctx.tenant.modules.manager_chat) {
+    try {
+      const { createTicket } = await import("@/core/helpdesk/tickets");
+      await createTicket(s.ctx, {
+        telegramId: s.customer.telegramId,
+        customerName:
+          s.customer.firstName || (s.customer.username ? `@${s.customer.username}` : null),
+        platform: s.platform,
+        subject: text.replace(/<[^>]+>/g, ""),
+      });
+    } catch (e) {
+      console.warn(`[foreign-order:${s.ctx.tenant.id}] обращение: ${String(e)}`);
+    }
+  }
+  await notifyAdminsHtml(s.ctx, text, { kind: "question" }).catch(() => 0);
+}
+
+/**
+ * Повторное «Купить» по такому заказу (foreign_wait): ответ «заказ оформлен,
+ * продавец напишет» вместо «реквизиты выше» и реквизитов Kaspi. null —
+ * обычный заказ.
+ */
+export async function foreignWaitReply(s: Shop, order: OrderWithItems): Promise<string | null> {
+  const country = memory(s.customer).foreign_country;
+  if (typeof country !== "string" || !country) return null;
+  const events = await listOrderEvents(s.ctx, order.id).catch(() => null);
+  if (!events?.some((e) => e.kind === "foreign_wait")) return null;
+  return s.m.foreignOrderReply(displayNo(order), countryName(country, s.locale));
 }

@@ -73,6 +73,10 @@ type DirectMemory = {
   foreign_country?: string;
   /** Когда ответили «нажмите «Купить»» на «как получить?» (shop/triage). */
   how_to_buy_at?: string;
+  /** Когда ответили «вопрос у продавца» на «несколько материалов одним чеком?» (shop/triage). */
+  several_items_at?: string;
+  /** Когда ответили «вопрос у продавца» и «Каталог» на название без товара (shop/triage). */
+  product_request_at?: string;
 };
 
 export type Shop = {

@@ -95,6 +95,22 @@ const errorSettingRead =
     };
   };
 
+/** Касса Продамуса на казахстанской форме (кнопка «Картой РФ»), без заказа. */
+const prodamusOn = (r: Room): void => {
+  r.db.tables.app_settings!.push(
+    { key: "prodamus_enabled", value: "true" },
+    { key: "prodamus_form_url", value: "https://kopilka.proeducation.kz" },
+    { key: "prodamus_secret_key", value: "k".repeat(64) },
+    { key: "prodamus_currency", value: "KZT" },
+  );
+  r.db.tables.payment_methods![0]!.instructions = "Kaspi Gold 4400 4302 1234 5678, Кристина У.";
+};
+
+/** Покупатель уже спросил «сколько в сомах?», бот ответил «оплату из вашей страны подключаем». */
+const KG_SAID = {
+  direct: { foreign_country: "KG", foreign_pay_at: new Date().toISOString() },
+};
+
 /** Две страны оплаты, как у AATeach: Казахстан и Россия. */
 const twoCountries = (r: Room): void => {
   r.db.tables.payment_methods!.push({
@@ -377,6 +393,8 @@ export interface Scenario {
       | "text_receipt"
       | "how_to_pay"
       | "how_to_buy"
+      | "several_items"
+      | "product_request"
       | "other";
     country?: string;
   }>;
@@ -4682,6 +4700,258 @@ export const SCENARIOS: Scenario[] = [
       {
         say: { text: "Как можно получить" },
         expect: { notSays: [(c) => c.howToBuyReply("Купить")], sellerNotices: 1 },
+      },
+    ],
+  },
+  // ───── Копилка, утро 13.10: два материала одним чеком, название без правила, Кыргызстан и «Купить» ─────
+  {
+    id: "several-items-one-receipt-ig-ru",
+    title:
+      "на шаге оплаты «Можно вот эти 2 материала одним чеком» — «вопрос уже у продавца», обращение; повтор — без второго ответа",
+    origin:
+      "Копилка 13.10, gvar41391 #190 «Спряжение глаголов»: «Картой РФ» → «Можно вот эти 2 материала одним чеком» → тишина",
+    channel: "instagram",
+    locale: "ru",
+    products: PRODUCTS,
+    full: true,
+    modules: { helpdesk: true, manager_chat: true },
+    triage: [{ kind: "several_items" }, { kind: "several_items" }],
+    state: { mode: "awaiting_proof", pending_order_id: 82 },
+    arrange: kaspiOrder,
+    steps: [
+      {
+        say: { text: "Можно вот эти 2 материала одним чеком" },
+        expect: {
+          count: 1,
+          says: [(c) => c.severalItemsReply],
+          sellerNotices: 1,
+          orders: { 82: { status: "awaiting_payment" } },
+          state: { mode: "awaiting_proof" },
+        },
+      },
+      {
+        say: { text: "Два материала можно одним чеком?" },
+        expect: { silent: true },
+      },
+    ],
+  },
+  {
+    id: "several-items-idle-ig-ru",
+    title: "без заказа «хочу оба, можно одной оплатой?» — тот же ответ «вопрос уже у продавца»",
+    origin: "ожидание к several-items-one-receipt-ig-ru",
+    channel: "instagram",
+    locale: "ru",
+    products: PRODUCTS,
+    full: true,
+    modules: { helpdesk: true, manager_chat: true },
+    triage: [{ kind: "several_items" }],
+    steps: [
+      {
+        say: { text: "хочу оба, можно одной оплатой?" },
+        expect: { count: 1, says: [(c) => c.severalItemsReply], sellerNotices: 1 },
+      },
+    ],
+  },
+  {
+    id: "several-items-switch-off-ig-ru",
+    title:
+      "«Отвечать на «несколько материалов одним чеком?»» выключено — бот молчит, вопрос продавцу",
+    origin: "Яков 11.10: новое поведение бота — переключатель в настройках",
+    channel: "instagram",
+    locale: "ru",
+    products: PRODUCTS,
+    full: true,
+    modules: { helpdesk: true, manager_chat: true },
+    triage: [{ kind: "several_items" }],
+    state: { mode: "awaiting_proof", pending_order_id: 82 },
+    arrange: (r) => {
+      kaspiOrder(r);
+      r.db.tables.app_settings!.push({ key: "chat_several_items", value: "false" });
+    },
+    steps: [
+      {
+        say: { text: "Можно вот эти 2 материала одним чеком" },
+        expect: { notSays: [(c) => c.severalItemsReply], sellerNotices: 1 },
+      },
+    ],
+  },
+  {
+    id: "product-request-no-rule-ig-ru",
+    title:
+      "название материала без правила и товара («Классный уголок») — один ответ «вопрос у продавца» с «Каталогом», обращение; ещё три раза подряд — без ответа",
+    origin:
+      "Копилка 13.10: «Классный уголок» 4 раза подряд — обращение №173 и тишина; «Материал для доски» — тоже",
+    channel: "instagram",
+    locale: "ru",
+    products: PRODUCTS,
+    full: true,
+    modules: { helpdesk: true, manager_chat: true },
+    triage: [
+      { kind: "product_request" },
+      { kind: "product_request" },
+      { kind: "product_request" },
+      { kind: "product_request" },
+    ],
+    steps: [
+      {
+        say: { text: "Классный уголок" },
+        expect: {
+          count: 1,
+          says: [(c) => c.productRequestReply],
+          buttons: ["📚 Каталог"],
+          sellerNotices: 1,
+        },
+      },
+      { say: { text: "Классный уголок " }, expect: { silent: true } },
+      { say: { text: "Классный уголок!" }, expect: { silent: true } },
+      { say: { text: "классный уголок" }, expect: { silent: true } },
+    ],
+  },
+  {
+    id: "product-request-burst-ig-ru",
+    title: "«Классный уголок» дважды одновременно и повтор вебхука — ответ уходит один раз",
+    origin: "CLAUDE.md «Один раз»: двойная доставка, два сообщения подряд",
+    channel: "instagram",
+    locale: "ru",
+    products: PRODUCTS,
+    full: true,
+    modules: { helpdesk: true, manager_chat: true },
+    triage: [{ kind: "product_request" }, { kind: "product_request" }, { kind: "product_request" }],
+    steps: [
+      {
+        say: { burst: ["Классный уголок", "Классный уголок!"] },
+        expect: { count: 1, says: [(c) => c.productRequestReply] },
+      },
+      { say: { repeat: true }, expect: { silent: true } },
+    ],
+  },
+  {
+    id: "product-request-switch-off-ig-ru",
+    title:
+      "«Отвечать на название материала, которого нет в боте» выключено — бот молчит, вопрос продавцу",
+    origin: "Яков 11.10: новое поведение бота — переключатель в настройках",
+    channel: "instagram",
+    locale: "ru",
+    products: PRODUCTS,
+    full: true,
+    modules: { helpdesk: true, manager_chat: true },
+    triage: [{ kind: "product_request" }],
+    arrange: (r) => {
+      r.db.tables.app_settings!.push({ key: "chat_product_request", value: "false" });
+    },
+    steps: [
+      {
+        say: { text: "Материал для доски" },
+        expect: { notSays: [(c) => c.productRequestReply], sellerNotices: 1 },
+      },
+    ],
+  },
+  {
+    id: "foreign-buyer-buy-no-kaspi-ig-ru",
+    title:
+      "покупатель из Кыргызстана уже получил «оплату подключаем» и жмёт «Купить» — заказ оформлен без Kaspi и «Картой РФ», «продавец напишет», продавцу — уведомление; повторное «Купить» — тот же ответ, дальше тишина",
+    origin:
+      "Копилка 13.10, #188: «Сколько будет в сомах?+» → «оплату из вашей страны подключаем» → «Купить» → кнопки Kaspi и «Картой РФ»",
+    channel: "instagram",
+    locale: "ru",
+    full: true,
+    modules: { helpdesk: true, manager_chat: true, prodamus: true },
+    products: [{ id: P1, name: "Матрешки" }],
+    state: KG_SAID,
+    arrange: prodamusOn,
+    steps: [
+      {
+        say: { button: `PROD:${P1}`, title: "Купить" },
+        expect: {
+          count: 1,
+          says: [/Заказ №\d+ оформлен\. Оплату из вашей страны \(Кыргызстан\) сейчас подключаем/],
+          notSays: ["К оплате", "Kaspi", "Картой РФ", "4400 4302"],
+          noButtons: [/Kaspi/, /Картой РФ/, /Перевод/],
+          sellerNotices: 1,
+          state: { mode: "awaiting_proof" },
+        },
+      },
+      {
+        say: { button: `PROD:${P1}`, title: "Купить" },
+        expect: {
+          count: 1,
+          says: [/Оплату из вашей страны \(Кыргызстан\)/],
+          notSays: ["реквизиты в сообщении выше", "4400 4302", "Картой РФ"],
+          sellerNotices: 0,
+        },
+      },
+      { say: { button: `PROD:${P1}`, title: "Купить" }, expect: { silent: true } },
+    ],
+  },
+  {
+    id: "foreign-buyer-buy-kazakhstan-ig-ru",
+    title:
+      "покупатель без сказанной страны жмёт «Купить» — прежний выбор оплаты с Kaspi и «Картой РФ»",
+    origin: "граница к foreign-buyer-buy-no-kaspi-ig-ru",
+    channel: "instagram",
+    locale: "ru",
+    full: true,
+    modules: { helpdesk: true, manager_chat: true, prodamus: true },
+    products: [{ id: P1, name: "Матрешки" }],
+    state: {},
+    arrange: prodamusOn,
+    steps: [
+      {
+        say: { button: `PROD:${P1}`, title: "Купить" },
+        expect: { count: 1, says: ["К оплате", "Картой РФ"], notSays: ["Оплату из вашей страны"] },
+      },
+    ],
+  },
+  {
+    id: "foreign-buyer-buy-switch-off-ig-ru",
+    title:
+      "«Отвечать про оплату из других стран» выключено — «Купить» у покупателя из Кыргызстана показывает оплату, как раньше",
+    origin: "Яков 11.10: новое поведение бота — переключатель в настройках",
+    channel: "instagram",
+    locale: "ru",
+    full: true,
+    modules: { helpdesk: true, manager_chat: true, prodamus: true },
+    products: [{ id: P1, name: "Матрешки" }],
+    state: KG_SAID,
+    arrange: (r) => {
+      prodamusOn(r);
+      r.db.tables.app_settings!.push({ key: "chat_foreign_pay", value: "false" });
+    },
+    steps: [
+      {
+        say: { button: `PROD:${P1}`, title: "Купить" },
+        expect: { count: 1, says: ["К оплате"], notSays: ["Оплату из вашей страны"] },
+      },
+    ],
+  },
+  {
+    id: "foreign-buyer-buy-method-exists-ig-ru",
+    title:
+      "у магазина появился способ оплаты для Кыргызстана — «Купить» ведёт обычным путём, без «оплату подключаем»",
+    origin: "граница к foreign-buyer-buy-no-kaspi-ig-ru: Робокасса подключена",
+    channel: "instagram",
+    locale: "ru",
+    full: true,
+    modules: { helpdesk: true, manager_chat: true, prodamus: true },
+    products: [{ id: P1, name: "Матрешки" }],
+    state: KG_SAID,
+    arrange: (r) => {
+      prodamusOn(r);
+      r.db.tables.payment_methods!.push({
+        id: "pm-kg",
+        bot_id: r.db.tables.payment_methods![0]!.bot_id,
+        is_active: true,
+        sort_order: 3,
+        country_code: "KG",
+        country_name: "Кыргызстан",
+        currency: "KZT",
+        instructions: "Перевод на карту Элкарт 9417 0000 0000 0000",
+      });
+    },
+    steps: [
+      {
+        say: { button: `PROD:${P1}`, title: "Купить" },
+        expect: { notSays: ["Оплату из вашей страны"] },
       },
     ],
   },

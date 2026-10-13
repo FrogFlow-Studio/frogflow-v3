@@ -60,6 +60,15 @@ export const ru = {
   "botTexts.key.how_to_buy_reply": "Как получить материал",
   "botTexts.key.how_to_buy_reply.hint":
     "Покупатель получил сообщение с кнопкой «Купить» и спрашивает, как получить или купить материал, а заказа ещё нет. Бот зовёт нажать кнопку и присылает её ещё раз, не чаще раза в 30 минут.",
+  "botTexts.key.several_items_reply": "Несколько материалов одним чеком",
+  "botTexts.key.several_items_reply.hint":
+    "Покупатель спрашивает, можно ли купить или оплатить несколько материалов одним заказом или одним чеком. Бот отвечает, что вопрос у вас, — один раз в сутки, вопрос уходит вам обращением.",
+  "botTexts.key.product_request_reply": "Материал, которого нет в боте",
+  "botTexts.key.product_request_reply.hint":
+    "Покупатель пишет название материала, а правила или товара с таким названием нет («Классный уголок»). Бот один раз в сутки отвечает, что вопрос у вас, и присылает кнопку «Каталог»; вопрос уходит вам обращением.",
+  "botTexts.key.foreign_order_reply": "Заказ из страны без оплаты",
+  "botTexts.key.foreign_order_reply.hint":
+    "Покупатель раньше написал, что он из страны, для которой у магазина нет способа оплаты (например, Кыргызстан), и нажал «Купить». Заказ оформляется, но способы оплаты (Kaspi, карта РФ) бот не показывает: сообщает номер заказа и что вы напишете, как оплатить.",
   "botTexts.key.pay_failed_reply": "Платёж не прошёл",
   "botTexts.key.pay_failed_reply.hint":
     "Покупатель пишет, что оплата не прошла («Не проходит», «ошибка»), в том числе подписью к фото. Чек не принимается, заказ ждёт оплату, вопрос уходит вам. Включается в «Оплата и настройки → Оплата и чеки в переписке».",
@@ -167,6 +176,15 @@ export const kk: SectionDict<typeof ru> = {
   "botTexts.key.how_to_buy_reply": "Материалды қалай алуға болады",
   "botTexts.key.how_to_buy_reply.hint":
     "Сатып алушы «Купить» түймесі бар хабарлама алып, материалды қалай алуға немесе сатып алуға болатынын сұрайды, ал тапсырыс әлі жоқ. Бот түймені басуды сұрап, оны қайта жібереді, 30 минутта бір реттен жиі емес.",
+  "botTexts.key.several_items_reply": "Бірнеше материал бір чекпен",
+  "botTexts.key.several_items_reply.hint":
+    "Сатып алушы бірнеше материалды бір тапсырыспен немесе бір чекпен сатып алуға не төлеуге бола ма деп сұрайды. Бот сұрақ сізде екенін айтады — тәулігіне бір рет, сұрақ сізге өтініш болып келеді.",
+  "botTexts.key.product_request_reply": "Ботта жоқ материал",
+  "botTexts.key.product_request_reply.hint":
+    "Сатып алушы материалдың атауын жазады, ал мұндай атаумен ереже не тауар жоқ («Классный уголок»). Бот тәулігіне бір рет сұрақ сізде екенін айтып, «Каталог» түймесін жібереді; сұрақ сізге өтініш болып келеді.",
+  "botTexts.key.foreign_order_reply": "Төлемі жоқ елден тапсырыс",
+  "botTexts.key.foreign_order_reply.hint":
+    "Сатып алушы бұрын дүкенде төлем тәсілі жоқ елден екенін жазып (мысалы, Қырғызстан), «Купить» түймесін басты. Тапсырыс рәсімделеді, бірақ бот төлем тәсілдерін (Kaspi, РФ картасы) көрсетпейді: тапсырыс нөмірін және қалай төлеу керегін сіз жазатыныңызды айтады.",
   "botTexts.key.pay_failed_reply": "Төлем өтпеді",
   "botTexts.key.pay_failed_reply.hint":
     "Сатып алушы төлем өтпегенін жазады («Өтпей жатыр», «қате»), соның ішінде фото астындағы жазумен. Чек қабылданбайды, тапсырыс төлемді күтеді, сұрақ сізге келеді. «Төлем және баптаулар → Хат алмасудағы төлем мен чектер» ішінде қосылады.",
@@ -276,6 +294,15 @@ export const en: SectionDict<typeof ru> = {
   "botTexts.key.how_to_buy_reply": "How to get the material",
   "botTexts.key.how_to_buy_reply.hint":
     "The buyer got a message with the “Buy” button and asks how to get or buy the material, with no order yet. The bot asks them to tap the button and sends it again, at most once every 30 minutes.",
+  "botTexts.key.several_items_reply": "Several materials with one receipt",
+  "botTexts.key.several_items_reply.hint":
+    "The buyer asks whether several materials can be bought or paid for in one order or with one receipt. The bot replies that the question is with you, once a day, and the question comes to you as a ticket.",
+  "botTexts.key.product_request_reply": "Material the bot doesn't have",
+  "botTexts.key.product_request_reply.hint":
+    "The buyer writes the name of a material, and there is no rule or product with that name (“Классный уголок”). Once a day the bot replies that the question is with you and sends the “Catalog” button; the question comes to you as a ticket.",
+  "botTexts.key.foreign_order_reply": "Order from a country without payment",
+  "botTexts.key.foreign_order_reply.hint":
+    "The buyer said earlier they are from a country the shop has no payment method for (for example, Kyrgyzstan) and tapped “Buy”. The order is placed, but the bot doesn't show payment methods (Kaspi, Russian card): it gives the order number and says you will write how to pay.",
   "botTexts.key.pay_failed_reply": "Payment didn't go through",
   "botTexts.key.pay_failed_reply.hint":
     "The buyer writes that the payment failed (“doesn't go through”, “error”), including as a photo caption. The receipt is not accepted, the order keeps waiting for payment and the question comes to you. Turned on in “Payment and settings → Payment and receipts in chat”.",
@@ -385,6 +412,15 @@ export const uz: SectionDict<typeof ru> = {
   "botTexts.key.how_to_buy_reply": "Materialni qanday olish mumkin",
   "botTexts.key.how_to_buy_reply.hint":
     "Xaridor «Купить» tugmali xabarni oldi va materialni qanday olish yoki sotib olishni so‘raydi, buyurtma esa hali yo‘q. Bot tugmani bosishni so‘raydi va uni qayta yuboradi, 30 daqiqada bir martadan ko‘p emas.",
+  "botTexts.key.several_items_reply": "Bir nechta material bitta chek bilan",
+  "botTexts.key.several_items_reply.hint":
+    "Xaridor bir nechta materialni bitta buyurtma yoki bitta chek bilan sotib olish yoki to‘lash mumkinmi, deb so‘raydi. Bot savol sizda ekanini aytadi — sutkada bir marta, savol sizga murojaat bo‘lib keladi.",
+  "botTexts.key.product_request_reply": "Botda yo‘q material",
+  "botTexts.key.product_request_reply.hint":
+    "Xaridor material nomini yozadi, bunday nomli qoida yoki mahsulot esa yo‘q («Классный уголок»). Bot sutkada bir marta savol sizda ekanini aytadi va «Katalog» tugmasini yuboradi; savol sizga murojaat bo‘lib keladi.",
+  "botTexts.key.foreign_order_reply": "To‘lovsiz davlatdan buyurtma",
+  "botTexts.key.foreign_order_reply.hint":
+    "Xaridor avval do‘konda to‘lov usuli yo‘q davlatdan ekanini yozgan (masalan, Qirg‘iziston) va «Купить» tugmasini bosgan. Buyurtma rasmiylashtiriladi, lekin bot to‘lov usullarini (Kaspi, RF kartasi) ko‘rsatmaydi: buyurtma raqamini va qanday to‘lashni siz yozishingizni aytadi.",
   "botTexts.key.pay_failed_reply": "To‘lov o‘tmadi",
   "botTexts.key.pay_failed_reply.hint":
     "Xaridor to‘lov o‘tmaganini yozadi («O‘tmayapti», «xato»), shu jumladan rasm ostidagi yozuv bilan. Chek qabul qilinmaydi, buyurtma to‘lovni kutadi, savol sizga keladi. «To‘lov va sozlamalar → Yozishmadagi to‘lov va cheklar» bo‘limida yoqiladi.",

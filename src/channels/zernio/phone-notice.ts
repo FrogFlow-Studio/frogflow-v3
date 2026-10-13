@@ -50,3 +50,22 @@ export const SELLER_PROOF_WITHDRAWN: Record<
   uz: (who, ch, no, said) =>
     `⚠️ ${who} (${ch}) to‘lov o‘tmaganini yozmoqda: «${said}».\n№${no} buyurtma bo‘yicha chek olib tashlandi, buyurtma yana to‘lovni kutmoqda. Pul tushmaguncha tasdiqlamang.`,
 };
+
+/**
+ * Заказ покупателя из страны без способа оплаты: бот не показал Kaspi и
+ * карту РФ, продавцу — написать, как оплатить (shop/pay-trouble.server).
+ * `who`, `country` уже экранированы.
+ */
+export const SELLER_FOREIGN_ORDER: Record<
+  Locale,
+  (who: string, channel: string, no: number, country: string) => string
+> = {
+  ru: (who, ch, no, country) =>
+    `🌍 ${who} (${ch}) оформил(а) заказ №${no} из страны, для которой нет способа оплаты (${country}).\nБот не показал Kaspi и карту РФ и сказал, что вы напишете, как оплатить. Напишите покупателю.`,
+  kk: (who, ch, no, country) =>
+    `🌍 ${who} (${ch}) төлем тәсілі жоқ елден (${country}) №${no} тапсырыс рәсімдеді.\nБот Kaspi мен РФ картасын көрсетпей, қалай төлеу керегін сіз жазатыныңызды айтты. Сатып алушыға жазыңыз.`,
+  en: (who, ch, no, country) =>
+    `🌍 ${who} (${ch}) placed order #${no} from a country with no payment method (${country}).\nThe bot didn't show Kaspi or the Russian card and said you will write how to pay. Please write to the buyer.`,
+  uz: (who, ch, no, country) =>
+    `🌍 ${who} (${ch}) to‘lov usuli yo‘q davlatdan (${country}) №${no} buyurtma rasmiylashtirdi.\nBot Kaspi va RF kartasini ko‘rsatmadi va qanday to‘lashni siz yozishingizni aytdi. Xaridorga yozing.`,
+};

@@ -42,6 +42,11 @@ export type OrderEventKind =
   | "pay_howto"
   /** Скриншот не отправляется — бот предложил чек текстом (один раз на заказ). */
   | "receipt_text_offered"
+  /**
+   * Покупатель из страны без способа оплаты: заказ оформлен без Kaspi и карты
+   * РФ, продавец напишет, как оплатить (один раз на заказ, shop/pay-trouble).
+   */
+  | "foreign_wait"
   /** Номер товара сразу после заказа — бот напомнил о неоплаченном заказе (один раз). */
   | "number_held"
   /** Заказ старше 14 дней: бот спросил, прислать ли его ещё раз. */
@@ -459,6 +464,11 @@ export function describeOrderEvent(e: Pick<OrderEvent, "kind" | "actor" | "paylo
       return {
         text: "Покупатель спросил, как оплатить, — бот ещё раз прислал шаг оплаты",
         tone: "neutral",
+      };
+    case "foreign_wait":
+      return {
+        text: `Покупатель из страны без способа оплаты (${str(p.country)}) — бот не показал Kaspi и карту РФ, напишите покупателю, как оплатить`,
+        tone: "warn",
       };
     case "receipt_text_offered":
       return {
