@@ -177,6 +177,17 @@ export const OG_LOCALE: Record<Locale, string> = {
   uz: "uz_UZ",
 };
 
+/**
+ * Картинка превью ссылки (public/og.png, 1200×630): без неё Telegram, WhatsApp
+ * и поисковики показывают ссылку на платформу голым текстом.
+ */
+export const OG_IMAGE_META = [
+  { property: "og:image", content: `${SITE_URL}/og.png` },
+  { property: "og:image:width", content: "1200" },
+  { property: "og:image:height", content: "630" },
+  { name: "twitter:card", content: "summary_large_image" },
+];
+
 /** Адрес главной на языке: русский — без параметра, остальные — `?lang=`. */
 export function landingUrl(locale: Locale): string {
   return locale === "ru" ? `${SITE_URL}/` : `${SITE_URL}/?lang=${locale}`;
