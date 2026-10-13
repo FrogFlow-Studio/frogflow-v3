@@ -330,6 +330,56 @@ const ru = {
   "niche.courses.a1": "Доступ к курсу приходит сразу после оплаты",
   "niche.courses.a2": "Уроки открываются по расписанию без вас",
   "niche.courses.a3": "Бот сам напоминает ученику о новом уроке",
+  "niche.instagram.link": "Для Instagram Direct",
+  "niche.instagram.title": "Автоответ в Instagram Direct на комментарии с оплатой Kaspi — FrogFlow",
+  "niche.instagram.description":
+    "Человек пишет комментарий под постом или рилсом, и бот сразу отвечает ему в Direct: материал, ссылка или кнопка «Купить». Оплата переводом на Kaspi, бот сверяет чек. {days} дней бесплатно.",
+  "niche.instagram.h1": "Комментарий под постом, и покупатель уже в Direct с кнопкой «Купить»",
+  "niche.instagram.lead":
+    "Бот отвечает в Direct на каждый комментарий по вашему правилу, даёт реквизиты Kaspi и принимает чек. Вы нажимаете «Деньги пришли», остальное делает бот.",
+  "niche.instagram.f1.title": "Ответ в Direct на комментарий",
+  "niche.instagram.f1.text":
+    "Под постом пишут «+» или ваше слово, и в Direct сразу уходит сообщение с материалом, ссылкой или кнопкой «Купить».",
+  "niche.instagram.f2.title": "Заказ прямо в переписке",
+  "niche.instagram.f2.text":
+    "По кнопке «Купить» бот создаёт заказ, присылает реквизиты Kaspi и ждёт чек. Вы подтверждаете оплату одной кнопкой.",
+  "niche.instagram.f3.title": "Instagram, Telegram и WhatsApp вместе",
+  "niche.instagram.f3.text":
+    "Один каталог и один список заказов для всех каналов. Не нужно переключаться между приложениями.",
+  "niche.instagram.f4.title": "Видно, кому ушло сообщение",
+  "niche.instagram.f4.text":
+    "У каждого правила счётчик и история срабатываний: кто написал комментарий, ушло ли сообщение и почему нет.",
+  "niche.instagram.b1": "Под постом сотни «+», и на каждый нужно ответить вручную",
+  "niche.instagram.b2": "Заказы теряются среди сообщений в Direct",
+  "niche.instagram.b3": "Покупатель ждёт ответа и уходит",
+  "niche.instagram.a1": "Бот отвечает в Direct на каждый комментарий сразу",
+  "niche.instagram.a2": "Кнопка «Купить», реквизиты Kaspi и приём чека в переписке",
+  "niche.instagram.a3": "Все заказы из Instagram в одном списке",
+  "niche.kaspi.link": "Для оплаты через Kaspi",
+  "niche.kaspi.title": "Приём оплаты Kaspi в Instagram и Telegram: бот сверяет чек — FrogFlow",
+  "niche.kaspi.description":
+    "Бот даёт покупателю реквизиты Kaspi, принимает чек перевода и сверяет сумму, получателя и дату. Вы подтверждаете поступление одной кнопкой, и товар уходит сразу. {days} дней бесплатно.",
+  "niche.kaspi.h1": "Принимайте переводы на Kaspi и не проверяйте каждый чек глазами",
+  "niche.kaspi.lead":
+    "Покупатель переводит на ваш Kaspi и присылает чек в переписку. Бот сверяет его с заказом, вы нажимаете «Деньги пришли», и покупатель получает товар.",
+  "niche.kaspi.f1.title": "Реквизиты в нужный момент",
+  "niche.kaspi.f1.text":
+    "Номер Kaspi или QR приходят покупателю вместе с суммой заказа. Не нужно писать их каждому вручную.",
+  "niche.kaspi.f2.title": "Сверка чека",
+  "niche.kaspi.f2.text":
+    "Бот читает скриншот перевода и сверяет сумму, получателя, дату и номер квитанции. Один и тот же чек дважды не пройдёт.",
+  "niche.kaspi.f3.title": "Одна кнопка вместо переписки",
+  "niche.kaspi.f3.text":
+    "Вы видите заказ с чеком и нажимаете «Деньги пришли». Файл, доступ или подтверждение заказа уходят покупателю сами.",
+  "niche.kaspi.f4.title": "Покупатели из России",
+  "niche.kaspi.f4.text":
+    "Для оплаты российской картой подключите Робокассу или Продамус: касса подтверждает оплату сама, даже ночью.",
+  "niche.kaspi.b1": "Каждому покупателю пишете номер Kaspi вручную",
+  "niche.kaspi.b2": "Сверяете суммы и даты в чеках глазами",
+  "niche.kaspi.b3": "Не видно, кто оплатил, а кто только обещал",
+  "niche.kaspi.a1": "Бот сам присылает реквизиты и сумму",
+  "niche.kaspi.a2": "Бот сверяет чек с заказом и отсеивает повторный",
+  "niche.kaspi.a3": "У каждого заказа видно, ждёт он оплаты или оплачен",
 } as const;
 
 export type LandingKey = keyof typeof ru;
@@ -668,6 +718,58 @@ const kk: Dict = {
   "niche.courses.a1": "Курсқа кіру төлемнен кейін бірден келеді",
   "niche.courses.a2": "Сабақтар сізсіз кесте бойынша ашылады",
   "niche.courses.a3": "Бот оқушыға жаңа сабақ туралы өзі еске салады",
+  "niche.instagram.link": "Instagram Direct үшін",
+  "niche.instagram.title":
+    "Instagram Direct-те пікірлерге автожауап, Kaspi арқылы төлем — FrogFlow",
+  "niche.instagram.description":
+    "Адам пост немесе рилс астына пікір жазады, ал бот оған бірден Direct-ке жауап береді: материал, сілтеме немесе «Сатып алу» батырмасы. Kaspi-ге аударым, бот чекті тексереді. {days} күн тегін.",
+  "niche.instagram.h1": "Пост астындағы пікір, және сатып алушы Direct-те «Сатып алу» батырмасымен",
+  "niche.instagram.lead":
+    "Бот сіздің ережеңіз бойынша әр пікірге Direct-те жауап береді, Kaspi деректемелерін жібереді және чекті қабылдайды. Сіз «Ақша түсті» батырмасын басасыз, қалғанын бот жасайды.",
+  "niche.instagram.f1.title": "Пікірге Direct-те жауап",
+  "niche.instagram.f1.text":
+    "Пост астына «+» немесе сіздің сөзіңізді жазады, ал Direct-ке бірден материал, сілтеме немесе «Сатып алу» батырмасы бар хабарлама кетеді.",
+  "niche.instagram.f2.title": "Тапсырыс тікелей хат алмасуда",
+  "niche.instagram.f2.text":
+    "«Сатып алу» батырмасы бойынша бот тапсырыс жасайды, Kaspi деректемелерін жібереді және чекті күтеді. Сіз төлемді бір батырмамен растайсыз.",
+  "niche.instagram.f3.title": "Instagram, Telegram және WhatsApp бірге",
+  "niche.instagram.f3.text":
+    "Барлық арна үшін бір каталог және бір тапсырыстар тізімі. Қосымшалар арасында ауысудың қажеті жоқ.",
+  "niche.instagram.f4.title": "Хабарлама кімге кеткені көрінеді",
+  "niche.instagram.f4.text":
+    "Әр ереженің есептегіші мен іске қосылу тарихы бар: кім пікір жазды, хабарлама кетті ме, кетпесе неге.",
+  "niche.instagram.b1": "Пост астында жүздеген «+», әрқайсысына қолмен жауап беру керек",
+  "niche.instagram.b2": "Тапсырыстар Direct хабарламаларының арасында жоғалады",
+  "niche.instagram.b3": "Сатып алушы жауап күтіп, кетіп қалады",
+  "niche.instagram.a1": "Бот әр пікірге Direct-те бірден жауап береді",
+  "niche.instagram.a2": "«Сатып алу» батырмасы, Kaspi деректемелері және чек хат алмасуда",
+  "niche.instagram.a3": "Instagram-дағы барлық тапсырыс бір тізімде",
+  "niche.kaspi.link": "Kaspi арқылы төлем үшін",
+  "niche.kaspi.title":
+    "Instagram мен Telegram-да Kaspi төлемін қабылдау: бот чекті тексереді — FrogFlow",
+  "niche.kaspi.description":
+    "Бот сатып алушыға Kaspi деректемелерін береді, аударым чегін қабылдайды және соманы, алушыны, күнді тексереді. Сіз түскен ақшаны бір батырмамен растайсыз, тауар бірден кетеді. {days} күн тегін.",
+  "niche.kaspi.h1": "Kaspi-ге аударымдарды қабылдаңыз, әр чекті көзбен тексермеңіз",
+  "niche.kaspi.lead":
+    "Сатып алушы сіздің Kaspi-ге аударып, чекті хат алмасуға жібереді. Бот оны тапсырыспен салыстырады, сіз «Ақша түсті» батырмасын басасыз, сатып алушы тауарды алады.",
+  "niche.kaspi.f1.title": "Деректемелер дер кезінде",
+  "niche.kaspi.f1.text":
+    "Kaspi нөмірі немесе QR сатып алушыға тапсырыс сомасымен бірге келеді. Әркімге қолмен жазудың қажеті жоқ.",
+  "niche.kaspi.f2.title": "Чекті тексеру",
+  "niche.kaspi.f2.text":
+    "Бот аударым скриншотын оқып, соманы, алушыны, күнді және түбіртек нөмірін тексереді. Бір чек екі рет өтпейді.",
+  "niche.kaspi.f3.title": "Хат алмасудың орнына бір батырма",
+  "niche.kaspi.f3.text":
+    "Сіз чегі бар тапсырысты көріп, «Ақша түсті» батырмасын басасыз. Файл, қолжетімділік немесе тапсырысты растау сатып алушыға өзі кетеді.",
+  "niche.kaspi.f4.title": "Ресейден сатып алушылар",
+  "niche.kaspi.f4.text":
+    "Ресей картасымен төлеу үшін Робокасса немесе Продамусты қосыңыз: касса төлемді түнде де өзі растайды.",
+  "niche.kaspi.b1": "Әр сатып алушыға Kaspi нөмірін қолмен жазасыз",
+  "niche.kaspi.b2": "Чектердегі сома мен күнді көзбен тексересіз",
+  "niche.kaspi.b3": "Кім төледі, кім тек уәде берді, көрінбейді",
+  "niche.kaspi.a1": "Бот деректемелер мен соманы өзі жібереді",
+  "niche.kaspi.a2": "Бот чекті тапсырыспен салыстырып, қайталанғанын өткізбейді",
+  "niche.kaspi.a3": "Әр тапсырыстың төлем күтіп тұрғаны не төленгені көрінеді",
 };
 
 const en: Dict = {
@@ -1001,6 +1103,58 @@ const en: Dict = {
   "niche.courses.a1": "Course access arrives right after payment",
   "niche.courses.a2": "Lessons open on schedule without you",
   "niche.courses.a3": "The bot reminds the student about each new lesson",
+  "niche.instagram.link": "For Instagram Direct",
+  "niche.instagram.title": "Instagram Direct auto-reply to comments with Kaspi payments — FrogFlow",
+  "niche.instagram.description":
+    "Someone comments under a post or reel, and the bot replies in Direct right away: a material, a link or a “Buy” button. Payment by Kaspi transfer, the bot checks the receipt. {days} days free.",
+  "niche.instagram.h1":
+    "A comment under your post, and the buyer is already in Direct with a “Buy” button",
+  "niche.instagram.lead":
+    "The bot replies in Direct to every comment that matches your rule, sends your Kaspi details and takes the receipt. You press “Money received”, the bot does the rest.",
+  "niche.instagram.f1.title": "Direct reply to a comment",
+  "niche.instagram.f1.text":
+    "People comment “+” or your keyword, and a Direct message with a material, a link or a “Buy” button goes out at once.",
+  "niche.instagram.f2.title": "Orders right in the chat",
+  "niche.instagram.f2.text":
+    "On “Buy” the bot creates an order, sends Kaspi details and waits for the receipt. You confirm payment with one button.",
+  "niche.instagram.f3.title": "Instagram, Telegram and WhatsApp together",
+  "niche.instagram.f3.text":
+    "One catalog and one order list for every channel. No switching between apps.",
+  "niche.instagram.f4.title": "See who got the message",
+  "niche.instagram.f4.text":
+    "Each rule has a counter and a history: who commented, whether the message went out and why not.",
+  "niche.instagram.b1": "Hundreds of “+” under a post, each answered by hand",
+  "niche.instagram.b2": "Orders get lost among Direct messages",
+  "niche.instagram.b3": "The buyer waits for an answer and leaves",
+  "niche.instagram.a1": "The bot replies in Direct to every comment at once",
+  "niche.instagram.a2": "“Buy” button, Kaspi details and receipts in the chat",
+  "niche.instagram.a3": "All Instagram orders in one list",
+  "niche.kaspi.link": "For Kaspi payments",
+  "niche.kaspi.title":
+    "Accept Kaspi payments in Instagram and Telegram: the bot checks receipts — FrogFlow",
+  "niche.kaspi.description":
+    "The bot gives the buyer your Kaspi details, takes the transfer receipt and checks the amount, recipient and date. You confirm with one button and the product goes out at once. {days} days free.",
+  "niche.kaspi.h1": "Accept Kaspi transfers without checking every receipt by eye",
+  "niche.kaspi.lead":
+    "The buyer transfers to your Kaspi and sends the receipt in the chat. The bot matches it to the order, you press “Money received”, and the buyer gets the product.",
+  "niche.kaspi.f1.title": "Payment details at the right moment",
+  "niche.kaspi.f1.text":
+    "Your Kaspi number or QR reaches the buyer together with the order total. No need to type them for everyone.",
+  "niche.kaspi.f2.title": "Receipt check",
+  "niche.kaspi.f2.text":
+    "The bot reads the transfer screenshot and checks the amount, recipient, date and receipt number. The same receipt won’t pass twice.",
+  "niche.kaspi.f3.title": "One button instead of a chat",
+  "niche.kaspi.f3.text":
+    "You see the order with its receipt and press “Money received”. The file, access or order confirmation goes to the buyer by itself.",
+  "niche.kaspi.f4.title": "Buyers from Russia",
+  "niche.kaspi.f4.text":
+    "For Russian cards connect Robokassa or Prodamus: the checkout confirms payment by itself, even at night.",
+  "niche.kaspi.b1": "You type your Kaspi number for every buyer",
+  "niche.kaspi.b2": "You check amounts and dates in receipts by eye",
+  "niche.kaspi.b3": "You can’t see who paid and who only promised",
+  "niche.kaspi.a1": "The bot sends payment details and the total itself",
+  "niche.kaspi.a2": "The bot matches the receipt to the order and rejects a reused one",
+  "niche.kaspi.a3": "Every order shows whether it awaits payment or is paid",
 };
 
 const uz: Dict = {
@@ -1335,6 +1489,59 @@ const uz: Dict = {
   "niche.courses.a1": "Kursga kirish to‘lovdan keyin darhol keladi",
   "niche.courses.a2": "Darslar sizsiz jadval bo‘yicha ochiladi",
   "niche.courses.a3": "Bot o‘quvchiga yangi dars haqida o‘zi eslatadi",
+  "niche.instagram.link": "Instagram Direct uchun",
+  "niche.instagram.title":
+    "Instagram Direct’da izohlarga avtojavob va Kaspi orqali to‘lov — FrogFlow",
+  "niche.instagram.description":
+    "Odam post yoki rils ostiga izoh yozadi, bot esa unga darhol Direct’da javob beradi: material, havola yoki «Sotib olish» tugmasi. Kaspi’ga o‘tkazma, bot chekni tekshiradi. {days} kun bepul.",
+  "niche.instagram.h1":
+    "Post ostidagi izoh, va xaridor allaqachon Direct’da «Sotib olish» tugmasi bilan",
+  "niche.instagram.lead":
+    "Bot qoidangiz bo‘yicha har bir izohga Direct’da javob beradi, Kaspi rekvizitlarini yuboradi va chekni qabul qiladi. Siz «Pul tushdi» tugmasini bosasiz, qolganini bot qiladi.",
+  "niche.instagram.f1.title": "Izohga Direct’da javob",
+  "niche.instagram.f1.text":
+    "Post ostiga «+» yoki sizning so‘zingizni yozishadi, Direct’ga esa darhol material, havola yoki «Sotib olish» tugmasi bilan xabar ketadi.",
+  "niche.instagram.f2.title": "Buyurtma to‘g‘ridan-to‘g‘ri yozishmada",
+  "niche.instagram.f2.text":
+    "«Sotib olish» tugmasi bo‘yicha bot buyurtma yaratadi, Kaspi rekvizitlarini yuboradi va chekni kutadi. Siz to‘lovni bitta tugma bilan tasdiqlaysiz.",
+  "niche.instagram.f3.title": "Instagram, Telegram va WhatsApp birga",
+  "niche.instagram.f3.text":
+    "Barcha kanallar uchun bitta katalog va bitta buyurtmalar ro‘yxati. Ilovalar orasida almashish shart emas.",
+  "niche.instagram.f4.title": "Xabar kimga ketgani ko‘rinadi",
+  "niche.instagram.f4.text":
+    "Har bir qoidaning hisoblagichi va ishga tushish tarixi bor: kim izoh yozdi, xabar ketdimi, ketmagan bo‘lsa nega.",
+  "niche.instagram.b1": "Post ostida yuzlab «+», har biriga qo‘lda javob berish kerak",
+  "niche.instagram.b2": "Buyurtmalar Direct xabarlari orasida yo‘qoladi",
+  "niche.instagram.b3": "Xaridor javob kutib, ketib qoladi",
+  "niche.instagram.a1": "Bot har bir izohga Direct’da darhol javob beradi",
+  "niche.instagram.a2": "«Sotib olish» tugmasi, Kaspi rekvizitlari va chek yozishmada",
+  "niche.instagram.a3": "Instagram’dagi barcha buyurtmalar bitta ro‘yxatda",
+  "niche.kaspi.link": "Kaspi orqali to‘lov uchun",
+  "niche.kaspi.title":
+    "Instagram va Telegram’da Kaspi to‘lovini qabul qilish: bot chekni tekshiradi — FrogFlow",
+  "niche.kaspi.description":
+    "Bot xaridorga Kaspi rekvizitlarini beradi, o‘tkazma chekini qabul qiladi va summa, oluvchi va sanani tekshiradi. Siz tushumni bitta tugma bilan tasdiqlaysiz, mahsulot darhol ketadi. {days} kun bepul.",
+  "niche.kaspi.h1": "Kaspi’ga o‘tkazmalarni qabul qiling va har bir chekni ko‘z bilan tekshirmang",
+  "niche.kaspi.lead":
+    "Xaridor sizning Kaspi’ga o‘tkazadi va chekni yozishmaga yuboradi. Bot uni buyurtma bilan solishtiradi, siz «Pul tushdi» tugmasini bosasiz, xaridor mahsulotni oladi.",
+  "niche.kaspi.f1.title": "Rekvizitlar kerakli paytda",
+  "niche.kaspi.f1.text":
+    "Kaspi raqami yoki QR xaridorga buyurtma summasi bilan birga keladi. Har biriga qo‘lda yozish shart emas.",
+  "niche.kaspi.f2.title": "Chekni tekshirish",
+  "niche.kaspi.f2.text":
+    "Bot o‘tkazma skrinshotini o‘qiydi va summa, oluvchi, sana va kvitansiya raqamini tekshiradi. Bitta chek ikki marta o‘tmaydi.",
+  "niche.kaspi.f3.title": "Yozishma o‘rniga bitta tugma",
+  "niche.kaspi.f3.text":
+    "Siz chekli buyurtmani ko‘rasiz va «Pul tushdi» tugmasini bosasiz. Fayl, kirish yoki buyurtma tasdig‘i xaridorga o‘zi ketadi.",
+  "niche.kaspi.f4.title": "Rossiyadan xaridorlar",
+  "niche.kaspi.f4.text":
+    "Rossiya kartasi bilan to‘lash uchun Robokassa yoki Prodamusni ulang: kassa to‘lovni kechasi ham o‘zi tasdiqlaydi.",
+  "niche.kaspi.b1": "Har bir xaridorga Kaspi raqamini qo‘lda yozasiz",
+  "niche.kaspi.b2": "Cheklardagi summa va sanalarni ko‘z bilan tekshirasiz",
+  "niche.kaspi.b3": "Kim to‘lagani, kim faqat va’da bergani ko‘rinmaydi",
+  "niche.kaspi.a1": "Bot rekvizitlar va summani o‘zi yuboradi",
+  "niche.kaspi.a2": "Bot chekni buyurtma bilan solishtiradi va takrorlanganini o‘tkazmaydi",
+  "niche.kaspi.a3": "Har bir buyurtmada to‘lov kutilyaptimi yoki to‘langanmi, ko‘rinadi",
 };
 
 const DICTS: Record<Locale, Dict> = { ru, kk, en, uz };

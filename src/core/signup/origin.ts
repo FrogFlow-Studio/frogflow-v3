@@ -8,7 +8,7 @@ import { isWebSource } from "@/core/storefront/web-source";
  * карточке клиента. Значения приходят из браузера — принимается только то,
  * что мог собрать сайт.
  */
-export const SIGNUP_PAGES = ["cakes", "materials", "courses"] as const;
+export const SIGNUP_PAGES = ["cakes", "materials", "courses", "instagram", "kaspi"] as const;
 export type SignupPage = (typeof SIGNUP_PAGES)[number];
 
 export type SignupOrigin = { source?: string; page?: SignupPage };
@@ -28,6 +28,8 @@ const PAGE_TITLES: Record<SignupPage, string> = {
   cakes: "для кондитерских",
   materials: "для учебных материалов",
   courses: "для курсов",
+  instagram: "для Instagram Direct",
+  kaspi: "для оплаты через Kaspi",
 };
 
 /** Подпись для оператора: «метка google/spring · страница «для кондитерских»». */
