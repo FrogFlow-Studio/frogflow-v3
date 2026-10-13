@@ -71,7 +71,9 @@ describe("страницы ниш", () => {
     if (inPlan)
       expect(planFeatureKeys(NICHE_PRICING.courses, "basic")).toContain("pricing.courses");
     expect(openNichePages()).toEqual(
-      inPlan ? ["cakes", "materials", "courses"] : ["cakes", "materials"],
+      inPlan
+        ? ["cakes", "materials", "courses", "instagram", "kaspi"]
+        : ["cakes", "materials", "instagram", "kaspi"],
     );
   });
 

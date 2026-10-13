@@ -20,6 +20,10 @@ export const NICHE_PRICING: Record<NichePage, PricingNiche> = {
   materials: "dig",
   // Своя тарифная ниша школы (core/plans: PLAN_NICHES `courses`): курсы входят в любой уровень.
   courses: "school",
+  // Страницы под поисковые запросы про Instagram и Kaspi: их читают в основном
+  // авторы материалов — тарифы и «Что продаёте» те же, что у материалов.
+  instagram: "dig",
+  kaspi: "dig",
 };
 
 /** Что выбрано в «Что продаёте» при регистрации со страницы ниши. */
@@ -29,6 +33,8 @@ export const NICHE_VERTICAL: Record<NichePage, VerticalKey> = {
   // Своя ниша «Онлайн-школа»: тексты бота под школу и свои тарифы
   // (core/plans nicheForVertical → `courses`).
   courses: "courses",
+  instagram: "digital",
+  kaspi: "digital",
 };
 
 export function isNichePage(v: unknown): v is NichePage {

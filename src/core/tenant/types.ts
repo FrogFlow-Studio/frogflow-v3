@@ -115,7 +115,7 @@ export type TenantSettings = {
     reward?: { at: string; by: string; payment_id: string | null };
   };
   /** Откуда пришёл продавец, зарегистрировавшийся сам (core/signup/origin). */
-  signup?: { source?: string; page?: "cakes" | "materials" | "courses" };
+  signup?: { source?: string; page?: "cakes" | "materials" | "courses" | "instagram" | "kaspi" };
   /**
    * Свой дневной предел ИИ-консультанта (core/consultant/budget). Нет или
    * null — общий предел платформы. Меняет оператор в карточке клиента.
