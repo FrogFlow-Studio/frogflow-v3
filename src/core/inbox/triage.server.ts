@@ -20,6 +20,8 @@ import {
   CHAT_HOW_TO_BUY_KEY,
   CHAT_PAY_FAILED_KEY,
   CHAT_RECEIPT_TEXT_OFFER_KEY,
+  CHAT_PRODUCT_REQUEST_KEY,
+  CHAT_SEVERAL_ITEMS_KEY,
   CHAT_SKIP_CHATTER_KEY,
   TRIAGE_CAP_KEY,
   TRIAGE_MAX_TEXT,
@@ -32,7 +34,9 @@ import {
   howToBuyOn,
   parseTriage,
   payFailedOn,
+  productRequestOn,
   receiptTextOfferOn,
+  severalItemsOn,
   parseTriageCap,
   skipChatterOn,
   triageCostUsd,
@@ -115,18 +119,23 @@ export type TriageSwitches = {
   receiptTextOffer: boolean;
   receiptText: boolean;
   howToBuy: boolean;
+  severalItems: boolean;
+  productRequest: boolean;
 };
 
 /** Что включено у клиента: всё выключено — модель не зовём. */
 export async function triageSwitches(ctx: TenantContext): Promise<TriageSwitches> {
-  const [chatter, foreignPay, payFailed, offer, receiptText, howToBuy] = await Promise.all([
-    getSetting(ctx, CHAT_SKIP_CHATTER_KEY),
-    getSetting(ctx, CHAT_FOREIGN_PAY_KEY),
-    getSetting(ctx, CHAT_PAY_FAILED_KEY),
-    getSetting(ctx, CHAT_RECEIPT_TEXT_OFFER_KEY),
-    getSetting(ctx, CHAT_RECEIPT_TEXT_KEY),
-    getSetting(ctx, CHAT_HOW_TO_BUY_KEY),
-  ]);
+  const [chatter, foreignPay, payFailed, offer, receiptText, howToBuy, several, request] =
+    await Promise.all([
+      getSetting(ctx, CHAT_SKIP_CHATTER_KEY),
+      getSetting(ctx, CHAT_FOREIGN_PAY_KEY),
+      getSetting(ctx, CHAT_PAY_FAILED_KEY),
+      getSetting(ctx, CHAT_RECEIPT_TEXT_OFFER_KEY),
+      getSetting(ctx, CHAT_RECEIPT_TEXT_KEY),
+      getSetting(ctx, CHAT_HOW_TO_BUY_KEY),
+      getSetting(ctx, CHAT_SEVERAL_ITEMS_KEY),
+      getSetting(ctx, CHAT_PRODUCT_REQUEST_KEY),
+    ]);
   return {
     chatter: skipChatterOn(chatter),
     foreignPay: foreignPayOn(foreignPay),
@@ -134,6 +143,8 @@ export async function triageSwitches(ctx: TenantContext): Promise<TriageSwitches
     receiptTextOffer: receiptTextOfferOn(offer),
     receiptText: receiptTextOn(receiptText),
     howToBuy: howToBuyOn(howToBuy),
+    severalItems: severalItemsOn(several),
+    productRequest: productRequestOn(request),
   };
 }
 
@@ -146,6 +157,8 @@ const SWITCH_OF: Record<Exclude<Triage["kind"], "other">, keyof TriageSwitches> 
   // Ещё раз шаг оплаты — продолжение «платёж не прошёл, какой у вас банк».
   how_to_pay: "payFailed",
   how_to_buy: "howToBuy",
+  several_items: "severalItems",
+  product_request: "productRequest",
 };
 
 /**

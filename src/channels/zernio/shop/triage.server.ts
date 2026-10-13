@@ -9,12 +9,15 @@ import { claimStateSection } from "@/core/customers/customers";
 import { listActivePaymentMethods } from "@/core/orders/orders";
 import { foreignPayApplies, countryNameRu, type Triage } from "@/core/inbox/triage";
 import { triageMessage } from "@/core/inbox/triage.server";
-import { reply, type Shop, type ShopOutcome } from "./context.server";
+import type { DmButton } from "../api.server";
+import { BTN, reply, type Shop, type ShopOutcome } from "./context.server";
 
 /** Ответ «оплату из вашей страны подключаем» — не чаще раза в это время. */
 export const FOREIGN_PAY_REPLY_MS = 24 * 60 * 60_000;
 /** «Нажмите «Купить»» на «как получить?» — не чаще раза в это время. */
 export const HOW_TO_BUY_REPLY_MS = 30 * 60_000;
+/** «Вопрос у продавца» на «несколько одним чеком» и название без товара — раз в это время. */
+export const SELLER_QUESTION_REPLY_MS = 24 * 60 * 60_000;
 /** Вторая такая реплика раньше этого — продолжение первой, ей ответ уже ушёл. */
 const HOW_TO_BUY_BURST_MS = 2 * 60_000;
 
@@ -44,6 +47,27 @@ export async function triageQuestion(
   const t = await triageOnce(s, text);
   if (!t || t.kind === "other") return null;
   if (t.kind === "how_to_buy") return howToBuyReply(s, who);
+  // «Можно 2 материала одним чеком?» (Копилка 13.10, gvar41391 #190 — тишина).
+  if (t.kind === "several_items")
+    return sellerQuestionReply(
+      s,
+      "several_items_at",
+      s.m.severalItemsReply,
+      [],
+      "несколько материалов одним заказом или чеком — ответили, вопрос продавцу",
+    );
+  // «Классный уголок» четыре раза, правила и товара нет (Копилка 13.10 — тишина).
+  if (t.kind === "product_request") {
+    // Без каталога звать некуда: прежний путь.
+    if (!s.bot.features.catalog) return null;
+    return sellerQuestionReply(
+      s,
+      "product_request_at",
+      s.m.productRequestReply,
+      [BTN.catalog(s.m)],
+      "материал по названию не нашёлся — ответили, вопрос продавцу, кнопка «Каталог»",
+    );
+  }
   // Платёж не прошёл, скриншот не отправляется — про заказ, ждущий оплаты (AATeach 12.10).
   if (t.kind === "payment_failed" || t.kind === "cant_send_receipt") {
     const { payTroubleReply } = await import("./pay-trouble.server");
@@ -149,4 +173,40 @@ async function howToBuyReply(s: Shop, who?: Sender): Promise<ShopOutcome | null>
     buttons: [{ type: "postback", title: button.title, payload: button.payload }],
   });
   return "handled";
+}
+
+/**
+ * Вопрос, на который у бота нет ответа, но молчать нельзя: «несколько
+ * материалов одним чеком?», название материала без правила и товара. Один
+ * ответ «вопрос у продавца» в SELLER_QUESTION_REPLY_MS (условная отметка до
+ * отправки, вместе с forwarded_at — «Передал продавцу» вторым сообщением не
+ * уйдёт), вопрос продавцу обращением. Повторы — в то же обращение молча:
+ * «Классный уголок» четыре раза подряд получает один ответ (Копилка 13.10).
+ * Продавец сейчас пишет сам — бот не вмешивается.
+ */
+async function sellerQuestionReply(
+  s: Shop,
+  field: "several_items_at" | "product_request_at",
+  text: string,
+  buttons: DmButton[],
+  why: string,
+): Promise<ShopOutcome> {
+  const { sellerWroteRecently } = await import("./country.server");
+  if (await sellerWroteRecently(s)) return "question";
+  const now = Date.now();
+  const claimed = await claimStateSection(s.ctx, s.customer, "direct", (cur) => {
+    const at = Date.parse(String(cur[field] ?? ""));
+    if (Number.isFinite(at) && now - at < SELLER_QUESTION_REPLY_MS) return null;
+    const iso = new Date(now).toISOString();
+    return { ...cur, [field]: iso, forwarded_at: iso };
+  }).catch((e: unknown) => {
+    console.warn(`[triage:${s.ctx.tenant.id}] отметка ${field}: ${String(e)}`);
+    return null;
+  });
+  if (!claimed) return "question";
+  s.customer = claimed;
+  s.handoff = true;
+  s.why = why;
+  await reply(s, text, { force: true, ...(buttons.length ? { buttons } : {}) });
+  return "question";
 }

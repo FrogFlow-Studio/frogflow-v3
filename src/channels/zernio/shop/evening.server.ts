@@ -87,6 +87,8 @@ export async function repeatBuy(
   orderId: number,
   no: number,
   resend: () => Promise<boolean>,
+  /** Свой ответ на первое повторное нажатие вместо «уже оформлен, реквизиты выше». */
+  firstReply?: string,
 ): Promise<boolean> {
   const mode = s.customer.state.mode;
   let fresh = true;
@@ -104,9 +106,12 @@ export async function repeatBuy(
   if (!fresh) return resend();
   if (mode === "choose_pay") return resend();
   const t = EVENING_COPY[s.locale];
-  await reply(s, mode === "awaiting_payment" ? t.alreadyPlacedLink(no) : t.alreadyPlacedProof(no), {
-    force: true,
-  });
+  await reply(
+    s,
+    firstReply ??
+      (mode === "awaiting_payment" ? t.alreadyPlacedLink(no) : t.alreadyPlacedProof(no)),
+    { force: true },
+  );
   return true;
 }
 

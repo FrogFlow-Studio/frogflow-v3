@@ -682,6 +682,11 @@ export async function finishCheckout(s: Shop, countryCode: string) {
     return;
   }
   const due = result.amountDue;
+  // Покупатель уже сказал, что он из страны без способа оплаты, и бот ответил
+  // «оплату подключаем»: Kaspi и «Картой РФ» не показываем, продавец напишет
+  // сам (Копилка 13.10, #188, Кыргызстан).
+  const { foreignOrderHold } = await import("./pay-trouble.server");
+  if (await foreignOrderHold(s, order, rest)) return;
   const rk = await robokassaFor(s.ctx, order.currency);
   const pdm = await prodamusFor(s.ctx, order.currency);
   const kaspi = await kaspiApipayFor(s.ctx, order.currency);
@@ -851,32 +856,46 @@ export async function resumeExpressOrder(s: Shop, productId: string): Promise<bo
   if (items.length !== 1 || items[0]!.product_id !== productId) return false;
   const no = displayNo(order);
   const { repeatBuy } = await import("./evening.server");
-  return repeatBuy(s, order.id, no, async () => {
-    if (mode === "choose_pay") return resumePendingPayChoice(s);
-    if (mode === "awaiting_payment") {
-      const { EVENING_COPY } = await import("./evening-copy");
-      await reply(s, EVENING_COPY[s.locale].alreadyPlacedLink(no), { force: true });
+  // Заказ из страны без способа оплаты: не «реквизиты выше» и не реквизиты
+  // Kaspi, а снова «продавец напишет» (Копилка 13.10, #188).
+  const { foreignWaitReply } = await import("./pay-trouble.server");
+  const foreign = await foreignWaitReply(s, order);
+  return repeatBuy(
+    s,
+    order.id,
+    no,
+    async () => {
+      if (foreign) {
+        await reply(s, foreign, { force: true });
+        return true;
+      }
+      if (mode === "choose_pay") return resumePendingPayChoice(s);
+      if (mode === "awaiting_payment") {
+        const { EVENING_COPY } = await import("./evening-copy");
+        await reply(s, EVENING_COPY[s.locale].alreadyPlacedLink(no), { force: true });
+        return true;
+      }
+      const method = (await listActivePaymentMethods(s.ctx)).find(
+        (x) => x.country_code === order.country_code,
+      );
+      const due = await amountDueNow(s.ctx, {
+        total: Number(order.total),
+        fulfillment_kind: order.fulfillment_kind,
+      });
+      await sendManualInstructions(s, {
+        no,
+        due,
+        currency: order.currency,
+        instructions: method?.instructions ?? null,
+        qr: method?.qr_code_path ?? null,
+        physical: order.fulfillment_kind === "physical",
+        depositLine: "",
+        items: items.map((i) => i.name_snapshot),
+      });
       return true;
-    }
-    const method = (await listActivePaymentMethods(s.ctx)).find(
-      (x) => x.country_code === order.country_code,
-    );
-    const due = await amountDueNow(s.ctx, {
-      total: Number(order.total),
-      fulfillment_kind: order.fulfillment_kind,
-    });
-    await sendManualInstructions(s, {
-      no,
-      due,
-      currency: order.currency,
-      instructions: method?.instructions ?? null,
-      qr: method?.qr_code_path ?? null,
-      physical: order.fulfillment_kind === "physical",
-      depositLine: "",
-      items: items.map((i) => i.name_snapshot),
-    });
-    return true;
-  });
+    },
+    foreign ?? undefined,
+  );
 }
 
 async function sendManualInstructions(

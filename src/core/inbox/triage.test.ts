@@ -7,10 +7,13 @@ import {
   CHAT_FOREIGN_PAY_KEY,
   CHAT_HOW_TO_BUY_KEY,
   CHAT_PAY_FAILED_KEY,
+  CHAT_PRODUCT_REQUEST_KEY,
   CHAT_RECEIPT_TEXT_OFFER_KEY,
+  CHAT_SEVERAL_ITEMS_KEY,
   CHAT_SKIP_CHATTER_KEY,
   TRIAGE_CAP_KEY,
   countryName,
+  foreignOrderApplies,
   foreignPayApplies,
   kaspiForeignApplies,
   parseTriage,
@@ -59,6 +62,12 @@ describe("ответ модели", () => {
     // Копилка 12.10: пуш Kaspi текстом (#148), «как перейти на оплату?» (#147).
     expect(parseTriage({ kind: "text_receipt" }).kind).toBe("text_receipt");
     expect(parseTriage({ kind: "how_to_pay" }).kind).toBe("how_to_pay");
+    // Копилка 13.10: «2 материала одним чеком» (#190), «Классный уголок» без правила.
+    expect(parseTriage({ kind: "several_items", country: "KG" })).toEqual({
+      kind: "several_items",
+      country: null,
+    });
+    expect(parseTriage({ kind: "product_request" }).kind).toBe("product_request");
     expect(parseTriage(null).kind).toBe("other");
   });
 
@@ -78,6 +87,16 @@ describe("ответ модели", () => {
     expect(kaspiForeignApplies("RU", "KZ", ["KZ"])).toBe(false);
     expect(kaspiForeignApplies(null, "KZ", ["KZ"])).toBe(false);
     expect(kaspiForeignApplies("KG", "RU", ["KZ", "RU"])).toBe(false);
+  });
+
+  it("заказ без Kaspi и карты РФ — страна сказана, не Казахстан и не Россия, способа для неё нет", () => {
+    expect(foreignOrderApplies("KG", ["KZ"])).toBe(true);
+    expect(foreignOrderApplies("BY", ["KZ", "RU"])).toBe(true);
+    expect(foreignOrderApplies("KG", ["KZ", "KG"])).toBe(false);
+    expect(foreignOrderApplies("KZ", ["KZ"])).toBe(false);
+    expect(foreignOrderApplies("RU", ["KZ"])).toBe(false);
+    expect(foreignOrderApplies(null, ["KZ"])).toBe(false);
+    expect(foreignOrderApplies("", ["KZ"])).toBe(false);
   });
 
   it("название страны покупателю — на его языке", () => {
@@ -109,6 +128,22 @@ describe("вызов модели", () => {
     ).toBe("other");
   });
 
+  it("«несколько одним чеком» и название без товара — свои переключатели", async () => {
+    for (const [kind, key] of [
+      ["several_items", CHAT_SEVERAL_ITEMS_KEY],
+      ["product_request", CHAT_PRODUCT_REQUEST_KEY],
+    ] as const) {
+      setTriageModelForTests(async () => ({ input: { kind, country: "" } }));
+      expect(
+        (await triageMessage(ctx(), { customer, text: "Классный уголок", now: NOW })).kind,
+      ).toBe(kind);
+      const off = ctx([{ key, value: "false" }]);
+      expect((await triageMessage(off, { customer, text: "Классный уголок", now: NOW })).kind).toBe(
+        "other",
+      );
+    }
+  });
+
   it("понимает модель; расход дня записан", async () => {
     const c = ctx();
     const model = vi.fn(async () => ({
@@ -135,6 +170,8 @@ describe("вызов модели", () => {
       { key: CHAT_RECEIPT_TEXT_OFFER_KEY, value: "false" },
       { key: CHAT_RECEIPT_TEXT_KEY, value: "false" },
       { key: CHAT_HOW_TO_BUY_KEY, value: "false" },
+      { key: CHAT_SEVERAL_ITEMS_KEY, value: "false" },
+      { key: CHAT_PRODUCT_REQUEST_KEY, value: "false" },
     ]);
     expect((await triageMessage(c, { customer, text: "Спасибо", now: NOW })).kind).toBe("other");
     expect(model).not.toHaveBeenCalled();

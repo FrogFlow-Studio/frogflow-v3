@@ -357,6 +357,15 @@ export type Msg = {
   kaspiForeignReply: (country: string) => string;
   /** «Как получить?» после карточки с «Купить», заказа нет (Direct, core/inbox/triage). */
   howToBuyReply: (button: string) => string;
+  /** «Несколько материалов одним чеком?» — вопрос у продавца (Direct, core/inbox/triage). */
+  severalItemsReply: string;
+  /** Название материала без правила и товара — вопрос у продавца, ниже «Каталог» (Direct). */
+  productRequestReply: string;
+  /**
+   * Заказ оформлен, а покупатель раньше сказал, что он из страны без способа
+   * оплаты: способов оплаты не показываем, продавец напишет (Direct).
+   */
+  foreignOrderReply: (order: number, country: string) => string;
   /** Покупатель пишет, что платёж не прошёл (Direct, core/inbox/triage): чек не принят. */
   payFailedReply: string;
   /** Скриншот не отправляется — чек можно текстом (Direct, core/inbox/triage). */
@@ -497,6 +506,12 @@ const ru: Msg = {
     `Kaspi принимает только карты Казахстана. Оплату из вашей страны (${country}) сейчас подключаем: продавец напишет вам здесь, как оплатить.`,
   howToBuyReply: (button) =>
     `Чтобы получить материал, нажмите «${button}» под сообщением: я оформлю заказ и пришлю способы оплаты.`,
+  severalItemsReply:
+    "Ваш вопрос уже у продавца: вам напишут здесь, можно ли оплатить несколько материалов одним чеком.",
+  productRequestReply:
+    "Ваш вопрос уже у продавца: вам напишут здесь. А пока можно посмотреть материалы в каталоге 👇",
+  foreignOrderReply: (order, country) =>
+    `Заказ №${order} оформлен. Оплату из вашей страны (${country}) сейчас подключаем: продавец напишет вам здесь, как оплатить.`,
   payFailedReply:
     "Похоже, платёж не прошёл. Попробуйте оплатить ещё раз или напишите, какой у вас банк, — продавец подскажет, как оплатить.",
   receiptTextOffer:
@@ -1056,6 +1071,12 @@ const kk: Msg = {
     `Kaspi тек Қазақстан карталарын қабылдайды. Сіздің елден (${country}) төлем қабылдауды қазір қосып жатырмыз: сатушы осында қалай төлеуге болатынын жазады.`,
   howToBuyReply: (button) =>
     `Материалды алу үшін хабарламадағы «${button}» түймесін басыңыз: тапсырысты рәсімдеп, төлем тәсілдерін жіберемін.`,
+  severalItemsReply:
+    "Сұрағыңыз сатушыда: бірнеше материалды бір чекпен төлеуге бола ма, осында жазады.",
+  productRequestReply:
+    "Сұрағыңыз сатушыда: сізге осында жазады. Әзірге каталогтағы материалдарды қарай аласыз 👇",
+  foreignOrderReply: (order, country) =>
+    `№${order} тапсырыс рәсімделді. Сіздің елден (${country}) төлем қабылдауды қазір қосып жатырмыз: сатушы осында қалай төлеуге болатынын жазады.`,
   payFailedReply:
     "Төлем өтпеген сияқты. Қайта төлеп көріңіз немесе қай банк екенін жазыңыз — сатушы қалай төлеуге болатынын айтады.",
   receiptTextOffer:
@@ -1379,6 +1400,12 @@ const en: Msg = {
     `Kaspi only accepts cards from Kazakhstan. We are setting up payments from your country (${country}) right now: the seller will write here how to pay.`,
   howToBuyReply: (button) =>
     `To get the material, tap “${button}” under the message: I’ll place the order and send you the ways to pay.`,
+  severalItemsReply:
+    "Your question is with the seller: they will write here whether several materials can be paid with one receipt.",
+  productRequestReply:
+    "Your question is with the seller: they will write to you here. Meanwhile, you can browse the materials in the catalog 👇",
+  foreignOrderReply: (order, country) =>
+    `Order #${order} is placed. We are setting up payments from your country (${country}) right now: the seller will write here how to pay.`,
   payFailedReply:
     "It looks like the payment didn't go through. Please try paying again or tell us which bank you use, and the seller will suggest how to pay.",
   receiptTextOffer:
@@ -1751,6 +1778,12 @@ const uz: Msg = {
     `Kaspi faqat Qozog‘iston kartalarini qabul qiladi. Davlatingizdan (${country}) to‘lovni hozir ulayapmiz: sotuvchi shu yerda qanday to‘lashni yozadi.`,
   howToBuyReply: (button) =>
     `Materialni olish uchun xabar ostidagi «${button}» tugmasini bosing: buyurtmani rasmiylashtirib, to‘lov usullarini yuboraman.`,
+  severalItemsReply:
+    "Savolingiz sotuvchida: bir nechta materialni bitta chek bilan to‘lash mumkinligini shu yerda yozadi.",
+  productRequestReply:
+    "Savolingiz sotuvchida: sizga shu yerda yozishadi. Hozircha katalogdagi materiallarni ko‘rishingiz mumkin 👇",
+  foreignOrderReply: (order, country) =>
+    `№${order}-buyurtma rasmiylashtirildi. Davlatingizdan (${country}) to‘lovni hozir ulayapmiz: sotuvchi shu yerda qanday to‘lashni yozadi.`,
   payFailedReply:
     "To‘lov o‘tmaganga o‘xshaydi. Qayta to‘lab ko‘ring yoki qaysi bankdan foydalanishingizni yozing — sotuvchi qanday to‘lashni aytadi.",
   receiptTextOffer:

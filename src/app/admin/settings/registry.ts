@@ -349,11 +349,19 @@ export const SETTINGS_REGISTRY: readonly SettingsEntry[] = [
     theme: "channels",
     title: "settings.triage.title",
     anyModule: ["instagram", "whatsapp"],
-    keys: ["chat_skip_chatter", "chat_foreign_pay", "chat_how_to_buy"],
+    keys: [
+      "chat_skip_chatter",
+      "chat_foreign_pay",
+      "chat_how_to_buy",
+      "chat_several_items",
+      "chat_product_request",
+    ],
     fields: [
       "settings.triage.chatterLabel",
       "settings.triage.foreignLabel",
       "settings.triage.howToBuyLabel",
+      "settings.triage.severalLabel",
+      "settings.triage.requestLabel",
     ],
   }),
   E({

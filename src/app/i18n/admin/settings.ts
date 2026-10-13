@@ -491,6 +491,14 @@ export const ru = {
   "settings.triage.howToBuyLabel": "Отвечать на «как получить?» после кнопки «Купить»",
   "settings.triage.howToBuyHint":
     "Покупатель получил сообщение с кнопкой «Купить» и спрашивает «Как можно получить?», «как заказать?», а заказа ещё нет. Бот отвечает «Чтобы получить материал, нажмите «Купить» под сообщением: я оформлю заказ и пришлю способы оплаты» и присылает кнопку ещё раз, не чаще раза в 30 минут. Пока заказ ждёт оплату, бот так не отвечает. Текст — «Текст бота → Instagram → Как получить материал».",
+  "settings.triage.severalLabel": "Отвечать на «несколько материалов одним чеком?»",
+  "settings.triage.severalHint":
+    "Покупатель спрашивает, можно ли купить или оплатить несколько материалов одним заказом или одним чеком («Можно вот эти 2 материала одним чеком?»). Бот раз в сутки отвечает, что вопрос у вас и вы напишете, а вопрос приходит вам обращением. Текст — «Текст бота → Instagram → Несколько материалов одним чеком».",
+  "settings.triage.requestLabel": "Отвечать на название материала, которого нет в боте",
+  "settings.triage.requestHint":
+    "Покупатель пишет название материала, а правила или товара с таким названием нет («Классный уголок», «Материал для доски»). Что это просьба о материале, понимает ИИ. Бот раз в сутки отвечает, что вопрос у вас, и присылает кнопку «Каталог»; вопрос приходит вам обращением, повторы — в то же обращение без ответа. Текст — «Текст бота → Instagram → Материал, которого нет в боте».",
+  "settings.triage.foreignOrder":
+    "Если покупатель уже сказал, что он из такой страны, и нажал «Купить», бот оформляет заказ, но не показывает Kaspi и карту РФ: пишет номер заказа и что вы напишете, как оплатить, а вопрос приходит вам обращением. Текст — «Текст бота → Instagram → Заказ из страны без оплаты».",
   "settings.ocr.intro":
     "Чек, присланный в бот, читает ИИ: сумма, валюта, дата, номер операции, получатель. Бот сверяет его с заказом, реквизитами и прошлыми чеками и пишет вам в уведомлении и в карточке заказа: «совпал», «подозрительный» с причинами (следы правки, «в обработке», чек раньше заказа) или «повтор». Скрин без оплаты или с ошибкой платежа бот просит прислать заново. Банк чек не подтверждает — поступление денег смотрите у себя в банке. Стоимость — около $1 за 1000 чеков с ИИ-баланса.",
   "settings.ocr.noKey":
@@ -1049,6 +1057,14 @@ export const kk: SectionDict<typeof ru> = {
     "«Купить» түймесінен кейін «қалай алуға болады?» сұрағына жауап беру",
   "settings.triage.howToBuyHint":
     "Сатып алушы «Купить» түймесі бар хабарлама алып, «Қалай алуға болады?», «қалай тапсырыс беремін?» деп сұрайды, ал тапсырыс әлі жоқ. Бот «Материалды алу үшін хабарламадағы «Купить» түймесін басыңыз» деп жауап беріп, түймені қайта жібереді, 30 минутта бір реттен жиі емес. Тапсырыс төлемді күтіп тұрғанда бот бұлай жауап бермейді. Мәтін — «Бот мәтіні → Instagram → Материалды қалай алуға болады».",
+  "settings.triage.severalLabel": "«Бірнеше материал бір чекпен бола ма?» сұрағына жауап беру",
+  "settings.triage.severalHint":
+    "Сатып алушы бірнеше материалды бір тапсырыспен немесе бір чекпен сатып алуға не төлеуге бола ма деп сұрайды («Осы 2 материалды бір чекпен алуға бола ма?»). Бот тәулігіне бір рет сұрақ сізде екенін және сіз жазатыныңызды айтады, ал сұрақ сізге өтініш болып келеді. Мәтін — «Бот мәтіні → Instagram → Бірнеше материал бір чекпен».",
+  "settings.triage.requestLabel": "Ботта жоқ материал атауына жауап беру",
+  "settings.triage.requestHint":
+    "Сатып алушы материал атауын жазады, ал мұндай атаумен ереже не тауар жоқ («Классный уголок», «Материал для доски»). Бұл материал сұрау екенін ЖИ түсінеді. Бот тәулігіне бір рет сұрақ сізде екенін айтып, «Каталог» түймесін жібереді; сұрақ сізге өтініш болып келеді, қайталаулар сол өтінішке жауапсыз түседі. Мәтін — «Бот мәтіні → Instagram → Ботта жоқ материал».",
+  "settings.triage.foreignOrder":
+    "Сатып алушы осындай елден екенін айтып, «Купить» түймесін басса, бот тапсырысты рәсімдейді, бірақ Kaspi мен РФ картасын көрсетпейді: тапсырыс нөмірін және қалай төлеу керегін сіз жазатыныңызды айтады, сұрақ сізге өтініш болып келеді. Мәтін — «Бот мәтіні → Instagram → Төлемі жоқ елден тапсырыс».",
   "settings.ocr.intro":
     "Ботқа жіберілген чекті ЖИ оқиды: сома, валюта, күні, операция нөмірі, алушы. Бот оны тапсырыспен, деректемелермен және бұрынғы чектермен салыстырып, хабарламада және тапсырыс картасында жазады: «сәйкес», себептерімен «күмәнді» (түзету іздері, «өңделуде», чек тапсырыстан бұрын) немесе «қайталау». Төлемсіз немесе төлем қатесі бар скринді бот қайта жіберуді сұрайды. Чекті банк растамайды — ақшаның түскенін өз банкіңізден қараңыз. Құны — ЖИ балансынан 1000 чекке шамамен $1.",
   "settings.ocr.noKey":
@@ -1601,6 +1617,14 @@ export const en: SectionDict<typeof ru> = {
   "settings.triage.howToBuyLabel": "Answer “how do I get it?” after the “Buy” button",
   "settings.triage.howToBuyHint":
     "The buyer got a message with the “Buy” button and asks “How can I get it?” or “how do I order?”, with no order yet. The bot replies “To get the material, tap “Buy” under the message” and sends the button again, at most once every 30 minutes. While an order awaits payment, the bot doesn't reply this way. Text: “Bot texts → Instagram → How to get the material”.",
+  "settings.triage.severalLabel": "Answer “several materials with one receipt?”",
+  "settings.triage.severalHint":
+    "The buyer asks whether several materials can be bought or paid for in one order or with one receipt (“Can I pay for these 2 materials with one receipt?”). Once a day the bot replies that the question is with you and you will write, and the question comes to you as a ticket. Text: “Bot texts → Instagram → Several materials with one receipt”.",
+  "settings.triage.requestLabel": "Answer a material name the bot doesn't have",
+  "settings.triage.requestHint":
+    "The buyer writes the name of a material, and there is no rule or product with that name (“Классный уголок”, “Материал для доски”). AI understands that this is a request for a material. Once a day the bot replies that the question is with you and sends the “Catalog” button; the question comes to you as a ticket, repeats go to the same ticket without a reply. Text: “Bot texts → Instagram → Material the bot doesn't have”.",
+  "settings.triage.foreignOrder":
+    "If the buyer has already said they are from such a country and taps “Buy”, the bot places the order but doesn't show Kaspi or the Russian card: it gives the order number and says you will write how to pay, and the question comes to you as a ticket. Text: “Bot texts → Instagram → Order from a country without payment”.",
   "settings.ocr.intro":
     "AI reads every receipt sent to the bot: amount, currency, date, operation number, recipient. The bot checks it against the order, your payment details and earlier receipts and tells you in the notification and on the order card: “matched”, “suspicious” with the reasons (signs of editing, “processing”, a receipt dated before the order) or “repeat”. A screenshot without a payment or with a failed payment is asked to be resent. The bank does not confirm the receipt — check that the money arrived in your bank. Cost — about $1 per 1,000 receipts from the AI balance.",
   "settings.ocr.noKey":
@@ -2162,6 +2186,15 @@ export const uz: SectionDict<typeof ru> = {
     "«Купить» tugmasidan keyin «qanday olaman?» savoliga javob berish",
   "settings.triage.howToBuyHint":
     "Xaridor «Купить» tugmali xabarni oldi va «Qanday olsa bo‘ladi?», «qanday buyurtma beraman?» deb so‘raydi, buyurtma esa hali yo‘q. Bot «Materialni olish uchun xabar ostidagi «Купить» tugmasini bosing» deb javob beradi va tugmani qayta yuboradi, 30 daqiqada bir martadan ko‘p emas. Buyurtma to‘lovni kutayotganda bot bunday javob bermaydi. Matn — «Bot matni → Instagram → Materialni qanday olish mumkin».",
+  "settings.triage.severalLabel":
+    "«Bir nechta material bitta chek bilan bo‘ladimi?» savoliga javob berish",
+  "settings.triage.severalHint":
+    "Xaridor bir nechta materialni bitta buyurtma yoki bitta chek bilan sotib olish yoki to‘lash mumkinmi, deb so‘raydi («Shu 2 ta materialni bitta chek bilan olsa bo‘ladimi?»). Bot sutkada bir marta savol sizda ekanini va siz yozishingizni aytadi, savol esa sizga murojaat bo‘lib keladi. Matn — «Bot matni → Instagram → Bir nechta material bitta chek bilan».",
+  "settings.triage.requestLabel": "Botda yo‘q material nomiga javob berish",
+  "settings.triage.requestHint":
+    "Xaridor material nomini yozadi, bunday nomli qoida yoki mahsulot esa yo‘q («Классный уголок», «Материал для доски»). Bu material so‘rovi ekanini SI tushunadi. Bot sutkada bir marta savol sizda ekanini aytadi va «Katalog» tugmasini yuboradi; savol sizga murojaat bo‘lib keladi, takrorlar o‘sha murojaatga javobsiz tushadi. Matn — «Bot matni → Instagram → Botda yo‘q material».",
+  "settings.triage.foreignOrder":
+    "Xaridor shunday davlatdan ekanini aytib, «Купить» tugmasini bossa, bot buyurtmani rasmiylashtiradi, lekin Kaspi va RF kartasini ko‘rsatmaydi: buyurtma raqamini va qanday to‘lashni siz yozishingizni aytadi, savol sizga murojaat bo‘lib keladi. Matn — «Bot matni → Instagram → To‘lovsiz davlatdan buyurtma».",
   "settings.ocr.intro":
     "Botga yuborilgan chekni SI o‘qiydi: summa, valyuta, sana, operatsiya raqami, qabul qiluvchi. Bot uni buyurtma, rekvizitlaringiz va oldingi cheklar bilan solishtiradi va xabarnomada hamda buyurtma kartasida yozadi: «mos keldi», sabablari bilan «shubhali» (tahrir izlari, «ishlov berilmoqda», chek buyurtmadan oldin) yoki «takror». To‘lovsiz yoki to‘lov xatosi bor skrinni bot qayta yuborishni so‘raydi. Chekni bank tasdiqlamaydi — pul tushganini o‘z bankingizda tekshiring. Narxi — SI balansidan 1000 ta chek uchun taxminan $1.",
   "settings.ocr.noKey":

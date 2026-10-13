@@ -20,9 +20,13 @@ import {
 import {
   CHAT_FOREIGN_PAY_KEY,
   CHAT_HOW_TO_BUY_KEY,
+  CHAT_PRODUCT_REQUEST_KEY,
+  CHAT_SEVERAL_ITEMS_KEY,
   CHAT_SKIP_CHATTER_KEY,
   foreignPayOn,
   howToBuyOn,
+  productRequestOn,
+  severalItemsOn,
   skipChatterOn,
 } from "@/core/inbox/triage";
 import { useRouter } from "@tanstack/react-router";
@@ -471,6 +475,8 @@ export function DirectTriageCard({ settings }: { settings: Record<string, string
   const chatter = skipChatterOn(settings[CHAT_SKIP_CHATTER_KEY]);
   const foreign = foreignPayOn(settings[CHAT_FOREIGN_PAY_KEY]);
   const howToBuy = howToBuyOn(settings[CHAT_HOW_TO_BUY_KEY]);
+  const several = severalItemsOn(settings[CHAT_SEVERAL_ITEMS_KEY]);
+  const request = productRequestOn(settings[CHAT_PRODUCT_REQUEST_KEY]);
   const toggle = useAction(async (key: string, v: boolean) => {
     await saveSettingsFn({ data: { [key]: v ? "true" : "false" } });
     await router.invalidate();
@@ -502,6 +508,7 @@ export function DirectTriageCard({ settings }: { settings: Record<string, string
       </div>
       <p className="mt-1 text-xs text-muted">{t("settings.triage.foreignHint")}</p>
       <p className="mt-1 text-xs text-muted">{t("settings.triage.kaspiForeign")}</p>
+      <p className="mt-1 text-xs text-muted">{t("settings.triage.foreignOrder")}</p>
       <div className="mt-3 flex items-center gap-3">
         <Switch
           checked={howToBuy}
@@ -513,6 +520,28 @@ export function DirectTriageCard({ settings }: { settings: Record<string, string
         <HelpTip article="settings-channels" anchor="direct-how-to-buy" />
       </div>
       <p className="mt-1 text-xs text-muted">{t("settings.triage.howToBuyHint")}</p>
+      <div className="mt-3 flex items-center gap-3">
+        <Switch
+          checked={several}
+          disabled={readOnly}
+          onChange={(v) => void toggle.run(CHAT_SEVERAL_ITEMS_KEY, v).catch(() => {})}
+          label={t("settings.triage.severalLabel")}
+        />
+        <span className="text-sm">{t("settings.triage.severalLabel")}</span>
+        <HelpTip article="settings-channels" anchor="direct-several-items" />
+      </div>
+      <p className="mt-1 text-xs text-muted">{t("settings.triage.severalHint")}</p>
+      <div className="mt-3 flex items-center gap-3">
+        <Switch
+          checked={request}
+          disabled={readOnly}
+          onChange={(v) => void toggle.run(CHAT_PRODUCT_REQUEST_KEY, v).catch(() => {})}
+          label={t("settings.triage.requestLabel")}
+        />
+        <span className="text-sm">{t("settings.triage.requestLabel")}</span>
+        <HelpTip article="settings-channels" anchor="direct-product-request" />
+      </div>
+      <p className="mt-1 text-xs text-muted">{t("settings.triage.requestHint")}</p>
       <ErrorBox error={toggle.error} />
     </Card>
   );
