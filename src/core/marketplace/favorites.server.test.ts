@@ -21,6 +21,7 @@ const tenant = (botId: string, slug: string, settings: Tenant["settings"]) =>
     id: botId,
     name: `Магазин ${slug}`,
     vertical: "confectionery",
+    modules: { shop: true, web_storefront: true },
     settings,
   }) as unknown as Tenant;
 const tenants = [

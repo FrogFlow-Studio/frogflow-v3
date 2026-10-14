@@ -16,7 +16,13 @@ const OPEN: TenantSettings = {
   marketplace: { listed: true, approved: true },
 };
 const t = (id: string, settings: TenantSettings) =>
-  ({ id, name: id, vertical: "shop", settings }) as unknown as Tenant;
+  ({
+    id,
+    name: id,
+    vertical: "shop",
+    modules: { shop: true, web_storefront: true },
+    settings,
+  }) as unknown as Tenant;
 const item = (bot: string, n: number) => ({
   bot_id: bot,
   product_id: `p${String(n).padStart(5, "0")}`,

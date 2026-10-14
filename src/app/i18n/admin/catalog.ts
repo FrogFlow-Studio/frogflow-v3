@@ -106,7 +106,7 @@ export const ru = {
     "Когда обычный поиск в боте или на сайте не нашёл, запрос вроде «что-то на день рождения пятилетке» подбирается по смыслу.",
   "module.web_storefront.title": "Публичная веб-витрина",
   "module.web_storefront.desc":
-    "Витрина по ссылке и с вашим доменом: каталог виден без Telegram, покупка — в боте одной кнопкой.",
+    "Витрина по ссылке и с вашим доменом: каталог виден без Telegram, заказ — на сайте или в боте одной кнопкой.",
   "module.telegram_mini_app.title": "Telegram Mini App",
   "module.telegram_mini_app.desc":
     "Магазин открывается внутри Telegram как приложение: каталог, корзина и оформление на одном экране.",
@@ -312,7 +312,7 @@ export const kk: SectionDict<typeof ru> = {
     "Боттағы немесе сайттағы кәдімгі іздеу таппаса, «бес жасар балаға туған күнге бірдеңе» сияқты сұрау мағынасы бойынша таңдалады.",
   "module.web_storefront.title": "Ашық веб-витрина",
   "module.web_storefront.desc":
-    "Сілтеме арқылы және өз доменіңіздегі витрина: каталог Telegram-сыз көрінеді, сатып алу — ботта бір түймемен.",
+    "Сілтеме арқылы және өз доменіңіздегі витрина: каталог Telegram-сыз көрінеді, тапсырыс — сайтта немесе ботта бір түймемен.",
   "module.telegram_mini_app.title": "Telegram Mini App",
   "module.telegram_mini_app.desc":
     "Дүкен Telegram ішінде қолданба ретінде ашылады: каталог, себет және рәсімдеу бір экранда.",
@@ -483,7 +483,7 @@ export const en: SectionDict<typeof ru> = {
     "When regular search in the bot or on the website finds nothing, a request like “something for a five-year-old’s birthday” is matched by meaning.",
   "module.web_storefront.title": "Public web storefront",
   "module.web_storefront.desc":
-    "A storefront at a link or on your own domain: the catalog is visible without Telegram, and purchase takes one tap in the bot.",
+    "A storefront at a link or on your own domain: the catalog is visible without Telegram, and orders are placed on the site or in the bot with one tap.",
   "module.telegram_mini_app.title": "Telegram Mini App",
   "module.telegram_mini_app.desc":
     "Your shop opens inside Telegram as an app: catalog, cart and checkout on one screen.",
@@ -654,7 +654,7 @@ export const uz: SectionDict<typeof ru> = {
     "Bot yoki saytdagi oddiy qidiruv topmasa, «besh yoshli bolaning tugʻilgan kuniga biror narsa» kabi soʻrov maʼnosi boʻyicha tanlanadi.",
   "module.web_storefront.title": "Ochiq veb-vitrina",
   "module.web_storefront.desc":
-    "Havola orqali va oʻz domeningizdagi vitrina: katalog Telegramsiz koʻrinadi, xarid — botda bitta tugma bilan.",
+    "Havola orqali va oʻz domeningizdagi vitrina: katalog Telegramsiz koʻrinadi, buyurtma — saytda yoki botda bitta tugma bilan.",
   "module.telegram_mini_app.title": "Telegram Mini App",
   "module.telegram_mini_app.desc":
     "Doʻkon Telegram ichida ilova sifatida ochiladi: katalog, savat va rasmiylashtirish bitta ekranda.",

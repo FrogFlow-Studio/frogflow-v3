@@ -16,6 +16,7 @@ const dev = (n: number) => ({ ip: `10.0.0.${n}`, ua: "UA", secret: "secret" });
 const shop = (id: string, name: string, listed = true) => ({
   id,
   name,
+  modules: { shop: true, web_storefront: true },
   settings: { served_by: "v2", marketplace: { listed, approved: true } },
 });
 const rows = () => db.tables.market_events!;
