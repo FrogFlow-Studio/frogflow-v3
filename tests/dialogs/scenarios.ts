@@ -1655,6 +1655,57 @@ export const SCENARIOS: Scenario[] = [
     ],
   },
   {
+    id: "express-pay-card-send-failed-ig-ru",
+    title:
+      "«Купить» — заказ оформлен, а сообщение с оплатой Zernio не принял: продавцу одно уведомление «напишите сами», повтор «Купить» нового не шлёт",
+    origin:
+      "Копилка 14.10 13:00, gulnarbeisembina #217: вопрос о цене, через 20 с «Купить» → заказ создан, карточки с оплатой нет, отказ только в логе функции (№69)",
+    channel: "instagram",
+    locale: "ru",
+    full: true,
+    modules: { helpdesk: true, manager_chat: true },
+    products: [{ id: P1, name: "Палитра средств выразительности" }],
+    state: {},
+    sendFails: true,
+    steps: [
+      {
+        say: { button: `PROD:${P1}`, title: "Купить" },
+        expect: { sellerNotices: 1, state: { mode: "awaiting_proof" } },
+      },
+      {
+        say: { button: `PROD:${P1}`, title: "Купить" },
+        expect: { sellerNotices: 0, state: { mode: "awaiting_proof" } },
+      },
+    ],
+  },
+  {
+    id: "express-pay-choice-send-failed-ig-ru",
+    title:
+      "«Купить» при Продамусе и Kaspi — выбор оплаты не ушёл: заказ ждёт выбора, продавцу одно уведомление",
+    origin:
+      "Копилка 14.10 13:00, gulnarbeisembina #217: заказ на шаге выбора оплаты, сообщение с кнопками не дошло, продавец не знал (№69)",
+    channel: "instagram",
+    locale: "ru",
+    full: true,
+    modules: { helpdesk: true, manager_chat: true, prodamus: true },
+    products: [{ id: P1, name: "Палитра средств выразительности" }],
+    sendFails: true,
+    arrange: (r) => {
+      r.db.tables.app_settings!.push(
+        { key: "prodamus_enabled", value: "true" },
+        { key: "prodamus_form_url", value: "https://kopilka.proeducation.kz" },
+        { key: "prodamus_secret_key", value: "k".repeat(64) },
+        { key: "prodamus_currency", value: "KZT" },
+      );
+    },
+    steps: [
+      {
+        say: { button: `PROD:${P1}`, title: "Купить" },
+        expect: { sellerNotices: 1, state: { mode: "choose_pay" } },
+      },
+    ],
+  },
+  {
     id: "two-step-buy-express-prodamus-ig-ru",
     title:
       "«Купить» при кассе Продамуса и Kaspi — одно сообщение: товар, сумма, «Картой онлайн» и «Перевод Kaspi»",
