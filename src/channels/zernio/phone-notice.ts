@@ -69,3 +69,22 @@ export const SELLER_FOREIGN_ORDER: Record<
   uz: (who, ch, no, country) =>
     `🌍 ${who} (${ch}) to‘lov usuli yo‘q davlatdan (${country}) №${no} buyurtma rasmiylashtirdi.\nBot Kaspi va RF kartasini ko‘rsatmadi va qanday to‘lashni siz yozishingizni aytdi. Xaridorga yozing.`,
 };
+
+/**
+ * Заказ оформлен, а сообщение с суммой и кнопками оплаты Zernio не принял:
+ * покупатель видит тишину, заказ ждёт оплаты (Копилка 14.10, #217). `who`,
+ * `reason` уже экранированы.
+ */
+export const SELLER_PAY_CARD_FAILED: Record<
+  Locale,
+  (who: string, channel: string, no: number, total: string, reason: string) => string
+> = {
+  ru: (who, ch, no, total, reason) =>
+    `❗ ${who} (${ch}) оформил(а) заказ №${no} на ${total}, но сообщение с оплатой до покупателя не дошло.\nПричина: ${reason}.\nНапишите покупателю сами, как оплатить. Заказ ждёт оплату, чек бот примет.`,
+  kk: (who, ch, no, total, reason) =>
+    `❗ ${who} (${ch}) ${total} сомасына №${no} тапсырыс рәсімдеді, бірақ төлем туралы хабар сатып алушыға жетпеді.\nСебебі: ${reason}.\nСатып алушыға қалай төлеу керегін өзіңіз жазыңыз. Тапсырыс төлемді күтеді, чекті бот қабылдайды.`,
+  en: (who, ch, no, total, reason) =>
+    `❗ ${who} (${ch}) placed order #${no} for ${total}, but the payment message did not reach the buyer.\nReason: ${reason}.\nPlease write to the buyer yourself how to pay. The order is waiting for payment, and the bot will accept the receipt.`,
+  uz: (who, ch, no, total, reason) =>
+    `❗ ${who} (${ch}) ${total} miqdorida №${no} buyurtma rasmiylashtirdi, lekin to‘lov haqidagi xabar xaridorga yetib bormadi.\nSabab: ${reason}.\nXaridorga qanday to‘lashni o‘zingiz yozing. Buyurtma to‘lovni kutmoqda, chekni bot qabul qiladi.`,
+};

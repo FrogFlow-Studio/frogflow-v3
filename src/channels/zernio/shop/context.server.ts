@@ -100,6 +100,8 @@ export type Shop = {
   why?: string | null;
   /** Разбор этой реплики моделью (shop/triage): один вызов на сообщение. */
   triaged?: { key: string; result: Promise<Triage | null> };
+  /** Причина последнего несостоявшегося ответа (reply вернул false после отказа Zernio). */
+  sendError?: string;
 };
 
 /**
@@ -270,6 +272,7 @@ export async function reply(
       attachmentType: attachmentUrl ? "image" : undefined,
       interactive: opts.interactive,
     });
+  s.sendError = undefined;
   let r = await send(opts.attachmentUrl);
   // Фото не приняли (формат, размер, ссылка) — карточка важнее картинки: текстом.
   // Иной отказ (окно 24 часа, доступ, лимит) без фото тоже не пройдёт — не повторяем.
@@ -285,6 +288,7 @@ export async function reply(
   }
   if (!r.ok) {
     console.error(`[zernio-shop] reply failed for ${s.customer.userKey}: ${r.error}`);
+    s.sendError = r.error ?? "отправка не прошла";
     return false;
   }
   await remember(s, {

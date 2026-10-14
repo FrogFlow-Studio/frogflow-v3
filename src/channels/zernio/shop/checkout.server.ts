@@ -48,7 +48,10 @@ import {
   prodamusAnyCardLine,
   prodamusSum,
 } from "@/channels/telegram/copy";
-import { adminTelegramApi } from "@/channels/telegram/notify";
+import { adminTelegramApi, notifyAdminsHtml } from "@/channels/telegram/notify";
+import { claimOrderEvent } from "@/core/orders/events";
+import { SELLER_PAY_CARD_FAILED } from "../phone-notice";
+import { PLATFORM_LABEL } from "../platform";
 import { isMailConfigured } from "@/core/mail/mail.server";
 import { emailStep, languagePickerText, WA_LIST_MAX_ROWS, clipRowTitle, plain } from "../shop-flow";
 import { BTN, type Shop, memory, photoFor, reply, setMode } from "./context.server";
@@ -697,7 +700,7 @@ export async function finishCheckout(s: Shop, countryCode: string) {
       pending_order_id: order.id,
       pending_display_no: no,
     });
-    await sendPayChoice(s, {
+    const sent = await sendPayChoice(s, {
       orderId: order.id,
       no,
       due,
@@ -705,6 +708,7 @@ export async function finishCheckout(s: Shop, countryCode: string) {
       instructions: method.instructions,
       items: (order.order_items ?? []).map((i) => i.name_snapshot),
     });
+    if (!sent) await payCardFailed(s, order.id, no, formatMoney(due, order.currency));
     return;
   }
   s.customer = await setState(s.ctx, s.customer, {
@@ -717,7 +721,7 @@ export async function finishCheckout(s: Shop, countryCode: string) {
     physical && due < Number(order.total)
       ? `${plain(s.m.depositLine(formatMoney(due, order.currency), formatMoney(order.total, order.currency)))}\n\n`
       : "";
-  await sendManualInstructions(s, {
+  const sent = await sendManualInstructions(s, {
     no,
     due,
     currency: order.currency,
@@ -727,6 +731,39 @@ export async function finishCheckout(s: Shop, countryCode: string) {
     depositLine,
     items: (order.order_items ?? []).map((i) => i.name_snapshot),
   });
+  if (!sent) await payCardFailed(s, order.id, no, formatMoney(due, order.currency));
+}
+
+/**
+ * Заказ оформлен, а сообщение с суммой и оплатой Zernio не принял: у
+ * покупателя тишина, отказ был только в логе функции (Копилка 14.10, #217 —
+ * «Купить» → заказ, карточки нет). Отправку не повторяем: обрыв или тайм-аут
+ * могли дойти, второй карточки покупатель видеть не должен. Причина — в
+ * историю заказа, продавцу — написать самому; один раз на заказ (условная
+ * отметка до уведомления).
+ */
+async function payCardFailed(s: Shop, orderId: number, no: number, total: string): Promise<void> {
+  const reason = (s.sendError ?? "Zernio не принял отправку").slice(0, 300);
+  if (!(await claimOrderEvent(s.ctx, orderId, "pay_card_failed", "once", { error: reason })))
+    return;
+  const { sellerLocale } = await import("@/core/catalog/low-stock");
+  const locale = await sellerLocale(s.ctx).catch(
+    () => s.ctx.tenant.settings.default_locale ?? "ru",
+  );
+  const who = s.customer.username
+    ? `@${s.customer.username}`
+    : s.customer.firstName || s.customer.userKey;
+  await notifyAdminsHtml(
+    s.ctx,
+    SELLER_PAY_CARD_FAILED[locale](
+      escapeHtml(who),
+      PLATFORM_LABEL[s.platform],
+      no,
+      escapeHtml(total),
+      escapeHtml(reason),
+    ),
+    { orderId, kind: "question" },
+  ).catch(() => 0);
 }
 
 /**
@@ -744,7 +781,7 @@ async function sendPayChoice(
     instructions: string | null;
     items?: string[];
   },
-) {
+): Promise<boolean> {
   const rk = await robokassaFor(s.ctx, p.currency);
   const pdm = await prodamusFor(s.ctx, p.currency);
   const kaspi = await kaspiApipayFor(s.ctx, p.currency);
@@ -789,7 +826,7 @@ async function sendPayChoice(
   const rub = anyCard
     ? await rubEquivalent(s.ctx, pdm, { id: p.orderId, due: p.due, currency: p.currency })
     : null;
-  await reply(
+  return reply(
     s,
     `${plain(s.m.manualTitleNew(p.no))}\n${itemsLine(p.items)}\n${plain(s.m.amountToPay(withRub(formatMoney(p.due, p.currency), rub)))}\n\n${plain(s.m.choosePayMethodNamed(buttons.map((b) => b.title)))}${anyCard}`,
     { force: true, buttons },
@@ -910,7 +947,7 @@ async function sendManualInstructions(
     depositLine: string;
     items?: string[];
   },
-) {
+): Promise<boolean> {
   // Реквизиты — ссылка (pay.kaspi.kz): в Instagram ссылка в тексте у части
   // покупателей не нажимается, жали «Перевод Kaspi» по три раза и писали «Не
   // нажимается» (Копилка русоведа, 09.10). Ссылка — ещё и кнопкой, в тексте
@@ -921,7 +958,7 @@ async function sendManualInstructions(
     `${p.instructions || plain(s.m.defaultInstructions)}\n\n` +
     (link ? `${plain(s.m.payLinkHint)}\n\n` : "") +
     plain(p.physical ? s.m.afterProofPhysical : s.m.afterProofManual);
-  await reply(s, text, {
+  return reply(s, text, {
     force: true,
     attachmentUrl: await photoFor(s, [p.qr]),
     ...(link
