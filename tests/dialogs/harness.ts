@@ -151,6 +151,11 @@ export interface RoomOptions {
   mail?: boolean;
   /** Instagram/WhatsApp: присланное фото скачивается (чек принимается). */
   receipts?: boolean;
+  /**
+   * Instagram/WhatsApp: ответы бота появляются в ленте Zernio (tail) как исходящие,
+   * как в жизни, — проверка «менеджер в чате» видит их и должна узнать свои.
+   */
+  echoes?: boolean;
 }
 
 /** Куда уходят сообщения покупателю, отправленные не из его реплики (ответ продавца, трек). */
@@ -354,6 +359,8 @@ function directRoom(o: RoomOptions): Room {
         if (opts.buttons?.length && (o.rejectButtons || text.length > 640))
           return { ok: false, error: "buttons rejected", failure: { status: 400 } };
         sent.push({ text: plain(text), buttons: (opts.buttons ?? []).map((b) => b.title ?? "") });
+        if (o.echoes && text)
+          tail.push({ direction: "outgoing", message: text, createdAt: new Date().toISOString() });
         return { ok: true };
       },
     ),

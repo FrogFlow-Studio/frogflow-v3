@@ -1,4 +1,5 @@
 import type { ZernioInboxMessage } from "./inbox-types";
+import { rubApproxNote } from "@/core/consultant/messages";
 
 /**
  * «В диалоге уже отвечает менеджер» — проверка перед тем, как консультант
@@ -37,10 +38,25 @@ export type GuardState = {
 
 export type ManagerMessage = { text: string; at: number };
 
+/**
+ * Сумма с валютой. Консультант по прайсу помнит ответ в тенге, а покупателю
+ * из России шлёт тот же текст в рублях (pricelist/currency) и иногда с
+ * пометкой «Цены в рублях ориентировочные.» — при сравнении суммы и пометка
+ * не в счёт. Иначе свой же рублёвый ответ считался менеджером, и бот вставал
+ * на паузу на 6 часов (BOVI 15.10: «200x220» и «СДЭКом?» без ответа).
+ */
+const MONEY_RE =
+  /≈?\s*\d[\d \u00a0\u202f.,]*[ \u00a0\u202f]?(?:₸|₽|тг\.?(?![а-яё])|тенге|руб(?:л[а-яё]*)?\.?(?![а-яё])|kzt|rub)/giu;
+const RUB_APPROX_NOTES = (["ru", "kk", "en", "uz"] as const).map((l) =>
+  rubApproxNote(l).toLowerCase(),
+);
+
 /** Сворачивает текст для сравнения «это наши же слова». */
 export function foldReply(text: string): string {
-  return text
-    .toLowerCase()
+  let t = text.toLowerCase();
+  for (const note of RUB_APPROX_NOTES) t = t.split(note).join(" ");
+  return t
+    .replace(MONEY_RE, " сумма ")
     .replace(/[^\p{L}\p{N}]+/gu, " ")
     .trim()
     .slice(0, 200);

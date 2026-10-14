@@ -16,6 +16,7 @@ import {
 } from "./harness";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { invalidatePricelist } from "@/core/consultant/pricelist/catalog.server";
+import { invalidateStoredRate, VTB_RATE_KEY } from "@/core/consultant/pricelist/rate.server";
 import { SCENARIOS, type Says } from "./scenarios";
 import { BURST } from "@/core/consultant/burst";
 import { liveAutomationApi } from "@/channels/zernio/automations.server";
@@ -173,6 +174,7 @@ describe("золотые диалоги", () => {
         setEnvForTests({ ANTHROPIC_API_KEY: "sk-test" });
         // Прайс читается заново: сценарий со сбоем чтения не должен попасть в кэш соседа.
         invalidatePricelist({ tenant: { id: ROOM_BOT } } as TenantContext);
+        invalidateStoredRate({ tenant: { id: ROOM_BOT } });
         modelRounds.list = s.pricelist.rounds.map((round) => [...round]);
       }
       if (s.postpay) {
@@ -218,6 +220,11 @@ describe("золотые диалоги", () => {
           { key: "consultant_enabled", value: "true" },
           { key: "consultant_catalog_json", value: JSON.stringify(s.pricelist.catalog) },
         );
+      if (s.pricelist && s.rubRate)
+        r.db.tables.app_settings!.push({
+          key: VTB_RATE_KEY,
+          value: JSON.stringify({ rate: s.rubRate, updatedAt: new Date().toISOString() }),
+        });
       if (s.automations) {
         // Правила Zernio из сценария; сообщение правила «уходит» без сети.
         const rules = s.automations;

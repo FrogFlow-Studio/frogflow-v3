@@ -47,6 +47,11 @@ type Fetch = typeof fetch;
 
 const cache = new Map<string, { at: number; value: StoredVtbRate | null }>();
 
+/** Забыть прочитанный курс клиента — тесты, где курс задан заново. */
+export function invalidateStoredRate(ctx: { tenant: { id: string } }): void {
+  cache.delete(ctx.tenant.id);
+}
+
 /**
  * Последний сохранённый курс. Сбой чтения — не «курса нет» (v1, 22.09: бот
  * трижды сказал «курс недоступен» при живом курсе): ошибка не кэшируется,
