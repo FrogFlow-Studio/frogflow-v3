@@ -126,3 +126,52 @@ describe("менеджер в чате", () => {
     expect(findManagerMessage(later, state, NOW)?.text).toBe("Ещё раз я");
   });
 });
+
+describe("свой ответ в рублях (BOVI 15.10)", () => {
+  const tenge =
+    "Цены привожу в тенге, вы увидите их в рублях: комплекты 155x200 - от 80 000 ₸, 200x220 - от 120 000 ₸, 240x220 - от 130 000 ₸. Какой размер и цвет вас интересует?";
+  const rub =
+    "Цены привожу в тенге, вы увидите их в рублях: комплекты 155x200 - от 19 052 ₽, 200x220 - от 28 578 ₽, 240x220 - от 30 960 ₽. Какой размер и цвет вас интересует?";
+
+  it("ответ, ушедший в рублях, — наш, хотя в памяти он в тенге", () => {
+    expect(
+      findManagerMessage(
+        [{ direction: "outgoing", message: rub, createdAt: ago(min(1)) }],
+        { lastBotReplyAt: ago(min(1)), ourReplies: [tenge] },
+        NOW,
+      ),
+    ).toBeNull();
+  });
+
+  it("пометка «ориентировочные» и «≈» тоже не делают ответ чужим", () => {
+    expect(
+      findManagerMessage(
+        [
+          {
+            direction: "outgoing",
+            message: "Полотенце 50х100 - ≈2 140 ₽.\n\nЦены в рублях ориентировочные.",
+            createdAt: ago(min(1)),
+          },
+        ],
+        { lastBotReplyAt: ago(min(1)), ourReplies: ["Полотенце 50х100 - 9 000 тенге."] },
+        NOW,
+      ),
+    ).toBeNull();
+  });
+
+  it("менеджер, написавший другими словами, по-прежнему менеджер", () => {
+    const found = findManagerMessage(
+      [
+        { direction: "outgoing", message: rub, createdAt: ago(min(3)) },
+        {
+          direction: "outgoing",
+          message: "Да, СДЭКом отправляем, 3-5 дней",
+          createdAt: ago(min(1)),
+        },
+      ],
+      { lastBotReplyAt: ago(min(3)), ourReplies: [tenge] },
+      NOW,
+    );
+    expect(found?.text).toBe("Да, СДЭКом отправляем, 3-5 дней");
+  });
+});

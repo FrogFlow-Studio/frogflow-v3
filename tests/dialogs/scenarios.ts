@@ -347,10 +347,14 @@ export interface Scenario {
   consultant?: string | null;
   /**
    * Консультант по прайсу (BOVI) на настоящем коде: подменён только ответ API
-   * модели — `rounds`, по раунду на вызов. Прайс — `catalog`; курса рубля нет
+   * модели — `rounds`, по раунду на вызов. Прайс — `catalog`; курса рубля нет, если не задан `rubRate`
    * (кэш курса и прайса — на клиента, а клиент в комнатах один).
    */
   pricelist?: { catalog: PricelistItem[]; rounds: Array<Array<Record<string, unknown>>> };
+  /** Консультант по прайсу: свежий курс рубля в магазине (тенге за рубль) — рубли переводит код. */
+  rubRate?: number;
+  /** Instagram/WhatsApp: ответы бота видны в ленте Zernio, как в жизни (проверка «менеджер в чате»). */
+  echoes?: boolean;
   /** Добавка к bots.settings клиента. */
   tenantSettings?: Record<string, unknown>;
   /** Instagram/WhatsApp: отправка покупателю не подтверждена (обрыв, тайм-аут). */
@@ -2792,6 +2796,39 @@ export const SCENARIOS: Scenario[] = [
       {
         say: { text: "А в рублях за штуку?" },
         expect: { says: ["9 000 ₸ за штуку"], notSays: ["₽"], sellerQueued: 0 },
+      },
+    ],
+  },
+  {
+    id: "pricelist-rubles-own-reply-not-manager-ig-ru",
+    title:
+      "свой ответ в рублях — не менеджер: на следующий вопрос бот отвечает, а не встаёт на паузу",
+    origin:
+      "скрин Якова, BOVI 15.10 02:38–02:40 (@cakelali555): цены в ₽, потом «200x220» и «В Россию отправляете СДЭКом?» без ответа",
+    channel: "instagram",
+    locale: "ru",
+    full: true,
+    vertical: "consultant",
+    modules: { shop: true },
+    rubRate: 5,
+    echoes: true,
+    pricelist: {
+      catalog: PL_CATALOG,
+      rounds: [
+        said(
+          "Цены привожу в тенге, вы увидите их в рублях: Uchino полотенце банное 50х100 - 9 000 ₸.",
+        ),
+        said("Uchino 50х100 в белом есть, 9 000 ₸ за штуку."),
+      ],
+    },
+    steps: [
+      {
+        say: { text: "Можно в рублях" },
+        expect: { count: 1, says: ["₽"], notSays: ["9 000 ₸"], paused: false },
+      },
+      {
+        say: { text: "50х100" },
+        expect: { count: 1, says: ["₽ за штуку"], paused: false },
       },
     ],
   },
