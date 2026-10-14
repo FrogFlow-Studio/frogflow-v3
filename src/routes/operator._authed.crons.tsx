@@ -17,7 +17,7 @@ function CronsPage() {
     <>
       <PageTitle
         title="Кроны"
-        subtitle="Суточные запускает Vercel, частые — cron-job.org; статус пишется самим кроном после каждого запуска"
+        subtitle="Расписание из vercel.json; статус пишется самим кроном после каждого запуска"
       />
       {jobs
         .filter((j) => (j.last?.budgetStreak ?? 0) >= BUDGET_STREAK_WARN)
