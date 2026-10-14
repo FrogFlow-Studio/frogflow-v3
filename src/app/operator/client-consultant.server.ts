@@ -55,6 +55,27 @@ export async function setMarketplaceHidden(
   );
 }
 
+/**
+ * Одобрение магазина для площадки. `consent` — как получено согласие продавца, когда
+ * оператор включает показ за него (без этой записи включить за продавца нельзя).
+ */
+export async function setMarketplaceApproved(
+  botId: string,
+  approved: boolean,
+  consent: string,
+  actor = "operator",
+) {
+  const note = consent.replace(/\s+/g, " ").trim().slice(0, 300);
+  const { setMarketplaceApproved: set } = await import("@/core/marketplace/settings.server");
+  await set(botId, approved, approved && note.length > 0);
+  await logEvent(
+    botId,
+    "meta",
+    { marketplace_approved: approved, ...(note ? { consent: note } : {}) },
+    actor,
+  );
+}
+
 /** Поиск консультанта по каталогу инструментом (core/consultant/catalog-tool.server). */
 export async function setConsultantSearch(botId: string, on: boolean, actor = "operator") {
   await patchTenantSettings(botId, { consultant_search: on });

@@ -55,6 +55,7 @@ export {
 export {
   consultantBudget,
   setMarketplaceHidden,
+  setMarketplaceApproved,
   setConsultantSearch,
   setConsultantPricelist,
   setConsultantPricelistOptions,

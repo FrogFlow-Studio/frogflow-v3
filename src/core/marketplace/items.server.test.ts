@@ -309,7 +309,13 @@ describe("поиск по площадке", () => {
 
   it("справочник: показывается только согласный, одобренный, не скрытый, на v2, с адресом", () => {
     const t = (id: string, settings: TenantSettings) =>
-      ({ id, name: id, vertical: "digital", settings }) as unknown as Tenant;
+      ({
+        id,
+        name: id,
+        vertical: "digital",
+        modules: { shop: true, web_storefront: true },
+        settings,
+      }) as unknown as Tenant;
     const map = shownShops([
       t("a", OPEN),
       t("b", { ...OPEN, marketplace: { listed: true } }),
@@ -385,7 +391,13 @@ describe("поиск по площадке", () => {
 
     it("скрытый магазин и клиент прежней платформы не находятся ни точно, ни с опечаткой", async () => {
       const t = (id: string, name: string, settings: TenantSettings) =>
-        ({ id, name, vertical: "shop", settings }) as unknown as Tenant;
+        ({
+          id,
+          name,
+          vertical: "shop",
+          modules: { shop: true, web_storefront: true },
+          settings,
+        }) as unknown as Tenant;
       const map = shownShops([
         t(BOT, "Сладкая лавка", OPEN),
         t("b2", "Розовый сад", { ...OPEN, slug: "flowers", served_by: "v1" }),

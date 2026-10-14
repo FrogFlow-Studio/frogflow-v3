@@ -4,7 +4,7 @@ import type { SectionDict } from "../section";
 export const ru = {
   "settings.market.title": "Площадка FrogFlow",
   "settings.market.intro":
-    "Общий каталог магазинов FrogFlow, где покупатели находят магазины сами. На площадке показываются только название, категория, город и ссылка на вашу витрину; заказы, суммы и покупатели туда не попадают. По умолчанию выключено. Пока площадка не открыта, выключатель только сохраняет ваше согласие.",
+    "Общий каталог FrogFlow (frogflow.tech/market), где покупатели находят магазины и товары сами. На площадке показываются название, категория и город магазина, а также товары витрины с фото и ценой; покупка проходит на вашей витрине. Заказы, суммы и покупатели на площадку не попадают. По умолчанию выключено.",
   "settings.market.on": "Показывать на площадке FrogFlow",
   "settings.market.terms":
     "Включая, вы соглашаетесь с правилами площадки. Новый магазин появляется на площадке после одобрения оператором; оператор может скрыть магазин.",
@@ -21,6 +21,8 @@ export const ru = {
   "settings.market.state.pending":
     "Согласие дано, ждём одобрения оператора: пока магазина на площадке нет.",
   "settings.market.category": "Категория на площадке (пусто — ниша магазина: {def})",
+  "settings.market.state.no_catalog":
+    "Включено и одобрено, но каталог витрины закрыт: подключите модуль «Публичная веб-витрина» или «Telegram Mini App», иначе ссылка с площадки никуда не ведёт. Пока магазина на площадке нет.",
   "settings.market.city": "Город",
   "settings.market.save": "Сохранить",
 } as const;
@@ -28,7 +30,7 @@ export const ru = {
 export const kk: SectionDict<typeof ru> = {
   "settings.market.title": "FrogFlow алаңы",
   "settings.market.intro":
-    "FrogFlow дүкендерінің ортақ каталогы: сатып алушылар дүкенді өздері табады. Алаңда тек атауы, санаты, қаласы және витринаға сілтеме көрсетіледі; тапсырыстар, сомалар және сатып алушылар түспейді. Әдепкіде өшірулі. Алаң ашылғанша қосқыш тек келісіміңізді сақтайды.",
+    "FrogFlow ортақ каталогы (frogflow.tech/market): сатып алушылар дүкендер мен тауарларды өздері табады. Алаңда дүкеннің атауы, санаты, қаласы және витрина тауарлары фотосы мен бағасымен көрсетіледі; сатып алу сіздің витринаңызда өтеді. Тапсырыстар, сомалар және сатып алушылар алаңға түспейді. Әдепкіде өшірулі.",
   "settings.market.on": "FrogFlow алаңында көрсету",
   "settings.market.terms":
     "Қосу арқылы алаң ережелерімен келісесіз. Жаңа дүкен оператор мақұлдағаннан кейін алаңда пайда болады; оператор дүкенді жасыра алады.",
@@ -45,6 +47,8 @@ export const kk: SectionDict<typeof ru> = {
   "settings.market.state.pending":
     "Келісім берілді, оператор мақұлдауын күтеміз: әзірге дүкен алаңда жоқ.",
   "settings.market.category": "Алаңдағы санат (бос — дүкен ниші: {def})",
+  "settings.market.state.no_catalog":
+    "Қосулы және мақұлданған, бірақ витрина каталогы жабық: «Ашық веб-витрина» немесе «Telegram Mini App» модулін қосыңыз, әйтпесе алаңдағы сілтеме ешқайда апармайды. Әзірге дүкен алаңда жоқ.",
   "settings.market.city": "Қала",
   "settings.market.save": "Сақтау",
 };
@@ -52,7 +56,7 @@ export const kk: SectionDict<typeof ru> = {
 export const en: SectionDict<typeof ru> = {
   "settings.market.title": "FrogFlow marketplace",
   "settings.market.intro":
-    "The shared FrogFlow shop catalogue where buyers discover shops. Only the name, category, city and a link to your storefront are shown; orders, amounts and buyers never reach it. Off by default. Until the marketplace opens, the switch only stores your consent.",
+    "The shared FrogFlow catalogue (frogflow.tech/market) where buyers discover shops and products. It shows your shop name, category and city, plus your storefront products with photos and prices; the purchase happens on your storefront. Orders, amounts and buyers never reach the marketplace. Off by default.",
   "settings.market.on": "Show on the FrogFlow marketplace",
   "settings.market.terms":
     "By switching on you accept the marketplace rules. A new shop appears after the operator approves it; the operator may hide a shop.",
@@ -69,6 +73,8 @@ export const en: SectionDict<typeof ru> = {
   "settings.market.state.pending":
     "Consent given, waiting for operator approval: the shop is not on the marketplace yet.",
   "settings.market.category": "Marketplace category (empty — the shop’s niche: {def})",
+  "settings.market.state.no_catalog":
+    "On and approved, but your storefront catalogue is closed: enable the “Public web storefront” or “Telegram Mini App” module, otherwise the marketplace link leads nowhere. The shop is not on the marketplace yet.",
   "settings.market.city": "City",
   "settings.market.save": "Save",
 };
@@ -76,7 +82,7 @@ export const en: SectionDict<typeof ru> = {
 export const uz: SectionDict<typeof ru> = {
   "settings.market.title": "FrogFlow maydonchasi",
   "settings.market.intro":
-    "FrogFlow do‘konlarining umumiy katalogi: xaridorlar do‘konni o‘zlari topadi. Faqat nom, toifa, shahar va vitrinaga havola ko‘rsatiladi; buyurtmalar, summalar va xaridorlar tushmaydi. Odatda o‘chirilgan. Maydoncha ochilguncha tugma faqat roziligingizni saqlaydi.",
+    "FrogFlow umumiy katalogi (frogflow.tech/market): xaridorlar do‘kon va mahsulotlarni o‘zlari topadi. Do‘kon nomi, toifasi, shahri hamda vitrina mahsulotlari surati va narxi bilan ko‘rsatiladi; xarid sizning vitrinangizda bo‘ladi. Buyurtmalar, summalar va xaridorlar maydonchaga tushmaydi. Odatda o‘chirilgan.",
   "settings.market.on": "FrogFlow maydonchasida ko‘rsatish",
   "settings.market.terms":
     "Yoqish orqali maydoncha qoidalariga rozilik bildirasiz. Yangi do‘kon operator tasdiqlagach paydo bo‘ladi; operator do‘konni yashirishi mumkin.",
@@ -93,6 +99,8 @@ export const uz: SectionDict<typeof ru> = {
   "settings.market.state.pending":
     "Rozilik berilgan, operator tasdig‘i kutilmoqda: hozircha do‘kon maydonchada yo‘q.",
   "settings.market.category": "Maydonchadagi toifa (bo‘sh — do‘kon yo‘nalishi: {def})",
+  "settings.market.state.no_catalog":
+    "Yoqilgan va tasdiqlangan, lekin vitrina katalogi yopiq: «Ochiq veb-vitrina» yoki «Telegram Mini App» modulini ulang, aks holda maydonchadagi havola hech qayerga olib bormaydi. Hozircha do‘kon maydonchada yo‘q.",
   "settings.market.city": "Shahar",
   "settings.market.save": "Saqlash",
 };

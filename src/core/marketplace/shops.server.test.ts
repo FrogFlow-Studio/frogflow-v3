@@ -18,7 +18,13 @@ let shop: FakeDb;
 const as = (d: FakeDb) => d as unknown as Db;
 
 const tenant = (id: string, settings: TenantSettings, name = id): Tenant =>
-  ({ id, name, vertical: "confectionery", modules: {}, settings }) as unknown as Tenant;
+  ({
+    id,
+    name,
+    vertical: "confectionery",
+    modules: { shop: true, web_storefront: true },
+    settings,
+  }) as unknown as Tenant;
 const ctxFor = (t: Tenant, d: FakeDb = shop) =>
   ({ tenant: t, db: as(d) }) as unknown as TenantContext;
 const OPEN: TenantSettings = {

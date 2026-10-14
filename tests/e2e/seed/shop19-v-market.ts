@@ -13,7 +13,7 @@ export function seedShop19VMarket(db: StubDb, now: string) {
     bot_name: s.name,
     status: "active",
     vertical: "confectionery",
-    modules: { shop: true },
+    modules: { shop: true, web_storefront: true },
     settings: { default_locale: "ru", slug: s.slug, ...settings },
     paused_message: null,
     owner_telegram_id: null,

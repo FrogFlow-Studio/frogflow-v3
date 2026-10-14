@@ -88,3 +88,27 @@ export async function setMarketplaceHidden(
   });
   return marketplaceView({ tenant: await requireTenant({ by: "id", value: botId }) });
 }
+
+/**
+ * Оператор одобряет магазин или снимает одобрение (В12). `listedByConsent` — продавец
+ * дал согласие вне админки (в переписке с оператором): оператор включает показ за него,
+ * кто и как получил согласие — в журнале клиента (слой оператора). Скрытие не трогает:
+ * скрытый магазин остаётся скрытым, пока оператор его не вернёт.
+ */
+export async function setMarketplaceApproved(
+  botId: string,
+  approved: boolean,
+  listedByConsent = false,
+): Promise<MarketplaceView> {
+  const t = await requireTenant({ by: "id", value: botId });
+  if (!servedByV2(t)) {
+    throw new UserError(
+      "err.marketplace.oldPlatform",
+      "Площадка доступна магазинам на новой платформе.",
+    );
+  }
+  await patchTenantSettings(botId, {
+    marketplace: listedByConsent && approved ? { listed: true, approved } : { approved },
+  });
+  return marketplaceView({ tenant: await requireTenant({ by: "id", value: botId }) });
+}

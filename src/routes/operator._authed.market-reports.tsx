@@ -13,6 +13,7 @@ const STATE: Record<V["reports"][number]["state"], string> = {
   visible: "виден на площадке",
   hidden: "уже скрыт",
   pending: "ждёт одобрения",
+  no_catalog: "каталог витрины закрыт",
   off: "не на площадке",
   gone: "клиента нет",
 };

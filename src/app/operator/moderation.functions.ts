@@ -47,6 +47,22 @@ export const setMarketplaceHiddenFn = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+/**
+ * Одобрить магазин для площадки или снять одобрение. `consent` — как получено согласие
+ * продавца; непустое — оператор заодно включает показ за продавца.
+ */
+export const setMarketplaceApprovedFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z.object({ botId, approved: z.boolean(), consent: z.string().max(300) }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    await guard();
+    await (
+      await impl()
+    ).setMarketplaceApproved(data.botId, data.approved, data.consent, await actor());
+    return { ok: true };
+  });
+
 export const setCommunityModFn = createServerFn({ method: "POST" })
   .validator((d: unknown) =>
     z

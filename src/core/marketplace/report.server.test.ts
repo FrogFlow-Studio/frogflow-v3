@@ -22,6 +22,7 @@ const tenant = (id: string, marketplace: Record<string, unknown> = {}) =>
     id,
     name: `Магазин ${id}`,
     vertical: "shop",
+    modules: { shop: true, web_storefront: true },
     settings: settingsFromJson({
       served_by: "v2",
       slug: id,

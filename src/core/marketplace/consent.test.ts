@@ -9,7 +9,7 @@ import { settingsFromJson } from "@/core/tenant/directory";
 import type { Tenant, TenantSettings } from "@/core/tenant/types";
 
 const shop = (settings: TenantSettings, vertical = "cake") =>
-  ({ settings, vertical }) as unknown as Tenant;
+  ({ settings, vertical, modules: { shop: true, web_storefront: true } }) as unknown as Tenant;
 const V2 = { served_by: "v2" } as const;
 
 describe("согласие магазина на площадку", () => {
@@ -34,6 +34,23 @@ describe("согласие магазина на площадку", () => {
     const t = shop({ ...V2, marketplace: { listed: true, approved: true, hidden: true } });
     expect(marketplaceState(t)).toBe("hidden");
     expect(shownOnMarketplace(t)).toBe(false);
+  });
+
+  it("согласие и одобрение, но каталог витрины закрыт — не показывается: ссылка вела бы в 404", () => {
+    const m = { ...V2, marketplace: { listed: true, approved: true } };
+    const closed = {
+      settings: m,
+      vertical: "digital",
+      modules: { shop: true },
+    } as unknown as Tenant;
+    expect(marketplaceState(closed)).toBe("no_catalog");
+    expect(shownOnMarketplace(closed)).toBe(false);
+    const miniApp = {
+      settings: m,
+      vertical: "digital",
+      modules: { shop: true, telegram_mini_app: true },
+    } as unknown as Tenant;
+    expect(shownOnMarketplace(miniApp)).toBe(true);
   });
 
   it("клиент прежней платформы и клиент без served_by не участвуют", () => {
