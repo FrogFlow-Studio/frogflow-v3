@@ -4,9 +4,7 @@
   "installCommand": "npm ci",
   "framework": "tanstack-start",
   "trailingSlash": false,
-  "regions": [
-    "icn1"
-  ],
+  "regions": ["icn1"],
   "git": {
     "deploymentEnabled": {
       "claude/**": false

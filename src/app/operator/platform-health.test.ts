@@ -73,11 +73,13 @@ describe("новый крон без строки здесь — красный 
     const cases = [...route.matchAll(/case "([a-z-]+)"/g)].map((m) => m[1]!).sort();
     expect(CRON_JOBS.map((j) => j.job).sort()).toEqual(cases);
     const vercel = JSON.parse(readFileSync("vercel.json", "utf8")) as {
-      crons: Array<{ path: string }>;
+      crons: Array<{ path: string; schedule: string }>;
     };
     // Hobby пускает только суточные кроны: частые дёргает cron-job.org (docs/external-crons.md).
     const paths = vercel.crons.map((c) => /^\/api\/cron\/([a-z-]+)$/.exec(c.path)?.[1]).sort();
-    const daily = CRON_JOBS.filter((j) => j.everyMin >= 1440).map((j) => j.job).sort();
+    const daily = CRON_JOBS.filter((j) => j.everyMin >= 1440)
+      .map((j) => j.job)
+      .sort();
     expect(paths).toEqual(daily);
     for (const c of vercel.crons) {
       const job = CRON_JOBS.find((j) => c.path === `/api/cron/${j.job}`);
