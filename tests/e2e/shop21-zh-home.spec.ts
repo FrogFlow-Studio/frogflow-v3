@@ -58,9 +58,12 @@ test("владелец: «Ждёт вас», продажи сегодня и «
 test("Ctrl K: действия «Создать» без запроса", async ({ page }, info) => {
   test.skip(info.project.name === "phone", "Ctrl K — клавиатура компьютера");
   await login(page, F.ZH21_SELLER_LOGIN, F.ZH21_SELLER_PASSWORD);
-  await page.waitForLoadState("networkidle");
-  await page.keyboard.press("Control+k");
-  await expect(page.getByRole("dialog")).toBeVisible();
+  const dialog = page.getByRole("dialog");
+  // Окно открывается только после гидрации: до неё нажатие пропадает, поэтому повторяем (как в shop19-a-search).
+  await expect(async () => {
+    if (!(await dialog.isVisible())) await page.keyboard.press("Control+k");
+    await expect(dialog).toBeVisible({ timeout: 3000 });
+  }).toPass({ timeout: 25_000 });
   await expect(page.getByRole("button", { name: /Новая рассылка/ })).toBeVisible();
 });
 
