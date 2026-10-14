@@ -1,10 +1,12 @@
 # Частые кроны на cron-job.org
 
-Vercel Hobby запускает кроны не чаще раза в сутки, поэтому в `vercel.json` остались только
-суточные задачи (`retention`, `subscriptions`, `leads`). Остальные дёргает бесплатный
-[cron-job.org](https://cron-job.org). Расписание — то же, что в `CRON_JOBS`
-(`src/app/operator/cron-status.server.ts`); тест `platform-health.test.ts` следит, чтобы
-суточные задачи в `vercel.json` совпадали с ним.
+Запасной вариант на случай тарифа Vercel Hobby: он запускает кроны не чаще раза в сутки, и
+деплой с частыми кронами в `vercel.json` не проходит. Тогда в `vercel.json` оставить только
+суточные задачи (`retention`, `subscriptions`, `leads`), остальные дёргать с бесплатного
+[cron-job.org](https://cron-job.org) по таблице ниже, и поправить тест
+`platform-health.test.ts` (он сверяет `vercel.json` с `CRON_JOBS` в
+`src/app/operator/cron-status.server.ts`). Так было сделано в #141 и откачено после
+перехода на Pro.
 
 ## Настройка задачи
 
@@ -34,6 +36,3 @@ cron-job.org → Create cronjob, для каждой строки таблицы
 
 Проверка: страница оператора «Кроны» — у каждой задачи свежий «последний запуск» без
 ошибки. Ответ 401 в журнале cron-job.org — неверный заголовок `Authorization`.
-
-На Pro-тарифе Vercel все задачи можно вернуть в `vercel.json` (раздел `crons`) и удалить
-задачи в cron-job.org — тогда поправить и тест `platform-health.test.ts`.
