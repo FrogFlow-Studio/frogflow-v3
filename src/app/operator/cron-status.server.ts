@@ -4,7 +4,8 @@ import { serverFailure } from "@/lib/server-failure";
 /**
  * Состояние кронов для панели оператора: последний запуск, итог, длительность,
  * ошибка — по задаче, в `operator_settings` (KV платформы без bot_id, ключ
- * `cron:<job>`). Расписание — то же, что в vercel.json: страница считает
+ * `cron:<job>`). Суточные задачи запускает Vercel Cron (vercel.json), частые —
+ * cron-job.org по docs/external-crons.md; расписание здесь общее. Страница считает
  * задачу «молчит», если последний запуск старше двух интервалов.
  */
 export const CRON_JOBS = [

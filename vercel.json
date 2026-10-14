@@ -12,56 +12,12 @@
   },
   "crons": [
     {
-      "path": "/api/cron/ensure-webhook",
-      "schedule": "0 * * * *"
-    },
-    {
-      "path": "/api/cron/broadcast",
-      "schedule": "* * * * *"
-    },
-    {
-      "path": "/api/cron/inbox-poll",
-      "schedule": "* * * * *"
-    },
-    {
-      "path": "/api/cron/cart-reminder",
-      "schedule": "*/30 * * * *"
-    },
-    {
-      "path": "/api/cron/fulfillment-reminder",
-      "schedule": "0 * * * *"
-    },
-    {
       "path": "/api/cron/retention",
       "schedule": "20 3 * * *"
     },
     {
-      "path": "/api/cron/vip",
-      "schedule": "*/10 * * * *"
-    },
-    {
-      "path": "/api/cron/course-lives",
-      "schedule": "*/10 * * * *"
-    },
-    {
       "path": "/api/cron/subscriptions",
       "schedule": "0 4 * * *"
-    },
-    {
-      "path": "/api/cron/health",
-      "schedule": "*/15 * * * *"
-    },
-    {
-      "path": "/api/cron/comment-dm-fallback",
-      "schedule": "7,22,37,52 * * * *"
-    },
-    {
-      "path": "/api/cron/giveaways",
-      "schedule": "*/5 * * * *"
-    },
-    {
-      "path": "/api/cron/observer",
-      "schedule": "11,26,41,56 * * * *"
     },
     {
       "path": "/api/cron/leads",

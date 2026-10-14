@@ -68,14 +68,22 @@ describe("очереди и отказы", () => {
 });
 
 describe("новый крон без строки здесь — красный тест", () => {
-  it("список страницы совпадает с задачами маршрута и vercel.json", () => {
+  it("список страницы совпадает с задачами маршрута, суточные — в vercel.json", () => {
     const route = readFileSync("src/routes/api/cron.$job.ts", "utf8");
     const cases = [...route.matchAll(/case "([a-z-]+)"/g)].map((m) => m[1]!).sort();
     expect(CRON_JOBS.map((j) => j.job).sort()).toEqual(cases);
     const vercel = JSON.parse(readFileSync("vercel.json", "utf8")) as {
-      crons: Array<{ path: string }>;
+      crons: Array<{ path: string; schedule: string }>;
     };
+    // Hobby пускает только суточные кроны: частые дёргает cron-job.org (docs/external-crons.md).
     const paths = vercel.crons.map((c) => /^\/api\/cron\/([a-z-]+)$/.exec(c.path)?.[1]).sort();
-    expect(paths).toEqual(cases);
+    const daily = CRON_JOBS.filter((j) => j.everyMin >= 1440)
+      .map((j) => j.job)
+      .sort();
+    expect(paths).toEqual(daily);
+    for (const c of vercel.crons) {
+      const job = CRON_JOBS.find((j) => c.path === `/api/cron/${j.job}`);
+      expect(c.schedule, c.path).toBe(job?.schedule);
+    }
   });
 });
