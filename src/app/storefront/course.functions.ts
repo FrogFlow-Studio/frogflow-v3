@@ -2,6 +2,7 @@ import { notFound } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { SHOP_SLUG_RE } from "@/core/tenant/slug";
+import { SUPPORTED_LOCALES } from "@/core/i18n/locale";
 
 /**
  * Страница курса (модуль courses): покупатель приходит по ссылке из
@@ -123,6 +124,43 @@ export const submitQuizFn = createServerFn({ method: "POST" })
       best: r.result.best,
       certificate: r.certificate,
     };
+  });
+
+/** Вопрос ИИ-наставнику по открытому уроку (core/courses/tutor.server). */
+export const askTutorFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    input
+      .extend({
+        lessonId: z.string().uuid(),
+        question: z.string().min(1).max(1000),
+        asked: z.number().int().min(0).max(1_000_000),
+        locale: z.enum(SUPPORTED_LOCALES),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const { ctx, p } = await purchase(data);
+    const { askTutor } = await import("@/core/courses/tutor.server");
+    const r = await askTutor(ctx, p, data);
+    if (!r.ok) {
+      const { shownError } = await import("@/lib/shown-error");
+      const { storefrontT } = await import("@/app/i18n/storefront");
+      const t = storefrontT(data.locale);
+      throw shownError(
+        t(
+          r.reason === "stale"
+            ? "course.tutor.err.stale"
+            : r.reason === "limit"
+              ? "course.tutor.err.limit"
+              : r.reason === "empty"
+                ? "course.tutor.err.empty"
+                : r.reason === "off" || r.reason === "closed"
+                  ? "course.tutor.err.closed"
+                  : "course.tutor.err.failed",
+        ),
+      );
+    }
+    return r;
   });
 
 export const submitHomeworkFn = createServerFn({ method: "POST" })

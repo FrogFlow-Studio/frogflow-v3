@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import {
+  askTutorFn,
   courseChannelInviteFn,
   courseChatInviteFn,
   courseViewFn,
@@ -226,6 +227,15 @@ function CoursePage() {
                     }}
                   />
                 )}
+                {l.tutor && (
+                  <TutorBlock
+                    tutor={l.tutor}
+                    lessonId={l.id}
+                    ids={{ slug, itemId, k }}
+                    t={t}
+                    locale={locale}
+                  />
+                )}
                 {l.quiz ? (
                   done.has(l.id) && <p className="text-xs text-ok">✓ {t("course.done")}</p>
                 ) : (
@@ -252,6 +262,89 @@ function CoursePage() {
 
 type T = ReturnType<typeof useStorefrontLocale>["t"];
 type Quiz = NonNullable<CourseView["lessons"][number]["quiz"]>;
+type Tutor = NonNullable<CourseView["lessons"][number]["tutor"]>;
+
+/**
+ * ИИ-наставник урока: объясняет ошибку и подсказывает шаг, готового ответа не
+ * даёт. С вопросом уходит счётчик вопросов, который видел ученик, — двойной
+ * клик не задаст вопрос дважды. Модель недоступна — совет спросить куратора.
+ */
+function TutorBlock({
+  tutor,
+  lessonId,
+  ids,
+  t,
+  locale,
+}: {
+  tutor: Tutor;
+  lessonId: string;
+  ids: { slug: string; itemId: string; k: string };
+  t: T;
+  locale: Locale;
+}) {
+  const [log, setLog] = useState(tutor.log);
+  const [asked, setAsked] = useState(tutor.asked);
+  const [left, setLeft] = useState(tutor.left);
+  const [question, setQuestion] = useState("");
+  const ask = useAction(async () => {
+    const q = question.trim();
+    const r = await askTutorFn({ data: { ...ids, lessonId, question: q, asked, locale } });
+    setAsked(r.asked);
+    setLeft(r.left);
+    setLog((cur) => [...cur, { at: new Date().toISOString(), q, a: r.answer, kind: r.kind }]);
+    setQuestion("");
+  });
+  return (
+    <section className="mt-3 space-y-3 rounded-md bg-surface-2 p-3">
+      <div className="flex items-baseline justify-between gap-2">
+        <h3 className="font-medium">🧑‍🏫 {t("course.tutor.title")}</h3>
+        <span className="text-xs text-muted">{t("course.tutor.left", { n: left })}</span>
+      </div>
+      <p className="text-xs text-muted">{t("course.tutor.hint")}</p>
+      {log.length > 0 && (
+        <ul className="space-y-2">
+          {log.map((e, i) => (
+            <li key={`${e.at}-${i}`} className="space-y-1">
+              <p className="whitespace-pre-line">
+                <span className="text-muted">{t("course.tutor.you")}:</span> {e.q}
+              </p>
+              <p className="whitespace-pre-line rounded-md border border-line p-2">
+                {e.kind === "answer" ? e.a : t("course.tutor.unavailable")}
+              </p>
+            </li>
+          ))}
+        </ul>
+      )}
+      {left > 0 ? (
+        <form
+          className="space-y-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (question.trim()) void ask.run().catch(() => {});
+          }}
+        >
+          <textarea
+            className="input min-h-20 w-full"
+            maxLength={1000}
+            value={question}
+            placeholder={t("course.tutor.placeholder")}
+            onChange={(e) => setQuestion(e.target.value)}
+          />
+          <button
+            type="submit"
+            className="btn-secondary text-xs"
+            disabled={ask.busy || !question.trim()}
+          >
+            {ask.busy ? t("course.tutor.thinking") : t("course.tutor.ask")}
+          </button>
+        </form>
+      ) : (
+        <p className="text-xs text-warn">{t("course.tutor.err.limit")}</p>
+      )}
+      <ErrorBox error={ask.error} />
+    </section>
+  );
+}
 
 /**
  * Тест к уроку: верные ответы в браузер не приходят, оценивает сервер. Вместе с

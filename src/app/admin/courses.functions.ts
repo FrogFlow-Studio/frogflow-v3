@@ -83,6 +83,7 @@ const course = z.object({
   lessons: z.array(lesson).max(LESSONS_MAX),
   channel: z.string().max(40).nullable().optional(),
   homeworkDays: z.number().int().min(1).max(HOMEWORK_DAYS_MAX).nullable().optional(),
+  tutor: z.boolean().optional(),
   cohorts: z
     .array(
       z.object({

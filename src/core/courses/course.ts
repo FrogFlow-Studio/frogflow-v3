@@ -74,6 +74,8 @@ export type Course = {
    * одноразовую ссылку (core/courses/channel.server).
    */
   channel?: string | null;
+  /** ИИ-наставник на странице курса (core/courses/tutor); нет — выключен. */
+  tutor?: boolean;
 };
 
 /** id канала или группы (-100…) либо публичное @имя. */
@@ -203,6 +205,7 @@ export function parseCourse(raw: string | null | undefined): Course {
     cohorts?: unknown;
     tariffs?: unknown;
     homeworkDays?: unknown;
+    tutor?: unknown;
   };
   const lessons: Lesson[] = [];
   const seen = new Set<string>();
@@ -245,6 +248,7 @@ export function parseCourse(raw: string | null | undefined): Course {
     ...(cohorts.length ? { cohorts } : {}),
     ...(Object.keys(tariffs).length ? { tariffs } : {}),
     ...(hwDays >= 1 && hwDays <= HOMEWORK_DAYS_MAX ? { homeworkDays: hwDays } : {}),
+    ...(o.tutor === true ? { tutor: true } : {}),
   };
 }
 
