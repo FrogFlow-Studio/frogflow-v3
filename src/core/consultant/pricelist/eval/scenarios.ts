@@ -37,6 +37,22 @@ export const V2_EVAL_SCENARIOS: EvalScenario[] = [
     ],
   },
   {
+    id: "rubles-for-quoted-price",
+    title: "«А в рублях это сколько?» к уже названной цене — та же цена в рублях, без переспроса",
+    source: "BOVI 15.10, lana_lifestyledesigne (жалоба владельца)",
+    turns: [
+      { text: "Сколько стоит постельное бельё 140х200?", expect: { mustNot: [/в\s+директ/i] } },
+      {
+        text: "Здравствуйте",
+        expect: { mustNot: [/^\s*что подсказать\??\s*$/i] },
+      },
+      {
+        text: "А в рублях это сколько будет? И есть ли доставка в Москву",
+        expect: { rubles: true, mustNot: [/какой товар|вашей валюте|какой валюте/i] },
+      },
+    ],
+  },
+  {
     id: "what-do-you-have",
     title: "«Что у вас есть?» — без выкладки прайса",
     source: "BOVI 19.09",
