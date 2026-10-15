@@ -121,3 +121,53 @@ export async function recentAwaitingPaymentOrder(
   if (error) throw serverFailure(`Неоплаченный заказ не прочитан: ${error.message}`);
   return data?.id ?? null;
 }
+
+/** Окно, в котором «Купить» того же товара — скорее повтор, чем новая покупка. */
+export const RECENT_BOUGHT_WINDOW_MS = 3 * 86_400_000;
+
+/** Статусы заказа «оплачен или чек на проверке» — второй заказ на тот же товар не нужен. */
+export const BOUGHT_STATUSES = [
+  "awaiting_confirmation",
+  "paid",
+  "delivering",
+  "delivered",
+] as const;
+
+/**
+ * Свежий (за RECENT_BOUGHT_WINDOW_MS) цифровой заказ покупателя с этим
+ * товаром, оплаченный, выданный или с чеком на проверке, — новые первыми.
+ * После выдачи #221 покупательница снова нажала «Купить» и получила второй
+ * заказ #222 «К оплате» (Копилка 14.10). null — такого нет.
+ */
+export async function recentBoughtOrderWith(
+  ctx: TenantContext,
+  customer: Customer,
+  productId: string,
+  windowMs = RECENT_BOUGHT_WINDOW_MS,
+): Promise<OrderWithItems | null> {
+  const { pageAll } = await import("@/core/db/page");
+  const since = new Date(Date.now() - windowMs).toISOString();
+  const rows = await pageAll<OrderWithItems>(
+    (from, to) =>
+      ctx.db
+        .from("orders")
+        .select("*, order_items(*)")
+        .eq("telegram_id", customer.telegramId)
+        .in("status", [...BOUGHT_STATUSES])
+        .gte("created_at", since)
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+        .range(from, to) as unknown as PromiseLike<{
+        data: OrderWithItems[] | null;
+        error: { message: string } | null;
+      }>,
+    "оплаченные заказы покупателя не прочитаны",
+  );
+  return (
+    rows.find(
+      (o) =>
+        o.fulfillment_kind !== "physical" &&
+        (o.order_items ?? []).some((i) => i.product_id === productId),
+    ) ?? null
+  );
+}

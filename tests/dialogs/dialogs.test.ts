@@ -268,6 +268,8 @@ describe("золотые диалоги", () => {
             r.db.tables.orders?.find((o) => o.id === Number(id)),
             `${where}: заказ #${id}`,
           ).toMatchObject(fields);
+        if (e.orderCount !== undefined)
+          expect(r.db.tables.orders?.length ?? 0, `${where}: заказов`).toBe(e.orderCount);
         const seen = r.sellerReplies().join("\n");
         for (const x of e.sellerSees ?? [])
           expect(has(seen, x), `${where}: продавцу нет «${String(x)}» в «${seen}»`).toBe(true);
@@ -397,4 +399,36 @@ describe("Д5: заказ из одной корзины в трёх канал�
       ).toBe(2500);
     }
   });
+});
+
+/** Копилка 14.10, aliyajanaman: #221 выдан, снова «Купить» — бот оформил #222. */
+describe("повторное «Купить» по оплаченному заказу", () => {
+  const MATR: Product[] = [{ id: "a0000000-0000-4000-8000-000000000001", name: "Матрешки" }];
+
+  for (const locale of ["ru", "kk", "en", "uz"] as const)
+    it(`${locale}: заказ оформлен, чек прислан, выдан — второе «Купить» не создаёт заказ и называет первый`, async () => {
+      const r = room({
+        channel: "instagram",
+        locale,
+        full: true,
+        modules: { helpdesk: true, manager_chat: true },
+        products: MATR,
+      });
+      await r.say({ button: `PROD:${MATR[0]!.id}`, title: "Купить" });
+      expect(r.db.tables.orders, "первый заказ оформлен").toHaveLength(1);
+      const first = r.db.tables.orders![0]!;
+      const no = Number(first.display_no ?? first.order_no ?? first.id);
+      // Чек на проверке: второго заказа нет, в ответе — номер первого.
+      first.status = "awaiting_confirmation";
+      await r.say({ button: `PROD:${MATR[0]!.id}`, title: "Купить" });
+      expect(r.db.tables.orders, "заказ по-прежнему один").toHaveLength(1);
+      expect(r.replies().join("\n")).toContain(`#${no}`);
+      // Продавец выдал заказ — снова «Купить»: ответ о выдаче, заказ один.
+      first.status = "delivered";
+      await r.say({ button: `PROD:${MATR[0]!.id}`, title: "Купить" });
+      expect(r.db.tables.orders, "после выдачи — тоже один").toHaveLength(1);
+      expect(r.replies()).toHaveLength(1);
+      expect(r.replies()[0]).toContain(`#${no}`);
+      expect(r.cart()).toHaveLength(0);
+    });
 });

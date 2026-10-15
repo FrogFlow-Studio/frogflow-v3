@@ -89,16 +89,24 @@ export async function repeatBuy(
   resend: () => Promise<boolean>,
   /** Свой ответ на первое повторное нажатие вместо «уже оформлен, реквизиты выше». */
   firstReply?: string,
+  /**
+   * Этап заказа (статус): сменился — это новый ответ, а не повтор. Чек был на
+   * проверке, через минуту заказ выдан — «Купить» снова получает ответ.
+   */
+  stage?: string,
 ): Promise<boolean> {
   const mode = s.customer.state.mode;
   let fresh = true;
   const claimed = await claimStateSection(s.ctx, s.customer, "direct", (cur) => {
-    const r = cur.repeat_buy as { order?: number; at?: string } | undefined;
+    const r = cur.repeat_buy as { order?: number; at?: string; stage?: string } | undefined;
     const at = Date.parse(String(r?.at ?? ""));
-    if (r?.order === orderId && Number.isFinite(at) && Date.now() - at < REPEAT_BUY_WINDOW_MS)
-      return null;
-    fresh = r?.order !== orderId;
-    return { ...cur, repeat_buy: { order: orderId, at: new Date().toISOString() } };
+    const same = r?.order === orderId && r?.stage === stage;
+    if (same && Number.isFinite(at) && Date.now() - at < REPEAT_BUY_WINDOW_MS) return null;
+    fresh = !same;
+    return {
+      ...cur,
+      repeat_buy: { order: orderId, at: new Date().toISOString(), ...(stage ? { stage } : {}) },
+    };
   });
   if (!claimed) return true;
   s.customer = claimed;

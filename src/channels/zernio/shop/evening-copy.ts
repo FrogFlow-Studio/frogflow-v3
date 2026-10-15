@@ -15,6 +15,12 @@ export type EveningCopy = {
   alreadyPlacedLink: (no: number) => string;
   /** «Отмена» сразу после оформления. */
   orderCancelled: (no: number) => string;
+  /** Повторное «Купить», а чек по заказу с этим товаром уже у продавца. */
+  boughtUnderReview: (no: number) => string;
+  /** Повторное «Купить», а заказ с этим товаром уже выдан. */
+  boughtDelivered: (no: number) => string;
+  /** Повторное «Купить», а заказ с этим товаром оплачен и ещё выдаётся. */
+  boughtPaid: (no: number) => string;
 };
 
 export const EVENING_COPY: Record<Locale, EveningCopy> = {
@@ -27,6 +33,11 @@ export const EVENING_COPY: Record<Locale, EveningCopy> = {
       `Заказ #${no} уже оформлен — реквизиты в сообщении выше. Жду чек об оплате.`,
     alreadyPlacedLink: (no) => `Заказ #${no} уже оформлен — ссылка на оплату в сообщении выше.`,
     orderCancelled: (no) => `Заказ #${no} отменён.`,
+    boughtUnderReview: (no) =>
+      `Чек по заказу #${no} уже у продавца на проверке — файлы придут сюда после подтверждения.`,
+    boughtDelivered: (no) =>
+      `Этот материал у вас уже есть: заказ #${no} выдан — файлы в сообщениях выше. Если нужен ещё один заказ — напишите, продавец поможет.`,
+    boughtPaid: (no) => `Заказ #${no} уже оплачен — файлы придут сюда.`,
   },
   kk: {
     filesHere:
@@ -38,6 +49,11 @@ export const EVENING_COPY: Record<Locale, EveningCopy> = {
     alreadyPlacedLink: (no) =>
       `#${no} тапсырыс рәсімделіп қойған — төлем сілтемесі жоғарыдағы хабарламада.`,
     orderCancelled: (no) => `#${no} тапсырыс тоқтатылды.`,
+    boughtUnderReview: (no) =>
+      `#${no} тапсырыс бойынша чек сатушыда тексерілуде — файлдар расталғаннан кейін осында келеді.`,
+    boughtDelivered: (no) =>
+      `Бұл материал сізде бар: #${no} тапсырыс берілді — файлдар жоғарыдағы хабарламаларда. Тағы бір тапсырыс керек болса — жазыңыз, сатушы көмектеседі.`,
+    boughtPaid: (no) => `#${no} тапсырыс төленген — файлдар осында келеді.`,
   },
   en: {
     filesHere:
@@ -49,6 +65,11 @@ export const EVENING_COPY: Record<Locale, EveningCopy> = {
     alreadyPlacedLink: (no) =>
       `Order #${no} is already placed — the payment link is in the message above.`,
     orderCancelled: (no) => `Order #${no} has been cancelled.`,
+    boughtUnderReview: (no) =>
+      `The receipt for order #${no} is already with the seller for checking — the files will come here once it's confirmed.`,
+    boughtDelivered: (no) =>
+      `You already have this material: order #${no} has been delivered — the files are in the messages above. If you need another order, write here and the seller will help.`,
+    boughtPaid: (no) => `Order #${no} is already paid — the files will come here.`,
   },
   uz: {
     filesHere:
@@ -60,5 +81,10 @@ export const EVENING_COPY: Record<Locale, EveningCopy> = {
     alreadyPlacedLink: (no) =>
       `#${no} buyurtma allaqachon rasmiylashtirilgan — to‘lov havolasi yuqoridagi xabarda.`,
     orderCancelled: (no) => `#${no} buyurtma bekor qilindi.`,
+    boughtUnderReview: (no) =>
+      `#${no} buyurtma bo‘yicha chek sotuvchida tekshiruvda — fayllar tasdiqlangach shu yerga keladi.`,
+    boughtDelivered: (no) =>
+      `Bu material sizda bor: #${no} buyurtma topshirildi — fayllar yuqoridagi xabarlarda. Yana bir buyurtma kerak bo‘lsa — yozing, sotuvchi yordam beradi.`,
+    boughtPaid: (no) => `#${no} buyurtma to‘langan — fayllar shu yerga keladi.`,
   },
 };
