@@ -28,6 +28,7 @@ export {
   reorderReport,
   reorderIntoCart,
   recentAwaitingPaymentOrder,
+  recentBoughtOrderWith,
 } from "./order-queries";
 export {
   type ProofFile,

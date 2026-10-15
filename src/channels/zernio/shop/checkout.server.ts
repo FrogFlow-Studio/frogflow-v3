@@ -935,6 +935,41 @@ export async function resumeExpressOrder(s: Shop, productId: string): Promise<bo
   );
 }
 
+/**
+ * «Купить» товара, который покупатель уже оплатил (чек на проверке, оплачен,
+ * выдан) за последние три дня: второй заказ не оформляем, а говорим, где
+ * первый. aliyajanaman получила #221, написала «Матрешка», снова нажала
+ * «Купить» — и бот оформил #222 «К оплате» (Копилка 14.10). Ответ — один раз
+ * на заказ, дальше полчаса тишина (repeatBuy). true — ответили или промолчали.
+ */
+export async function alreadyBoughtExpress(s: Shop, productId: string): Promise<boolean> {
+  const { recentBoughtOrderWith } = await import("@/core/orders/orders");
+  const order = await recentBoughtOrderWith(s.ctx, s.customer, productId);
+  if (!order) return false;
+  const no = displayNo(order);
+  const { EVENING_COPY } = await import("./evening-copy");
+  const t = EVENING_COPY[s.locale];
+  const text =
+    order.status === "awaiting_confirmation"
+      ? t.boughtUnderReview(no)
+      : order.status === "delivered"
+        ? t.boughtDelivered(no)
+        : t.boughtPaid(no);
+  s.why = `повторное «Купить»: заказ #${no} уже оплачен или на проверке`;
+  const { repeatBuy } = await import("./evening.server");
+  return repeatBuy(
+    s,
+    order.id,
+    no,
+    async () => {
+      await reply(s, text, { force: true });
+      return true;
+    },
+    text,
+    order.status,
+  );
+}
+
 async function sendManualInstructions(
   s: Shop,
   p: {
