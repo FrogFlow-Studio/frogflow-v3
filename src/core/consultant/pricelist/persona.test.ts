@@ -31,12 +31,12 @@ const sha = (s: string) => createHash("sha256").update(s).digest("hex");
  * Отпечаток подсказки v2.23 (v2.22 + способ оплаты — только из базы знаний, иначе
  * «пришлёт менеджер»; заказ передаётся сразу, без ожидания телефона; тот же INPUT).
  */
-const BOVI_PROMPT_SHA = "886c3e649c56a69fd4b58dcdbace5862fec1c877d474e494fb0dd4c4796e5b00";
+const BOVI_PROMPT_SHA = "3e6eb20474d6fb6a15d26f8f04620f4e51c467deae7cee1851aa63aa52db9480";
 
 describe("образ консультанта по прайсу", () => {
   it("без настройки — подсказка BOVI слово в слово прежняя", () => {
     const prompt = buildV2SystemPrompt(INPUT);
-    expect(prompt.length).toBe(12048);
+    expect(prompt.length).toBe(12575);
     expect(sha(prompt)).toBe(BOVI_PROMPT_SHA);
     expect(prompt).not.toContain(SELLER_TEXT_OPEN);
     // BOVI 10.10 23:49, indirenokars: на «в каком цвете?» — цвета без цены.

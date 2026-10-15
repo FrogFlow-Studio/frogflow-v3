@@ -2931,6 +2931,45 @@ export const SCENARIOS: Scenario[] = [
       },
     ],
   },
+  {
+    id: "pricelist-rubles-for-quoted-price-ig-ru",
+    title:
+      "«а в рублях это сколько?» к уже названной цене — та же цена в рублях, товар не переспрашивает",
+    origin:
+      "скрины владельца BOVI 15.10 10:52 (lana_lifestyledesigne): после цены из ответа на комментарий бот спросил «какой товар смотрите, назову цену в вашей валюте»",
+    channel: "instagram",
+    locale: "ru",
+    full: true,
+    vertical: "consultant",
+    modules: { shop: true },
+    rubRate: 5,
+    state: {
+      consultant: {
+        recent: [
+          { role: "customer", text: "[комментарий под публикацией] Uchino" },
+          {
+            role: "assistant",
+            text: "Здравствуйте. Полотенце Uchino банное 50х100 - 9 000 ₸. Какой цвет подобрать?",
+          },
+        ],
+      },
+    },
+    pricelist: {
+      catalog: PL_CATALOG,
+      rounds: [
+        said(
+          "Доставка в Россию есть, через СДЭК. Скажите, какой товар смотрите, назову цену в вашей валюте.",
+        ),
+        said("Uchino полотенце банное 50х100 - 9 000 ₸. Доставка в Россию есть, через СДЭК."),
+      ],
+    },
+    steps: [
+      {
+        say: { text: "А в рублях это сколько будет? И есть ли доставка в Москву" },
+        expect: { count: 1, says: ["₽", "СДЭК"], notSays: ["какой товар", "9 000 ₸"] },
+      },
+    ],
+  },
   // ───── Задачи консультанта: передача менеджеру — строка у продавца (перенос v1 tasks.ts) ─────
   ...everyLocale(
     (l) => ({
