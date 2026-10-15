@@ -4962,6 +4962,101 @@ export const SCENARIOS: Scenario[] = [
       },
     ],
   },
+  // ───── AATeach 15.10: «Не отвечать на обычные сообщения» — диалог остаётся непрочитанным ─────
+  {
+    id: "keep-unread-several-items-ig-ru",
+    title:
+      "«Не отвечать на обычные сообщения» включено: «Хотела бы купить данные материалы» — бот молчит, вопрос продавцу обращением",
+    origin:
+      "AATeach 15.10, lenchik_ashotovna: четыре картинки и «Здравствуйте! Хотела бы купить, данные материалы.» → «Ваш вопрос уже у продавца: … можно ли оплатить несколько материалов одним чеком»; ответ пометил диалог прочитанным, Анастасия его не увидела",
+    channel: "instagram",
+    locale: "ru",
+    products: PRODUCTS,
+    full: true,
+    modules: { helpdesk: true, manager_chat: true },
+    triage: [{ kind: "several_items" }],
+    arrange: (r) => {
+      r.db.tables.app_settings!.push({ key: "chat_keep_unread", value: "true" });
+    },
+    steps: [
+      {
+        say: { text: "Здравствуйте! Хотела бы купить, данные материалы." },
+        expect: { silent: true, sellerNotices: 1 },
+      },
+    ],
+  },
+  {
+    id: "keep-unread-product-request-foreign-ig-ru",
+    title:
+      "«Не отвечать на обычные сообщения» включено: название материала и «в бел. руб можно?» — без ответа, вопрос продавцу",
+    origin: "AATeach 15.10: 16 ответов «вопрос уже у продавца» за 4 дня, все на первое сообщение",
+    channel: "instagram",
+    locale: "ru",
+    products: PRODUCTS,
+    full: true,
+    modules: { helpdesk: true, manager_chat: true },
+    triage: [{ kind: "product_request" }, { kind: "foreign_pay", country: "BY" }],
+    arrange: (r) => {
+      r.db.tables.app_settings!.push({ key: "chat_keep_unread", value: "true" });
+    },
+    steps: [
+      {
+        say: { text: "Классный уголок" },
+        expect: { silent: true, sellerNotices: 1 },
+      },
+      {
+        say: { text: "В бел. руб можно" },
+        expect: { silent: true },
+      },
+    ],
+  },
+  {
+    id: "keep-unread-scope-all-ig-ru",
+    title:
+      "«На все сообщения» и «Не отвечать на обычные сообщения» — вопрос без ответа, «Передал ваш вопрос продавцу» не уходит",
+    origin: "AATeach 15.10: переключатель обещает непрочитанный диалог и при «На все сообщения»",
+    channel: "instagram",
+    locale: "ru",
+    products: PRODUCTS,
+    full: true,
+    modules: { manager_chat: true },
+    triage: [{ kind: "other" }],
+    arrange: (r) => {
+      r.db.tables.app_settings!.push(
+        { key: "chat_keep_unread", value: "true" },
+        { key: "instagram_direct_bot_scope", value: "all" },
+      );
+    },
+    steps: [
+      {
+        say: { text: "А когда будут новые материалы по чтению?" },
+        expect: { silent: true },
+      },
+    ],
+  },
+  {
+    id: "keep-unread-pay-step-still-answers-ig-ru",
+    title:
+      "«Не отвечать на обычные сообщения» включено, а заказ ждёт оплату: «Не проходит» — бот по-прежнему отвечает про платёж",
+    origin: "ожидание к keep-unread-several-items-ig-ru: шаг оплаты переключатель не трогает",
+    channel: "instagram",
+    locale: "ru",
+    products: PRODUCTS,
+    mail: true,
+    receipts: true,
+    triage: [{ kind: "payment_failed" }],
+    state: { mode: "awaiting_proof", pending_order_id: 82 },
+    arrange: (r) => {
+      paidOrder({ status: "awaiting_payment" })(r);
+      r.db.tables.app_settings!.push({ key: "chat_keep_unread", value: "true" });
+    },
+    steps: [
+      {
+        say: { text: "Не проходит" },
+        expect: { count: 1, says: [(c) => c.payFailedReply] },
+      },
+    ],
+  },
   {
     id: "product-request-no-rule-ig-ru",
     title:

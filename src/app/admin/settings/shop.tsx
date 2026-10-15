@@ -21,11 +21,13 @@ import {
   CHAT_FOREIGN_PAY_KEY,
   CHAT_HOW_TO_BUY_KEY,
   CHAT_PRODUCT_REQUEST_KEY,
+  CHAT_KEEP_UNREAD_KEY,
   CHAT_SEVERAL_ITEMS_KEY,
   CHAT_SKIP_CHATTER_KEY,
   foreignPayOn,
   howToBuyOn,
   productRequestOn,
+  keepUnreadOn,
   severalItemsOn,
   skipChatterOn,
 } from "@/core/inbox/triage";
@@ -472,6 +474,7 @@ export function DirectTriageCard({ settings }: { settings: Record<string, string
   const router = useRouter();
   const { shop } = settingsRoute.useRouteContext();
   const t = adminT(shop.locale);
+  const quiet = keepUnreadOn(settings[CHAT_KEEP_UNREAD_KEY]);
   const chatter = skipChatterOn(settings[CHAT_SKIP_CHATTER_KEY]);
   const foreign = foreignPayOn(settings[CHAT_FOREIGN_PAY_KEY]);
   const howToBuy = howToBuyOn(settings[CHAT_HOW_TO_BUY_KEY]);
@@ -487,6 +490,17 @@ export function DirectTriageCard({ settings }: { settings: Record<string, string
       <p className="mb-3 text-sm text-muted">{t("settings.triage.intro")}</p>
       <div className="flex items-center gap-3">
         <Switch
+          checked={quiet}
+          disabled={readOnly}
+          onChange={(v) => void toggle.run(CHAT_KEEP_UNREAD_KEY, v).catch(() => {})}
+          label={t("settings.triage.keepUnreadLabel")}
+        />
+        <span className="text-sm">{t("settings.triage.keepUnreadLabel")}</span>
+        <HelpTip article="settings-channels" anchor="direct-keep-unread" />
+      </div>
+      <p className="mt-1 text-xs text-muted">{t("settings.triage.keepUnreadHint")}</p>
+      <div className="mt-3 flex items-center gap-3">
+        <Switch
           checked={chatter}
           disabled={readOnly}
           onChange={(v) => void toggle.run(CHAT_SKIP_CHATTER_KEY, v).catch(() => {})}
@@ -498,8 +512,8 @@ export function DirectTriageCard({ settings }: { settings: Record<string, string
       <p className="mt-1 text-xs text-muted">{t("settings.triage.chatterHint")}</p>
       <div className="mt-3 flex items-center gap-3">
         <Switch
-          checked={foreign}
-          disabled={readOnly}
+          checked={foreign && !quiet}
+          disabled={readOnly || quiet}
           onChange={(v) => void toggle.run(CHAT_FOREIGN_PAY_KEY, v).catch(() => {})}
           label={t("settings.triage.foreignLabel")}
         />
@@ -511,8 +525,8 @@ export function DirectTriageCard({ settings }: { settings: Record<string, string
       <p className="mt-1 text-xs text-muted">{t("settings.triage.foreignOrder")}</p>
       <div className="mt-3 flex items-center gap-3">
         <Switch
-          checked={howToBuy}
-          disabled={readOnly}
+          checked={howToBuy && !quiet}
+          disabled={readOnly || quiet}
           onChange={(v) => void toggle.run(CHAT_HOW_TO_BUY_KEY, v).catch(() => {})}
           label={t("settings.triage.howToBuyLabel")}
         />
@@ -522,8 +536,8 @@ export function DirectTriageCard({ settings }: { settings: Record<string, string
       <p className="mt-1 text-xs text-muted">{t("settings.triage.howToBuyHint")}</p>
       <div className="mt-3 flex items-center gap-3">
         <Switch
-          checked={several}
-          disabled={readOnly}
+          checked={several && !quiet}
+          disabled={readOnly || quiet}
           onChange={(v) => void toggle.run(CHAT_SEVERAL_ITEMS_KEY, v).catch(() => {})}
           label={t("settings.triage.severalLabel")}
         />
@@ -533,8 +547,8 @@ export function DirectTriageCard({ settings }: { settings: Record<string, string
       <p className="mt-1 text-xs text-muted">{t("settings.triage.severalHint")}</p>
       <div className="mt-3 flex items-center gap-3">
         <Switch
-          checked={request}
-          disabled={readOnly}
+          checked={request && !quiet}
+          disabled={readOnly || quiet}
           onChange={(v) => void toggle.run(CHAT_PRODUCT_REQUEST_KEY, v).catch(() => {})}
           label={t("settings.triage.requestLabel")}
         />

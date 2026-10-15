@@ -142,7 +142,7 @@ export const ru = {
   "settings.dbot.scope": "На что отвечать",
   "settings.dbot.scope.purchases": "Только по заказам",
   "settings.dbot.scope.purchasesHint":
-    "Бот отвечает, только когда к нему обращаются: «старт», «каталог» или ваше слово-вызов, код материала (#245 или слово из ключевых слов карточки, например #кпп), кнопки, чек к заказу — и пока покупатель с ним переписывается. На обычные сообщения молчит: диалог остаётся непрочитанным, и вы видите в приложении, кому ответить.",
+    "Бот отвечает, только когда к нему обращаются: «старт», «каталог» или ваше слово-вызов, код материала (#245 или слово из ключевых слов карточки, например #кпп), кнопки, чек к заказу — и пока покупатель с ним переписывается. На обычные сообщения молчит: диалог остаётся непрочитанным, и вы видите в приложении, кому ответить. Исключение — ответы из карточки «Сообщения без вопроса и оплата из других стран»: чтобы бот молчал и на них, включите там «Не отвечать на обычные сообщения».",
   "settings.dbot.scope.all": "На все сообщения",
   "settings.dbot.scope.allHint": "Бот отвечает на любую реплику, вопросы передаёт вам.",
   "settings.dbot.triggers": "Команды, которыми покупатель зовёт бота",
@@ -480,6 +480,9 @@ export const ru = {
   "settings.triage.title": "Сообщения без вопроса и оплата из других стран",
   "settings.triage.intro":
     "Что за сообщение пришло в Direct или WhatsApp, понимает ИИ, а не список слов. Сообщение всегда остаётся в «Чате».",
+  "settings.triage.keepUnreadLabel": "Не отвечать на обычные сообщения",
+  "settings.triage.keepUnreadHint":
+    "Бот не отвечает на сообщения не по заказу: вопросы об оплате из других стран, «как получить?», «несколько материалов одним чеком?», название материала, которого нет в боте. Вопрос приходит вам обращением, а диалог в Instagram остаётся непрочитанным — любой ответ бота пометил бы его прочитанным. Кнопки, коды материалов, заказ и чек бот ведёт как раньше. Переключатели ниже при этом не действуют.",
   "settings.triage.chatterLabel": "Не открывать обращение на «спасибо», эмодзи и «+»",
   "settings.triage.chatterHint":
     "«Благодарю! 🌹», «Браво!», «🔥», «+», «Я подписана» без вопроса и просьбы — бот молчит, обращение не открывается. После выданного заказа на «спасибо» бот, как и раньше, один раз отвечает текстом «Ответ на «спасибо»». «Спасибо, а когда придёт?» — это вопрос, он уходит вам.",
@@ -709,7 +712,7 @@ export const kk: SectionDict<typeof ru> = {
   "settings.dbot.scope": "Неге жауап беру",
   "settings.dbot.scope.purchases": "Тек тапсырыстар бойынша",
   "settings.dbot.scope.purchasesHint":
-    "Бот оған жүгінгенде ғана жауап береді: «старт», «каталог» немесе сіздің шақыру сөзіңіз, материал коды (#245 немесе карточканың кілт сөзі, мысалы #кпп), батырмалар, тапсырыс чегі — және сатып алушы онымен жазысып жатқанда. Қарапайым хабарламаларға жауап бермейді: диалог оқылмаған болып қалады, кімге жауап беру керектігін қолданбадан көресіз.",
+    "Бот оған жүгінгенде ғана жауап береді: «старт», «каталог» немесе сіздің шақыру сөзіңіз, материал коды (#245 немесе карточканың кілт сөзі, мысалы #кпп), батырмалар, тапсырыс чегі — және сатып алушы онымен жазысып жатқанда. Қарапайым хабарламаларға жауап бермейді: диалог оқылмаған болып қалады, кімге жауап беру керектігін қолданбадан көресіз. Ерекшелік — «Сұрақсыз хабарламалар және басқа елдерден төлем» карточкасындағы жауаптар: бот оларға да жауап бермеуі үшін сол жерде «Қарапайым хабарламаларға жауап бермеу» қосыңыз.",
   "settings.dbot.scope.all": "Барлық хабарламаларға",
   "settings.dbot.scope.allHint":
     "Бот кез келген хабарламаға жауап береді, сұрақтарды сізге жібереді.",
@@ -1045,6 +1048,9 @@ export const kk: SectionDict<typeof ru> = {
   "settings.triage.title": "Сұрақсыз хабарламалар және басқа елдерден төлем",
   "settings.triage.intro":
     "Direct немесе WhatsApp-қа қандай хабарлама келгенін сөздер тізімі емес, ЖИ түсінеді. Хабарлама әрдайым «Чатта» қалады.",
+  "settings.triage.keepUnreadLabel": "Қарапайым хабарламаларға жауап бермеу",
+  "settings.triage.keepUnreadHint":
+    "Бот тапсырысқа қатысы жоқ хабарламаларға жауап бермейді: басқа елден төлем туралы сұрақтар, «қалай алуға болады?», «бірнеше материал бір чекпен бола ма?», ботта жоқ материалдың атауы. Сұрақ сізге өтініш болып келеді, ал Instagram-дағы диалог оқылмаған болып қалады — боттың кез келген жауабы оны оқылды деп белгілер еді. Батырмаларды, материал кодтарын, тапсырыс пен чекті бот бұрынғыдай жүргізеді. Бұл кезде төмендегі ауыстырғыштар әрекет етпейді.",
   "settings.triage.chatterLabel": "«Рақмет», эмодзи және «+» үшін өтініш ашпау",
   "settings.triage.chatterHint":
     "«Рақмет! 🌹», «Браво!», «🔥», «+», «Жазылдым» сұрақ пен өтінішсіз — бот үндемейді, өтініш ашылмайды. Тапсырыс берілгеннен кейін «рақмет» десе, бот бұрынғыдай «Рақмет сөзіне жауап» мәтінімен бір рет жауап береді. «Рақмет, қашан келеді?» — бұл сұрақ, ол сізге келеді.",
@@ -1273,7 +1279,7 @@ export const en: SectionDict<typeof ru> = {
   "settings.dbot.scope": "What to reply to",
   "settings.dbot.scope.purchases": "Orders only",
   "settings.dbot.scope.purchasesHint":
-    "The bot replies only when it is addressed: “start”, “catalog” or your trigger word, a material code (#245 or a word from the product keywords, e.g. #kpp), buttons, a receipt for an order — and while the buyer is talking to it. It stays silent on ordinary messages, so the conversation stays unread and you can see in the app who needs a reply.",
+    "The bot replies only when it is addressed: “start”, “catalog” or your trigger word, a material code (#245 or a word from the product keywords, e.g. #kpp), buttons, a receipt for an order — and while the buyer is talking to it. It stays silent on ordinary messages, so the conversation stays unread and you can see in the app who needs a reply. Exception — replies from the “Messages without a question and payment from other countries” card: to keep the bot silent on those too, turn on “Don’t reply to ordinary messages” there.",
   "settings.dbot.scope.all": "All messages",
   "settings.dbot.scope.allHint": "The bot answers every message and forwards questions to you.",
   "settings.dbot.triggers": "Words customers use to call the bot",
@@ -1606,6 +1612,9 @@ export const en: SectionDict<typeof ru> = {
   "settings.triage.title": "Messages without a question and payment from other countries",
   "settings.triage.intro":
     "AI, not a word list, decides what kind of message arrived in Direct or WhatsApp. The message always stays in “Chat”.",
+  "settings.triage.keepUnreadLabel": "Don’t reply to ordinary messages",
+  "settings.triage.keepUnreadHint":
+    "The bot doesn’t reply to messages that aren’t part of an order: questions about paying from other countries, “how do I get it?”, “several materials with one receipt?”, the name of a material the bot doesn’t have. The question comes to you as a ticket and the Instagram conversation stays unread — any bot reply would mark it as read. Buttons, material codes, orders and receipts work as before. The switches below have no effect while this is on.",
   "settings.triage.chatterLabel": "Don’t open a ticket for “thank you”, emoji and “+”",
   "settings.triage.chatterHint":
     "“Thank you! 🌹”, “Bravo!”, “🔥”, “+”, “I’ve subscribed” with no question or request: the bot stays silent and no ticket is opened. After a delivered order the bot still replies once to “thank you” with the “Reply to thank you” text. “Thanks, when will it arrive?” is a question and comes to you.",
@@ -1836,7 +1845,7 @@ export const uz: SectionDict<typeof ru> = {
   "settings.dbot.scope": "Nimaga javob berish",
   "settings.dbot.scope.purchases": "Faqat buyurtmalar bo‘yicha",
   "settings.dbot.scope.purchasesHint":
-    "Bot faqat unga murojaat qilinganda javob beradi: «start», «katalog» yoki sizning chaqiruv soʻzingiz, material kodi (#245 yoki mahsulot kalit soʻzi, masalan #kpp), tugmalar, buyurtma cheki — va xaridor u bilan yozishayotgan paytda. Oddiy xabarlarga javob bermaydi: dialog oʻqilmagan qoladi va ilovada kimga javob berish kerakligini koʻrasiz.",
+    "Bot faqat unga murojaat qilinganda javob beradi: «start», «katalog» yoki sizning chaqiruv soʻzingiz, material kodi (#245 yoki mahsulot kalit soʻzi, masalan #kpp), tugmalar, buyurtma cheki — va xaridor u bilan yozishayotgan paytda. Oddiy xabarlarga javob bermaydi: dialog oʻqilmagan qoladi va ilovada kimga javob berish kerakligini koʻrasiz. Istisno — «Savolsiz xabarlar va boshqa davlatlardan to‘lov» kartasidagi javoblar: bot ularga ham javob bermasligi uchun u yerda «Oddiy xabarlarga javob bermaslik»ni yoqing.",
   "settings.dbot.scope.all": "Barcha xabarlarga",
   "settings.dbot.scope.allHint": "Bot har qanday xabarga javob beradi, savollarni sizga uzatadi.",
   "settings.dbot.triggers": "Xaridor botni chaqiradigan buyruqlar",
@@ -2174,6 +2183,9 @@ export const uz: SectionDict<typeof ru> = {
   "settings.triage.title": "Savolsiz xabarlar va boshqa davlatlardan to‘lov",
   "settings.triage.intro":
     "Direct yoki WhatsApp’ga qanday xabar kelganini so‘zlar ro‘yxati emas, SI tushunadi. Xabar har doim «Chat»da qoladi.",
+  "settings.triage.keepUnreadLabel": "Oddiy xabarlarga javob bermaslik",
+  "settings.triage.keepUnreadHint":
+    "Bot buyurtmaga aloqasi yo‘q xabarlarga javob bermaydi: boshqa davlatdan to‘lov haqidagi savollar, «qanday olsam bo‘ladi?», «bir nechta material bitta chek bilan mumkinmi?», botda yo‘q material nomi. Savol sizga murojaat bo‘lib keladi, Instagram’dagi dialog esa o‘qilmagan qoladi — botning har qanday javobi uni o‘qilgan deb belgilagan bo‘lardi. Tugmalar, material kodlari, buyurtma va chekni bot avvalgidek yuritadi. Bu yoqilganda quyidagi kalitlar ishlamaydi.",
   "settings.triage.chatterLabel": "«Rahmat», emoji va «+» uchun murojaat ochmaslik",
   "settings.triage.chatterHint":
     "«Rahmat! 🌹», «Barakalla!», «🔥», «+», «Obuna bo‘ldim» savol va iltimossiz — bot jim turadi, murojaat ochilmaydi. Buyurtma topshirilgach «rahmat» deyilsa, bot avvalgidek «Rahmat»ga javob» matni bilan bir marta javob beradi. «Rahmat, qachon keladi?» — bu savol, u sizga keladi.",
