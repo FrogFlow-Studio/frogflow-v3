@@ -36,6 +36,7 @@
 import type { ConsultantProduct } from "./catalog";
 import { checkPrices, indexCatalog, type CatalogIndex } from "./price-match";
 import { editDistance, latinFold, translitFold } from "./typos";
+import { findKztAmounts } from "./currency";
 
 export type DraftProblem = {
   kind:
@@ -52,7 +53,9 @@ export type DraftProblem = {
     | "latin"
     | "property"
     | "height"
-    | "clarify";
+    | "clarify"
+    | "rubles"
+    | "direct";
   detail: string;
 };
 
@@ -288,18 +291,50 @@ export type DraftContext = {
   askedBefore?: boolean;
   /** Покупатель прислал фото в этот ход. */
   photo?: boolean;
+  /**
+   * Покупатель просит рубли, а цены в тенге бот уже назвал прошлой репликой:
+   * эти суммы («66 000 ₸») — их и надо повторить, код переведёт.
+   */
+  quotedPrices?: string[];
 };
+
+/**
+ * Приглашение написать в Директ — из самого Директа (BOVI 15.10: ответ на
+ * комментарий уходит личным сообщением, а заканчивался «пишите в Директ»).
+ */
+const DIRECT_INVITE_RE =
+  /(?:пиш|напиш)[а-яё]*(?:\s+[а-яё]+){0,2}\s+(?:в|во)\s+(?:директ|direct|личк[а-яё]*|лс|личные)/i;
+/** Сумма в тенге в черновике. */
+const KZT_IN_DRAFT_RE = /\d[\d \u00a0\u202f]*\s?(?:₸|тг\.?(?![а-яё])|тенге)/i;
 
 /**
  * Прошлая реплика бота — уточняющий вопрос: в ней «?», и она не ответ на
  * первое сообщение диалога («Здравствуйте. Что подсказать?» — приветствие, а
  * не уточнение).
  */
+const COMMENT_MARK = "[комментарий под публикацией]";
+
+/** Суммы в тенге из последней реплики бота — «66 000 ₸» (не больше трёх). */
+export function pricesQuotedBefore(
+  recent: { role: "customer" | "assistant"; text: string }[],
+): string[] {
+  const last = [...recent].reverse().find((t) => t.role === "assistant");
+  if (!last) return [];
+  return findKztAmounts(last.text)
+    .map((a) => last.text.slice(a.start, a.end))
+    .slice(0, 3);
+}
+
 export function askedBefore(recent: { role: "customer" | "assistant"; text: string }[]): boolean {
   let i = recent.length - 1;
   while (i >= 0 && recent[i]!.role !== "assistant") i--;
   if (i < 0 || !recent[i]!.text.includes("?")) return false;
-  return recent.slice(0, i).filter((t) => t.role === "customer").length >= 2;
+  // Комментарий под публикацией — не реплика диалога: ответ на «Здравствуйте»
+  // после него — приветствие, а не уточнение (BOVI 15.10).
+  return (
+    recent.slice(0, i).filter((t) => t.role === "customer" && !t.text.startsWith(COMMENT_MARK))
+      .length >= 2
+  );
 }
 
 export function draftProblems(
@@ -332,6 +367,11 @@ export function draftProblems(
   if (heights.length) problems.push({ kind: "height", detail: heights.join("; ") });
   // Два уточнения подряд или фото без поиска: правило промпта, которое модель
   // нарушала (BOVI 12.10: четыре вопроса подряд, ни одного поиска и цены).
+  if (DIRECT_INVITE_RE.test(text)) problems.push({ kind: "direct", detail: "" });
+  // «А в рублях это сколько?» к уже названной цене: повторить её, а не
+  // переспрашивать товар (BOVI 15.10, lana_lifestyledesigne).
+  if (ctx.quotedPrices?.length && !KZT_IN_DRAFT_RE.test(text))
+    problems.push({ kind: "rubles", detail: ctx.quotedPrices.join(", ") });
   if (!ctx.searched && (ctx.askedBefore || ctx.photo) && text.includes("?"))
     problems.push({ kind: "clarify", detail: ctx.photo ? "photo" : "again" });
   return problems;
@@ -369,6 +409,10 @@ export function draftFixNote(problems: DraftProblem[]): string {
         return p.detail === "photo"
           ? "• Покупатель прислал фото, а вы только переспрашиваете. Если речь о товаре — поймите по фото вид вещи, цвет и узор, найдите похожее поиском (search_products) и назовите 1–3 варианта с ценами; уточнить можно одним вопросом после. Не нашлось — так и скажите."
           : "• Вы уже задавали уточняющий вопрос, это было бы второе подряд. Если речь о товаре — найдите поиском (search_products) по тому, что уже известно (вид вещи, цвет, размер), и назовите 1–3 варианта с ценами; уточнить можно одним вопросом после. Не нашлось — так и скажите. Если вопрос не о товаре (оплата, доставка) — оставьте свой ответ как есть.";
+      case "rubles":
+        return `• Покупатель спрашивает в рублях про цены, которые вы уже назвали (${p.detail}). Повторите эти цены в тенге, как раньше, — покупатель увидит их в рублях. Товар и валюту заново не спрашивайте; на остальное в сообщении (доставка и т. п.) ответьте тоже.`;
+      case "direct":
+        return "• Переписка уже идёт в Директе — не зовите «написать в Директ». Закончите вопросом, что подобрать (размер, цвет).";
       case "promise":
         return "• Вы обещаете покупателю менеджера, но не вызвали handoff_to_manager. Нужен менеджер — вызовите его с причиной; не нужен — не обещайте.";
     }
