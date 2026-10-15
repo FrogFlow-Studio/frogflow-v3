@@ -9,6 +9,7 @@ import {
   draftProblems,
   heightMismatches,
   mattressHeightIn,
+  pricesQuotedBefore,
   unsupportedProperties,
 } from "./draft-check";
 
@@ -171,6 +172,46 @@ describe("второе уточнение подряд и фото без пои
     expect(kinds("Такого нет.", { askedBefore: true })).not.toContain("clarify");
     expect(kinds("Уточните марку?", {})).not.toContain("clarify");
     expect(draftFixNote([{ kind: "clarify", detail: "photo" }])).toContain("search_products");
+  });
+});
+
+describe("BOVI 15.10: рубли к названной цене и «пишите в Директ»", () => {
+  it("рубли к уже названной цене: черновик без суммы — переписать", () => {
+    const quoted = pricesQuotedBefore([
+      { role: "customer", text: "[комментарий под публикацией] Bovi" },
+      {
+        role: "assistant",
+        text: "Здравствуйте. Постельное бельё BOVI - от 66 000 ₸ за комплект 140x200.",
+      },
+    ]);
+    expect(quoted).toEqual(["66 000 ₸"]);
+    const draft = "Скажите, какой товар смотрите, назову цену в вашей валюте.";
+    expect(draftProblems(draft, [], { quotedPrices: quoted }).map((p) => p.kind)).toContain(
+      "rubles",
+    );
+    expect(
+      draftProblems("140x200 - от 66 000 ₸.", [], { quotedPrices: quoted }).map((p) => p.kind),
+    ).not.toContain("rubles");
+  });
+
+  it("«пишите в Директ» из Директа — переписать", () => {
+    for (const t of [
+      "Если нужно подобрать размер и цвет, пишите в Директ.",
+      "Напишите нам в директ.",
+    ])
+      expect(draftProblems(t, []).map((p) => p.kind)).toContain("direct");
+    expect(draftProblems("Какой размер подобрать?", []).map((p) => p.kind)).not.toContain("direct");
+  });
+
+  it("ответ на «Здравствуйте» после комментария — не уточнение", () => {
+    expect(
+      askedBefore([
+        { role: "customer", text: "[комментарий под публикацией] Bovi" },
+        { role: "assistant", text: "Здравствуйте. BOVI - от 66 000 ₸." },
+        { role: "customer", text: "Здравствуйте" },
+        { role: "assistant", text: "Что вас интересует из этого?" },
+      ]),
+    ).toBe(false);
   });
 });
 
