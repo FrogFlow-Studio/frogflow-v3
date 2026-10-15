@@ -115,6 +115,31 @@ describe("резервный крон Comment-to-DM", () => {
     expect(ids).toEqual(["fresh"]);
   });
 
+  it("строка уже записана — следующий прогон не вставляет её заново (без 409 в журнале)", async () => {
+    const { ctx, db } = shop();
+    const t = api({
+      comments: [comment("c1", "u1", 1)],
+      pages: [[]],
+      reply: { ok: false, error: "(#10) error_subcode 2534023" },
+    });
+    await runCommentDmFallback(ctx, t.a, NOW);
+    expect(db.tables.comment_dm_fallback_sends).toHaveLength(1);
+    const inserts: string[] = [];
+    const from = db.from.bind(db);
+    (db as { from: typeof from }).from = ((table: string) => {
+      const q = from(table as never);
+      const insert = q.insert.bind(q);
+      (q as { insert: typeof insert }).insert = ((row: never) => {
+        inserts.push(table);
+        return insert(row);
+      }) as typeof insert;
+      return q;
+    }) as typeof from;
+    await runCommentDmFallback(ctx, t.a, new Date(NOW.getTime() + 15 * 60_000));
+    expect(inserts).not.toContain("comment_dm_fallback_sends");
+    expect(t.privateReply).toHaveBeenCalledOnce();
+  });
+
   it("второй комментарий того же автора не догоняем", async () => {
     const { ctx } = shop();
     const t = api({
