@@ -91,7 +91,13 @@ export async function startCheckout(b: Bot) {
 }
 
 export async function continueCheckout(b: Bot) {
-  if (!b.customer.contactPhone) {
+  // Телефон нужен только для физического заказа, как в Instagram: цифровой
+  // выдаётся сюда же, в чат. AATeach 15.10: «^» трижды написала «нет телефона»,
+  // бот трижды ответил «неверный номер», заказа нет; за неделю так застряли 6
+  // покупателей. Решение Якова 15.10 — шаг убрать.
+  const items = await listCart(b.ctx, b.customer);
+  const physical = items.some((i) => i.products?.fulfillment_kind === "physical");
+  if (physical && !b.customer.contactPhone) {
     b.customer = await setState(b.ctx, b.customer, {
       ...b.customer.state,
       mode: "awaiting_contact",

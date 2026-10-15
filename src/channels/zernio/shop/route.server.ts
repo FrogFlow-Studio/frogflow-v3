@@ -133,6 +133,7 @@ import {
   proceedToFulfillmentOrPlace,
   proceedToLanguageOrPlace,
   resumeExpressOrder,
+  alreadyBoughtExpress,
   resumePendingPayChoice,
   saveOrderEmail,
   startCheckout,
@@ -1106,6 +1107,7 @@ function expressOn(s: Shop): boolean {
  */
 async function expressBuy(s: Shop, p: Product, card = true): Promise<boolean> {
   if (await resumeExpressOrder(s, p.id)) return true;
+  if (await alreadyBoughtExpress(s, p.id)) return true;
   const mode = s.customer.state.mode;
   if (mode && mode !== "idle") await setMode(s, { mode: "idle" });
   await clearCart(s.ctx, s.customer);

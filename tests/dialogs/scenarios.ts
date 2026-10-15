@@ -320,6 +320,8 @@ export interface Expect {
   modelSees?: Says[];
   /** Заказы после реплики: id → подмножество полей строки orders. */
   orders?: Record<number, Record<string, unknown>>;
+  /** Сколько заказов в базе после реплики (второй заказ на тот же товар — поломка). */
+  orderCount?: number;
   /**
    * Сообщений правил Zernio (второй шаг с кнопками, уходит через Zernio, а не
    * ответом бота) на эту реплику — сценарии с `automations`.
@@ -446,6 +448,46 @@ function everyLocale(
     }).filter(() => ci >= 0),
   );
 }
+
+/**
+ * Заказ #221 Копилки (14.10, aliyajanaman): «Матрешки» по «Купить» из
+ * автоматизации, чек Kaspi, через минуту продавец выдал. `status` — чтобы
+ * проверить и «чек на проверке» (#9 → #15).
+ */
+const boughtOrder =
+  (status: string, minutesAgo = 1) =>
+  (r: Room): void => {
+    prodamusOn(r);
+    const buyer = r.db.tables.bot_users![0]!;
+    r.db.tables.orders!.push({
+      id: 221,
+      order_no: 221,
+      display_no: 221,
+      bot_id: buyer.bot_id,
+      telegram_id: buyer.telegram_id,
+      user_key: buyer.user_key,
+      platform: buyer.platform,
+      status,
+      total: 1700,
+      currency: "KZT",
+      country_code: "KZ",
+      fulfillment_kind: "digital",
+      payment_proof_path: "proofs/221.jpg",
+      created_at: new Date(Date.now() - (minutesAgo + 5) * 60_000).toISOString(),
+      updated_at: new Date(Date.now() - minutesAgo * 60_000).toISOString(),
+      order_items: [
+        {
+          id: 2210,
+          order_id: 221,
+          product_id: P1,
+          quantity: 1,
+          name_snapshot: "Матрешки",
+          file_url_snapshot: "https://files.example/matreshki.pdf",
+          file_name_snapshot: "matreshki.pdf",
+        },
+      ],
+    });
+  };
 
 export const SCENARIOS: Scenario[] = [
   ...BOTS_20,
@@ -2164,6 +2206,22 @@ export const SCENARIOS: Scenario[] = [
     steps: [{ say: { text: PHONE }, expect: { cart: 0 } }],
   },
   {
+    id: "checkout-no-phone-digital-tg-ru",
+    title: "цифровой заказ в Telegram — без шага телефона, сразу к оплате",
+    origin:
+      "AATeach 15.10 00:24 «^»: на просьбу телефона «нет», «нет тиелефона», «000» — трижды «неверный номер», заказа нет",
+    channel: "telegram",
+    locale: "ru",
+    products: PRODUCTS,
+    steps: [
+      { say: { button: `add:${PRODUCTS[0]!.id}` }, expect: { cart: 1 } },
+      {
+        say: { button: "checkout" },
+        expect: { notSays: [(c) => c.phonePromptHtml] },
+      },
+    ],
+  },
+  {
     id: "duplicate-update-tg-ru",
     title: "повторная доставка того же обновления Telegram — один ответ",
     origin: "Б2 / дубли вебхука",
@@ -2818,17 +2876,58 @@ export const SCENARIOS: Scenario[] = [
         said(
           "Цены привожу в тенге, вы увидите их в рублях: Uchino полотенце банное 50х100 - 9 000 ₸.",
         ),
+        // Черновик выше — служебное («привожу в тенге»): сверка просит переписать.
+        said("Uchino полотенце банное 50х100 - 9 000 ₸."),
         said("Uchino 50х100 в белом есть, 9 000 ₸ за штуку."),
       ],
     },
     steps: [
       {
         say: { text: "Можно в рублях" },
-        expect: { count: 1, says: ["₽"], notSays: ["9 000 ₸"], paused: false },
+        expect: {
+          count: 1,
+          says: ["₽"],
+          notSays: ["9 000 ₸", "в тенге", "увидите"],
+          paused: false,
+        },
       },
       {
         say: { text: "50х100" },
         expect: { count: 1, says: ["₽ за штуку"], paused: false },
+      },
+    ],
+  },
+  {
+    id: "pricelist-rubles-no-tenge-talk-ig-ru",
+    title:
+      "«А в рублях?» — покупателю цена в ₽, без «цены называю в тенге, отобразятся в рублях автоматически»",
+    origin:
+      "BOVI 15.10 01:18, 02:38, 05:59: «Цены указываю в тенге, но у вас в чате суммы отобразятся в рублях», «Цены всё равно называю в тенге - для вас они отобразятся в рублях автоматически»",
+    channel: "instagram",
+    locale: "ru",
+    full: true,
+    vertical: "consultant",
+    modules: { shop: true },
+    rubRate: 5,
+    pricelist: {
+      catalog: PL_CATALOG,
+      rounds: [
+        said(
+          "Цены всё равно называю в тенге - для вас они отобразятся в рублях автоматически. Uchino полотенце банное 50х100 - 9 000 ₸.",
+        ),
+        said("Uchino полотенце банное 50х100 - 9 000 ₸."),
+      ],
+    },
+    steps: [
+      {
+        say: { text: "А в рублях?" },
+        expect: {
+          count: 1,
+          says: ["₽"],
+          notSays: ["в тенге", "отобразятся", "автоматически"],
+          modelSees: ["служебное"],
+          paused: false,
+        },
       },
     ],
   },
@@ -5079,6 +5178,85 @@ export const SCENARIOS: Scenario[] = [
       {
         say: { button: `PROD:${P1}`, title: "Купить" },
         expect: { notSays: ["Оплату из вашей страны"] },
+      },
+    ],
+  },
+  {
+    id: "express-buy-after-delivered-ig-ru",
+    title:
+      "«Купить» по товару, чей заказ только что выдан, — второго заказа нет: «материал у вас уже есть, заказ #221 выдан»; повтор — тишина",
+    origin: "Копилка 14.10, aliyajanaman #221/#222",
+    channel: "instagram",
+    locale: "ru",
+    full: true,
+    modules: { helpdesk: true, manager_chat: true, prodamus: true },
+    products: [{ id: P1, name: "Матрешки", price: 1700 }],
+    state: {},
+    arrange: boughtOrder("delivered"),
+    steps: [
+      {
+        say: { button: `PROD:${P1}`, title: "Купить" },
+        expect: {
+          count: 1,
+          says: ["Этот материал у вас уже есть: заказ #221 выдан — файлы в сообщениях выше"],
+          notSays: ["К оплате", "способ оплаты"],
+          noButtons: [/Kaspi/, /Картой/],
+          cart: 0,
+          orderCount: 1,
+        },
+      },
+      {
+        say: { button: `PROD:${P1}`, title: "Купить" },
+        expect: { silent: true, orderCount: 1 },
+      },
+      {
+        say: { text: "Я заплатила уже" },
+        expect: { notSays: ["Выберите способ оплаты", "К оплате"], orderCount: 1 },
+      },
+    ],
+  },
+  {
+    id: "express-buy-under-review-ig-ru",
+    title:
+      "«Купить» по товару, чей чек уже у продавца на проверке, — второго заказа нет: «чек по заказу #221 уже на проверке»",
+    origin: "Копилка 14.10, aliyajanaman #221/#222; там же #9 (чек на проверке) → #15",
+    channel: "instagram",
+    locale: "ru",
+    full: true,
+    modules: { helpdesk: true, manager_chat: true, prodamus: true },
+    products: [{ id: P1, name: "Матрешки", price: 1700 }],
+    state: {},
+    arrange: boughtOrder("awaiting_confirmation"),
+    steps: [
+      {
+        say: { button: `PROD:${P1}`, title: "Купить" },
+        expect: {
+          count: 1,
+          says: [
+            "Чек по заказу #221 уже у продавца на проверке — файлы придут сюда после подтверждения",
+          ],
+          notSays: ["К оплате", "способ оплаты"],
+          orderCount: 1,
+        },
+      },
+    ],
+  },
+  {
+    id: "express-buy-old-delivered-ig-ru",
+    title:
+      "заказ того же товара выдан больше трёх дней назад — «Купить» оформляет новый, как раньше",
+    origin: "граница к express-buy-after-delivered-ig-ru",
+    channel: "instagram",
+    locale: "ru",
+    full: true,
+    modules: { helpdesk: true, manager_chat: true, prodamus: true },
+    products: [{ id: P1, name: "Матрешки", price: 1700 }],
+    state: {},
+    arrange: boughtOrder("delivered", 4 * 24 * 60),
+    steps: [
+      {
+        say: { button: `PROD:${P1}`, title: "Купить" },
+        expect: { says: ["К оплате"], notSays: ["у вас уже есть"], orderCount: 2 },
       },
     ],
   },
