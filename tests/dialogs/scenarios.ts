@@ -414,6 +414,66 @@ export interface Scenario {
 }
 
 export const P1 = "a0000000-0000-4000-8000-000000000001";
+
+/** Правило рилса «Палитра» Копилки: кодовое слово, второе сообщение с «Купить». */
+const PALITRA_RULE = {
+  id: "pal",
+  name: "Палитра",
+  accountId: "acc-1",
+  trigger: "comment",
+  keywords: ["Палитра"],
+  isActive: true,
+  twoStepDm: true,
+  postTitle: 'Пишите в комментариях слово "Палитра" и я вышлю подробную информацию.',
+  secondDmMessage: "Палитра средств выразительности — 1700 ₸. Нажмите «Купить»",
+  buttons: [{ type: "postback", title: "Купить", payload: `PROD:${P1}` }],
+};
+
+/** Карточка «Палитры» ушла `agoMs` назад; переписка помечена её отправкой, как в жизни. */
+const palitraSent =
+  (username: string, agoMs: number) =>
+  (r: Room): void => {
+    palitraPending(username)(r);
+    const row = r.db.tables.zernio_logs!.at(-1)!;
+    const at = new Date(Date.now() - agoMs).toISOString();
+    row.event_type = "two_step_dm_sent";
+    row.status = "processed";
+    (row.payload as Record<string, unknown>).sent_at = at;
+    r.db.tables.zernio_logs!.push({
+      id: "log-conv",
+      bot_id: row.bot_id,
+      event_id: "two-step-conv:conv-1",
+      event_type: "two_step_conversation",
+      status: "processed",
+      error_message: `${at}|row:log-pending`,
+      created_at: at,
+      payload: { conversationId: "conv-1" },
+    });
+  };
+
+/** Комментарий «Палитра» под рилсом: первое сообщение ушло, второе ждёт ответа покупателя. */
+const palitraPending =
+  (username: string) =>
+  (r: Room): void => {
+    r.db.tables.zernio_logs!.push({
+      id: "log-pending",
+      bot_id: r.db.tables.payment_methods![0]!.bot_id,
+      event_id: "two-step-dm:c-pal",
+      event_type: "two_step_dm_pending",
+      status: "pending",
+      error_message: null,
+      created_at: new Date(Date.now() - 40_000).toISOString(),
+      payload: {
+        commentId: "c-pal",
+        username,
+        authorId: "1",
+        accountId: "acc-1",
+        automationId: "pal",
+        secondText: PALITRA_RULE.secondDmMessage,
+        buttons: PALITRA_RULE.buttons,
+      },
+    });
+  };
 export const P2 = "a0000000-0000-4000-8000-000000000002";
 export const PRODUCTS: Product[] = [
   { id: P1, name: "018. Прописи" },
@@ -5313,6 +5373,137 @@ export const SCENARIOS: Scenario[] = [
       {
         say: { button: `PROD:${P1}`, title: "Купить" },
         expect: { says: ["К оплате"], notSays: ["у вас уже есть"], orderCount: 2 },
+      },
+    ],
+  },
+  {
+    id: "code-word-then-plus-after-card-ig-ru",
+    title:
+      "кодовое слово в ответ на первое сообщение отдаёт карточку без обращения; «+» и «++» после карточки зовут нажать «Купить»",
+    origin:
+      "срез 137, kunsulu518 (Копилка 15.10 20:56): «Палитра» → карточка с «Купить» и «Ваш вопрос уже у продавца» (обращение №205), «+» следом — тишина",
+    channel: "instagram",
+    locale: "ru",
+    full: true,
+    modules: { helpdesk: true, manager_chat: true },
+    username: "kunsulu518",
+    tenantSettings: { zernio: { profile_id: "prof-1", account_ids: ["acc-1"] } },
+    products: [{ id: P1, name: "Палитра средств выразительности", price: 1700 }],
+    automations: [PALITRA_RULE],
+    arrange: palitraPending("kunsulu518"),
+    steps: [
+      {
+        say: { text: "Палитра" },
+        expect: {
+          ruleMessages: 1,
+          silent: true,
+          sellerNotices: 0,
+        },
+      },
+      {
+        say: { text: "+" },
+        expect: {
+          count: 1,
+          says: ["нажмите «Купить» под сообщением"],
+          notSays: ["уже у продавца", "какой материал"],
+          buttons: ["Купить"],
+          sellerNotices: 0,
+          ruleMessages: 0,
+        },
+      },
+      {
+        // Второй «+» сразу следом — тот же призыв уже ушёл, второй раз не шлём.
+        say: { text: "++" },
+        expect: { silent: true, sellerNotices: 0, ruleMessages: 0 },
+      },
+    ],
+  },
+  {
+    id: "plus-plus-to-first-dm-ig-ru",
+    title: "«++» в ответ на первое сообщение правила — как «+»: быстрая покупка, без обращения",
+    origin: "срез 137, zaure.7171 (#227): «++» после первого сообщения",
+    channel: "instagram",
+    locale: "ru",
+    full: true,
+    modules: { helpdesk: true, manager_chat: true },
+    username: "zaure.7171",
+    tenantSettings: { zernio: { profile_id: "prof-1", account_ids: ["acc-1"] } },
+    products: [{ id: P1, name: "Палитра средств выразительности", price: 1700 }],
+    automations: [PALITRA_RULE],
+    arrange: palitraPending("zaure.7171"),
+    steps: [
+      {
+        say: { text: "++" },
+        expect: { ruleMessages: 1, says: ["К оплате"], orderCount: 1, sellerNotices: 0 },
+      },
+    ],
+  },
+  {
+    id: "code-word-after-card-sent-ig-ru",
+    title:
+      "кодовое слово уже после карточки (её отдал вебхук комментария) — «нажмите «Купить»», без обращения и второй карточки",
+    origin: "срез 137, kunsulu518: граница — карточка ушла раньше, чем пришло слово",
+    channel: "instagram",
+    locale: "ru",
+    full: true,
+    modules: { helpdesk: true, manager_chat: true },
+    username: "kunsulu518",
+    tenantSettings: { zernio: { profile_id: "prof-1", account_ids: ["acc-1"] } },
+    products: [{ id: P1, name: "Палитра средств выразительности", price: 1700 }],
+    automations: [PALITRA_RULE],
+    arrange: palitraSent("kunsulu518", 20_000),
+    steps: [
+      {
+        say: { text: "Палитра" },
+        expect: {
+          count: 1,
+          says: ["нажмите «Купить» под сообщением"],
+          notSays: ["уже у продавца"],
+          buttons: ["Купить"],
+          sellerNotices: 0,
+          // Строка кодового слова закрывается как «уже отправлено» — без второй карточки.
+        },
+      },
+    ],
+  },
+  {
+    id: "plus-long-after-card-ig-ru",
+    title: "«+» через час после карточки — не ответ на неё: призыв «нажмите «Купить»» не шлём",
+    origin: "граница к code-word-then-plus-after-card-ig-ru",
+    channel: "instagram",
+    locale: "ru",
+    full: true,
+    modules: { helpdesk: true, manager_chat: true },
+    username: "kunsulu518",
+    tenantSettings: { zernio: { profile_id: "prof-1", account_ids: ["acc-1"] } },
+    products: [{ id: P1, name: "Палитра средств выразительности", price: 1700 }],
+    automations: [PALITRA_RULE],
+    arrange: palitraSent("kunsulu518", 60 * 60_000),
+    steps: [
+      {
+        say: { text: "+" },
+        expect: { notSays: ["нажмите «Купить» под сообщением"], ruleMessages: 0 },
+      },
+    ],
+  },
+  {
+    id: "code-word-question-after-card-ig-ru",
+    title:
+      "вопрос с кодовым словом («Палитра на казахском есть?») — карточка и вопрос продавцу, не молчание",
+    origin: "граница к code-word-then-plus-after-card-ig-ru",
+    channel: "instagram",
+    locale: "ru",
+    full: true,
+    modules: { helpdesk: true, manager_chat: true },
+    username: "kunsulu518",
+    tenantSettings: { zernio: { profile_id: "prof-1", account_ids: ["acc-1"] } },
+    products: [{ id: P1, name: "Палитра средств выразительности", price: 1700 }],
+    automations: [PALITRA_RULE],
+    arrange: palitraPending("kunsulu518"),
+    steps: [
+      {
+        say: { text: "Палитра на казахском есть?" },
+        expect: { ruleMessages: 1, sellerNotices: 1 },
       },
     ],
   },

@@ -1718,6 +1718,8 @@ export async function recentBuyDmButton(
   ctx: TenantContext,
   who: { username?: string | null; senderId?: string | null },
   now = Date.now(),
+  /** Только карточка, ушедшая не раньше стольких мс назад (иначе — за сутки). */
+  sentWithinMs?: number,
 ): Promise<{ title: string; payload: string } | null> {
   const username = who.username?.toLowerCase() ?? "";
   if (!username && !who.senderId) return null;
@@ -1736,7 +1738,18 @@ export async function recentBuyDmButton(
     "[zernio] отправки вторых сообщений не прочитаны",
   );
   for (const l of data) {
-    const pl = l.payload as { username?: string; authorId?: string; buttons?: DmButton[] } | null;
+    const pl = l.payload as {
+      username?: string;
+      authorId?: string;
+      buttons?: DmButton[];
+      sent_at?: string;
+      createdAt?: string;
+    } | null;
+    if (sentWithinMs !== undefined) {
+      // Строка очереди ставится при комментарии, а уходит позже — время отправки.
+      const sentAt = Date.parse(pl?.sent_at ?? pl?.createdAt ?? "");
+      if (!(sentAt >= now - sentWithinMs)) continue;
+    }
     const own =
       (typeof pl?.username === "string" && pl.username.toLowerCase() === username) ||
       (Boolean(who.senderId) && pl?.authorId === who.senderId);
@@ -1750,6 +1763,9 @@ export async function recentBuyDmButton(
   }
   return null;
 }
+
+/** Сколько после карточки с «Купить» «+»/«да» ещё считается ответом на неё. */
+export const PLUS_AFTER_CARD_MS = 5 * 60_000;
 
 /** Сколько после первого сообщения правила «+» ещё отдаёт второе по переписке. */
 export const TWO_STEP_FROM_DM_MS = 30 * 60_000;
@@ -1983,19 +1999,8 @@ export async function deliverTwoStepForDmKeyword(
   // «Палитру я у вас покупала» — рассказ о купленном, не просьба (#146).
   if (mentionsOwnedProduct(t)) return false;
   const all = await listAutomations(ctx, api);
-  const rules = all.filter(
-    (a) =>
-      (a.twoStepDm || Boolean(a.buttons?.length)) &&
-      a.isActive !== false &&
-      a.accountId === p.accountId &&
-      // Тип правила не смотрим: Zernio может отдать его иначе, чем мы пишем,
-      // а ответ на историю — тоже личка (Копилка, 09.10: «Палитра» ответом
-      // на историю ушла в обращение #50).
-      (a.keywords ?? []).some((k) => typeof k === "string" && k.trim() !== ""),
-  );
-  const rule =
-    rules.find((a) => commentMatchesAutomation(t, a.keywords, a.matchMode)) ??
-    (await ruleNamedInDm(ctx, t, all, p.accountId));
+  const rules = keywordRules(all, p.accountId);
+  const rule = await ruleOfDmWord(ctx, t, all, p.accountId);
   if (!rule) {
     // След для разбора: какие правила видели и почему ни одно не подошло
     // (обращение #50 Копилки ушло без следа). Только когда правила вообще есть.
@@ -2061,6 +2066,77 @@ export async function deliverTwoStepForDmKeyword(
     return false;
   }
   return deliverPendingTwoStepDm(ctx, p, api, now);
+}
+
+/** Двухшаговые правила аккаунта с кодовыми словами. */
+function keywordRules(all: CommentAutomation[], accountId: string): CommentAutomation[] {
+  return all.filter(
+    (a) =>
+      (a.twoStepDm || Boolean(a.buttons?.length)) &&
+      a.isActive !== false &&
+      a.accountId === accountId &&
+      // Тип правила не смотрим: Zernio может отдать его иначе, чем мы пишем,
+      // а ответ на историю — тоже личка (Копилка, 09.10: «Палитра» ответом
+      // на историю ушла в обращение #50).
+      (a.keywords ?? []).some((k) => typeof k === "string" && k.trim() !== ""),
+  );
+}
+
+/** Правило, чьё кодовое слово или название — эта реплика в Direct; нет — null. */
+async function ruleOfDmWord(
+  ctx: TenantContext,
+  t: string,
+  all: CommentAutomation[],
+  accountId: string,
+): Promise<CommentAutomation | null> {
+  return (
+    keywordRules(all, accountId).find((a) =>
+      commentMatchesAutomation(t, a.keywords, a.matchMode),
+    ) ??
+    (await ruleNamedInDm(ctx, t, all, accountId)) ??
+    null
+  );
+}
+
+/**
+ * Реплика — кодовое слово правила («Палитра»): карточка по ней только что
+ * ушла, продавцу и разбору её не отдаём. Копилка 15.10, kunsulu518: ответила
+ * «Палитра» на первое сообщение — карточка ушла, а то же слово пошло дальше и
+ * открыло обращение №205 с «Ваш вопрос уже у продавца».
+ */
+export async function isDmCodeWord(
+  ctx: TenantContext,
+  p: Pick<TwoStepBuyer, "accountId">,
+  text: string,
+  api: AutomationApi = liveAutomationApi,
+): Promise<boolean> {
+  const t = text.trim();
+  if (!t || t.length > DM_KEYWORD_MAX_LEN || mentionsOwnedProduct(t)) return false;
+  // Само слово, без вопроса: «Палитра», «палитра!» — да; «Палитра на казахском
+  // есть?» — нет, это вопрос, он идёт дальше обычным путём.
+  const bare = codeWordKey(t);
+  try {
+    const all = await listAutomations(ctx, api);
+    if (
+      keywordRules(all, p.accountId).some((a) =>
+        (a.keywords ?? []).some((k) => typeof k === "string" && codeWordKey(k) === bare),
+      )
+    )
+      return true;
+    return Boolean(await ruleNamedInDm(ctx, t, all, p.accountId));
+  } catch (e) {
+    console.warn(`[comment-dm] правила не прочитаны: ${String(e)}`);
+    return false;
+  }
+}
+
+/** Кодовое слово для сравнения: регистр, «ё», знаки и эмодзи по краям не важны. */
+function codeWordKey(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/ё/g, "е")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim();
 }
 
 /** Слова, которые есть почти в любом тексте правила и товара не называют. */

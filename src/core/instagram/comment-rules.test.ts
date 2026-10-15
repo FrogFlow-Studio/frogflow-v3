@@ -316,6 +316,9 @@ describe("isShopStartWord", () => {
 describe("isTwoStepAcknowledgement", () => {
   it("«+», «1», «да» и пустое — это ответ на просьбу написать, а не вопрос", () => {
     expect(isTwoStepAcknowledgement("+")).toBe(true);
+    expect(isTwoStepAcknowledgement("++")).toBe(true);
+    expect(isTwoStepAcknowledgement("+++")).toBe(true);
+    expect(isTwoStepAcknowledgement("+7 777")).toBe(false);
     expect(isTwoStepAcknowledgement(" Да ")).toBe(true);
     expect(isTwoStepAcknowledgement("")).toBe(true);
     expect(isTwoStepAcknowledgement("сколько стоит?")).toBe(false);

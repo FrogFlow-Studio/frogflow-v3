@@ -62,6 +62,11 @@ const deliverPendingTwoStepDm = vi.fn(async () => false);
 const deliverTwoStepFromDm = vi.fn(async () => false);
 const deliverTwoStepForDmKeyword = vi.fn(async (..._a: unknown[]) => false);
 const plusAnswersUnknownPrompt = vi.fn(async (..._a: unknown[]) => null as "ask" | "asked" | null);
+// Карточка с «Купить», ушедшая покупателю за последние минуты; кодовое слово правила.
+const recentBuyDmButton = vi.fn(
+  async (..._a: unknown[]) => null as { title: string; payload: string } | null,
+);
+const isDmCodeWord = vi.fn(async (..._a: unknown[]) => false);
 // Магазин в переписке — отдельный модуль со своими тестами; здесь важно, дошло ли до него.
 const expressFromAutomation = vi.fn(async (..._a: unknown[]) => true);
 vi.mock("./shop.server", () => ({
@@ -74,6 +79,9 @@ vi.mock("./automations.server", () => ({
   deliverTwoStepForDmKeyword: (...a: unknown[]) => deliverTwoStepForDmKeyword(...a),
   plusAnswersUnknownPrompt: (...a: unknown[]) => plusAnswersUnknownPrompt(...a),
   twoStepJustDelivered,
+  recentBuyDmButton: (...a: unknown[]) => recentBuyDmButton(...a),
+  isDmCodeWord: (...a: unknown[]) => isDmCodeWord(...a),
+  PLUS_AFTER_CARD_MS: 5 * 60_000,
 }));
 vi.mock("./shop/catalog.server", async (orig) => ({
   ...(await orig<typeof import("./shop/catalog.server")>()),
