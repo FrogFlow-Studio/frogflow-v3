@@ -16,7 +16,6 @@ import { storyHits } from "./story-hits";
 import { currencyAsked, tengeToRubles, wantsRubles } from "./currency";
 import {
   askedBefore as replyAskedBefore,
-  pricesQuotedBefore,
   brandCountries,
   catalogBrands,
   draftFixNote,
@@ -450,7 +449,6 @@ async function decide(data: PricelistData, input: PricelistInput): Promise<Price
       text,
     ].join("\n"),
     askedBefore: replyAskedBefore(state.recent ?? []),
-    quotedPrices: currencyAsked(text) ? pricesQuotedBefore(state.recent ?? []) : [],
   };
   const system = buildV2SystemPrompt({
     catalogSection: formatAssortmentMapForV2(catalog),
