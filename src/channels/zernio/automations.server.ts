@@ -11,6 +11,7 @@ import type { Json } from "@/core/db-types";
 import { COPY } from "@/channels/telegram/copy";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { servedByV2 } from "@/core/tenant/directory";
+import { inChunks } from "@/lib/in-chunks";
 import { secondStepAsText, secondStepFailureText, textFallbackAllowed } from "./second-step-text";
 import { getSetting, setSetting } from "@/core/settings/settings";
 import {
@@ -2560,6 +2561,24 @@ export async function runCommentDmFallback(
       const publicByZernio = new Set(
         logs.filter((r) => r.commentReplyStatus === "sent").map((r) => String(r.commentId ?? "")),
       );
+      // Уже записанные запасные отправки по правилу — одним чтением. Без него
+      // каждый прогон пытался заново вставить строку на каждый подходящий
+      // комментарий за 6,5 суток и ловил 409 от уникального ключа: ~5 000
+      // ошибок в журнале Postgres в сутки. Вставка ниже остаётся защитой от гонки.
+      const knownSends = new Map(
+        (
+          await inChunks(
+            comments.map((c) => c.id).filter((id): id is string => Boolean(id)),
+            (chunk) =>
+              ctx.db
+                .from("comment_dm_fallback_sends")
+                .select("comment_id, status, created_at, updated_at")
+                .eq("automation_id", autoId)
+                .in("comment_id", chunk),
+            "[zernio] запасные отправки не прочитаны",
+          )
+        ).map((r) => [r.comment_id, r] as const),
+      );
       for (const comment of comments) {
         const commentId = comment.id;
         if (!commentId || comment.from?.isOwner) continue;
@@ -2659,13 +2678,18 @@ export async function runCommentDmFallback(
           }
         }
 
-        const { error: reserveError } = await ctx.db.from("comment_dm_fallback_sends").insert({
-          bot_id: ctx.tenant.id,
-          automation_id: autoId,
-          platform_post_id: postId,
-          comment_id: commentId,
-          status: "pending",
-        });
+        const known = knownSends.get(commentId);
+        // Строка уже есть и не зависла — вставлять заново незачем (только 409).
+        if (known && ["wait", "skip"].includes(stalePendingAction(known, now))) continue;
+        const { error: reserveError } = known
+          ? { error: { message: "already reserved" } }
+          : await ctx.db.from("comment_dm_fallback_sends").insert({
+              bot_id: ctx.tenant.id,
+              automation_id: autoId,
+              platform_post_id: postId,
+              comment_id: commentId,
+              status: "pending",
+            });
         let allowAltChannel = true;
         if (reserveError) {
           const { data: existing, error: existingErr } = await ctx.db
