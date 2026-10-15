@@ -61,14 +61,19 @@ test("service worker ставится, берёт витрину под конт
 test("подсказка установки: на втором визите, «Не сейчас» прячет её", async ({ page }, info) => {
   test.skip(info.project.name !== "phone", "только телефон");
   // Android Chrome присылает beforeinstallprompt сам; в тесте событие приходит от страницы.
+  // Под нагрузкой гидрация бывает позже первого события: шлём повторно до 10 с, пока страница
+  // его не примет (preventDefault), как Chrome — один раз за открытие.
   await page.addInitScript(() => {
-    window.addEventListener("load", () =>
-      setTimeout(() => {
+    window.addEventListener("load", () => {
+      let n = 0;
+      const fire = setInterval(() => {
+        if (++n > 33) clearInterval(fire);
         const e = new Event("beforeinstallprompt", { cancelable: true });
         (e as unknown as { prompt: () => Promise<void> }).prompt = async () => {};
         window.dispatchEvent(e);
-      }, 300),
-    );
+        if (e.defaultPrevented) clearInterval(fire);
+      }, 300);
+    });
   });
   await page.goto(`/s/${F.SHOP_SLUG}`);
   await expect(page.getByText("Добавить магазин на главный экран", { exact: true })).toHaveCount(0);
