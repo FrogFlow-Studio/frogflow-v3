@@ -2206,6 +2206,22 @@ export const SCENARIOS: Scenario[] = [
     steps: [{ say: { text: PHONE }, expect: { cart: 0 } }],
   },
   {
+    id: "checkout-no-phone-digital-tg-ru",
+    title: "цифровой заказ в Telegram — без шага телефона, сразу к оплате",
+    origin:
+      "AATeach 15.10 00:24 «^»: на просьбу телефона «нет», «нет тиелефона», «000» — трижды «неверный номер», заказа нет",
+    channel: "telegram",
+    locale: "ru",
+    products: PRODUCTS,
+    steps: [
+      { say: { button: `add:${PRODUCTS[0]!.id}` }, expect: { cart: 1 } },
+      {
+        say: { button: "checkout" },
+        expect: { notSays: [(c) => c.phonePromptHtml] },
+      },
+    ],
+  },
+  {
     id: "duplicate-update-tg-ru",
     title: "повторная доставка того же обновления Telegram — один ответ",
     origin: "Б2 / дубли вебхука",

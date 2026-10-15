@@ -106,7 +106,7 @@ async function orderOf(request: APIRequestContext, id: number): Promise<Order> {
 
 /**
  * Покупатель от /start до оформленного заказа: каталог, «В корзину»,
- * телефон (страна оплаты одна — её не спрашивают). Robokassa у магазина настроена, поэтому бот
+ * заказ (страна оплаты одна — её не спрашивают, телефон у цифрового не нужен). Robokassa у магазина настроена, поэтому бот
  * предлагает выбрать способ оплаты. Возвращает номер заказа в базе.
  */
 async function placeOrder(request: APIRequestContext, buyer: number): Promise<number> {
@@ -119,17 +119,10 @@ async function placeOrder(request: APIRequestContext, buyer: number): Promise<nu
   await press(request, buyer, `add:${F.PRODUCT_ID}`);
   await waitSent(request, buyer, n, hasButton("cart:show"));
 
-  // Страна оплаты у магазина одна — бот её не спрашивает, сразу просит телефон.
+  // Страна оплаты у магазина одна, товар цифровой — ни страны, ни телефона:
+  // сразу заказ с выбором оплаты.
   n = (await sent(request, buyer)).length;
   await press(request, buyer, "checkout");
-  await waitSent(request, buyer, n, (s) =>
-    JSON.stringify(s.body.reply_markup ?? "").includes("request_contact"),
-  );
-
-  n = (await sent(request, buyer)).length;
-  await say(request, buyer, {
-    contact: { phone_number: "+77001234567", user_id: buyer, first_name: "Покупатель" },
-  });
   const choose = await waitSent(request, buyer, n, hasButton("pay:manual:"));
   expect(text(choose)).toContain("оформлен");
   const id = Number(
