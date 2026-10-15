@@ -5,6 +5,7 @@ import { issueCertificate } from "@/core/courses/certificate.server";
 import { readSettings } from "@/core/courses/db.server";
 import { isCourseToken } from "@/core/courses/link";
 import { parseQuizResult, publicQuiz, quizKey, type PublicQuiz } from "@/core/courses/lesson-quiz";
+import { parseTutor, tutorKey, tutorLeft, type TutorExchange } from "@/core/courses/tutor";
 import {
   coursePurchase,
   markLesson,
@@ -57,6 +58,18 @@ export type LessonQuizView = PublicQuiz & {
   last: { score: number; total: number } | null;
 };
 
+export type LessonTutorView = {
+  /** Сколько вопросов уже задано: по нему сервер принимает следующий. */
+  asked: number;
+  /** Вопросов на сегодня осталось. */
+  left: number;
+  /** Последние вопросы и ответы ученика по уроку. */
+  log: TutorExchange[];
+};
+
+/** Сколько прежних вопросов показать ученику под уроком. */
+const TUTOR_SHOWN = 5;
+
 export type CourseView = {
   name: string;
   lessons: Array<{
@@ -78,6 +91,8 @@ export type CourseView = {
     quiz: LessonQuizView | null;
     /** Домашнее задание открытого урока; null — у урока его нет. */
     homework: LessonHomeworkView | null;
+    /** ИИ-наставник открытого урока (core/courses/tutor); null — в курсе выключен. */
+    tutor: LessonTutorView | null;
   }>;
   doneCount: number;
   nextAt: string | null;
@@ -112,6 +127,12 @@ export async function courseView(
   const submitted = hasHomework ? await purchaseHomework(ctx, p.orderItemId) : new Map();
   const quizKeys = p.course.lessons.flatMap((l) => (l.quiz ? [quizKey(p.orderItemId, l.id)] : []));
   const quizRaw = quizKeys.length ? await readSettings(ctx, quizKeys) : new Map<string, string>();
+  const tutorRaw = p.course.tutor
+    ? await readSettings(
+        ctx,
+        access.filter((a) => a.open).map((a) => tutorKey(p.orderItemId, a.lesson.id)),
+      )
+    : new Map<string, string>();
   const lessons: CourseView["lessons"] = [];
   for (const a of access) {
     let quiz: LessonQuizView | null = null;
@@ -158,6 +179,13 @@ export async function courseView(
               sign,
               tl.tariff.homework,
             )
+          : null,
+      tutor:
+        a.open && p.course.tutor
+          ? (() => {
+              const r = parseTutor(tutorRaw.get(tutorKey(p.orderItemId, a.lesson.id)));
+              return { asked: r.asked, left: tutorLeft(r, now), log: r.log.slice(-TUTOR_SHOWN) };
+            })()
           : null,
     });
   }

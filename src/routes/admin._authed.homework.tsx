@@ -16,6 +16,7 @@ import {
 } from "@/core/courses/hw-replies";
 import type { HomeworkReply } from "@/core/tenant/types";
 import type { HomeworkRow } from "@/app/admin/homework.server";
+import type { TutorThread } from "@/core/courses/tutor.server";
 import { Badge, Card, ErrorBox, PageTitle, useAction } from "@/app/ui";
 import { adminT, intlLocale, type AdminT } from "@/app/i18n/admin";
 
@@ -29,7 +30,7 @@ export const Route = createFileRoute("/admin/_authed/homework")({
 });
 
 function HomeworkPage() {
-  const { items: all, curators, cohorts, load, replies } = Route.useLoaderData();
+  const { items: all, curators, cohorts, load, replies, tutor } = Route.useLoaderData();
   const { shop } = Route.useRouteContext();
   const t = adminT(shop.locale);
   const router = useRouter();
@@ -99,7 +100,49 @@ function HomeworkPage() {
           ))}
         </div>
       )}
+      {tutor.length > 0 && <TutorCard threads={tutor} t={t} date={date} />}
     </>
+  );
+}
+
+/** Вопросы учеников ИИ-наставнику и его ответы (core/courses/tutor): только чтение. */
+function TutorCard({
+  threads,
+  t,
+  date,
+}: {
+  threads: TutorThread[];
+  t: AdminT;
+  date: (iso: string) => string;
+}) {
+  return (
+    <Card title={t("tutor.log.title")} className="mt-6">
+      <p className="mb-3 text-xs text-muted">{t("tutor.log.hint")}</p>
+      <div className="space-y-2">
+        {threads.map((th) => (
+          <details key={th.key} className="rounded-md border border-line p-3 text-sm">
+            <summary className="cursor-pointer">
+              {th.student} · {th.course} ·{" "}
+              {t("homework.lesson", { no: th.lessonNo, title: th.lessonTitle })} ·{" "}
+              <span className="text-muted">
+                {t("tutor.log.count", { n: th.asked })} · {date(th.lastAt)}
+              </span>
+            </summary>
+            <ul className="mt-2 space-y-2">
+              {th.log.map((e, i) => (
+                <li key={`${e.at}-${i}`} className="space-y-1">
+                  <p className="text-xs text-muted">{date(e.at)}</p>
+                  <p className="whitespace-pre-line">❓ {e.q}</p>
+                  <p className="whitespace-pre-line text-muted">
+                    {e.kind === "answer" ? e.a : t("tutor.log.unavailable")}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          </details>
+        ))}
+      </div>
+    </Card>
   );
 }
 

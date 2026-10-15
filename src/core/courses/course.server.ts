@@ -139,6 +139,7 @@ export async function saveCourse(
         }
       : {}),
     ...(course.homeworkDays ? { homeworkDays: course.homeworkDays } : {}),
+    ...(course.tutor ? { tutor: true } : {}),
     ...(course.tariffs && Object.keys(course.tariffs).length
       ? { tariffs: await ownVariantTariffs(ctx, productId, course.tariffs) }
       : {}),

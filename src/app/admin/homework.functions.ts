@@ -19,6 +19,7 @@ export const homeworkQueueFn = createServerFn({ method: "GET" }).handler(async (
     replies: parseHwReplies(ctx.tenant.settings.homework_replies),
     cohorts: await cohortChoices(ctx),
     load: await (await import("@/core/courses/curator-load.server")).curatorLoad(ctx),
+    tutor: await (await import("@/core/courses/tutor.server")).listTutor(ctx),
   };
 });
 

@@ -60,6 +60,7 @@ import * as sheet from "./admin/sheet";
 import * as shop4MinOrder from "./admin/shop4-minorder";
 import * as similar from "./admin/similar";
 import * as schoolQuiz from "./admin/school-quiz";
+import * as schoolTutor from "./admin/school-tutor";
 import * as errorsCore from "./admin/errors-core";
 import * as errorsVip from "./admin/errors-vip";
 import * as shop4 from "./admin/shop4";
@@ -553,6 +554,7 @@ const ru = {
   ...shop4MinOrder.ru,
   ...similar.ru,
   ...schoolQuiz.ru,
+  ...schoolTutor.ru,
   ...errorsCore.ru,
   ...errorsVip.ru,
   ...shop4.ru,
@@ -1733,6 +1735,7 @@ const kk: Dict = {
   ...shop4MinOrder.kk,
   ...similar.kk,
   ...schoolQuiz.kk,
+  ...schoolTutor.kk,
   ...errorsCore.kk,
   ...errorsVip.kk,
   ...shop4.kk,
@@ -1829,6 +1832,7 @@ const en: Dict = {
   ...shop4MinOrder.en,
   ...similar.en,
   ...schoolQuiz.en,
+  ...schoolTutor.en,
   ...errorsCore.en,
   ...errorsVip.en,
   ...shop4.en,
@@ -1925,6 +1929,7 @@ const uz: Dict = {
   ...shop4MinOrder.uz,
   ...similar.uz,
   ...schoolQuiz.uz,
+  ...schoolTutor.uz,
   ...errorsCore.uz,
   ...errorsVip.uz,
   ...shop4.uz,

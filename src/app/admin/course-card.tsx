@@ -189,6 +189,19 @@ export function CourseCard({ productId, t }: { productId: string; t: AdminT }) {
         />
         <span className="mt-1 block text-xs text-muted">{t("product.courseHomeworkDaysHint")}</span>
       </label>
+      <label className="mb-3 flex items-start gap-2 text-sm">
+        <input
+          id="course-tutor"
+          type="checkbox"
+          className="mt-0.5"
+          checked={course.tutor === true}
+          onChange={(e) => change({ ...course, tutor: e.target.checked })}
+        />
+        <span>
+          {t("tutor.toggle")}
+          <span className="mt-1 block text-xs text-muted">{t("tutor.toggleHint")}</span>
+        </span>
+      </label>
       <p className="mb-3 text-xs text-muted">{t("product.lessonVideoHint")}</p>
       <ChannelField
         value={course.channel ?? ""}
