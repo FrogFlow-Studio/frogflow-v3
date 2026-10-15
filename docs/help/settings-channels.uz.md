@@ -50,7 +50,7 @@ Karta sarlavhasidagi kalit («yoqilgan»). Yoqilgan (standart) — bot kanalda q
 
 ## Nimaga javob berish {#dbot-scope}
 
-- «Faqat buyurtmalar bo‘yicha» (standart) — bot faqat unga murojaat qilinganda javob beradi: «start», «katalog» yoki sizning chaqiruv so‘zingiz, material kodi (masalan #245 yoki kartadagi kalit so‘zlardan biri), tugmalar, buyurtmaga chek — va xaridor u bilan yozishayotgan paytda. Oddiy xabarlarga jim turadi: dialog o‘qilmagan holda qoladi, siz esa ilovada kimga javob berish kerakligini ko‘rasiz.
+- «Faqat buyurtmalar bo‘yicha» (standart) — bot faqat unga murojaat qilinganda javob beradi: «start», «katalog» yoki sizning chaqiruv so‘zingiz, material kodi (masalan #245 yoki kartadagi kalit so‘zlardan biri), tugmalar, buyurtmaga chek — va xaridor u bilan yozishayotgan paytda. Oddiy xabarlarga jim turadi: dialog o‘qilmagan holda qoladi, siz esa ilovada kimga javob berish kerakligini ko‘rasiz. Istisno — «Savolsiz xabarlar va boshqa davlatlardan to‘lov» kartasidagi SI javoblari (boshqa davlatdan to‘lov, «bir nechta material bitta chek bilan mumkinmi?», botda yo‘q material): bot ularga ham javob bermasligi uchun u yerda «Oddiy xabarlarga javob bermaslik»ni yoqing.
 - «Barcha xabarlarga» — bot har qanday xabarga javob beradi, savollarni sizga uzatadi.
 
 ## Buyruqlar va tushunarsiz xabarga javob {#dbot-triggers}
@@ -94,6 +94,10 @@ Meta katalogidan savat: bot bunday buyurtmani o‘zi rasmiylashtirishi uchun Met
 ## Savolsiz xabarlar va boshqa davlatlardan to‘lov {#direct-triage}
 
 «To‘lov va sozlamalar» bo‘limidagi karta, agar Instagram yoki WhatsApp va yozishmadagi do‘kon ulangan bo‘lsa. Qanday xabar kelganini so‘zlar ro‘yxati emas, SI tushunadi; xabar har doim «Chat»da qoladi. SI xarajati — bir xabarga sentning ulushi, do‘konga kuniga 0,3 $ dan oshmaydi.
+
+## Oddiy xabarlarga javob bermaslik {#direct-keep-unread}
+
+«Oddiy xabarlarga javob bermaslik» — standart holatda o‘chiq. Botning har qanday javobi Instagram’dagi dialogni o‘qilgan deb belgilaydi va siz uni yangilar orasida ko‘rmay qolasiz. Buyurtmaga aloqasi yo‘q hamma xabarlarga o‘zingiz javob bermoqchi bo‘lsangiz, yoqing. Shunda bot boshqa davlatdan to‘lov haqidagi savollarga, «qanday olsam bo‘ladi?», «bir nechta material bitta chek bilan mumkinmi?» savollariga va botda yo‘q material nomiga javob bermaydi, «Barcha xabarlarga» rejimida esa «Savolingizni sotuvchiga yetkazdim» deb ham yozmaydi. Bunday xabar sizga murojaat bo‘lib keladi, «Chat»da qoladi va Instagram’da o‘qilmagan holda turadi. Tugmalar, material kodlari, buyurtma berish, to‘lov va chekni bot avvalgidek yuritadi. Yoqilgan paytda quyidagi «Javob berish…» kalitlari ishlamaydi.
 
 ## Savolsiz xabarlar {#direct-chatter}
 

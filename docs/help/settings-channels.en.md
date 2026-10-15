@@ -50,7 +50,7 @@ The switch in the card header ("on"). On (the default): the bot replies in the c
 
 ## What to reply to {#dbot-scope}
 
-- "Orders only" (the default): the bot replies only when it is addressed: "start", "catalog" or your trigger word, a material code (for example #245 or a word from the card's keywords), buttons, a receipt for an order, and while the buyer is chatting with it. It stays silent on ordinary messages: the dialog stays unread, and you see in the app whom to answer.
+- "Orders only" (the default): the bot replies only when it is addressed: "start", "catalog" or your trigger word, a material code (for example #245 or a word from the card's keywords), buttons, a receipt for an order, and while the buyer is chatting with it. It stays silent on ordinary messages: the dialog stays unread, and you see in the app whom to answer. Exception: AI replies from the "Messages without a question and payment from other countries" card (payment from another country, "several materials with one receipt?", a material the bot doesn't have). To keep the bot silent on those too, turn on "Don't reply to ordinary messages" there.
 - "All messages": the bot replies to any message and passes questions to you.
 
 ## Commands and reply to unclear messages {#dbot-triggers}
@@ -94,6 +94,10 @@ A cart from the Meta catalog: for the bot to place such an order itself, put the
 ## Messages without a question and payment from other countries {#direct-triage}
 
 A card in “Payment and settings” when Instagram or WhatsApp and the in-chat shop are on. AI, not a word list, decides what kind of message arrived; the message always stays in “Chat”. AI cost is a fraction of a cent per message, at most $0.30 a day per shop.
+
+## Don't reply to ordinary messages {#direct-keep-unread}
+
+"Don't reply to ordinary messages" is off by default. Any bot reply marks the Instagram conversation as read, and you stop seeing it among new ones. Turn this on if you want to answer everything that isn't about an order yourself. The bot then doesn't reply to questions about paying from other countries, "how do I get it?", "several materials with one receipt?" or the name of a material the bot doesn't have, and with "All messages" it doesn't send "I passed your question to the seller" either. Such a message comes to you as a ticket, stays in "Chat" and stays unread in Instagram. Buttons, material codes, ordering, payment and receipts work as before. While it is on, the "Reply…" switches below have no effect.
 
 ## Messages without a question {#direct-chatter}
 

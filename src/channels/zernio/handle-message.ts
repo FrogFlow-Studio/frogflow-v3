@@ -766,6 +766,11 @@ async function forwardedToSeller(
   // Посреди покупки тоже: «передал продавцу» на реплику, адресованную
   // продавцу, путал покупателей (Educational Bot, 03.10).
   if (bot.scope === "purchases" && !bot.script) return;
+  // «Не отвечать на обычные сообщения» (core/inbox/triage): вопрос у продавца,
+  // диалог остаётся непрочитанным и при «На все сообщения».
+  const { getSetting } = await import("@/core/settings/settings");
+  const { CHAT_KEEP_UNREAD_KEY, keepUnreadOn } = await import("@/core/inbox/triage");
+  if (keepUnreadOn(await getSetting(ctx, CHAT_KEEP_UNREAD_KEY))) return;
   const direct = customer.state.direct;
   const mem = direct && typeof direct === "object" && !Array.isArray(direct) ? direct : {};
   const at = Date.parse(String(mem.forwarded_at ?? ""));

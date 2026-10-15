@@ -18,6 +18,7 @@ import { CHAT_RECEIPT_TEXT_KEY, receiptTextOn } from "@/core/receipts/text-recei
 import {
   CHAT_FOREIGN_PAY_KEY,
   CHAT_HOW_TO_BUY_KEY,
+  CHAT_KEEP_UNREAD_KEY,
   CHAT_PAY_FAILED_KEY,
   CHAT_RECEIPT_TEXT_OFFER_KEY,
   CHAT_PRODUCT_REQUEST_KEY,
@@ -32,6 +33,7 @@ import {
   TRIAGE_TOOL,
   foreignPayOn,
   howToBuyOn,
+  keepUnreadOn,
   parseTriage,
   payFailedOn,
   productRequestOn,
@@ -123,9 +125,13 @@ export type TriageSwitches = {
   productRequest: boolean;
 };
 
-/** Что включено у клиента: всё выключено — модель не зовём. */
+/**
+ * Что включено у клиента: всё выключено — модель не зовём. «Не отвечать на
+ * обычные сообщения» гасит ответы вне шага оплаты: такие вопросы молча
+ * уходят продавцу, диалог в Instagram остаётся непрочитанным.
+ */
 export async function triageSwitches(ctx: TenantContext): Promise<TriageSwitches> {
-  const [chatter, foreignPay, payFailed, offer, receiptText, howToBuy, several, request] =
+  const [chatter, foreignPay, payFailed, offer, receiptText, howToBuy, several, request, quiet] =
     await Promise.all([
       getSetting(ctx, CHAT_SKIP_CHATTER_KEY),
       getSetting(ctx, CHAT_FOREIGN_PAY_KEY),
@@ -135,16 +141,18 @@ export async function triageSwitches(ctx: TenantContext): Promise<TriageSwitches
       getSetting(ctx, CHAT_HOW_TO_BUY_KEY),
       getSetting(ctx, CHAT_SEVERAL_ITEMS_KEY),
       getSetting(ctx, CHAT_PRODUCT_REQUEST_KEY),
+      getSetting(ctx, CHAT_KEEP_UNREAD_KEY),
     ]);
+  const talk = !keepUnreadOn(quiet);
   return {
     chatter: skipChatterOn(chatter),
-    foreignPay: foreignPayOn(foreignPay),
+    foreignPay: talk && foreignPayOn(foreignPay),
     payFailed: payFailedOn(payFailed),
     receiptTextOffer: receiptTextOfferOn(offer),
     receiptText: receiptTextOn(receiptText),
-    howToBuy: howToBuyOn(howToBuy),
-    severalItems: severalItemsOn(several),
-    productRequest: productRequestOn(request),
+    howToBuy: talk && howToBuyOn(howToBuy),
+    severalItems: talk && severalItemsOn(several),
+    productRequest: talk && productRequestOn(request),
   };
 }
 

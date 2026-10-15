@@ -20,6 +20,7 @@ export const SETTING_KEYS = [
   "chat_email_optional",
   "chat_receipt_text",
   "chat_skip_chatter",
+  "chat_keep_unread",
   "chat_foreign_pay",
   "chat_how_to_buy",
   "chat_several_items",

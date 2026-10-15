@@ -6,12 +6,14 @@ import type { TenantContext } from "@/core/tenant/resolve.server";
 import {
   CHAT_FOREIGN_PAY_KEY,
   CHAT_HOW_TO_BUY_KEY,
+  CHAT_KEEP_UNREAD_KEY,
   CHAT_PAY_FAILED_KEY,
   CHAT_PRODUCT_REQUEST_KEY,
   CHAT_RECEIPT_TEXT_OFFER_KEY,
   CHAT_SEVERAL_ITEMS_KEY,
   CHAT_SKIP_CHATTER_KEY,
   TRIAGE_CAP_KEY,
+  TRIAGE_SYSTEM,
   countryName,
   foreignOrderApplies,
   foreignPayApplies,
@@ -142,6 +144,27 @@ describe("вызов модели", () => {
         "other",
       );
     }
+  });
+
+  it("«Не отвечать на обычные сообщения» — ответы вне шага оплаты молчат, шаг оплаты отвечает", async () => {
+    const quiet = () => ctx([{ key: CHAT_KEEP_UNREAD_KEY, value: "true" }]);
+    for (const kind of ["several_items", "product_request", "how_to_buy", "foreign_pay"] as const) {
+      setTriageModelForTests(async () => ({ input: { kind, country: "BY" } }));
+      expect(
+        (await triageMessage(quiet(), { customer, text: "Хотела бы купить", now: NOW })).kind,
+      ).toBe("other");
+    }
+    for (const kind of ["payment_failed", "chatter"] as const) {
+      setTriageModelForTests(async () => ({ input: { kind, country: "" } }));
+      expect((await triageMessage(quiet(), { customer, text: "Не проходит", now: NOW })).kind).toBe(
+        kind,
+      );
+    }
+  });
+
+  it("«хочу купить эти материалы» без «одним чеком» — не several_items (AATeach 15.10)", () => {
+    expect(TRIAGE_SYSTEM).toContain("«Хотела бы купить данные материалы»");
+    expect(TRIAGE_SYSTEM).toMatch(/не several_items, а other/);
   });
 
   it("понимает модель; расход дня записан", async () => {

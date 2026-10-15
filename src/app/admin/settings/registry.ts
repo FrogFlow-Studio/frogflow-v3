@@ -350,6 +350,7 @@ export const SETTINGS_REGISTRY: readonly SettingsEntry[] = [
     title: "settings.triage.title",
     anyModule: ["instagram", "whatsapp"],
     keys: [
+      "chat_keep_unread",
       "chat_skip_chatter",
       "chat_foreign_pay",
       "chat_how_to_buy",
@@ -357,6 +358,7 @@ export const SETTINGS_REGISTRY: readonly SettingsEntry[] = [
       "chat_product_request",
     ],
     fields: [
+      "settings.triage.keepUnreadLabel",
       "settings.triage.chatterLabel",
       "settings.triage.foreignLabel",
       "settings.triage.howToBuyLabel",
