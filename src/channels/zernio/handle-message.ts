@@ -1,5 +1,10 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
-import { isBlocked, upsertCustomer, type Customer } from "@/core/customers/customers";
+import {
+  claimStateSection,
+  isBlocked,
+  upsertCustomer,
+  type Customer,
+} from "@/core/customers/customers";
 import { COPY, escapeHtml } from "@/channels/telegram/copy";
 import { notifyAdminsHtml } from "@/channels/telegram/notify";
 import { liveTransport, type ZernioTransport } from "./api.server";
@@ -100,6 +105,61 @@ async function closeTasksOnSellerReply(ctx: TenantContext, m: ParsedZernioMessag
     via: m.platform,
     ...(Number.isFinite(sent) ? { repliedAt: new Date(sent) } : {}),
   });
+}
+
+/** Призыв «нажмите «Купить»» на «+» после карточки — не чаще раза в это время. */
+const PLUS_AFTER_CARD_REPLY_MS = 2 * 60_000;
+
+/**
+ * «+», «++», «да», «хочу» или кодовое слово, набранные после того, как
+ * карточка правила с «Купить» уже ушла (за PLUS_AFTER_CARD_MS): покупатель
+ * хочет купить — повторяем кнопку с «нажмите «Купить»», обращения нет.
+ * Второй такой ответ в пределах PLUS_AFTER_CARD_REPLY_MS — молча (условная
+ * отметка до отправки). Есть заказ, ждущий оплаты, — прежний путь (null).
+ */
+async function plusAfterCard(
+  ctx: TenantContext,
+  customer: Customer,
+  who: TwoStepBuyer,
+  text: string,
+  transport: ZernioTransport,
+): Promise<string | null> {
+  const { isTwoStepAcknowledgement } = await import("@/core/instagram/comment-rules");
+  const { recentBuyDmButton, isDmCodeWord, PLUS_AFTER_CARD_MS } =
+    await import("./automations.server");
+  if (customer.state.pending_order_id) return null;
+  const button = await recentBuyDmButton(
+    ctx,
+    { username: who.username, senderId: who.senderId },
+    Date.now(),
+    PLUS_AFTER_CARD_MS,
+  ).catch((e: unknown) => {
+    console.warn(`[zernio] кнопка «Купить» не прочитана: ${String(e)}`);
+    return null;
+  });
+  if (!button) return null;
+  if (!isTwoStepAcknowledgement(text) && !(await isDmCodeWord(ctx, who, text))) return null;
+  const { recentAwaitingPaymentOrder } = await import("@/core/orders/orders");
+  if (await recentAwaitingPaymentOrder(ctx, customer)) return null;
+  const now = Date.now();
+  const claimed = await claimStateSection(ctx, customer, "direct", (cur) => {
+    const at = Date.parse(String(cur.plus_card_at ?? ""));
+    if (Number.isFinite(at) && now - at < PLUS_AFTER_CARD_REPLY_MS) return null;
+    return { ...cur, plus_card_at: new Date(now).toISOString() };
+  }).catch((e: unknown) => {
+    console.warn(`[zernio] отметка «+» после карточки: ${String(e)}`);
+    return undefined;
+  });
+  // Отметку не поставить (сбой базы) — прежний путь, чтобы не промолчать.
+  if (claimed === undefined) return null;
+  if (!claimed) return "ответ после карточки — призыв нажать «Купить» уже ушёл";
+  const locale = claimed.state.locale ?? ctx.tenant.settings.default_locale ?? "ru";
+  const mm = COPY[locale] ?? COPY.ru;
+  await transport.send(who.conversationId, who.accountId, mm.howToBuyReply(button.title), {
+    platform: "instagram",
+    buttons: [{ type: "postback", title: button.title, payload: button.payload }],
+  });
+  return `ответ после карточки — «нажмите «${button.title}»»`;
 }
 
 /** Сколько «+» ждёт вебхук комментария (тесты ставят 0). */
@@ -219,6 +279,14 @@ export async function handleZernioMessage(
     }
     if (!toShop && isTwoStepAcknowledgement(m.text) && ack)
       return processed("второе сообщение по комментарию");
+    // Ответ на первое сообщение кодовым словом («Палитра»): карточка по нему
+    // ушла — само слово продавцу и разбору не отдаём (Копилка 15.10,
+    // kunsulu518: обращение №205 и «Ваш вопрос уже у продавца» под карточкой).
+    if (ack && !toShop && typedOnly && m.text?.trim()) {
+      const { isDmCodeWord } = await import("./automations.server");
+      if (await isDmCodeWord(ctx, who, m.text))
+        return processed("кодовое слово — второе сообщение по комментарию");
+    }
     // Кодовое слово из рилса прямо в Direct («Палитра») — сообщение правила с
     // кнопками сразу, а не обращение продавцу (Копилка русоведа, 09.10).
     // Ответ на только что показанный список разделов («Оформление и праздники»)
@@ -231,6 +299,12 @@ export async function handleZernioMessage(
       const { deliverTwoStepForDmKeyword } = await import("./automations.server");
       if (!section?.exact && (await deliverTwoStepForDmKeyword(ctx, who, m.text)))
         return processed("кодовое слово в Direct — сообщение правила");
+    }
+    // «+», «да», кодовое слово уже после карточки с «Купить»: карточка выше,
+    // зовём нажать кнопку и даём её ещё раз — без обращения продавцу (срез 137).
+    if (!ack && !toShop && typedOnly && !inStep && m.text?.trim()) {
+      const after = await plusAfterCard(ctx, customer, who, m.text, transport);
+      if (after) return processed(after);
     }
     // «+» на сообщение с призывом, которое не первое сообщение нашего правила
     // (материал под бесплатным постом): товар не угадываем — спрашиваем, какой

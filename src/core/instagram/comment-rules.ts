@@ -545,6 +545,8 @@ export function isTwoStepAcknowledgement(text: string | null | undefined): boole
   const t = (text ?? "").trim().toLowerCase();
   return (
     !t ||
+    // «++», «+++» — то же «+» (Копилка 15.10, zaure.7171).
+    /^\++$/.test(t) ||
     ["+", ".", "1", "да", "ссылка", "материалы", "купить", "старт", "/start", "хочу"].includes(t)
   );
 }
