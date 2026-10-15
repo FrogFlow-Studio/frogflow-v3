@@ -334,8 +334,8 @@ describe("Д5: заказ из одной корзины в трёх канал�
     await r.say({ text: "каталог" });
     if (channel === "telegram") {
       for (const p of PARITY) await r.say({ button: `add:${p.id}::u` });
+      // Цифровая корзина — без шага телефона, как в Instagram и WhatsApp.
       await r.say({ button: "checkout" });
-      await r.say({ text: "+77770637152" });
     } else {
       await r.say({ text: "1, 2" });
       await r.say({ button: "CHECKOUT" });
