@@ -61,6 +61,8 @@ export async function runEvalScenario(
   call: ModelCall,
   opts: { spent?: () => number; maxUsd?: number; now?: Date } = {},
 ): Promise<EvalScenarioResult> {
+  // Галочка «Виртуальный консультант» — из сценария, а не из магазина: набор один для всех.
+  data = { ...data, virtualIntro: scenario.virtualIntro ? data.hours : undefined };
   const index = indexCatalog(data.catalog);
   const storyProductIds = scenario.storyProducts?.flatMap((part) =>
     data.catalog.filter((p) => p.name.toLowerCase().includes(part.toLowerCase())).map((p) => p.id),

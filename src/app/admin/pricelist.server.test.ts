@@ -337,6 +337,34 @@ describe("прайс консультанта в админке", () => {
     );
   });
 
+  it("галочка «Виртуальный консультант»: выключена по умолчанию, пишется только при смене", async () => {
+    const ctx = ctxOf();
+    patches.length = 0;
+    const o = await pricelistOverview(ctx);
+    expect(o.virtualIntro).toBe(false);
+    await savePricelistSettings(ctx, {
+      synonyms: "",
+      shopUrl: "",
+      store: o.store,
+      virtualIntro: false,
+    });
+    expect(patches).toEqual([]);
+    await savePricelistSettings(ctx, {
+      synonyms: "",
+      shopUrl: "",
+      store: o.store,
+      virtualIntro: true,
+    });
+    expect(patches).toEqual([
+      { botId: ctx.tenant.id, patch: { consultant_pricelist: { virtual_intro: true } } },
+    ]);
+    // Читается из настроек клиента; «не true» — выключена.
+    expect((await pricelistOverview(ctxOf(true, { virtual_intro: true }))).virtualIntro).toBe(true);
+    expect((await pricelistOverview(ctxOf(true, { virtual_intro: "yes" }))).virtualIntro).toBe(
+      false,
+    );
+  });
+
   it("образ консультанта: по умолчанию текст BOVI, свой пишется, стандартный убирает настройку", async () => {
     const ctx = ctxOf();
     patches.length = 0;

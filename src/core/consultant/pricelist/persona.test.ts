@@ -31,18 +31,43 @@ const sha = (s: string) => createHash("sha256").update(s).digest("hex");
  * Отпечаток подсказки v2.23 (v2.22 + способ оплаты — только из базы знаний, иначе
  * «пришлёт менеджер»; заказ передаётся сразу, без ожидания телефона; тот же INPUT).
  */
-const BOVI_PROMPT_SHA = "3e6eb20474d6fb6a15d26f8f04620f4e51c467deae7cee1851aa63aa52db9480";
+const BOVI_PROMPT_SHA = "012f5e34e2ffe2f61027fe7f365c150ca1c76debab4fc6565c3a001b76aabb0e";
 
 describe("образ консультанта по прайсу", () => {
   it("без настройки — подсказка BOVI слово в слово прежняя", () => {
     const prompt = buildV2SystemPrompt(INPUT);
-    expect(prompt.length).toBe(12575);
+    expect(prompt.length).toBe(12725);
     expect(sha(prompt)).toBe(BOVI_PROMPT_SHA);
     expect(prompt).not.toContain(SELLER_TEXT_OPEN);
     // BOVI 10.10 23:49, indirenokars: на «в каком цвете?» — цвета без цены.
     expect(prompt).toContain("ответьте и назовите цену найденного");
     // BOVI 11.10, fokkiuo77: «Оплатить можно картой в рублях» — выдумано.
     expect(prompt).toContain("Не нашли — не придумывайте и не угадывайте ни карту, ни перевод");
+  });
+
+  it("BOVI 16.10: слово «евро» о размере не пишется, это 200х220", () => {
+    expect(buildV2SystemPrompt(INPUT)).toContain(
+      "Слова «евро» о размере не пишите: у магазина такого названия нет",
+    );
+  });
+
+  it("галочка «Виртуальный консультант»: раздел с часами магазина и именем из образа", () => {
+    const off = buildV2SystemPrompt(INPUT);
+    expect(off).not.toContain("ВИРТУАЛЬНЫЙ КОНСУЛЬТАНТ");
+    const on = buildV2SystemPrompt({ ...INPUT, virtualIntro: { open: 10, close: 20 } });
+    expect(on).toContain("ВИРТУАЛЬНЫЙ КОНСУЛЬТАНТ");
+    expect(on).toContain("Я виртуальный консультант BOVI");
+    expect(on).toContain("вам ответят в рабочее время, с 10:00 до 20:00");
+    expect(on).toContain("handoff_to_manager (human)");
+    // Без галочки подсказка прежняя: раздел только добавляется.
+    expect(on.replace(/ВИРТУАЛЬНЫЙ КОНСУЛЬТАНТ[\s\S]*?\n\n(?=КАК ПРОДАЁТЕ)/, "")).toBe(off);
+    const own = buildV2SystemPrompt({
+      ...INPUT,
+      persona: { brand: "Хлопок", about: "", tone: "", specialities: "" },
+      virtualIntro: { open: 9, close: 18 },
+    });
+    expect(own).toContain("Я виртуальный консультант Хлопок");
+    expect(own).toContain("с 09:00 до 18:00");
   });
 
   it("текст по умолчанию в форме — тот же BOVI: сохранённый без правок не меняет подсказку", () => {

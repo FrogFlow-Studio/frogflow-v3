@@ -279,6 +279,7 @@ export function settingsFromJson(json: unknown): TenantSettings {
             ? p.rate_url
             : undefined,
         persona: cleanPersona(p.persona),
+        virtual_intro: p.virtual_intro === true ? true : undefined,
       };
     })(),
     smart_search_limits:

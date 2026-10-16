@@ -201,6 +201,8 @@ export type PricelistData = {
   timezone: string;
   /** Образ консультанта от продавца (persona.ts); нет — подсказка BOVI. */
   persona?: PricelistPersona;
+  /** Галочка «Виртуальный консультант»: часы живого консультанта; нет — галочка снята. */
+  virtualIntro?: ShopHours;
   storyTags: StoryTag[];
   loadMedia: () => Promise<ProductMedia[]>;
   mediaUrl: (path: string) => string;
@@ -234,6 +236,9 @@ export async function loadPricelistData(
     hours: pricelistHours(ctx.tenant),
     timezone: ctx.timezone,
     persona: ctx.tenant.settings.consultant_pricelist?.persona,
+    ...(ctx.tenant.settings.consultant_pricelist?.virtual_intro
+      ? { virtualIntro: pricelistHours(ctx.tenant) }
+      : {}),
     storyTags,
     loadMedia: () => loadProductMedia(ctx),
     mediaUrl: (path) => productMediaUrl(ctx, path),
@@ -457,6 +462,7 @@ async function decide(data: PricelistData, input: PricelistInput): Promise<Price
     shopUrl: data.shopUrl,
     store: data.store,
     persona: data.persona,
+    virtualIntro: data.virtualIntro,
   });
 
   // Покупатель сам назвал Россию или российский город — страна и город в

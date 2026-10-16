@@ -13,12 +13,22 @@ export function SettingsCard({ t, data, canEdit, onDone }: CardProps) {
   const [followUp, setFollowUp] = useState(data.followUp);
   const [qualityDigest, setQualityDigest] = useState(data.qualityDigest);
   const [taskReminders, setTaskReminders] = useState(data.taskReminders);
+  const [virtualIntro, setVirtualIntro] = useState(data.virtualIntro);
   const [hours, setHours] = useState(data.hours);
   const [saved, setSaved] = useState(false);
   const save = useAction(async () => {
     setSaved(false);
     await savePricelistSettingsFn({
-      data: { synonyms, shopUrl, store, followUp, qualityDigest, taskReminders, hours },
+      data: {
+        synonyms,
+        shopUrl,
+        store,
+        followUp,
+        qualityDigest,
+        taskReminders,
+        virtualIntro,
+        hours,
+      },
     });
     setSaved(true);
     await onDone();
@@ -100,6 +110,24 @@ export function SettingsCard({ t, data, canEdit, onDone }: CardProps) {
         <p className="text-xs text-muted">
           {t("pricelist.hours", { open: hours.open, close: hours.close })}
         </p>
+        <label className="flex items-start gap-2 text-sm">
+          <input
+            type="checkbox"
+            className="mt-1"
+            checked={virtualIntro}
+            disabled={!canEdit}
+            onChange={(e) => setVirtualIntro(e.target.checked)}
+          />
+          <span>
+            <span>{t("pricelist.settings.virtualIntro")}</span>
+            <span className="block text-xs text-muted">
+              {t("pricelist.settings.virtualIntroHint", {
+                open: String(hours.open).padStart(2, "0"),
+                close: String(hours.close % 24).padStart(2, "0"),
+              })}
+            </span>
+          </span>
+        </label>
         <label className="flex items-start gap-2 text-sm">
           <input
             type="checkbox"

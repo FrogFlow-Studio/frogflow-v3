@@ -74,6 +74,7 @@ type Opts = {
   rate?: PricelistData["rate"];
   hours?: PricelistData["hours"];
   persona?: PricelistData["persona"];
+  virtualIntro?: PricelistData["virtualIntro"];
   channel?: string;
 };
 
@@ -89,6 +90,7 @@ function dataOf(o: Opts): PricelistData {
     hours: o.hours ?? { open: 10, close: 21 },
     timezone: "Asia/Almaty",
     ...(o.persona ? { persona: o.persona } : {}),
+    ...(o.virtualIntro ? { virtualIntro: o.virtualIntro } : {}),
     storyTags: o.storyTags ?? [],
     loadMedia: async () => media,
     mediaUrl: (path) => `https://test.app/api/img/bot/${path}`,
@@ -136,6 +138,17 @@ describe("консультант по прайсу", () => {
       "<<<ТЕКСТ ПРОДАВЦА>>>\nМагазин: Хлопок\nО магазине: Детский текстиль.",
     );
     expect(system).not.toContain("BOVI");
+  });
+
+  it("галочка «Виртуальный консультант» доходит до подсказки с часами живого консультанта", async () => {
+    responses.push(
+      reply([{ type: "text", text: "Здравствуйте. Я виртуальный консультант BOVI." }]),
+    );
+    responses.push(reply([{ type: "text", text: "Здравствуйте. Что вас интересует?" }]));
+    await decide("Здравствуйте", {}, { virtualIntro: { open: 10, close: 20 } });
+    await decide("Здравствуйте");
+    expect(requests[0]!.system[0]!.text).toContain("вам ответят в рабочее время, с 10:00 до 20:00");
+    expect(requests[1]!.system[0]!.text).not.toContain("ВИРТУАЛЬНЫЙ КОНСУЛЬТАНТ");
   });
 
   it("кеш: инструменты и система с прайсом — на час, хвост переписки — на 5 минут", async () => {

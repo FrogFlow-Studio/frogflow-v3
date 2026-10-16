@@ -164,6 +164,7 @@ export async function pricelistOverview(ctx: TenantContext) {
     followUp: followUpEnabled(await getSetting(ctx, FOLLOW_UP_SETTING_KEY)),
     qualityDigest: (await getSetting(ctx, DIGEST_SETTING_KEY))?.trim() === "on",
     taskReminders: remindersOn(await getSetting(ctx, TASK_REMINDERS_KEY)),
+    virtualIntro: p.virtual_intro === true,
   };
 }
 
@@ -353,6 +354,8 @@ export async function savePricelistSettings(
     qualityDigest?: boolean;
     /** Напоминания о неразобранных задачах (по умолчанию включены). */
     taskReminders?: boolean;
+    /** «Виртуальный консультант»: бот представляется и предлагает живого консультанта. */
+    virtualIntro?: boolean;
     /** Рабочие часы консультанта (нерабочее время — «менеджер ответит утром»). */
     hours?: ShopHours;
   },
@@ -378,6 +381,13 @@ export async function savePricelistSettings(
     await setSetting(ctx, DIGEST_SETTING_KEY, data.qualityDigest ? "on" : "off");
   if (data.taskReminders !== undefined)
     await setSetting(ctx, TASK_REMINDERS_KEY, data.taskReminders ? "on" : "off");
+  if (
+    data.virtualIntro !== undefined &&
+    data.virtualIntro !== (ctx.tenant.settings.consultant_pricelist?.virtual_intro === true)
+  )
+    await patchSettings(ctx.tenant.id, {
+      consultant_pricelist: { virtual_intro: data.virtualIntro },
+    });
   // Часы пишутся, только если поменялись: не тронутые часы BOVI остаются «по умолчанию».
   const cur = pricelistHours(ctx.tenant);
   if (h && (h.open !== cur.open || h.close !== cur.close))
