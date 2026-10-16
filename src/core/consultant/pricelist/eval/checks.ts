@@ -55,6 +55,8 @@ export type EvalScenario = {
   source: string;
   /** Товары публикации, из которой пишет покупатель, — части названий из прайса. */
   storyProducts?: string[];
+  /** Галочка «Виртуальный консультант» включена (часы — магазина). Без поля — выключена. */
+  virtualIntro?: boolean;
   turns: EvalTurn[];
 };
 

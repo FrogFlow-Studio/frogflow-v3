@@ -42,6 +42,9 @@ export const ru = {
   "pricelist.settings.taskReminders": "Напоминать о неразобранных задачах в Telegram",
   "pricelist.settings.taskRemindersHint":
     "Задача не отмечена сделанной 2 часа — одно напоминание (в рабочие часы консультанта). В 9:00 — список всех открытых задач.",
+  "pricelist.settings.virtualIntro": "Виртуальный консультант",
+  "pricelist.settings.virtualIntroHint":
+    "В первом сообщении бот говорит, что он виртуальный консультант, и что живой консультант ответит в рабочие часы ({open}:00–{close}:00), если написать «консультант». На «консультант» бот передаёт диалог вам и замолкает.",
   "pricelist.save": "Сохранить",
   "pricelist.saved": "Сохранено.",
   "pricelist.hours":
@@ -225,6 +228,9 @@ export const kk: SectionDict<typeof ru> = {
   "pricelist.settings.taskReminders": "Қаралмаған тапсырмалар туралы Telegram-да еске салу",
   "pricelist.settings.taskRemindersHint":
     "Тапсырма 2 сағат орындалды деп белгіленбесе — бір рет еске салу (кеңесшінің жұмыс уақытында). 9:00-де — барлық ашық тапсырмалар тізімі.",
+  "pricelist.settings.virtualIntro": "Виртуалды кеңесші",
+  "pricelist.settings.virtualIntroHint":
+    "Алғашқы хабарламада бот өзінің виртуалды кеңесші екенін айтады және «консультант» деп жазса, тірі кеңесші жұмыс уақытында ({open}:00–{close}:00) жауап беретінін айтады. «Консультант» дегенде бот диалогты сізге береді де, үнсіз қалады.",
   "pricelist.save": "Сақтау",
   "pricelist.saved": "Сақталды.",
   "pricelist.hours":
@@ -409,6 +415,9 @@ export const en: SectionDict<typeof ru> = {
   "pricelist.settings.taskReminders": "Remind me about open tasks in Telegram",
   "pricelist.settings.taskRemindersHint":
     "A task not marked done for 2 hours gets one reminder (during the consultant's working hours). At 9:00, a list of all open tasks.",
+  "pricelist.settings.virtualIntro": "Virtual consultant",
+  "pricelist.settings.virtualIntroHint":
+    "In the first message the bot says it is a virtual consultant and that a live consultant replies during working hours ({open}:00–{close}:00) if the customer writes «консультант». On that word the bot hands the dialogue to you and goes quiet.",
   "pricelist.save": "Save",
   "pricelist.saved": "Saved.",
   "pricelist.hours":
@@ -596,6 +605,9 @@ export const uz: SectionDict<typeof ru> = {
   "pricelist.settings.taskReminders": "Ko‘rilmagan vazifalar haqida Telegram’da eslatish",
   "pricelist.settings.taskRemindersHint":
     "Vazifa 2 soat bajarildi deb belgilanmasa — bitta eslatma (maslahatchining ish vaqtida). Soat 9:00 da — barcha ochiq vazifalar ro‘yxati.",
+  "pricelist.settings.virtualIntro": "Virtual maslahatchi",
+  "pricelist.settings.virtualIntroHint":
+    "Birinchi xabarda bot o‘zini virtual maslahatchi deb tanishtiradi va «консультант» deb yozilsa, jonli maslahatchi ish vaqtida ({open}:00–{close}:00) javob berishini aytadi. Shu so‘zda bot suhbatni sizga beradi va jim turadi.",
   "pricelist.save": "Saqlash",
   "pricelist.saved": "Saqlandi.",
   "pricelist.hours":
