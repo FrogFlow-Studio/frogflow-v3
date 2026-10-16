@@ -175,3 +175,43 @@ describe("свой ответ в рублях (BOVI 15.10)", () => {
     expect(found?.text).toBe("Да, СДЭКом отправляем, 3-5 дней");
   });
 });
+
+describe("сообщение правила Zernio на комментарий (BOVI 16.10)", () => {
+  const rule =
+    "Здравствуйте! С удовольствием поможем вам с подбором!\nЦены начинаются от 70.000 тенге✨\n\nПодскажите, какой размер и цвет вам подобрать?";
+
+  it("текст правила «комментарий → Директ» — не менеджер", () => {
+    const tail = [{ direction: "outgoing", message: rule, createdAt: ago(min(1)) }];
+    expect(findManagerMessage(tail, { ourReplies: [] }, NOW)?.text).toBe(rule);
+    expect(findManagerMessage(tail, { ourReplies: [], scenarioTexts: [rule] }, NOW)).toBeNull();
+  });
+
+  it("исходящее с пометкой сценария Zernio — не менеджер", () => {
+    expect(
+      findManagerMessage(
+        [
+          {
+            direction: "outgoing",
+            message: "Пришлём наличие и цены",
+            automationId: "a1",
+            createdAt: ago(min(1)),
+          },
+        ],
+        { ourReplies: [] },
+        NOW,
+      ),
+    ).toBeNull();
+  });
+
+  it("продавец, написавший после правила своими словами, — менеджер", () => {
+    const found = findManagerMessage(
+      [
+        { direction: "outgoing", message: rule, createdAt: ago(min(3)) },
+        { direction: "outgoing", message: "120х200 нет, есть 140х200", createdAt: ago(min(1)) },
+      ],
+      { ourReplies: [], scenarioTexts: [rule] },
+      NOW,
+    );
+    expect(found?.text).toBe("120х200 нет, есть 140х200");
+  });
+});

@@ -558,7 +558,7 @@ export async function handleZernioMessage(
     console.warn(`[zernio] tail unavailable for ${m.conversationId}: ${String(e)}`);
   }
   const hours = pauseHours(ctx.tenant);
-  const manager = findManagerMessage(tail, {
+  const guard = {
     lastBotReplyAt: memory.last_reply_at,
     ourReplies: [
       ...(memory.recent ?? []).filter((t) => t.role === "assistant").map((t) => t.text),
@@ -568,7 +568,14 @@ export async function handleZernioMessage(
     resumedAt: memory.resumed_at,
     // «Пока не верну сам» — окна нет, смотрим обычные 12 часов.
     pauseWindowMs: hours === 0 ? undefined : hours * 3600_000,
-  });
+  };
+  let manager = findManagerMessage(tail, guard);
+  if (manager) {
+    // Чужое исходящее может быть ответом правила Zernio на комментарий, а не человеком.
+    const { zernioScenarioTexts } = await import("./scenario-texts.server");
+    const scenarioTexts = await zernioScenarioTexts(ctx);
+    if (scenarioTexts.length) manager = findManagerMessage(tail, { ...guard, scenarioTexts });
+  }
   if (manager) {
     await consultant.pauseConsultant(ctx, customer);
     // Менеджер ответил в приложении: его задачи по этому покупателю сделаны.

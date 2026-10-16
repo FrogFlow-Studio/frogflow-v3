@@ -74,6 +74,9 @@ vi.mock("./shop.server", () => ({
   expressFromAutomation: (...a: unknown[]) => expressFromAutomation(...a),
 }));
 vi.mock("./automations.server", () => ({
+  // Правила Zernio «комментарий → Директ» (охрана «менеджер в чате»): правил нет.
+  liveAutomationApi: { list: async () => [] },
+  ownsZernioAccount: () => true,
   deliverPendingTwoStepDm: (...a: unknown[]) => deliverPendingTwoStepDm(...(a as [])),
   deliverTwoStepFromDm: (...a: unknown[]) => deliverTwoStepFromDm(...(a as [])),
   deliverTwoStepForDmKeyword: (...a: unknown[]) => deliverTwoStepForDmKeyword(...a),
