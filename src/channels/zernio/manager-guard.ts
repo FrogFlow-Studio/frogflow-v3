@@ -34,6 +34,13 @@ export type GuardState = {
    * Без этого вчерашний менеджер держал бота в паузе бесконечно (v1 5e31727).
    */
   pauseWindowMs?: number;
+  /**
+   * Первые сообщения правил Zernio «комментарий → Директ» (scenario-texts):
+   * Zernio шлёт их сам, а в ленте переписки они не всегда помечены сценарием.
+   * BOVI 16.10: ответ правила на комментарий посчитали менеджером, и на
+   * «120/200 есть?» бот промолчал.
+   */
+  scenarioTexts?: string[];
 };
 
 export type ManagerMessage = { text: string; at: number };
@@ -76,15 +83,18 @@ export function findManagerMessage(
   const resumed = Date.parse(state.resumedAt ?? "");
   if (Number.isFinite(resumed)) since = Math.max(since, resumed);
   const ourVoice = new Set(state.ourReplies.map(foldReply).filter(Boolean));
+  const scenario = new Set((state.scenarioTexts ?? []).map(foldReply).filter(Boolean));
   const tail = messages.slice(-TAIL);
   for (let i = tail.length - 1; i >= 0; i--) {
     const m = tail[i];
     if (!m || m.direction !== "outgoing") continue;
+    if (sentByZernioScenario(m)) continue;
     const text = (m.message ?? "").trim();
     if (!text) continue;
     const at = Date.parse(m.createdAt ?? "");
     if (!Number.isFinite(at) || at <= since) continue;
-    if (ourVoice.has(foldReply(text))) continue;
+    const folded = foldReply(text);
+    if (ourVoice.has(folded) || scenario.has(folded)) continue;
     return { text, at };
   }
   return null;

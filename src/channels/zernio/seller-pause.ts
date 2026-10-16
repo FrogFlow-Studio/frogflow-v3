@@ -12,7 +12,7 @@ import {
 } from "@/core/instagram/comment-rules";
 import { escapeHtml } from "@/channels/telegram/copy";
 import { PLATFORM_LABEL } from "./platform";
-import { lastPersonMessageAt } from "./manager-guard";
+import { foldReply, lastPersonMessageAt } from "./manager-guard";
 import { matchDirectCommand } from "./shop-flow";
 import type { ParsedZernioMessage } from "./message";
 import type { ZernioTransport } from "./api.server";
@@ -174,7 +174,17 @@ export async function sellerPauseActive(
         ...tail.map((t) => Date.parse(t.createdAt ?? "")).filter((x) => Number.isFinite(x)),
       );
       if (last !== null && Number.isFinite(oldest) && last >= oldest) last = null;
-      const fromTail = lastPersonMessageAt(people, ours);
+      let fromTail = lastPersonMessageAt(people, ours);
+      if (fromTail !== null) {
+        // Первое сообщение правила Zernio «комментарий → Директ» — не продавец (BOVI 16.10).
+        const { zernioScenarioTexts } = await import("./scenario-texts.server");
+        const rules = new Set((await zernioScenarioTexts(ctx)).map(foldReply).filter(Boolean));
+        if (rules.size)
+          fromTail = lastPersonMessageAt(
+            people.filter((t) => !rules.has(foldReply(t.message ?? ""))),
+            ours,
+          );
+      }
       if (fromTail !== null && (last === null || fromTail > last)) last = fromTail;
     } catch (e) {
       console.warn(`[zernio] переписка не прочитана для паузы ${customer.userKey}: ${String(e)}`);

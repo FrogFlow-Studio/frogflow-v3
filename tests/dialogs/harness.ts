@@ -114,8 +114,12 @@ export interface Room {
   state(): Record<string, unknown>;
   /** Сколько раз за весь диалог продавцу ушло уведомление. */
   sellerNotices(): number;
-  /** Продавец ответил руками N минут назад (только Direct). */
-  sellerTyped(minutesAgo: number): void;
+  /**
+   * В ленте Zernio исходящее N минут назад без пометки сценария (только Direct):
+   * по умолчанию — реплика продавца руками, `text` — другой текст (например,
+   * первое сообщение правила «комментарий → Директ»).
+   */
+  sellerTyped(minutesAgo: number, text?: string): void;
   /** Что за последнюю реплику увидел продавец в Telegram (ответы бота ему). */
   sellerReplies(): string[];
   /** Причины ответов бота, записанные в «Чат» («Почему бот так ответил», Б13). */
@@ -613,11 +617,11 @@ function directRoom(o: RoomOptions): Room {
     cart: () => (db.tables.cart_items ?? []).map((c) => String(c.product_id)),
     state: () => db.tables.bot_users![0]!.state as Record<string, unknown>,
     sellerNotices: () => notices.count,
-    sellerTyped(min) {
+    sellerTyped(min, text) {
       tail = [
         {
           direction: "outgoing",
-          message: "Здравствуйте! Сейчас отвечу",
+          message: text ?? "Здравствуйте! Сейчас отвечу",
           sentVia: null,
           createdAt: new Date(Date.now() - min * 60_000).toISOString(),
         },

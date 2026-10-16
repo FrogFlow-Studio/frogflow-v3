@@ -2918,6 +2918,47 @@ export const SCENARIOS: Scenario[] = [
     ],
   },
   {
+    id: "pricelist-comment-rule-dm-not-manager-ig-ru",
+    title:
+      "первое сообщение правила Zernio на комментарий — не менеджер: на вопрос после него бот отвечает",
+    origin:
+      "скрин Якова, BOVI 16.10 10:31 (@futer_kostum.thebest): правило Zernio ответило на комментарий, «120/200 есть?) Здравствуйте» осталось без ответа, бот встал на паузу «менеджер отвечает»",
+    channel: "instagram",
+    locale: "ru",
+    full: true,
+    vertical: "consultant",
+    modules: { shop: true },
+    echoes: true,
+    tenantSettings: { zernio: { account_ids: ["acc-1"] } },
+    automations: [
+      {
+        id: "bovi-rule",
+        name: "BOVI",
+        accountId: "acc-1",
+        trigger: "comment",
+        keywords: [],
+        isActive: true,
+        dmMessage:
+          "Здравствуйте! С удовольствием поможем вам с подбором!\nУ нас в Bovi представлены разные коллекции и большой выбор постельного белья (размеры от 140х200 до 240х220 см). Цены начинаются от 70.000 тенге✨\n\nПодскажите, какой размер и цвет вам подобрать?",
+      },
+    ],
+    arrange: (r) =>
+      r.sellerTyped(
+        1,
+        "Здравствуйте! С удовольствием поможем вам с подбором!\nУ нас в Bovi представлены разные коллекции и большой выбор постельного белья (размеры от 140х200 до 240х220 см). Цены начинаются от 70.000 тенге✨\n\nПодскажите, какой размер и цвет вам подобрать?",
+      ),
+    pricelist: {
+      catalog: PL_CATALOG,
+      rounds: [said("Здравствуйте. 120х200 нет, ближайший размер — 140х200.")],
+    },
+    steps: [
+      {
+        say: { text: "120/200 есть?)\nЗдравствуйте" },
+        expect: { count: 1, says: ["140х200"], paused: false },
+      },
+    ],
+  },
+  {
     id: "pricelist-rubles-own-reply-not-manager-ig-ru",
     title:
       "свой ответ в рублях — не менеджер: на следующий вопрос бот отвечает, а не встаёт на паузу",
