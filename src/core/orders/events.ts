@@ -245,10 +245,28 @@ export function describeOrderEvent(e: Pick<OrderEvent, "kind" | "actor" | "paylo
       ? " (система)"
       : "";
   switch (e.kind) {
-    case "placed":
-      return p.platform === "manual"
-        ? { text: `Заказ заведён вручную${who}`, tone: "neutral" }
-        : { text: `Заказ создан${p.platform ? ` · ${str(p.platform)}` : ""}`, tone: "neutral" };
+    case "placed": {
+      if (p.platform === "manual") {
+        return { text: `Заказ заведён вручную${who}`, tone: "neutral" };
+      }
+      const originObj =
+        p.origin && typeof p.origin === "object" && !Array.isArray(p.origin)
+          ? (p.origin as Record<string, unknown>)
+          : null;
+      const originLabel =
+        typeof p.origin_label === "string"
+          ? p.origin_label
+          : typeof originObj?.label === "string"
+            ? originObj.label
+            : "";
+      if (originLabel) {
+        return { text: `Заказ создан · ${originLabel}${who}`, tone: "neutral" };
+      }
+      return {
+        text: `Заказ создан${p.platform ? ` · ${str(p.platform)}` : ""}${who}`,
+        tone: "neutral",
+      };
+    }
     case "payment":
       return {
         text: `Внесено ${num(p.amount)}${p.currency ? ` ${str(p.currency)}` : ""}${p.source === "deposit" ? " (задаток по чеку)" : p.source === "online" ? ` через ${str(p.provider)}` : p.source === "receipt" ? ` по чеку${num(p.overpaid) > 0 ? `, переплата ${num(p.overpaid)}` : ""}` : ""}${who}`,

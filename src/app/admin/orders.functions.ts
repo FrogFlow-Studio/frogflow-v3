@@ -154,9 +154,23 @@ export const orderFn = createServerFn({ method: "GET" })
     const refundable = (REFUNDABLE_STATUSES as readonly string[]).includes(order.status)
       ? Math.max(0, Math.round((receivedAmount(order) - refunded) * 100) / 100)
       : 0;
+    const { resolveOrderOrigin } = await import("@/core/orders/origin");
+    const rules =
+      order.platform === "instagram"
+        ? await (async () => {
+            try {
+              const { listAutomations } = await import("@/channels/zernio/automations.server");
+              return await listAutomations(ctx);
+            } catch {
+              return [];
+            }
+          })()
+        : [];
+    const origin = await resolveOrderOrigin(ctx, order, events, { rules });
     if (!accountant)
       return {
         order,
+        origin,
         proofUrl,
         balanceProofUrl,
         balancePending,
@@ -178,6 +192,7 @@ export const orderFn = createServerFn({ method: "GET" })
     const { redactOrder, redactEventPayload } = await import("@/core/orders/redact");
     return {
       order: redactOrder(order),
+      origin,
       proofUrl,
       balanceProofUrl,
       balancePending,

@@ -25,6 +25,7 @@ export const Route = createFileRoute("/admin/_authed/orders/$id")({
 function OrderPage() {
   const {
     order: o,
+    origin,
     proofUrl,
     balanceProofUrl,
     balancePending,
@@ -111,6 +112,22 @@ function OrderPage() {
               {o.platform === "web" ? t("order.platformWeb") : o.platform} ·{" "}
               {physical ? t("order.physical") : t("order.digital")}
             </p>
+            {origin && (
+              <div className="mt-2 flex flex-wrap items-center gap-2" data-testid="order-origin">
+                <span
+                  className="inline-flex items-center gap-1.5 rounded-md border border-accent/25 bg-accent/10 px-2.5 py-1 text-xs font-medium text-accent"
+                  title={origin.explanation ?? origin.label}
+                >
+                  <span className="opacity-75">📍 {t("order.origin")}:</span>
+                  <span className="font-semibold">{origin.label}</span>
+                </span>
+                {origin.explanation && (
+                  <span className="text-xs text-muted max-sm:hidden" title={t("order.origin.why")}>
+                    ({origin.explanation})
+                  </span>
+                )}
+              </div>
+            )}
           </div>
           <Link
             to="/admin/orders"

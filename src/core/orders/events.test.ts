@@ -37,6 +37,16 @@ describe("describeOrderEvent", () => {
 
   it("ручной заказ, внесённая оплата и смена получения видны в истории", () => {
     expect(
+      describeOrderEvent({
+        kind: "placed",
+        actor: "bot",
+        payload: {
+          platform: "instagram",
+          origin: { label: "Instagram Direct: по кодовому слову «Хлеб»" },
+        },
+      }).text,
+    ).toBe("Заказ создан · Instagram Direct: по кодовому слову «Хлеб»");
+    expect(
       describeOrderEvent({ kind: "placed", actor: "admin:masha", payload: { platform: "manual" } })
         .text,
     ).toBe("Заказ заведён вручную (masha)");

@@ -129,9 +129,10 @@ const ALLOWED: Record<string, string[]> = {
 };
 
 describe("молчаливые обрезки .limit(N) (Б28)", () => {
-  const files = execSync("git ls-files 'src/*.ts' 'src/*.tsx'", { encoding: "utf8" })
+  const files = execSync("git ls-files src/*.ts src/*.tsx", { encoding: "utf8" })
     .trim()
     .split("\n")
+    .map((f) => f.trim())
     .filter((f) => f && !/\.test\.tsx?$/.test(f));
 
   it("в src/ каждое `.limit(N)`, N > 1, записано с причиной", () => {

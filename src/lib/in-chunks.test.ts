@@ -103,9 +103,10 @@ const ALLOWED: Record<string, string[]> = {
 };
 
 describe("длинные .in кусками (Б29)", () => {
-  const files = execSync("git ls-files 'src/*.ts' 'src/*.tsx'", { encoding: "utf8" })
+  const files = execSync("git ls-files src/*.ts src/*.tsx", { encoding: "utf8" })
     .trim()
     .split("\n")
+    .map((f) => f.trim())
     .filter((f) => f && !/\.test\.tsx?$/.test(f));
 
   it("в src/ `.in(` со списком неизвестной длины — через inChunks или с причиной", () => {

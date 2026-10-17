@@ -88,6 +88,7 @@ vi.mock("./automations.server", () => ({
   recentBuyDmButton: (...a: unknown[]) => recentBuyDmButton(...a),
   isDmCodeWord: (...a: unknown[]) => isDmCodeWord(...a),
   PLUS_AFTER_CARD_MS: 5 * 60_000,
+  getAutomationsMeta: async () => ({}),
 }));
 vi.mock("./shop/catalog.server", async (orig) => ({
   ...(await orig<typeof import("./shop/catalog.server")>()),

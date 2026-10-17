@@ -133,6 +133,8 @@ export type PlaceOrderOptions = {
   gift?: { recipient?: string | null; message?: string | null } | null;
   /** Подарочная упаковка к подарку (core/orders/gift-wrap); без `gift` игнорируется. */
   giftWrap?: boolean;
+  /** Источник заказа («Экран: Почему бот так ответил», core/orders/origin). */
+  origin?: Record<string, unknown> | null;
 };
 
 /** Скидки корзины для показа — без списания. */
@@ -531,6 +533,7 @@ export async function placeOrder(
       platform: finalOrder.platform,
       total: Number(finalOrder.total),
       currency: finalOrder.currency,
+      ...(opts.origin ? { origin: opts.origin as import("@/core/db-types").Json } : {}),
     });
     // Подарок — до остального: уведомление продавцу читает его при отправке.
     let orderGift: import("./gift").OrderGift | null = null;
