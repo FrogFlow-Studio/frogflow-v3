@@ -720,3 +720,87 @@ export function buyButtonProductIds(buttons: readonly AutomationButton[]): strin
     .map((b) => b.payload!.slice("PROD:".length).trim())
     .filter(Boolean);
 }
+
+/** Кодовое слово для сравнения: регистр, «ё», знаки и эмодзи по краям не важны. */
+export function codeWordKey(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/ё/g, "е")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim();
+}
+
+/** Слова, которые есть почти в любом тексте правила и товара не называют. */
+export const GENERIC_DM_WORDS = new Set(
+  (
+    "здравствуйте привет добрый день вечер утро хочу цена сколько стоит купить " +
+    "оплата оплатить можно пожалуйста спасибо материал материалы файл заказ заказать " +
+    "сәлеметсіз сәлем рахмет hello hi price want buy thanks salom narxi"
+  ).split(" "),
+);
+
+/**
+ * Слова просьбы рядом с названием в Direct («Хочу Палитру», «Палитра нужна,
+ * пришлите»): с ними реплика остаётся просьбой. Любое другое слово делает её
+ * рассказом или вопросом о товаре — продажу не начинаем.
+ */
+export const DM_REQUEST_WORDS = new Set(
+  (
+    "нужна нужно нужен нужны надо дайте пришлите отправьте скиньте вышлите " +
+    "интересует интересно хотела хотел хотим подробнее информация информацию " +
+    "давайте"
+  ).split(" "),
+);
+
+/**
+ * Ключевое слово правила слишком общее для Direct («+», «нужно», «хочу»,
+ * «цена»): под своим постом оно работает, потому что комментарий привязан к
+ * публикации, но в личке без комментария не называет конкретный товар (AATeach,
+ * 17.10, #1597: «+» и «нужно» у правила «Подвеска» 489).
+ */
+export function isGenericDmKeyword(keyword: string): boolean {
+  const trimmed = keyword.trim();
+  if (!trimmed) return false;
+  const key = codeWordKey(trimmed);
+  if (!key || isTwoStepAcknowledgement(trimmed) || isTwoStepAcknowledgement(key)) return true;
+  const words = key.split(" ").filter(Boolean);
+  return !words.some((w) => !GENERIC_DM_WORDS.has(w) && !DM_REQUEST_WORDS.has(w));
+}
+
+/**
+ * Ключевые слова правила, которые уже встречаются в других активных правилах
+ * того же аккаунта: под разными постами они не мешают друг другу, но в Direct
+ * без комментария бот не угадает, какой из товаров нужен.
+ */
+export function sharedRuleKeywords(
+  keywords: readonly string[],
+  rules: ReadonlyArray<{
+    id?: string | null;
+    name: string;
+    accountId?: string | null;
+    isActive?: boolean;
+    keywords?: readonly string[] | null;
+  }>,
+  current?: { id?: string | null; accountId?: string | null },
+): Array<{ keyword: string; rules: string[] }> {
+  const seen = new Set<string>();
+  const out: Array<{ keyword: string; rules: string[] }> = [];
+  for (const raw of keywords) {
+    const kw = raw.trim();
+    const norm = kw.toLowerCase().replace(/ё/g, "е");
+    if (!norm || seen.has(norm)) continue;
+    seen.add(norm);
+    const matching = rules
+      .filter(
+        (r) =>
+          r.isActive !== false &&
+          (!current?.id || r.id !== current.id) &&
+          (!current?.accountId || !r.accountId || r.accountId === current.accountId) &&
+          (r.keywords ?? []).some((k) => k.trim().toLowerCase().replace(/ё/g, "е") === norm),
+      )
+      .map((r) => r.name.trim())
+      .filter(Boolean);
+    if (matching.length > 0) out.push({ keyword: kw, rules: matching });
+  }
+  return out;
+}

@@ -328,12 +328,16 @@ export async function handleZernioMessage(
         m.text?.trim() === "+",
       );
       if (asked === "asked") return processed("«+» без правила — вопрос о товаре уже задан");
-      if (asked === "ask") {
+      if (asked === "ask" || (asked && typeof asked === "object")) {
         const locale = customer.state.locale ?? ctx.tenant.settings.default_locale ?? "ru";
         const mm = COPY[locale] ?? COPY.ru;
+        const buttons = [
+          ...(typeof asked === "object" ? [{ type: "postback" as const, ...asked.button }] : []),
+          { type: "postback" as const, title: mm.catalog, payload: "CATALOG" },
+        ];
         await transport.send(m.conversationId, m.accountId, mm.plusWhichProduct, {
           platform: m.platform,
-          buttons: [{ type: "postback", title: mm.catalog, payload: "CATALOG" }],
+          buttons,
         });
         return processed("«+» без правила — спросили, какой товар");
       }

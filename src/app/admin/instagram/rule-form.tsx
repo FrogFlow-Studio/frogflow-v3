@@ -19,7 +19,9 @@ import { Card, ErrorBox, Field, Switch, useAction } from "@/app/ui";
 import {
   buyButtonProductIds,
   DM_LIMIT_PLAIN,
+  isGenericDmKeyword,
   productMentionedInCaption,
+  sharedRuleKeywords,
   withReplyPrompt,
 } from "@/core/instagram/comment-rules";
 import { type Button, type Data, type Editing, type Post, useAdminI18n } from "./shared";
@@ -334,6 +336,11 @@ export function RuleForm({
   const limit = DM_LIMIT_PLAIN;
   // Предел — у первого сообщения целиком, вместе с призывом ответить.
   const firstLength = (twoStepOn ? withReplyPrompt(dmMessage, replyPrompt) : dmMessage).length;
+  const parsedKeywords = keywords
+    .split(/[,\n;]+/)
+    .map((k) => k.trim())
+    .filter(Boolean);
+  const activeKeywords = replyToAll && Boolean(target) ? [] : parsedKeywords;
   // Товар «Купить» не упомянут в подписи поста — скорее всего, выбран не тот (Копилка, #126).
   const productWarnings =
     trigger === "comment" && target?.title
@@ -348,6 +355,42 @@ export function RuleForm({
             }),
           )
       : [];
+  // Пересечение или слишком общие кодовые слова («+», «нужно»): под постом работают,
+  // но в Direct без комментария бот не угадает товар (AATeach, #1597).
+  const sharedKeywords =
+    trigger === "comment"
+      ? sharedRuleKeywords(activeKeywords, data.automations, { id: initial?.id, accountId })
+      : [];
+  const sharedKeywordSet = new Set(
+    sharedKeywords.map((s) => s.keyword.toLowerCase().replace(/ё/g, "е")),
+  );
+  const genericKeywords =
+    trigger === "comment"
+      ? Array.from(
+          new Map(
+            activeKeywords
+              .filter(
+                (k) =>
+                  isGenericDmKeyword(k) &&
+                  !sharedKeywordSet.has(k.toLowerCase().replace(/ё/g, "е")),
+              )
+              .map((k) => [k.toLowerCase().replace(/ё/g, "е"), k]),
+          ).values(),
+        )
+      : [];
+  const keywordWarnings = [
+    ...sharedKeywords.map(({ keyword, rules }) =>
+      t("instagram.form.keywordShared", {
+        keyword,
+        rules:
+          rules
+            .slice(0, 3)
+            .map((r) => `«${r}»`)
+            .join(", ") + (rules.length > 3 ? ` (+${rules.length - 3})` : ""),
+      }),
+    ),
+    ...genericKeywords.map((keyword) => t("instagram.form.keywordGeneric", { keyword })),
+  ];
   const save = useAction(async () => {
     const saved = await saveAutomationFn({
       data: {
@@ -365,10 +408,7 @@ export function RuleForm({
         platformPostId: target?.platformPostId ?? null,
         postId: target?.postId || null,
         postTitle: target?.title,
-        keywords: keywords
-          .split(/[,\n;]+/)
-          .map((k) => k.trim())
-          .filter(Boolean),
+        keywords: parsedKeywords,
         replyToAll: replyToAll && Boolean(target),
         matchMode,
         dmMessage,
@@ -629,7 +669,7 @@ export function RuleForm({
             placeholder={t("instagram.form.unresolvedPlaceholder")}
           />
         </Field>
-        {productWarnings.map((w) => (
+        {[...productWarnings, ...keywordWarnings].map((w) => (
           <p key={w} className="text-sm text-warn" role="status">
             {w}
           </p>

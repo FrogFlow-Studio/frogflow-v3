@@ -25,9 +25,11 @@ import {
   commentIdsHandledByZernio,
   commenterIdsOf,
   isPrivateReplyAlreadySent,
+  isGenericDmKeyword,
   logCoverage,
   logsReachBack,
   LOG_LAG_MS,
+  sharedRuleKeywords,
 } from "./comment-rules";
 
 /**
@@ -510,5 +512,45 @@ describe("buyButtonProductIds", () => {
         { type: "postback", title: "Купить", payload: "PROD:42" },
       ]),
     ).toEqual(["42"]);
+  });
+});
+
+describe("isGenericDmKeyword & sharedRuleKeywords — проверка кодовых слов в форме правила", () => {
+  it("«+», «нужно», «хочу», «цена» — общие для Direct; название и номер материала — нет", () => {
+    for (const kw of ["+", "+++", "нужно", "Нужна", "хочу", "цена", "купить", "да"])
+      expect(isGenericDmKeyword(kw), kw).toBe(true);
+    for (const kw of ["Палитра", "405", "день хлеба", "хочу палитру"])
+      expect(isGenericDmKeyword(kw), kw).toBe(false);
+    expect(isGenericDmKeyword("   ")).toBe(false);
+  });
+
+  it("находит пересечения ключевых слов только с активными правилами того же аккаунта", () => {
+    const rules = [
+      {
+        id: "r1",
+        name: "489 Подвеска",
+        accountId: "acc-1",
+        isActive: true,
+        keywords: ["+", "нужно"],
+      },
+      {
+        id: "r2",
+        name: "488 Осень",
+        accountId: "acc-1",
+        isActive: true,
+        keywords: ["НУЖНО", "осень"],
+      },
+      { id: "r3", name: "Старое", accountId: "acc-1", isActive: false, keywords: ["осень"] },
+      { id: "r4", name: "Чужой аккаунт", accountId: "acc-2", isActive: true, keywords: ["осень"] },
+    ];
+    expect(
+      sharedRuleKeywords(["Нужно", "осень", "уникальное"], rules, {
+        id: "r1",
+        accountId: "acc-1",
+      }),
+    ).toEqual([
+      { keyword: "Нужно", rules: ["488 Осень"] },
+      { keyword: "осень", rules: ["488 Осень"] },
+    ]);
   });
 });

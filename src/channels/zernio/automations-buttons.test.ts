@@ -506,6 +506,30 @@ describe("Comment-to-DM: прежний призыв по умолчанию м�
     expect(trail).toHaveLength(1);
   });
 
+  it("голый «+» на давнее сообщение с призывом и номером товара в первой строке — кнопка этого товара рядом с каталогом (AATeach #1597, innayan9898)", async () => {
+    const { plusAnswersUnknownPrompt } = await import("./automations.server");
+    const { ctx, db, api, tail } = promptSetup("v2");
+    db.tables.products = [
+      { id: "p-405", bot_id: ctx.tenant.id, name: "405. Книжка-подсказка", is_active: true },
+      { id: "p-489", bot_id: ctx.tenant.id, name: "489. Подвеска", is_active: true },
+    ];
+    const who = { accountId: "acc-1", conversationId: "conv-405", username: "innayan9898" };
+    tail.mockResolvedValue([
+      {
+        id: "m-sep29",
+        direction: "outgoing",
+        message:
+          "📚 405. КНИЖКА-ПОДСКАЗКА (по русскому языку и математике)\n\nСтоимость материала: 150 рос.руб / 900 тенге.\n\nНапишите + в ответ на это сообщение, чтобы получить ссылку на оплату и забрать материал!",
+        createdAt: new Date(Date.now() - 18 * 86_400_000).toISOString(),
+      },
+    ]);
+    expect(await plusAnswersUnknownPrompt(ctx, who, api, undefined, true)).toEqual({
+      ask: true,
+      button: { title: "🛒 405. Книжка-подс…", payload: "PROD:p-405" },
+    });
+    expect(await plusAnswersUnknownPrompt(ctx, who, api, undefined, true)).toBe("asked");
+  });
+
   it("продавец сам убрал призыв из текста — правило не трогаем", async () => {
     const { listAutomations, getAutomationsMeta } = await import("./automations.server");
     const { ctx, api, update } = promptSetup("v2", "Свой текст без призыва");

@@ -61,7 +61,10 @@ const twoStepJustDelivered = vi.fn(async () => false);
 const deliverPendingTwoStepDm = vi.fn(async () => false);
 const deliverTwoStepFromDm = vi.fn(async () => false);
 const deliverTwoStepForDmKeyword = vi.fn(async (..._a: unknown[]) => false);
-const plusAnswersUnknownPrompt = vi.fn(async (..._a: unknown[]) => null as "ask" | "asked" | null);
+const plusAnswersUnknownPrompt = vi.fn(
+  async (..._a: unknown[]) =>
+    null as "ask" | "asked" | { ask: true; button: { title: string; payload: string } } | null,
+);
 // Карточка с «Купить», ушедшая покупателю за последние минуты; кодовое слово правила.
 const recentBuyDmButton = vi.fn(
   async (..._a: unknown[]) => null as { title: string; payload: string } | null,
@@ -318,6 +321,25 @@ describe("Comment-to-DM: второй быстрый «+»", () => {
     );
     expect(again.note).toBe("«+» без правила — вопрос о товаре уже задан");
     expect(t.send).not.toHaveBeenCalled();
+    // В исходящем сообщении с призывом узнан товар каталога — его кнопка идёт рядом с «Каталогом».
+    plusAnswersUnknownPrompt.mockResolvedValueOnce({
+      ask: true,
+      button: { title: "🛒 405. Книжка-подс…", payload: "PROD:p-405" },
+    });
+    t.send.mockClear();
+    await handleZernioMessage(shopCtx, igEvent({ text: "+" }), t as unknown as ZernioTransport);
+    expect(t.send).toHaveBeenCalledWith(
+      "conv-1",
+      "acc-1",
+      expect.stringContaining("какой материал вас интересует"),
+      {
+        platform: "instagram",
+        buttons: [
+          { type: "postback", title: "🛒 405. Книжка-подс…", payload: "PROD:p-405" },
+          { type: "postback", title: "📚 Каталог", payload: "CATALOG" },
+        ],
+      },
+    );
   });
 
   it("«/start» сразу после второго сообщения при магазине в Direct идёт магазину", async () => {

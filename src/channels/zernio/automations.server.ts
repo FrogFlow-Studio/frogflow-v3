@@ -53,11 +53,17 @@ import {
   REPEAT_COOLDOWN_HOURS,
   REPEAT_POLICY,
   repeatPolicyOk,
+  codeWordKey,
+  DM_REQUEST_WORDS,
+  GENERIC_DM_WORDS,
+  isGenericDmKeyword,
+  productMentionedInCaption,
   type AutomationButton,
   type AutomationInput,
   type MatchMode,
 } from "@/core/instagram/comment-rules";
 import {
+  buttonTitle,
   listConversationMessages,
   normalizeDmButtons,
   sendInboxMessage,
@@ -1916,6 +1922,80 @@ export async function deliverTwoStepFromDm(
  * 12.10, заказ #144 «Палитра» вместо карточек). След в журнале — чтобы при
  * разборе было видно, на какое сообщение ответили.
  */
+function hasPlusPrompt(message: string): boolean {
+  const t = squash(message);
+  return (
+    /[«"“]\s*\+\s*[»"”]/.test(t) ||
+    /(?:напишите|ответьте|поставьте|пришлите|отправьте)\s+\+\s+(?:в\s+ответ|ответом|в\s+этот\s+чат)/i.test(
+      t,
+    ) ||
+    KNOWN_PROMPTS.some((q) => t.endsWith(squash(q)))
+  );
+}
+
+/**
+ * Если сообщение с призывом ответить «+» в первой строке явно называет один
+ * активный товар каталога (по номеру «405. КНИЖКА-ПОДСКАЗКА» или полному
+ * названию), возвращаем кнопку «Купить» этого товара — покупатель увидит её
+ * рядом с кнопкой «Каталог» (AATeach, 17.10, #1597: «+» на сентябрьское
+ * сообщение про «405. Книжка-подсказка»).
+ */
+async function productButtonFromPromptedDm(
+  ctx: TenantContext,
+  message: string,
+): Promise<{ title: string; payload: string } | null> {
+  const firstLine =
+    message
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .find(Boolean) ?? "";
+  if (!firstLine) return null;
+  try {
+    const { data, error } = await ctx.db
+      .from("products")
+      .select("id, name")
+      .eq("bot_id", ctx.tenant.id)
+      .eq("is_active", true);
+    if (error || !Array.isArray(data) || !data.length) return null;
+    const products = data.filter(
+      (x): x is { id: string; name: string } =>
+        typeof x?.id === "string" && typeof x?.name === "string" && Boolean(x.name.trim()),
+    );
+    const numMatch = firstLine.match(/^[^\p{L}\p{N}]*(\d{1,5})\s*[.)]/u);
+    if (numMatch) {
+      const numRe = new RegExp(`^[^\\p{L}\\p{N}]*${numMatch[1]}\\s*[.)]`, "u");
+      const byNum = products.filter(
+        (prod) => numRe.test(prod.name) && productMentionedInCaption(prod.name, firstLine),
+      );
+      if (byNum.length === 1) {
+        return {
+          title: buttonTitle(`🛒 ${byNum[0]!.name}`),
+          payload: `PROD:${byNum[0]!.id}`,
+        };
+      }
+    }
+    const lineWords = dmWords(firstLine).filter(
+      (w) => !GENERIC_DM_WORDS.has(w) && !DM_REQUEST_WORDS.has(w),
+    );
+    if (!lineWords.length) return null;
+    const byName = products.filter((prod) => {
+      const pWords = dmWords(prod.name).filter(
+        (w) => !GENERIC_DM_WORDS.has(w) && !DM_REQUEST_WORDS.has(w),
+      );
+      return pWords.length > 0 && pWords.every((pw) => lineWords.some((lw) => sameWord(lw, pw)));
+    });
+    if (byName.length === 1) {
+      return {
+        title: buttonTitle(`🛒 ${byName[0]!.name}`),
+        payload: `PROD:${byName[0]!.id}`,
+      };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export async function plusAnswersUnknownPrompt(
   ctx: TenantContext,
   p: TwoStepBuyer,
@@ -1923,7 +2003,7 @@ export async function plusAnswersUnknownPrompt(
   now: () => Date = () => new Date(),
   /** Покупатель написал голый «+». */
   bare = false,
-): Promise<"ask" | "asked" | null> {
+): Promise<"ask" | "asked" | { ask: true; button: { title: string; payload: string } } | null> {
   let tail: ZernioInboxMessage[];
   try {
     tail = await api.tail(p.accountId, p.conversationId);
@@ -1932,27 +2012,22 @@ export async function plusAnswersUnknownPrompt(
     return null;
   }
   const since = now().getTime() - TWO_STEP_FROM_DM_MS;
-  const last = tail
-    .filter(
-      (m) => m.direction === "outgoing" && m.message && Date.parse(m.createdAt ?? "") >= since,
-    )
-    .at(-1);
+  const outgoing = tail.filter((m) => m.direction === "outgoing" && m.message);
+  const last = outgoing.filter((m) => Date.parse(m.createdAt ?? "") >= since).at(-1);
   // Голый «+», а в переписке Zernio наших сообщений нет: первое сообщение
   // прислали вручную, и Zernio его не показал (Копилка 12.10, maryyyyisaaaa —
   // «+» на «Палитру» ушёл в обращение #147). Спрашиваем, какой материал, —
   // раз в сутки на переписку.
   if (!last?.message && !bare) return null;
-  if (last?.message) {
-    const t = squash(last.message);
-    const prompted =
-      /[«"“]\s*\+\s*[»"”]/.test(t) || KNOWN_PROMPTS.some((q) => t.endsWith(squash(q)));
-    if (!prompted) return null;
-  }
+  if (last?.message && !hasPlusPrompt(last.message)) return null;
+  const lastAny = outgoing.at(-1);
+  const answeredMsg =
+    last ?? (bare && lastAny?.message && hasPlusPrompt(lastAny.message) ? lastAny : undefined);
   const day = Math.floor(now().getTime() / 86_400_000);
   const { error } = await ctx.db.from("zernio_logs").insert({
     bot_id: ctx.tenant.id,
-    event_id: last?.message
-      ? `plus-unmatched:${last.id ?? `${p.conversationId}:${Date.parse(last.createdAt ?? "")}`}`
+    event_id: answeredMsg?.message
+      ? `plus-unmatched:${answeredMsg.id ?? `${p.conversationId}:${Date.parse(answeredMsg.createdAt ?? "")}`}`
       : `plus-unmatched:${p.conversationId}:day:${day}`,
     event_type: "two_step_dm_unmatched",
     status: "skipped",
@@ -1962,7 +2037,7 @@ export async function plusAnswersUnknownPrompt(
       username: p.username,
       accountId: p.accountId,
       conversationId: p.conversationId,
-      answered: last?.message?.slice(0, 300) ?? null,
+      answered: answeredMsg?.message?.slice(0, 300) ?? null,
     }),
   });
   // Повторный «+» на то же сообщение — вопрос уже задан, второй раз не спрашиваем.
@@ -1972,7 +2047,10 @@ export async function plusAnswersUnknownPrompt(
     console.warn(`[comment-dm] след «+» без правила не записан: ${error.message}`);
     return null;
   }
-  return "ask";
+  const button = answeredMsg?.message
+    ? await productButtonFromPromptedDm(ctx, answeredMsg.message)
+    : null;
+  return button ? { ask: true, button } : "ask";
 }
 
 /** Кодовое слово в Direct — короткая реплика, а не рассказ, где слово встретилось. */
@@ -2081,13 +2159,9 @@ export async function deliverTwoStepForDmKeyword(
  * попавшееся правило (AATeach, 17.10, #1597: ["+", "нужно"] у «Подвески» 489).
  */
 function dmKeywords(a: Pick<CommentAutomation, "keywords">): string[] {
-  return (a.keywords ?? []).filter((k): k is string => {
-    if (typeof k !== "string") return false;
-    const key = codeWordKey(k);
-    if (!key || isTwoStepAcknowledgement(k) || isTwoStepAcknowledgement(key)) return false;
-    const words = key.split(" ").filter(Boolean);
-    return words.some((w) => !GENERIC_DM_WORDS.has(w) && !DM_REQUEST_WORDS.has(w));
-  });
+  return (a.keywords ?? []).filter(
+    (k): k is string => typeof k === "string" && Boolean(k.trim()) && !isGenericDmKeyword(k),
+  );
 }
 
 /** Двухшаговые правила аккаунта с кодовыми словами для Direct. */
@@ -2161,37 +2235,6 @@ export async function isDmCodeWord(
     return false;
   }
 }
-
-/** Кодовое слово для сравнения: регистр, «ё», знаки и эмодзи по краям не важны. */
-function codeWordKey(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/ё/g, "е")
-    .replace(/[^\p{L}\p{N}]+/gu, " ")
-    .trim();
-}
-
-/** Слова, которые есть почти в любом тексте правила и товара не называют. */
-const GENERIC_DM_WORDS = new Set(
-  (
-    "здравствуйте привет добрый день вечер утро хочу цена сколько стоит купить " +
-    "оплата оплатить можно пожалуйста спасибо материал материалы файл заказ заказать " +
-    "сәлеметсіз сәлем рахмет hello hi price want buy thanks salom narxi"
-  ).split(" "),
-);
-
-/**
- * Слова просьбы рядом с названием в Direct («Хочу Палитру», «Палитра нужна,
- * пришлите»): с ними реплика остаётся просьбой. Любое другое слово делает её
- * рассказом или вопросом о товаре — продажу не начинаем.
- */
-const DM_REQUEST_WORDS = new Set(
-  (
-    "нужна нужно нужен нужны надо дайте пришлите отправьте скиньте вышлите " +
-    "интересует интересно хотела хотел хотим подробнее информация информацию " +
-    "давайте"
-  ).split(" "),
-);
 
 /**
  * Покупатель говорит, что товар у него уже есть или был куплен

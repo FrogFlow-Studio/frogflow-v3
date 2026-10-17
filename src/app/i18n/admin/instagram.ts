@@ -116,6 +116,10 @@ export const ru = {
   "instagram.form.postChangeWarn": "Смена поста пересоздаёт правило — счётчики обнулятся.",
   "instagram.form.productNotInPost":
     "Товар «{product}» не упоминается в посте «{post}», проверьте. Сохранить всё равно можно.",
+  "instagram.form.keywordShared":
+    "Слово «{keyword}» уже есть в правилах {rules}: под своим постом оно сработает, но в Direct без комментария бот не угадает товар.",
+  "instagram.form.keywordGeneric":
+    "Слово «{keyword}» слишком общее для Direct: под своим постом оно сработает, но в личных сообщениях без комментария не запустит выдачу товара.",
   // догоняющая рассылка
   "instagram.catchup.title": "Догоняющая рассылка по комментариям",
   "instagram.catchup.intro":
@@ -259,6 +263,10 @@ export const kk: SectionDict<typeof ru> = {
     "Постты ауыстыру ережені қайта жасайды — есептегіштер нөлденеді.",
   "instagram.form.productNotInPost":
     "«{product}» тауары «{post}» постында аталмайды, тексеріңіз. Бәрібір сақтауға болады.",
+  "instagram.form.keywordShared":
+    "«{keyword}» сөзі {rules} ережелерінде бар: өз постының астында ол жұмыс істейді, бірақ Direct-те пікірсіз бот тауарды таба алмайды.",
+  "instagram.form.keywordGeneric":
+    "«{keyword}» сөзі Direct үшін тым жалпы: өз постының астында ол жұмыс істейді, бірақ жеке хабарламаларда пікірсіз тауарды жібермейді.",
   "instagram.catchup.title": "Пікірлер бойынша қуып жететін жіберілім",
   "instagram.catchup.intro":
     "Пост астындағы ереже үнсіз қалса, мұнда DM кімге кетпегені көрінеді және оны қолмен жіберуге болады — бір жолы 25 адамға дейін.",
@@ -397,6 +405,10 @@ export const en: SectionDict<typeof ru> = {
   "instagram.form.postChangeWarn": "Changing the post recreates the rule — counters will reset.",
   "instagram.form.productNotInPost":
     "The product “{product}” is not mentioned in the post “{post}” — please check. You can still save.",
+  "instagram.form.keywordShared":
+    "The keyword “{keyword}” is already used in {rules}: it will work under its own post, but in Direct without a comment the bot won't know which product to pick.",
+  "instagram.form.keywordGeneric":
+    "The keyword “{keyword}” is too generic for Direct: it will work under its own post, but won't trigger product delivery in Direct messages without a comment.",
   "instagram.catchup.title": "Catch-up sending by comments",
   "instagram.catchup.intro":
     "If the rule under a post went silent, here you can see who didn't get the DM and send it manually — up to 25 people at a time.",
@@ -538,6 +550,10 @@ export const uz: SectionDict<typeof ru> = {
     "Postni o‘zgartirish qoidani qayta yaratadi — hisoblagichlar nolga tushadi.",
   "instagram.form.productNotInPost":
     "«{product}» mahsuloti «{post}» postida tilga olinmagan, tekshiring. Baribir saqlash mumkin.",
+  "instagram.form.keywordShared":
+    "«{keyword}» so‘zi {rules} qoidalarida allaqachon bor: o‘z posti ostida u ishlaydi, lekin Direct-da izohsiz bot mahsulotni topa olmaydi.",
+  "instagram.form.keywordGeneric":
+    "«{keyword}» so‘zi Direct uchun juda umumiy: o‘z posti ostida u ishlaydi, lekin shaxsiy xabarlarda izohsiz mahsulot berishni ishga tushirmaydi.",
   "instagram.catchup.title": "Izohlar bo‘yicha quvib yetuvchi yuborish",
   "instagram.catchup.intro":
     "Post ostidagi qoida jim qolgan bo‘lsa, bu yerda DM kimga ketmagani ko‘rinadi va uni qo‘lda yuborish mumkin — bir safarda 25 kishigacha.",
