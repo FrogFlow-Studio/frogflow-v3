@@ -22,6 +22,7 @@ import {
   REQUESTS_HINT,
   commentLang,
   isNotReceivedComment,
+  isTwoStepAcknowledgement,
   replyPromptsOf,
   STALE_PENDING_MS,
   annotateCommentStatus,
@@ -1097,9 +1098,9 @@ export async function handleCommentReceived(
     const own = commentOnRulePost(a, commentPostId, caption);
     if (own === false) return false;
     if (!commentMatchesAutomation(text, a.keywords, a.matchMode)) return false;
-    // Пост не узнать (нет подписи в событии), а правило «любой комментарий» —
-    // только если комментарий называет товар правила («Палитра», «Политра»).
-    return own === true || expressAllowed(text, a);
+    // Пост не узнать (нет подписи в событии), а правило «любой комментарий» или
+    // с общим словом («нужно», «+») — только если комментарий называет товар правила.
+    return own === true || expressAllowed(text, { ...a, keywords: dmKeywords(a) });
   });
   if (!matched) return { note: "правило не совпало" };
 
@@ -1996,6 +1997,11 @@ export async function deliverTwoStepForDmKeyword(
 ): Promise<boolean> {
   const t = text.trim();
   if (!p.username || !t || t.length > DM_KEYWORD_MAX_LEN) return false;
+  // «+», «да», «1», «хочу» — ответ на призыв, а не кодовое слово товара в Direct:
+  // если свежего первого сообщения правила нет, товар не угадываем (AATeach,
+  // 17.10, заказ #1597: «+» на сентябрьское сообщение про 405 попал в правило
+  // «Подвеска» 489 со словами ["+", "нужно"]).
+  if (isTwoStepAcknowledgement(t) || !codeWordKey(t)) return false;
   // «Палитру я у вас покупала» — рассказ о купленном, не просьба (#146).
   if (mentionsOwnedProduct(t)) return false;
   const all = await listAutomations(ctx, api);
@@ -2068,7 +2074,23 @@ export async function deliverTwoStepForDmKeyword(
   return deliverPendingTwoStepDm(ctx, p, api, now);
 }
 
-/** Двухшаговые правила аккаунта с кодовыми словами. */
+/**
+ * Кодовые слова правила, которые называют сам материал в Direct без поста.
+ * Под рилсом слова «+», «нужно», «хочу» работают, потому что комментарий
+ * привязан к посту; в Direct поста нет, и общее слово срабатывало на первое
+ * попавшееся правило (AATeach, 17.10, #1597: ["+", "нужно"] у «Подвески» 489).
+ */
+function dmKeywords(a: Pick<CommentAutomation, "keywords">): string[] {
+  return (a.keywords ?? []).filter((k): k is string => {
+    if (typeof k !== "string") return false;
+    const key = codeWordKey(k);
+    if (!key || isTwoStepAcknowledgement(k) || isTwoStepAcknowledgement(key)) return false;
+    const words = key.split(" ").filter(Boolean);
+    return words.some((w) => !GENERIC_DM_WORDS.has(w) && !DM_REQUEST_WORDS.has(w));
+  });
+}
+
+/** Двухшаговые правила аккаунта с кодовыми словами для Direct. */
 function keywordRules(all: CommentAutomation[], accountId: string): CommentAutomation[] {
   return all.filter(
     (a) =>
@@ -2078,7 +2100,7 @@ function keywordRules(all: CommentAutomation[], accountId: string): CommentAutom
       // Тип правила не смотрим: Zernio может отдать его иначе, чем мы пишем,
       // а ответ на историю — тоже личка (Копилка, 09.10: «Палитра» ответом
       // на историю ушла в обращение #50).
-      (a.keywords ?? []).some((k) => typeof k === "string" && k.trim() !== ""),
+      dmKeywords(a).length > 0,
   );
 }
 
@@ -2089,13 +2111,23 @@ async function ruleOfDmWord(
   all: CommentAutomation[],
   accountId: string,
 ): Promise<CommentAutomation | null> {
-  return (
-    keywordRules(all, accountId).find((a) =>
-      commentMatchesAutomation(t, a.keywords, a.matchMode),
-    ) ??
-    (await ruleNamedInDm(ctx, t, all, accountId)) ??
-    null
+  const byKw = keywordRules(all, accountId).filter((a) =>
+    commentMatchesAutomation(t, dmKeywords(a), a.matchMode),
   );
+  if (byKw.length === 1) return byKw[0]!;
+  if (byKw.length > 1) {
+    const products = new Set(
+      byKw.map((a) =>
+        buyButtonProduct(
+          normalizeDmButtons(
+            (a.secondDmButtons?.length ? a.secondDmButtons : (a.buttons ?? [])) as DmButton[],
+          ),
+        ),
+      ),
+    );
+    return products.size === 1 ? byKw[0]! : null;
+  }
+  return (await ruleNamedInDm(ctx, t, all, accountId)) ?? null;
 }
 
 /**
@@ -2111,16 +2143,16 @@ export async function isDmCodeWord(
   api: AutomationApi = liveAutomationApi,
 ): Promise<boolean> {
   const t = text.trim();
-  if (!t || t.length > DM_KEYWORD_MAX_LEN || mentionsOwnedProduct(t)) return false;
+  if (!t || t.length > DM_KEYWORD_MAX_LEN || isTwoStepAcknowledgement(t) || mentionsOwnedProduct(t))
+    return false;
   // Само слово, без вопроса: «Палитра», «палитра!» — да; «Палитра на казахском
   // есть?» — нет, это вопрос, он идёт дальше обычным путём.
   const bare = codeWordKey(t);
+  if (!bare) return false;
   try {
     const all = await listAutomations(ctx, api);
     if (
-      keywordRules(all, p.accountId).some((a) =>
-        (a.keywords ?? []).some((k) => typeof k === "string" && codeWordKey(k) === bare),
-      )
+      keywordRules(all, p.accountId).some((a) => dmKeywords(a).some((k) => codeWordKey(k) === bare))
     )
       return true;
     return Boolean(await ruleNamedInDm(ctx, t, all, p.accountId));
@@ -2213,14 +2245,14 @@ function quotedWords(text: string | null | undefined): string[] {
 }
 
 /**
- * Правило «любой комментарий» (список кодовых слов пуст) в Direct по самому
- * списку не узнать (Копилка, 09.10: у рилса «Палитра» слова не вписаны,
- * «Палитра» в личке молчала). Узнаём только по тому, что называет товар:
- * название правила, название товара кнопки «Купить» и слово в кавычках из
- * подписи или первого сообщения («Пишите слово "Палитра"»). Остальные слова
+ * Правило «любой комментарий» (или правило только с общими словами «нужно»/«+»)
+ * в Direct по списку слов не узнать (Копилка, 09.10: у рилса «Палитра» слова
+ * не вписаны, «Палитра» в личке молчала). Узнаём только по тому, что называет
+ * товар: название правила, название товара кнопки «Купить» и слово в кавычках
+ * из подписи или первого сообщения («Пишите слово "Палитра"»). Остальные слова
  * подписи, сообщений и кнопок не считаются: на них название раздела каталога
  * «Оформление и праздники» вызвало «Купить» Палитры (Копилка, заказ #127,
- * 11.10). Общие слова («хочу», «цена», «здравствуйте») не считаются.
+ * 11.10). Общие слова («хочу», «нужно», «цена», «здравствуйте») не считаются.
  */
 async function ruleNamedInDm(
   ctx: TenantContext,
@@ -2233,7 +2265,7 @@ async function ruleNamedInDm(
   for (const a of all) {
     if (!(a.twoStepDm || Boolean(a.buttons?.length))) continue;
     if (a.isActive === false || a.accountId !== accountId) continue;
-    if (hasKeywords(a)) continue;
+    if (dmKeywords(a).length > 0) continue;
     const productId = buyButtonProduct(
       normalizeDmButtons(
         (a.secondDmButtons?.length ? a.secondDmButtons : (a.buttons ?? [])) as DmButton[],
@@ -2269,7 +2301,9 @@ async function ruleNamedInDm(
  * #146 на уже купленный материал (Копилка, 12.10).
  */
 function dmNamesWhole(words: string[], name: string): boolean {
-  const nameWords = dmWords(name).filter((w) => !GENERIC_DM_WORDS.has(w));
+  const nameWords = dmWords(name).filter(
+    (w) => !GENERIC_DM_WORDS.has(w) && !DM_REQUEST_WORDS.has(w),
+  );
   if (!nameWords.length) return false;
   if (!nameWords.every((n) => words.some((w) => sameWord(w, n)))) return false;
   return words.every((w) => DM_REQUEST_WORDS.has(w) || nameWords.some((n) => sameWord(w, n)));

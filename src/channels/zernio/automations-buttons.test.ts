@@ -1749,6 +1749,82 @@ describe("Comment-to-DM: кодовое слово прямо в Direct (Коп�
       rules: [{ id: "rule1" }, { id: "rule1" }],
     });
   });
+
+  it("общие слова «+», «нужно», «хочу» из ключевых слов рилса в Direct правило не запускают, а само название товара — запускает (AATeach 17.10, #1597, innayan9898)", async () => {
+    const { isDmCodeWord } = await import("./automations.server");
+    const podveska = {
+      id: "podveska",
+      name: "Подвеска",
+      accountId: "acc-1",
+      keywords: ["+", "нужно"],
+      matchMode: "contains",
+      twoStepDm: true,
+      postTitle: 'Пишите слово "НУЖНО" в комментариях и я отправлю информацию',
+      dmMessage: "Подвеска ко Дню Республики — 600 тг",
+      buttons: [{ type: "postback", title: "Купить", payload: "PROD:p-489" }],
+    };
+    const gramoty = {
+      id: "gramoty",
+      name: "Осенние грамоты",
+      accountId: "acc-1",
+      keywords: ["нужно"],
+      matchMode: "exact",
+      twoStepDm: true,
+      dmMessage: "Осенние грамоты",
+      buttons: [{ type: "postback", title: "Купить", payload: "PROD:p-480" }],
+    };
+    const hleb = {
+      id: "hleb",
+      name: "день хлеба",
+      accountId: "acc-1",
+      keywords: ["хлеб", "нужно"],
+      matchMode: "contains",
+      twoStepDm: true,
+      dmMessage: "День хлеба",
+      buttons: [{ type: "postback", title: "Купить", payload: "PROD:p-430" }],
+    };
+    for (const word of ["+", "++", "нужно", "Нужно!", "хочу", "да", "1", "❤️"]) {
+      const { ctx, api, inbox } = kwSetup([podveska, gramoty, hleb]);
+      expect(await deliverTwoStepForDmKeyword(ctx, who, word, api), word).toBe(false);
+      expect(await isDmCodeWord(ctx, who, word, api), word).toBe(false);
+      expect(inbox).not.toHaveBeenCalled();
+    }
+    // Кодовое слово «хлеб» из пары ["хлеб", "нужно"] и название «Подвеска» работают.
+    const byBread = kwSetup([podveska, gramoty, hleb]);
+    expect(await deliverTwoStepForDmKeyword(byBread.ctx, who, "хлеб", byBread.api)).toBe(true);
+    expect(await isDmCodeWord(byBread.ctx, who, "хлеб", byBread.api)).toBe(true);
+    expect(secondSteps(byBread.db)[0]?.payload).toMatchObject({ automationId: "hleb" });
+
+    const byName = kwSetup([podveska, gramoty, hleb]);
+    byName.db.tables.products = [
+      { id: "p-489", bot_id: BOT, name: "489. Подвеска ко Дню Республики" },
+    ];
+    expect(await deliverTwoStepForDmKeyword(byName.ctx, who, "Подвеска", byName.api)).toBe(true);
+    expect(await isDmCodeWord(byName.ctx, who, "Подвеска", byName.api)).toBe(true);
+    expect(secondSteps(byName.db)[0]?.payload).toMatchObject({ automationId: "podveska" });
+  });
+
+  it("одно кодовое слово у двух правил на разные товары в Direct не угадывает; дубликат на один товар — работает", async () => {
+    const a = {
+      ...palette,
+      id: "a",
+      keywords: ["осень"],
+      buttons: [{ type: "postback", title: "Купить", payload: "PROD:p-1" }],
+    };
+    const b = {
+      ...palette,
+      id: "b",
+      keywords: ["осень"],
+      buttons: [{ type: "postback", title: "Купить", payload: "PROD:p-2" }],
+    };
+    const diff = kwSetup([a, b]);
+    expect(await deliverTwoStepForDmKeyword(diff.ctx, who, "осень", diff.api)).toBe(false);
+    expect(diff.inbox).not.toHaveBeenCalled();
+
+    const dup = kwSetup([a, { ...b, buttons: a.buttons }]);
+    expect(await deliverTwoStepForDmKeyword(dup.ctx, who, "осень", dup.api)).toBe(true);
+    expect(dup.inbox).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("Comment-to-DM: правило с подписью поста — только под своим постом (Копилка #96, AATeach #1361)", () => {
