@@ -1,6 +1,7 @@
 import { HelpTip } from "@/app/admin/help-panel";
 import { createFileRoute, Link, useBlocker, useNavigate } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { convertViaUsd, formatMoney } from "@/core/money/money";
 import { ReadinessCard } from "@/app/admin/product-readiness";
 import { ProductToc, SaveBar, SectionHeading, useActiveSection } from "@/app/admin/product-layout";
 import { productReadiness } from "@/core/catalog/readiness";
@@ -48,6 +49,16 @@ export const Route = createFileRoute("/admin/_authed/products_/$id")({
   component: ProductEditor,
 });
 
+function countryFlag(code: string): string {
+  const c = code.toUpperCase();
+  if (c === "OTHER") return "🌐";
+  if (c.length === 2 && /^[A-Z]{2}$/.test(c)) {
+    const codePoints = [...c].map((char) => 127397 + char.charCodeAt(0));
+    return String.fromCodePoint(...codePoints);
+  }
+  return "🏳️";
+}
+
 /** Обёртка: «Отменить» пересоздаёт редактор, поля и списки возвращаются к сохранённому. */
 function ProductEditor() {
   const [version, setVersion] = useState(0);
@@ -67,6 +78,7 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
     ruCardPrice,
     defaultFulfillment,
     topics: shopTopics,
+    fxRates,
   } = Route.useLoaderData();
   const { shop } = Route.useRouteContext();
   const t = adminT(shop.locale);
@@ -189,31 +201,124 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
     ...(shop.modules.bundles && p?.id && kind === "physical" ? (["bundle"] as const) : []),
     ...(shop.modules.upsell && p?.id ? (["promo"] as const) : []),
   ];
-  // Поля формы для «Готовности»: неуправляемые, поэтому читаем их из формы на каждый ввод.
+  // Поля формы для «Готовности» и предпросмотра цен: неуправляемые, поэтому читаем их из формы на каждый ввод.
   const [live, setLive] = useState({
     name: p?.name ?? "",
     description: p?.description ?? "",
     price: p ? Number(p.price) : (null as number | null),
+    currency: p?.currency ?? shop.currency,
+    countryPrices: (p?.country_prices &&
+    typeof p.country_prices === "object" &&
+    !Array.isArray(p.country_prices)
+      ? (p.country_prices as Record<string, number>)
+      : {}) as Record<string, number>,
     categories: Array.isArray(p?.category_ids) ? p.category_ids.length : 0,
   });
   const readLive = (form: HTMLFormElement) => {
     const f = new FormData(form);
     const price = String(f.get("price") ?? "").trim();
+    const currency = String(f.get("currency") || shop.currency)
+      .trim()
+      .toUpperCase();
+    const countryPrices: Record<string, number> = {};
+    for (const [k, v] of f.entries()) {
+      if (typeof k === "string" && k.startsWith("cp_")) {
+        const code = k.slice(3).toUpperCase();
+        const num = Number(v);
+        if (Number.isFinite(num) && num > 0) countryPrices[code] = num;
+      }
+    }
     setLive({
       name: String(f.get("name") ?? ""),
       description: String(f.get("description") ?? ""),
       price: price === "" ? null : Number(price),
+      currency,
+      countryPrices,
       categories: f.getAll("categoryIds").length,
     });
   };
   const readiness = productReadiness({
-    ...live,
+    name: live.name,
+    description: live.description,
+    price: live.price,
+    categories: live.categories,
     variants: variants.length,
     photos: images.length,
     kind,
     files: materials.length,
     isCourse,
   });
+  const targetCountries = useMemo(() => {
+    const list: { code: string; name: string; currency: string }[] = [];
+    const baseCur = (live.currency || shop.currency).toUpperCase();
+    for (const c of countries) {
+      list.push({ code: c.code.toUpperCase(), name: c.name, currency: c.currency.toUpperCase() });
+    }
+    if (ruCardPrice && !list.some((c) => c.code === "RU")) {
+      list.push({ code: "RU", name: "Россия", currency: "RUB" });
+    }
+    const hasBase = list.some((c) => c.currency === baseCur);
+    if (!hasBase) {
+      const baseCode =
+        baseCur === "KZT" ? "KZ" : baseCur === "RUB" ? "RU" : baseCur === "USD" ? "US" : baseCur;
+      const baseName = baseCur === "KZT" ? "Казахстан" : baseCur === "RUB" ? "Россия" : baseCur;
+      list.unshift({ code: baseCode, name: baseName, currency: baseCur });
+    }
+    return list;
+  }, [countries, ruCardPrice, live.currency, shop.currency]);
+  const pricePreviews = useMemo(() => {
+    const basePrice = live.price;
+    const baseCur = (live.currency || shop.currency).toUpperCase();
+    return targetCountries.map((c) => {
+      const flag = countryFlag(c.code);
+      const isBase = c.currency === baseCur;
+      const manual = live.countryPrices[c.code] ?? null;
+      if (manual !== null && manual > 0) {
+        return {
+          code: c.code,
+          name: c.name,
+          flag,
+          amount: formatMoney(manual, c.currency),
+          tag: t("product.pricePreviewManual"),
+          isManual: true,
+        };
+      }
+      if (basePrice !== null && basePrice > 0) {
+        if (isBase) {
+          return {
+            code: c.code,
+            name: c.name,
+            flag,
+            amount: formatMoney(basePrice, c.currency),
+            tag: t("product.pricePreviewBase"),
+            isManual: false,
+          };
+        }
+        if (fxRates) {
+          const converted = convertViaUsd(basePrice, baseCur, c.currency, fxRates);
+          if (converted !== null) {
+            return {
+              code: c.code,
+              name: c.name,
+              flag,
+              amount: `≈ ${formatMoney(converted, c.currency)}`,
+              tag: t("product.pricePreviewAuto"),
+              isManual: false,
+            };
+          }
+        }
+      }
+      return {
+        code: c.code,
+        name: c.name,
+        flag,
+        amount:
+          basePrice !== null && basePrice > 0 && isBase ? formatMoney(basePrice, c.currency) : "—",
+        tag: isBase ? t("product.pricePreviewBase") : t("product.pricePreviewAuto"),
+        isManual: false,
+      };
+    });
+  }, [targetCountries, live.price, live.currency, live.countryPrices, shop.currency, fxRates, t]);
   // Новый вид: все разделы идут подряд в порядке работы над карточкой, вкладок нет.
   const newOrder: ProductTab[] = [
     "main",
@@ -583,6 +688,26 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
                   </div>
                 </div>
               )}
+              <div className="mt-4 rounded-lg border border-line bg-surface-2/40 p-3">
+                <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted">
+                  <span>👁️</span>
+                  <span>{t("product.pricePreviewTitle")}</span>
+                </div>
+                <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm">
+                  {pricePreviews.map((item) => (
+                    <div key={item.code} className="inline-flex items-center gap-1.5">
+                      <span>{item.flag}</span>
+                      <span className="font-medium">{item.name}:</span>
+                      <span className="font-semibold tabular-nums">{item.amount}</span>
+                      <span
+                        className={`text-xs ${item.isManual ? "font-medium text-accent" : "text-muted"}`}
+                      >
+                        ({item.tag})
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </Card>
 
             {shop.modules.profit && p?.id && (

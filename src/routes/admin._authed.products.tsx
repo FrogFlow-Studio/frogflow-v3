@@ -1,7 +1,7 @@
 import { HelpTip } from "@/app/admin/help-panel";
 import { canEdit } from "@/core/auth/roles";
 import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 import {
   bulkProductsFn,
@@ -15,7 +15,7 @@ import { EmptyState } from "@/app/ui/states";
 import { Badge, Empty, ErrorBox, PageTitle, Switch, useAction } from "@/app/ui";
 import { ReadinessBadge } from "@/app/admin/product-readiness";
 import { rowReadiness } from "@/core/catalog/readiness";
-import { formatMoney } from "@/core/money/money";
+import { formatMoney, manualCountryPrice } from "@/core/money/money";
 import { imagePath } from "@/core/catalog/image-url";
 import { nextPageOffset } from "@/core/catalog/picker";
 import type { BulkAction } from "@/core/catalog/bulk";
@@ -81,6 +81,16 @@ function ProductsPage() {
   const { shop } = Route.useRouteContext();
   const school = shop.vertical === "courses";
   const t = adminT(shop.locale);
+  const targetCountries = useMemo(() => {
+    const list: { code: string; name: string; currency: string }[] = [];
+    for (const c of first.countries ?? []) {
+      list.push({ code: c.code.toUpperCase(), name: c.name, currency: c.currency.toUpperCase() });
+    }
+    if (first.ruCardPrice && !list.some((c) => c.code === "RU")) {
+      list.push({ code: "RU", name: "Россия", currency: "RUB" });
+    }
+    return list;
+  }, [first.countries, first.ruCardPrice]);
   const s = Route.useSearch();
   const navigate = useNavigate();
   const router = useRouter();
@@ -441,112 +451,175 @@ function ProductsPage() {
               </tr>
             </thead>
             <tbody>
-              {products.map((p) => (
-                <tr
-                  key={p.id}
-                  draggable={canReorder}
-                  onDragStart={() => setDrag(p.id)}
-                  onDragOver={(e) => {
-                    if (canReorder && drag) e.preventDefault();
-                  }}
-                  onDrop={() => {
-                    if (drag && drag !== p.id) void reorder.run(drag, p.id).catch(() => {});
-                    setDrag(null);
-                  }}
-                  className={`hover:bg-surface-2/60 ${canReorder ? "cursor-grab" : ""} ${drag === p.id ? "opacity-50" : ""}`}
-                >
-                  {editable && (
-                    <td className="w-8">
-                      <input
-                        type="checkbox"
-                        aria-label={t("products.bulk.rowSelect", { name: p.name })}
-                        checked={picked.has(p.id)}
-                        onChange={(e) => togglePick(p.id, e.target.checked)}
-                      />
-                    </td>
-                  )}
-                  <td className="w-12">
-                    {p.cover ? (
-                      <img
-                        src={imagePath(shop.botId, p.cover)}
-                        alt=""
-                        className="h-10 w-10 rounded object-cover"
-                      />
-                    ) : (
-                      <div className="h-10 w-10 rounded bg-surface-2" />
+              {products.map((p) => {
+                const regionalBadges = targetCountries
+                  .filter((c) => {
+                    const manual =
+                      manualCountryPrice(p.country_prices, c.code) ??
+                      manualCountryPrice(p.country_prices, c.code.toLowerCase());
+                    if (c.currency === p.currency.toUpperCase() && manual === null) return false;
+                    return true;
+                  })
+                  .map((c) => {
+                    const manual =
+                      manualCountryPrice(p.country_prices, c.code) ??
+                      manualCountryPrice(p.country_prices, c.code.toLowerCase());
+                    if (manual !== null) {
+                      return {
+                        code: c.code,
+                        text: `${c.code}: ${formatMoney(manual, c.currency)}`,
+                        isManual: true,
+                      };
+                    }
+                    return {
+                      code: c.code,
+                      text: `${c.code}: ${t("product.priceAutoBadge")}`,
+                      isManual: false,
+                    };
+                  });
+
+                return (
+                  <tr
+                    key={p.id}
+                    draggable={canReorder}
+                    onDragStart={() => setDrag(p.id)}
+                    onDragOver={(e) => {
+                      if (canReorder && drag) e.preventDefault();
+                    }}
+                    onDrop={() => {
+                      if (drag && drag !== p.id) void reorder.run(drag, p.id).catch(() => {});
+                      setDrag(null);
+                    }}
+                    className={`hover:bg-surface-2/60 ${canReorder ? "cursor-grab" : ""} ${drag === p.id ? "opacity-50" : ""}`}
+                  >
+                    {editable && (
+                      <td className="w-8">
+                        <input
+                          type="checkbox"
+                          aria-label={t("products.bulk.rowSelect", { name: p.name })}
+                          checked={picked.has(p.id)}
+                          onChange={(e) => togglePick(p.id, e.target.checked)}
+                        />
+                      </td>
                     )}
-                  </td>
-                  <td>
-                    <Link
-                      to="/admin/products/$id"
-                      params={{ id: p.id }}
-                      className="font-medium hover:underline"
-                    >
-                      {p.name}
-                    </Link>
-                    <div className="text-xs text-muted">
-                      {p.fulfillment_kind === "physical" ? t("order.physical") : t("order.digital")}
-                      {p.variants ? ` · ${t("products.variants", { n: p.variants })}` : ""}
-                      {p.stock_quantity != null
-                        ? ` · ${t("products.stock", { n: p.stock_quantity })}`
-                        : ""}
-                    </div>
-                  </td>
-                  <td className="text-muted">
-                    {(Array.isArray(p.category_ids) ? (p.category_ids as string[]) : [])
-                      .map((id) => catName.get(id) ?? "?")
-                      .join(", ") || "—"}
-                  </td>
-                  <td className="text-right tabular-nums">{formatMoney(p.price, p.currency)}</td>
-                  <td className="text-right tabular-nums">
-                    {p.stock_quantity === null ? "—" : p.stock_quantity}
-                  </td>
-                  <td>
-                    <ReadinessBadge r={rowReadiness(p)} t={t} />
-                  </td>
-                  {shop.modules.stock && (
-                    <td
-                      className={`text-right tabular-nums ${
-                        p.days_left !== null && p.days_left < 7 ? "font-medium text-danger" : ""
-                      }`}
-                      title={t("products.daysLeftHint")}
-                    >
-                      {p.days_left === null ? "—" : t("products.daysLeft", { n: p.days_left })}
-                    </td>
-                  )}
-                  <td>
-                    {p.fulfillment_kind === "digital" ? (
-                      p.files ? (
-                        <Badge tone="ok">{p.files}</Badge>
+                    <td className="w-12">
+                      {p.cover ? (
+                        <img
+                          src={imagePath(shop.botId, p.cover)}
+                          alt=""
+                          className="h-10 w-10 rounded object-cover"
+                        />
                       ) : (
-                        <Badge tone="danger">{t("products.noFile")}</Badge>
-                      )
-                    ) : (
-                      <span className="text-muted">—</span>
-                    )}
-                    {p.langs.length > 0 && (
-                      <div className="mt-1 text-xs text-muted" aria-label={t("products.col.langs")}>
-                        {p.langs.map((l) => LANG_LABEL[l]).join(" ")}
+                        <div className="h-10 w-10 rounded bg-surface-2" />
+                      )}
+                    </td>
+                    <td>
+                      <Link
+                        to="/admin/products/$id"
+                        params={{ id: p.id }}
+                        className="font-medium hover:underline"
+                      >
+                        {p.name}
+                      </Link>
+                      <div className="text-xs text-muted">
+                        {p.fulfillment_kind === "physical"
+                          ? t("order.physical")
+                          : t("order.digital")}
+                        {p.variants ? ` · ${t("products.variants", { n: p.variants })}` : ""}
+                        {p.stock_quantity != null
+                          ? ` · ${t("products.stock", { n: p.stock_quantity })}`
+                          : ""}
                       </div>
+                    </td>
+                    <td className="text-muted">
+                      {(Array.isArray(p.category_ids) ? (p.category_ids as string[]) : [])
+                        .map((id) => catName.get(id) ?? "?")
+                        .join(", ") || "—"}
+                    </td>
+                    <td className="text-right tabular-nums">
+                      <Link
+                        to="/admin/products/$id"
+                        params={{ id: p.id }}
+                        hash="price"
+                        className="font-medium hover:underline"
+                      >
+                        {formatMoney(p.price, p.currency)}
+                      </Link>
+                      {regionalBadges.length > 0 && (
+                        <div className="mt-0.5 flex flex-wrap justify-end gap-1">
+                          {regionalBadges.map((rb) => (
+                            <span
+                              key={rb.code}
+                              className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] leading-tight font-medium ${
+                                rb.isManual
+                                  ? "border border-accent/40 bg-accent/10 text-accent"
+                                  : "border border-line bg-surface-2 text-muted"
+                              }`}
+                              title={
+                                rb.isManual
+                                  ? t("product.pricePreviewManual")
+                                  : t("product.pricePreviewAuto")
+                              }
+                            >
+                              {rb.text}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </td>
+                    <td className="text-right tabular-nums">
+                      {p.stock_quantity === null ? "—" : p.stock_quantity}
+                    </td>
+                    <td>
+                      <ReadinessBadge r={rowReadiness(p)} t={t} />
+                    </td>
+                    {shop.modules.stock && (
+                      <td
+                        className={`text-right tabular-nums ${
+                          p.days_left !== null && p.days_left < 7 ? "font-medium text-danger" : ""
+                        }`}
+                        title={t("products.daysLeftHint")}
+                      >
+                        {p.days_left === null ? "—" : t("products.daysLeft", { n: p.days_left })}
+                      </td>
                     )}
-                  </td>
-                  <td className="whitespace-nowrap text-muted tabular-nums">
-                    {new Date(p.created_at).toLocaleDateString(intlLocale(shop.locale), {
-                      timeZone: "UTC",
-                      day: "numeric",
-                      month: "short",
-                      year: "numeric",
-                    })}
-                  </td>
-                  <td>
-                    <Switch
-                      checked={p.is_active}
-                      onChange={(on) => void toggle.run(p.id, on).catch(() => {})}
-                      label={t("products.onSaleLabel")}
-                    />
-                  </td>
-                </tr>
-              ))}
+                    <td>
+                      {p.fulfillment_kind === "digital" ? (
+                        p.files ? (
+                          <Badge tone="ok">{p.files}</Badge>
+                        ) : (
+                          <Badge tone="danger">{t("products.noFile")}</Badge>
+                        )
+                      ) : (
+                        <span className="text-muted">—</span>
+                      )}
+                      {p.langs.length > 0 && (
+                        <div
+                          className="mt-1 text-xs text-muted"
+                          aria-label={t("products.col.langs")}
+                        >
+                          {p.langs.map((l) => LANG_LABEL[l]).join(" ")}
+                        </div>
+                      )}
+                    </td>
+                    <td className="whitespace-nowrap text-muted tabular-nums">
+                      {new Date(p.created_at).toLocaleDateString(intlLocale(shop.locale), {
+                        timeZone: "UTC",
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                      })}
+                    </td>
+                    <td>
+                      <Switch
+                        checked={p.is_active}
+                        onChange={(on) => void toggle.run(p.id, on).catch(() => {})}
+                        label={t("products.onSaleLabel")}
+                      />
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
           {(hasMore || products.length < first.total) && (

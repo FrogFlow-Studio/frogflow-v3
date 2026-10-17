@@ -17,7 +17,7 @@ export function schemaColumns(): Map<string, Set<string>> {
   );
   const start = src.indexOf("    Tables: {");
   const end = src.indexOf("    Views: {", start);
-  const lines = src.slice(start, end).split("\n");
+  const lines = src.slice(start, end).split(/\r?\n/);
   const out = new Map<string, Set<string>>();
   let table: string | null = null;
   let inRow = false;

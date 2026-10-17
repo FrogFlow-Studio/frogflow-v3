@@ -39,6 +39,11 @@ export const ru = {
   "product.ruCardPrice": "Цена для России, ₽",
   "product.ruCardPriceHint":
     "Бот покажет её рядом с тенге: «К оплате: 1700 ₸ / ≈470 ₽». Платят картой РФ через Продамус; страну оплаты «Россия» добавлять не нужно.",
+  "product.pricePreviewTitle": "Предпросмотр цен для покупателей",
+  "product.pricePreviewBase": "базовая",
+  "product.pricePreviewAuto": "по курсу",
+  "product.pricePreviewManual": "фиксированная",
+  "product.priceAutoBadge": "авто",
   "product.variantsCourse":
     "Тарифы курса (например, «Самостоятельно», «С проверкой ДЗ») — цена тарифа вместо базовой; что входит в тариф, настраивается в карточке курса",
   "product.variants": "Варианты (например, «1 кг», «2 кг») — цена варианта вместо базовой",
@@ -280,6 +285,11 @@ export const kk: SectionDict<typeof ru> = {
   "product.ruCardPrice": "Ресей үшін баға, ₽",
   "product.ruCardPriceHint":
     "Бот оны теңгенің жанында көрсетеді: «Төлеуге: 1700 ₸ / ≈470 ₽». РФ картасымен Продамус арқылы төлейді; «Ресей» төлем елін қосу қажет емес.",
+  "product.pricePreviewTitle": "Сатып алушылар үшін бағаларды алдын ала қарау",
+  "product.pricePreviewBase": "негізгі",
+  "product.pricePreviewAuto": "бағам бойынша",
+  "product.pricePreviewManual": "белгіленген",
+  "product.priceAutoBadge": "авто",
   "product.variantsCourse":
     "Курс тарифтері (мысалы, «Өз бетінше», «ҮТ тексерумен») — негізгі бағаның орнына тариф бағасы; тарифке не кіретіні курс карточкасында бапталады",
   "product.variants": "Нұсқалар (мысалы, «1 кг», «2 кг») — нұсқа бағасы негізгі бағаның орнына",
@@ -520,6 +530,11 @@ export const en: SectionDict<typeof ru> = {
   "product.ruCardPrice": "Price for Russia, ₽",
   "product.ruCardPriceHint":
     "The bot shows it next to tenge: “To pay: 1700 ₸ / ≈470 ₽”. Buyers pay with a Russian card via Prodamus; no need to add Russia as a payment country.",
+  "product.pricePreviewTitle": "Customer price preview",
+  "product.pricePreviewBase": "base",
+  "product.pricePreviewAuto": "auto FX",
+  "product.pricePreviewManual": "fixed",
+  "product.priceAutoBadge": "auto",
   "product.variantsCourse":
     "Course tariffs (e.g. “Self-paced”, “With homework review”) — the tariff price replaces the base price; what each tariff includes is set in the course card",
   "product.variants": "Variants (e.g. “1 kg”, “2 kg”) — the variant price replaces the base price",
@@ -760,6 +775,11 @@ export const uz: SectionDict<typeof ru> = {
   "product.ruCardPrice": "Rossiya uchun narx, ₽",
   "product.ruCardPriceHint":
     "Bot uni tenge yonida ko‘rsatadi: «To‘lov: 1700 ₸ / ≈470 ₽». RF kartasi bilan Prodamus orqali to‘lanadi; «Rossiya» to‘lov davlatini qo‘shish shart emas.",
+  "product.pricePreviewTitle": "Xaridorlar uchun narxlarni oldindan ko‘rish",
+  "product.pricePreviewBase": "asosiy",
+  "product.pricePreviewAuto": "kurs bo‘yicha",
+  "product.pricePreviewManual": "belgilangan",
+  "product.priceAutoBadge": "avto",
   "product.variantsCourse":
     "Kurs tariflari (masalan, «Mustaqil», «Uy vazifasi tekshiruvi bilan») — asosiy narx o‘rniga tarif narxi; tarifga nima kirishi kurs kartochkasida sozlanadi",
   "product.variants": "Variantlar (masalan, «1 kg», «2 kg») — variant narxi asosiy narx o‘rniga",

@@ -45,10 +45,23 @@ export const productsFn = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const ctx = await admin();
     const m = await import("@/core/catalog/admin");
-    const [page, categories] = await Promise.all([
+    const { listPaymentMethods } = await import("@/core/settings/payment-methods");
+    const [page, categories, methods] = await Promise.all([
       m.listProductsForAdmin(ctx, data),
       m.listAllCategories(ctx),
+      listPaymentMethods(ctx),
     ]);
+    const countries = methods
+      .filter((x) => x.is_active)
+      .map((x) => ({ code: x.country_code, name: x.country_name, currency: x.currency }));
+    const ruCardPrice =
+      !countries.some((c) => c.code.toUpperCase() === "RU") &&
+      (await (
+        await import("@/core/payments/payment")
+      )
+        .prodamusFor(ctx)
+        .then((p) => p.ready)
+        .catch(() => false));
     // «Хватит на N дней» (модуль «Склад»): только у товаров с остатком; нет продаж — null («—»).
     const { forecastFor } = await import("@/core/stock/forecast");
     const days = await forecastFor(
@@ -77,6 +90,8 @@ export const productsFn = createServerFn({ method: "GET" })
       categories,
       kindTemplate,
       topics,
+      countries,
+      ruCardPrice,
     };
   });
 
@@ -160,6 +175,7 @@ export const productFn = createServerFn({ method: "GET" })
           .catch(() => false)),
       defaultFulfillment: (await import("@/core/verticals/registry")).VERTICALS[ctx.tenant.vertical]
         .defaultFulfillment,
+      fxRates: await (await import("@/core/pricing/pricing")).fxRates().catch(() => null),
     };
   });
 

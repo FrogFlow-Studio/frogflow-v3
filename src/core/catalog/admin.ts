@@ -107,6 +107,7 @@ export type ProductListRow = {
   name: string;
   price: number;
   currency: string;
+  country_prices: Record<string, number> | null;
   is_active: boolean;
   sort_order: number;
   fulfillment_kind: string;
@@ -244,7 +245,7 @@ export async function listProductIdsForAdmin(
 }
 
 const LIST_SELECT =
-  "id, name, description, price, currency, is_active, sort_order, fulfillment_kind, stock_quantity, category_ids, created_at, file_path, file_url, file_path_kz, file_url_kz, product_images(image_path, sort_order), product_material_files(language, file_path), product_variants(id)";
+  "id, name, description, price, currency, country_prices, is_active, sort_order, fulfillment_kind, stock_quantity, category_ids, created_at, file_path, file_url, file_path_kz, file_url_kz, product_images(image_path, sort_order), product_material_files(language, file_path), product_variants(id)";
 
 /**
  * Страница списка товаров. Порядок — выбранный (`sort`), в конце всегда id:
@@ -295,6 +296,10 @@ export async function listProductsForAdmin(
     name: p.name,
     price: Number(p.price),
     currency: p.currency,
+    country_prices:
+      p.country_prices && typeof p.country_prices === "object" && !Array.isArray(p.country_prices)
+        ? (p.country_prices as Record<string, number>)
+        : null,
     is_active: p.is_active,
     sort_order: p.sort_order,
     fulfillment_kind: p.fulfillment_kind,
@@ -320,6 +325,7 @@ type ProductListSource = {
   description: string | null;
   price: number | string;
   currency: string;
+  country_prices: Json;
   is_active: boolean;
   sort_order: number;
   fulfillment_kind: string;
