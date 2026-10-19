@@ -202,7 +202,7 @@ describe("сообщение без своего ответа (core/consultant/b
 });
 
 describe("фото и видео товара консультанта", () => {
-  it("первое фото уходит вместе с текстом ответа", async () => {
+  it("текст ответа уходит первым, а фото отправляется следом", async () => {
     engine.result = {
       reply: "Вот фото комплекта.",
       handoff: null,
@@ -219,9 +219,15 @@ describe("фото и видео товара консультанта", () => {
     } as unknown as ZernioTransport;
     const r = await handleZernioMessage(ctx, payload("А фото есть?"), t);
     expect(r.status).toBe("processed");
-    expect(calls).toHaveLength(1);
+    expect(calls).toHaveLength(2);
     expect(calls[0]).toEqual({
       text: "Вот фото комплекта.",
+      opts: {
+        platform: "instagram",
+      },
+    });
+    expect(calls[1]).toEqual({
+      text: "",
       opts: {
         platform: "instagram",
         attachmentUrl: "https://app.test/img/1.jpg",
@@ -230,7 +236,7 @@ describe("фото и видео товара консультанта", () => {
     });
   });
 
-  it("если канал отклонил фото — ответ уходит текстом без фото", async () => {
+  it("если канал отклонил фото — ответ текстом уже ушёл, статус успешен", async () => {
     engine.result = {
       reply: "Вот фото комплекта.",
       handoff: null,
@@ -255,9 +261,11 @@ describe("фото и видео товара консультанта", () => {
     const r = await handleZernioMessage(ctx, payload("А фото есть?"), t);
     expect(r.status).toBe("processed");
     expect(calls).toHaveLength(2);
-    expect(calls[0]!.opts?.attachmentUrl).toBe("https://app.test/img/1.jpg");
-    expect(calls[1]!.opts?.attachmentUrl).toBeUndefined();
-    expect(calls[1]!.text).toBe("Вот фото комплекта.");
+    expect(calls[0]!.text).toBe("Вот фото комплекта.");
+    expect(calls[0]!.opts?.attachmentUrl).toBeUndefined();
+    expect(calls[1]!.opts?.attachmentUrl).toBe("https://app.test/img/1.jpg");
+    expect(runs()[0]).toMatchObject({ reply_text: "Вот фото комплекта." });
+    expect(runs()[0]!.error_code).toBeNull();
   });
 });
 

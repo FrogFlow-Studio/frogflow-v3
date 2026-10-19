@@ -153,6 +153,9 @@ export const rateLimitedRecipient = (f: ZernioFailure | null | undefined) =>
  * («buttons[0].url is required» и т.п.) — не отказ вложения: без файла она
  * повторится. Принимает и структуру отказа, и пойманную ошибку.
  */
+/** Коды Meta, связанные с отказом медиа/вложения (100 — несовместимые параметры, 131051..131057 — загрузка/формат). */
+const ATTACHMENT_META_CODES = [100, 131051, 131052, 131053, 131057];
+
 export function isAttachmentRejected(err: unknown): boolean {
   const f: ZernioFailure | null =
     err instanceof ZernioApiError
@@ -161,7 +164,9 @@ export function isAttachmentRejected(err: unknown): boolean {
         ? (err as ZernioFailure)
         : null;
   if (!f) return false;
-  return (f.status === 400 && f.code === "PLATFORM_LIMITATION") || f.platformCode === 131052;
+  if (f.status === 400 && f.code === "PLATFORM_LIMITATION") return true;
+  if (typeof f.platformCode === "number" && ATTACHMENT_META_CODES.includes(f.platformCode)) return true;
+  return false;
 }
 
 /**

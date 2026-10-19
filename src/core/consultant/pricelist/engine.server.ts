@@ -810,6 +810,23 @@ async function decide(data: PricelistData, input: PricelistInput): Promise<Price
         }
       }
     }
+    if (!product && id) {
+      const cleanId = id.toLowerCase().replace(/[^a-zа-я0-9]/gi, " ");
+      const words = cleanId.split(/\s+/).filter((w) => w.length > 2);
+      if (words.length) {
+        product =
+          catalog.find((p) => {
+            const pName = p.name.toLowerCase();
+            const pId = p.id.toLowerCase();
+            return words.every((w) => pName.includes(w) || pId.includes(w));
+          }) ??
+          products.find((p) => {
+            const pName = p.name.toLowerCase();
+            const pId = p.id.toLowerCase();
+            return words.every((w) => pName.includes(w) || pId.includes(w));
+          });
+      }
+    }
     if (!product) {
       return { found: false, error: "нет позиции с таким product_id — сначала найдите её поиском" };
     }

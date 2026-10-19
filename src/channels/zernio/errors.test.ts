@@ -213,6 +213,7 @@ describe("отказ во вложении — по коду", () => {
     expect(isAttachmentRejected(limitation)).toBe(true);
     expect(isAttachmentRejected(new ZernioApiError("Zernio API 400: …", limitation))).toBe(true);
     expect(isAttachmentRejected(meta(400, 131052))).toBe(true);
+    expect(isAttachmentRejected(meta(400, 100))).toBe(true);
   });
 
   it("ошибка проверки полей, окно, сеть и обычный Error — не отказ вложения", () => {
