@@ -800,7 +800,16 @@ async function decide(data: PricelistData, input: PricelistInput): Promise<Price
   async function sendPhoto(args: Record<string, unknown>): Promise<unknown> {
     // Фото товара из фотобазы магазина (панель → «Фото товаров»).
     const id = typeof args.product_id === "string" ? args.product_id : "";
-    const product = catalog.find((p) => p.id === id) ?? products.find((p) => p.id === id);
+    let product = catalog.find((p) => p.id === id) ?? products.find((p) => p.id === id);
+    if (!product && state.last_product_ids?.length) {
+      for (const lastId of state.last_product_ids) {
+        const foundProd = catalog.find((p) => p.id === lastId);
+        if (foundProd) {
+          product = foundProd;
+          break;
+        }
+      }
+    }
     if (!product) {
       return { found: false, error: "нет позиции с таким product_id — сначала найдите её поиском" };
     }

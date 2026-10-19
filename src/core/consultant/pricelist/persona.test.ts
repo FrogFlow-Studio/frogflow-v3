@@ -28,15 +28,14 @@ const INPUT: V2PromptInput = {
 const sha = (s: string) => createHash("sha256").update(s).digest("hex");
 
 /**
- * Отпечаток подсказки v2.23 (v2.22 + способ оплаты — только из базы знаний, иначе
- * «пришлёт менеджер»; заказ передаётся сразу, без ожидания телефона; тот же INPUT).
+ * Отпечаток подсказки v2.24 (v2.23 + фото отправляется сразу без требования размера/цвета; тот же INPUT).
  */
-const BOVI_PROMPT_SHA = "012f5e34e2ffe2f61027fe7f365c150ca1c76debab4fc6565c3a001b76aabb0e";
+const BOVI_PROMPT_SHA = "6c55255a6db9ba6e09b824e671947ae0558115c2079d07a6da4e57d24b0248ca";
 
 describe("образ консультанта по прайсу", () => {
   it("без настройки — подсказка BOVI слово в слово прежняя", () => {
     const prompt = buildV2SystemPrompt(INPUT);
-    expect(prompt.length).toBe(12725);
+    expect(prompt.length).toBe(13832);
     expect(sha(prompt)).toBe(BOVI_PROMPT_SHA);
     expect(prompt).not.toContain(SELLER_TEXT_OPEN);
     // BOVI 10.10 23:49, indirenokars: на «в каком цвете?» — цвета без цены.
