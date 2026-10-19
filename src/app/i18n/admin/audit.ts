@@ -208,6 +208,8 @@ export const ru = {
   "audit.action.saveMarketplaceListingFn": "изменил показ магазина на площадке",
   "audit.action.saveStoreDesignFn": "изменил оформление витрины",
   "audit.action.saveStoreAboutFn": "изменил страницу «О магазине»",
+  "audit.action.attachModelMediaFn": "прикрепил фото/видео к товару в прайсе",
+  "audit.action.deleteModelMediaFn": "удалил фото/видео товара из прайса",
 } as const;
 
 export const kk: SectionDict<typeof ru> = {
@@ -417,6 +419,8 @@ export const kk: SectionDict<typeof ru> = {
   "audit.action.saveMarketplaceListingFn": "дүкеннің алаңда көрсетілуін өзгертті",
   "audit.action.saveStoreDesignFn": "витрина безендіруін өзгертті",
   "audit.action.saveStoreAboutFn": "«Дүкен туралы» бетін өзгертті",
+  "audit.action.attachModelMediaFn": "прайстегі тауарға фото/бейне бекітті",
+  "audit.action.deleteModelMediaFn": "прайстен тауар фото/бейнесін өшірді",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -627,6 +631,8 @@ export const en: SectionDict<typeof ru> = {
   "audit.action.saveMarketplaceListingFn": "changed the shop’s marketplace listing",
   "audit.action.saveStoreDesignFn": "changed the storefront look",
   "audit.action.saveStoreAboutFn": "changed the “About the shop” page",
+  "audit.action.attachModelMediaFn": "attached photo/video to product in price list",
+  "audit.action.deleteModelMediaFn": "deleted product photo/video from price list",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -837,4 +843,6 @@ export const uz: SectionDict<typeof ru> = {
   "audit.action.saveMarketplaceListingFn": "do‘konning maydonchada ko‘rsatilishini o‘zgartirdi",
   "audit.action.saveStoreDesignFn": "vitrina dizaynini o‘zgartirdi",
   "audit.action.saveStoreAboutFn": "«Do‘kon haqida» sahifasini o‘zgartirdi",
+  "audit.action.attachModelMediaFn": "narxnomadagi tovarga foto/video biriktirdi",
+  "audit.action.deleteModelMediaFn": "narxnomadagi tovar foto/videosini oʻchirdi",
 };

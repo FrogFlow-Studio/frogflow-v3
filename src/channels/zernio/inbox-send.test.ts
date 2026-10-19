@@ -50,4 +50,56 @@ describe("sendInboxMessage — тело ответа в Direct", () => {
       message: "Привет",
     });
   });
+
+  it("Instagram: текст и вложение уходят двумя отдельными запросами (сначала текст, затем медиа)", async () => {
+    setEnvForTests({ ZERNIO_API_KEY: "sk_test" });
+    const fetchMock = vi.fn(async () => new Response("{}", { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const r = await sendInboxMessage("conv-1", "acc-1", "Посмотрите фото товара", {
+      platform: "instagram",
+      attachmentUrl: "https://cdn.example.com/item.jpg",
+      attachmentType: "image",
+      idempotencyScope: "chat:123",
+    });
+    expect(r.ok).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const calls = fetchMock.mock.calls as unknown as Array<[string, RequestInit]>;
+    const body1 = JSON.parse(String(calls[0]![1].body));
+    const body2 = JSON.parse(String(calls[1]![1].body));
+
+    expect(body1).toEqual({
+      accountId: "acc-1",
+      message: "Посмотрите фото товара",
+    });
+    expect(body1).not.toHaveProperty("attachmentUrl");
+
+    expect(body2).toEqual({
+      accountId: "acc-1",
+      attachmentUrl: "https://cdn.example.com/item.jpg",
+      attachmentType: "image",
+    });
+    expect(body2).not.toHaveProperty("message");
+  });
+
+  it("Instagram: вложение без текста уходит одним запросом без поля message", async () => {
+    setEnvForTests({ ZERNIO_API_KEY: "sk_test" });
+    const fetchMock = vi.fn(async () => new Response("{}", { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const r = await sendInboxMessage("conv-1", "acc-1", "", {
+      platform: "instagram",
+      attachmentUrl: "https://cdn.example.com/photo.jpg",
+      attachmentType: "image",
+    });
+    expect(r.ok).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    const body = JSON.parse(String(init.body));
+    expect(body).toEqual({
+      accountId: "acc-1",
+      attachmentUrl: "https://cdn.example.com/photo.jpg",
+      attachmentType: "image",
+    });
+    expect(body).not.toHaveProperty("message");
+  });
 });
+

@@ -434,7 +434,10 @@ export async function attachModelMedia(
   }
   const match = data.modelName.trim();
   if (!match) {
-    throw new UserError("err.pricelist.noMatch", "Укажите название модели.");
+    throw new UserError(
+      "err.pricelist.noMatch",
+      "Укажите модель, как в прайсе: например «Uchino Zero Twist».",
+    );
   }
 
   const isVideo = /\.(mp4|mov)$/i.test(data.key);

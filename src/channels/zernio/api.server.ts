@@ -202,6 +202,27 @@ export async function sendInboxMessage(
   // Обрезанный текст с кнопками лучше молчания: единая страховка для всех отправок.
   const capped =
     platform === "instagram" && buttons.length && !opts.interactive ? capButtonText(text) : text;
+
+  // В Instagram Direct (Meta Graph API / Zernio) нельзя объединять текст и вложение
+  // в один запрос (400 PLATFORM_LIMITATION). Отправляем последовательно:
+  // сначала текст (с кнопками, если есть), затем медиа отдельным сообщением.
+  if (platform === "instagram" && capped && opts.attachmentUrl) {
+    const textRes = await sendInboxMessage(conversationId, accountId, capped, {
+      ...opts,
+      attachmentUrl: undefined,
+      attachmentType: undefined,
+      attachmentName: undefined,
+      idempotencyScope: opts.idempotencyScope ? `${opts.idempotencyScope}:text` : undefined,
+    });
+    if (!textRes.ok) return textRes;
+    return await sendInboxMessage(conversationId, accountId, "", {
+      ...opts,
+      buttons: undefined,
+      interactive: undefined,
+      idempotencyScope: opts.idempotencyScope ? `${opts.idempotencyScope}:media` : undefined,
+    });
+  }
+
   const body: Record<string, unknown> = { accountId };
   if (capped || !opts.attachmentUrl) {
     body.message = capped;
