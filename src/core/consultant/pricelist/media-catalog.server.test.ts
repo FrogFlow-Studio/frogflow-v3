@@ -88,4 +88,55 @@ describe("каталог фото и видео консультанта", () =>
     expect(count).toBe(1); // Только "Model Without Media"
     vi.restoreAllMocks();
   });
+
+  it("игнорирует задачи, где покупатель сам прислал фото или спрашивал про ассортимент", async () => {
+    const tasks = [
+      {
+        reason: "unknown_question",
+        text: "Покупатель прислал фото куртки, хочет подобрать шарф под цвет",
+        products: ["Traumina одеяло пуховое Star of Silk Daune 200х220"],
+      },
+      {
+        reason: "unknown_question",
+        text: "Клиент написал: где посмотреть ассортимент?",
+      },
+    ];
+
+    const ctx = mockCtx();
+    vi.spyOn(settingsModule, "getSettings").mockResolvedValue({
+      [TASKS_KEY]: JSON.stringify(tasks),
+      [MEDIA_DEMANDS_KEY]: "{}",
+    } as any);
+
+    const demands = await loadMediaDemandMap(ctx);
+    expect(Object.keys(demands)).toHaveLength(0);
+    vi.restoreAllMocks();
+  });
+
+  it("в задаче с несколькими товарами привязывает спрос только к упомянутой в тексте модели", async () => {
+    const tasks = [
+      {
+        reason: "photo",
+        text: "Покупатель просит фото КПБ CAETANO 200х220. Фото в базе нет.",
+        products: [
+          "BOVI КПБ CAETANO (1 подод 200х220 2 наволочки 50x75, простынь 280х290),цвет бежевый (170 000 ₸)",
+          "RIVOLTA КПБ GLICINE 300 TC вышивка сатин (200x220см) (737 000 ₸)",
+          "BOVI КПБ VINCENT (1 подод 200x220, 2 наволочки 50x75), цвет бежевый (160 000 ₸)",
+        ],
+      },
+    ];
+
+    const ctx = mockCtx();
+    vi.spyOn(settingsModule, "getSettings").mockResolvedValue({
+      [TASKS_KEY]: JSON.stringify(tasks),
+      [MEDIA_DEMANDS_KEY]: "{}",
+    } as any);
+
+    const demands = await loadMediaDemandMap(ctx);
+    expect(demands["BOVI КПБ CAETANO"]).toBeDefined();
+    expect(demands["BOVI КПБ CAETANO"]?.count).toBe(1);
+    expect(demands["RIVOLTA КПБ GLICINE 300 TC вышивка сатин"]).toBeUndefined();
+    expect(demands["BOVI КПБ VINCENT"]).toBeUndefined();
+    vi.restoreAllMocks();
+  });
 });

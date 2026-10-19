@@ -43,15 +43,16 @@ function MediaCatalogPage() {
   const loc = intlLocale(shop.locale);
   const canEdit = shop.role !== "viewer" && shop.role !== "accountant";
 
-  const [activeTab, setActiveTab] = useState<Tab>(
-    search.tab ?? (data.demandedWithoutMediaCount > 0 ? "demanded" : "all"),
-  );
+  const PAGE_SIZE = 30;
+  const [activeTab, setActiveTab] = useState<Tab>(search.tab ?? "all");
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [query, setQuery] = useState(search.q ?? "");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [activeVideo, setActiveVideo] = useState<ModelMediaFile | null>(null);
 
   const setTab = (next: Tab) => {
     setActiveTab(next);
+    setVisibleCount(PAGE_SIZE);
     void navigate({
       search: (prev) => ({ ...prev, tab: next === "all" ? undefined : next }),
       replace: true,
@@ -109,17 +110,17 @@ function MediaCatalogPage() {
         <Stat
           label={t("ws.mediaCatalog.stat.total")}
           value={data.totalModels}
-          hint={`${data.totalMediaFiles} файлов`}
+          hint={data.totalProducts > 0 ? `${data.totalProducts} позиций в прайсе` : `${data.totalMediaFiles} файлов`}
         />
         <Stat
           label={t("ws.mediaCatalog.stat.withMedia")}
           value={data.withMediaCount}
-          hint={`${Math.round((data.withMediaCount / (data.totalModels || 1)) * 100)}% каталога`}
+          hint={`${data.totalMediaFiles} фото и видео (${Math.round((data.withMediaCount / (data.totalModels || 1)) * 100)}%)`}
         />
         <Stat
           label={t("ws.mediaCatalog.stat.withoutMedia")}
           value={data.withoutMediaCount}
-          hint={data.withoutMediaCount > 0 ? "требуют фото/видео" : "все с медиа"}
+          hint={data.demandedWithoutMediaCount > 0 ? `из них ${data.demandedWithoutMediaCount} ждут фото` : "требуют фото/видео"}
         />
         <div
           className={`card p-4 transition-colors ${
@@ -140,6 +141,16 @@ function MediaCatalogPage() {
       <div className="mb-4 space-y-3">
         <div className="flex flex-wrap items-center gap-2">
           <div role="tablist" className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === "all"}
+              className={tabClass(activeTab === "all")}
+              onClick={() => setTab("all")}
+            >
+              {t("ws.mediaCatalog.filter.all")}
+              <span className="ml-1 text-xs opacity-70">({data.totalModels})</span>
+            </button>
             <button
               type="button"
               role="tab"
@@ -172,6 +183,7 @@ function MediaCatalogPage() {
               onClick={() => setTab("video")}
             >
               {t("ws.mediaCatalog.filter.video")}
+              <span className="ml-1 text-xs opacity-70">({data.withVideoCount})</span>
             </button>
             <button
               type="button"
@@ -181,16 +193,7 @@ function MediaCatalogPage() {
               onClick={() => setTab("photo")}
             >
               {t("ws.mediaCatalog.filter.photo")}
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={activeTab === "all"}
-              className={tabClass(activeTab === "all")}
-              onClick={() => setTab("all")}
-            >
-              {t("ws.mediaCatalog.filter.all")}
-              <span className="ml-1 text-xs opacity-70">({data.totalModels})</span>
+              <span className="ml-1 text-xs opacity-70">({data.withPhotoCount})</span>
             </button>
           </div>
 
@@ -198,7 +201,10 @@ function MediaCatalogPage() {
             <select
               className="input ml-auto h-9 w-auto text-xs"
               value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
+              onChange={(e) => {
+                setSelectedCategory(e.target.value);
+                setVisibleCount(PAGE_SIZE);
+              }}
             >
               <option value="all">Все категории ({categories.length})</option>
               {categories.map((c) => (
@@ -218,6 +224,7 @@ function MediaCatalogPage() {
             value={query}
             onChange={(e) => {
               setQuery(e.target.value);
+              setVisibleCount(PAGE_SIZE);
               void navigate({
                 search: (prev) => ({ ...prev, q: e.target.value || undefined }),
                 replace: true,
@@ -243,6 +250,7 @@ function MediaCatalogPage() {
               className="absolute top-2 right-2.5 text-xs text-muted hover:text-fg"
               onClick={() => {
                 setQuery("");
+                setVisibleCount(PAGE_SIZE);
                 void navigate({
                   search: (prev) => ({ ...prev, q: undefined }),
                   replace: true,
@@ -268,7 +276,7 @@ function MediaCatalogPage() {
         </Empty>
       ) : (
         <div className="space-y-4">
-          {filteredModels.map((model) => (
+          {filteredModels.slice(0, visibleCount).map((model) => (
             <ModelCard
               key={model.id}
               model={model}
@@ -279,6 +287,32 @@ function MediaCatalogPage() {
               onChanged={router.invalidate}
             />
           ))}
+
+          {filteredModels.length > visibleCount && (
+            <div className="flex flex-col items-center justify-center gap-2 py-4">
+              <div className="text-xs text-muted">
+                Показано {Math.min(visibleCount, filteredModels.length)} из {filteredModels.length} моделей
+              </div>
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <button
+                  type="button"
+                  className="btn-secondary text-xs"
+                  onClick={() => setVisibleCount((prev) => prev + PAGE_SIZE)}
+                >
+                  Показать ещё {Math.min(PAGE_SIZE, filteredModels.length - visibleCount)}
+                </button>
+                {filteredModels.length - visibleCount > PAGE_SIZE && (
+                  <button
+                    type="button"
+                    className="btn-ghost text-xs text-muted hover:text-fg"
+                    onClick={() => setVisibleCount(filteredModels.length)}
+                  >
+                    Показать все ({filteredModels.length})
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -318,6 +352,14 @@ function MediaCatalogPage() {
       )}
     </>
   );
+}
+
+function requestDeclension(n: number): string {
+  const rem10 = n % 10;
+  const rem100 = n % 100;
+  if (rem100 >= 11 && rem100 <= 19) return "раз";
+  if (rem10 >= 2 && rem10 <= 4) return "раза";
+  return "раз";
 }
 
 function ModelCard({
@@ -447,7 +489,8 @@ function ModelCard({
           <div className="rounded-md border border-danger/20 bg-danger/5 p-2.5 text-xs text-danger">
             <div className="flex items-center justify-between">
               <span className="font-medium">
-                Покупатели просили фото или видео этой модели ({model.demandCount} раз)
+                Покупатели просили фото или видео этой модели ({model.demandCount}{" "}
+                {requestDeclension(model.demandCount)})
                 {model.lastRequestedAt && (
                   <span className="ml-1 text-muted">
                     · последний: {new Date(model.lastRequestedAt).toLocaleDateString(locale)}

@@ -1,6 +1,6 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { ConsultantProduct } from "./catalog";
-import { loadPricelist } from "./catalog.server";
+import { loadPricelist, CATALOG_KEY } from "./catalog.server";
 import { modelName } from "./follow-up";
 import {
   mediaForProduct,
@@ -58,9 +58,12 @@ export type CatalogModelOverview = {
 export type ConsultantMediaPageData = {
   models: CatalogModelOverview[];
   totalModels: number;
+  totalProducts: number;
   withMediaCount: number;
   withoutMediaCount: number;
   demandedWithoutMediaCount: number;
+  withVideoCount: number;
+  withPhotoCount: number;
   totalMediaFiles: number;
   shopUrl: string;
 };
@@ -88,15 +91,50 @@ export function parseMediaDemands(raw: unknown): Record<string, MediaDemandItem>
   }
 }
 
+const MODEL_STOP_WORDS = new Set([
+  "bovi", "кпб", "кз", "цвет", "жаккард", "сатин", "хлопок", "подод",
+  "наволочки", "простыня", "простынь", "размер", "100%", "махровое",
+  "полотенце", "одеяло", "подушка", "халат", "коврик", "ванную", "в",
+  "и", "для", "наволочка", "пододеяльник", "комплект", "белье", "белья",
+  "белый", "белая", "серый", "серая", "зеленый", "зеленая", "синий", "синяя",
+  "розовый", "розовая", "бежевый", "бежевая", "голубой", "голубая", "черный",
+  "tc", "silk", "daune", "wk2", "wk2+", "de", "luxe", "вышивка", "линейка",
+  "линейки", "суть", "клиент", "покупатель", "просит", "фото", "видео", "базе",
+  "нет", "шт", "штук"
+]);
+
+export function getModelCoreTokens(name: string): string[] {
+  return name
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .split(/\s+/)
+    .filter((w) => w.length >= 3 && !/^\d+$/.test(w) && !MODEL_STOP_WORDS.has(w.toLowerCase()));
+}
+
 /**
  * Собрать статистику спроса: объединить realtime-счётчик (consultant_media_demands_json)
- * и задачи консультанта (consultant_tasks_json) с reason === "photo" или упоминанием фото.
+ * и задачи консультанта (consultant_tasks_json) с reason === "photo" или запросом фото.
+ * Исключает задачи, где покупатель сам прислал фото или спрашивал про ассортимент.
  */
 export async function loadMediaDemandMap(
   ctx: TenantContext,
+  knownCatalogModels?: Iterable<string>,
 ): Promise<Record<string, MediaDemandItem>> {
-  const settings = await getSettings(ctx, [MEDIA_DEMANDS_KEY, TASKS_KEY]);
+  const settings = await getSettings(ctx, [MEDIA_DEMANDS_KEY, TASKS_KEY, CATALOG_KEY]);
   const demands = parseMediaDemands(settings[MEDIA_DEMANDS_KEY]);
+
+  const catalogModels = new Set<string>(knownCatalogModels ?? []);
+  if (catalogModels.size === 0 && settings[CATALOG_KEY]) {
+    try {
+      const rawPl = JSON.parse(settings[CATALOG_KEY]);
+      const list = Array.isArray(rawPl) ? rawPl : rawPl.products ?? [];
+      for (const p of list) {
+        if (p && typeof p.name === "string") {
+          const m = modelName(p.name);
+          if (m) catalogModels.add(m);
+        }
+      }
+    } catch {}
+  }
 
   try {
     const rawTasks = settings[TASKS_KEY];
@@ -115,23 +153,73 @@ export async function loadMediaDemandMap(
         at?: string;
         contact?: string;
       };
-      const isPhotoTask =
-        task.reason === "photo" ||
-        (task.text && /фото|видео|посмотреть|показать/i.test(task.text));
 
+      const taskText = task.text ?? "";
+      // Исключаем случаи, когда покупатель сам скинул фото (например, своей куртки/шапки)
+      const isSendingMedia =
+        /прислал(?:а)?\s+(?:фото|видео)|отправил(?:а)?\s+(?:фото|видео)|скинул(?:а)?\s+(?:фото|видео)/i.test(
+          taskText,
+        );
+      // Исключаем общие вопросы по ассортименту ("где посмотреть ассортимент?")
+      const isShopQuestion =
+        /где\s+посмотреть|посмотреть\s+(?:ассортимент|каталог|сайт|наличие)/i.test(taskText);
+      // Проверяем явный запрос фото/видео клиентом
+      const isAskingMedia =
+        /просит\s+(?:фото|видео)|нужно\s+(?:фото|видео)|вышлите\s+(?:фото|видео)|пришлите\s+(?:фото|видео)|отправьте\s+(?:фото|видео)|покажите\s+(?:фото|видео)|хочет\s+(?:фото|видео)|можно\s+(?:их\s+)?(?:фото|видео)/i.test(
+          taskText,
+        );
+
+      const isPhotoTask =
+        (task.reason === "photo" || isAskingMedia) && !isSendingMedia && !isShopQuestion;
       if (!isPhotoTask) continue;
 
       const requestedModels = new Set<string>();
+      const taskTextLower = taskText.toLowerCase();
+
       if (Array.isArray(task.products) && task.products.length > 0) {
-        for (const p of task.products) {
-          const m = modelName(p);
-          if (m) requestedModels.add(m);
+        const prodModels = Array.from(
+          new Set(task.products.map((p) => modelName(p)).filter(Boolean)),
+        );
+        if (prodModels.length === 1 && prodModels[0]) {
+          requestedModels.add(prodModels[0]);
+        } else if (prodModels.length > 1) {
+          // Если в задаче несколько товаров, проверяем, о каких именно шла речь в запросе
+          const mentioned = prodModels.filter((m) => {
+            const tokens = getModelCoreTokens(m);
+            return tokens.some((tok) => taskTextLower.includes(tok.toLowerCase()));
+          });
+          if (mentioned.length > 0) {
+            mentioned.forEach((m) => requestedModels.add(m));
+          } else {
+            prodModels.forEach((m) => requestedModels.add(m));
+          }
         }
-      } else if (task.text) {
-        // Попытка извлечь модель из текста задачи, если products не заполнены
-        const m = modelName(task.text);
-        if (m && m.length > 3) requestedModels.add(m);
+      } else if (taskText && catalogModels.size > 0) {
+        // Если поле products не заполнено, сопоставляем только с реальными моделями каталога
+        for (const mName of catalogModels) {
+          const coreTokens = getModelCoreTokens(mName);
+          if (coreTokens.length > 0) {
+            const allTokensPresent = coreTokens.every((tok) =>
+              taskTextLower.includes(tok.toLowerCase()),
+            );
+            if (allTokensPresent) {
+              if (/кпб|комплект/i.test(taskTextLower) && /наволочк/i.test(mName.toLowerCase())) {
+                continue;
+              }
+              requestedModels.add(mName);
+            }
+          }
+        }
       }
+
+      // Чистим текст запроса покупателя от системных приписок ("О покупателе: ...")
+      const cleanText = taskText
+        ? taskText
+            .replace(/\r?\n/g, " ")
+            .replace(/\s*О покупателе:.*$/i, "")
+            .trim()
+            .slice(0, 160)
+        : undefined;
 
       for (const m of requestedModels) {
         if (!demands[m]) {
@@ -149,7 +237,7 @@ export async function loadMediaDemandMap(
         demands[m].requests.push({
           at: task.at ?? new Date().toISOString(),
           contact: task.contact,
-          text: task.text?.slice(0, 150),
+          text: cleanText,
         });
       }
     }
@@ -198,10 +286,9 @@ export async function recordMediaDemand(
 export async function loadCatalogMediaOverview(
   ctx: TenantContext,
 ): Promise<ConsultantMediaPageData> {
-  const [snapshot, mediaList, demandsMap] = await Promise.all([
+  const [snapshot, mediaList] = await Promise.all([
     loadPricelist(ctx, 0),
     loadProductMediaStrict(ctx),
-    loadMediaDemandMap(ctx),
   ]);
 
   const modelsMap = new Map<
@@ -238,6 +325,9 @@ export async function loadCatalogMediaOverview(
     if (p.price_kzt > item.maxPrice) item.maxPrice = p.price_kzt;
   }
 
+  // Загружаем статистику спроса с известными моделями каталога
+  const demandsMap = await loadMediaDemandMap(ctx, modelsMap.keys());
+
   const modelOverviews: CatalogModelOverview[] = [];
 
   for (const [mName, item] of modelsMap.entries()) {
@@ -264,24 +354,20 @@ export async function loadCatalogMediaOverview(
     const hasPhoto = media.some((m) => m.kind === "image");
     const hasVideo = media.some((m) => m.kind === "video");
 
-    // Проверить спрос на модель
-    // Поиск совпадений по имени модели или вхождению
+    // Точное сопоставление спроса по имени модели (без ошибочных подстрок)
+    const normMName = mName.trim().toLowerCase();
+    const dItem =
+      demandsMap[mName] ??
+      Object.entries(demandsMap).find(([k]) => k.trim().toLowerCase() === normMName)?.[1];
+
     let demandCount = 0;
     let lastRequestedAt: string | undefined;
     const requestsSample: Array<{ at: string; contact?: string; text?: string }> = [];
 
-    for (const [dModel, dItem] of Object.entries(demandsMap)) {
-      if (
-        dModel.toLowerCase() === mName.toLowerCase() ||
-        mName.toLowerCase().includes(dModel.toLowerCase()) ||
-        dModel.toLowerCase().includes(mName.toLowerCase())
-      ) {
-        demandCount += dItem.count;
-        if (!lastRequestedAt || new Date(dItem.lastRequestedAt) > new Date(lastRequestedAt)) {
-          lastRequestedAt = dItem.lastRequestedAt;
-        }
-        requestsSample.push(...dItem.requests);
-      }
+    if (dItem) {
+      demandCount = dItem.count;
+      lastRequestedAt = dItem.lastRequestedAt;
+      requestsSample.push(...dItem.requests);
     }
 
     modelOverviews.push({
@@ -315,6 +401,8 @@ export async function loadCatalogMediaOverview(
     return a.name.localeCompare(b.name, "ru");
   });
 
+  const withPhotoCount = modelOverviews.filter((m) => m.hasPhoto).length;
+  const withVideoCount = modelOverviews.filter((m) => m.hasVideo).length;
   const withMediaCount = modelOverviews.filter((m) => m.hasPhoto || m.hasVideo).length;
   const withoutMediaCount = modelOverviews.length - withMediaCount;
   const demandedWithoutMediaCount = modelOverviews.filter(
@@ -324,9 +412,12 @@ export async function loadCatalogMediaOverview(
   return {
     models: modelOverviews,
     totalModels: modelOverviews.length,
+    totalProducts: snapshot.products.length,
     withMediaCount,
     withoutMediaCount,
     demandedWithoutMediaCount,
+    withVideoCount,
+    withPhotoCount,
     totalMediaFiles: mediaList.length,
     shopUrl: snapshot.shopUrl,
   };
@@ -364,36 +455,16 @@ export async function attachModelMedia(
 /** Быстрый подсчёт моделей, по которым покупатели просили фото, а медиа ещё нет (для бейджа в меню). */
 export async function openMediaDemandsCount(ctx: TenantContext): Promise<number> {
   try {
-    const settings = await getSettings(ctx, [MEDIA_DEMANDS_KEY, TASKS_KEY, PRODUCT_MEDIA_KEY]);
-    const demands = parseMediaDemands(settings[MEDIA_DEMANDS_KEY]);
+    const settings = await getSettings(ctx, [MEDIA_DEMANDS_KEY, TASKS_KEY, PRODUCT_MEDIA_KEY, CATALOG_KEY]);
     const media = parseProductMedia(settings[PRODUCT_MEDIA_KEY]);
-
-    const demandedModels = new Set<string>(Object.keys(demands));
-    const rawTasks = settings[TASKS_KEY];
-    if (Array.isArray(rawTasks) || typeof rawTasks === "string") {
-      try {
-        const tasks = Array.isArray(rawTasks) ? rawTasks : JSON.parse(rawTasks as string);
-        for (const t of tasks) {
-          if (t && typeof t === "object") {
-            const task = t as { reason?: string; text?: string; products?: string[] };
-            if (task.reason === "photo" || (task.text && /фото|видео|посмотреть/i.test(task.text))) {
-              if (Array.isArray(task.products)) {
-                for (const p of task.products) {
-                  const m = modelName(p);
-                  if (m) demandedModels.add(m);
-                }
-              }
-            }
-          }
-        }
-      } catch {}
-    }
+    const demands = await loadMediaDemandMap(ctx);
 
     let unfulfilled = 0;
-    for (const model of demandedModels) {
-      const normModel = model.toLowerCase();
+    for (const [model, dItem] of Object.entries(demands)) {
+      if (dItem.count <= 0) continue;
+      const normModel = model.trim().toLowerCase();
       const hasMedia = media.some((m) => {
-        const normMatch = m.match.toLowerCase();
+        const normMatch = m.match.trim().toLowerCase();
         return normModel === normMatch || normModel.includes(normMatch) || normMatch.includes(normModel);
       });
       if (!hasMedia) unfulfilled++;

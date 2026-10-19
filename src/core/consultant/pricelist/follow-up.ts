@@ -60,6 +60,7 @@ export function modelName(name: string): string {
   return name
     .replace(/[\s,]*\(.*$/, "")
     .replace(/[\s,]*\d{2,3}\s*[xх×*]\s*\d{2,3}.*$/i, "")
+    .replace(/,?\s*размер\s+[a-zа-я0-9\/\-]+.*$/i, "")
     .replace(/,?\s*цвет.*$/i, "")
     .trim();
 }
