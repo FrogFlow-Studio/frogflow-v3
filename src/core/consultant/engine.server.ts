@@ -1068,6 +1068,12 @@ async function answerConsultant(
         imageUrls: opts.imageUrls,
         images: opts.images,
         channel: opts.platform,
+        contact: customer
+          ? customer.username
+            ? `@${customer.username}`
+            : customer.firstName || customer.userKey
+          : undefined,
+        dryRun: opts.dryRun,
       });
       toolsUsed.push(...out.tools);
       return await finish(out);

@@ -110,6 +110,18 @@ export const adminShopFn = createServerFn({ method: "GET" }).handler(async () =>
               return null;
             })
           : null,
+      consultantMediaDemands:
+        !accountant && roleAllows(role, "manager") && consultantWorkspace({ sells, pricelist })
+          ? await (await import("@/core/consultant/pricelist/media-catalog.server"))
+              .openMediaDemandsCount(ctx)
+              .catch((e) => {
+                console.error(
+                  `[admin:${ctx.tenant.id}] бейдж спроса на медиа`,
+                  e instanceof Error ? e.message : e,
+                );
+                return null;
+              })
+          : null,
       status: ctx.tenant.status,
       /** Пробный период на виду: до какого дня, сколько осталось и что будет после (плашка в шапке). */
       trial,

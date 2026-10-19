@@ -61,6 +61,7 @@ import { Route as AdminAuthedIgImportRouteImport } from './routes/admin._authed.
 import { Route as AdminAuthedInstagramRouteImport } from './routes/admin._authed.instagram'
 import { Route as AdminAuthedKnowledgeRouteImport } from './routes/admin._authed.knowledge'
 import { Route as AdminAuthedLogRouteImport } from './routes/admin._authed.log'
+import { Route as AdminAuthedMediaRouteImport } from './routes/admin._authed.media'
 import { Route as AdminAuthedModulesRouteImport } from './routes/admin._authed.modules'
 import { Route as AdminAuthedNewsRouteImport } from './routes/admin._authed.news'
 import { Route as AdminAuthedNotificationsRouteImport } from './routes/admin._authed.notifications'
@@ -417,6 +418,11 @@ const AdminAuthedKnowledgeRoute = AdminAuthedKnowledgeRouteImport.update({
 const AdminAuthedLogRoute = AdminAuthedLogRouteImport.update({
   id: '/log',
   path: '/log',
+  getParentRoute: () => AdminAuthedRoute,
+} as any)
+const AdminAuthedMediaRoute = AdminAuthedMediaRouteImport.update({
+  id: '/media',
+  path: '/media',
   getParentRoute: () => AdminAuthedRoute,
 } as any)
 const AdminAuthedModulesRoute = AdminAuthedModulesRouteImport.update({
@@ -981,6 +987,7 @@ export interface FileRoutesByFullPath {
   '/admin/instagram': typeof AdminAuthedInstagramRoute
   '/admin/knowledge': typeof AdminAuthedKnowledgeRoute
   '/admin/log': typeof AdminAuthedLogRoute
+  '/admin/media': typeof AdminAuthedMediaRoute
   '/admin/modules': typeof AdminAuthedModulesRoute
   '/admin/news': typeof AdminAuthedNewsRoute
   '/admin/notifications': typeof AdminAuthedNotificationsRoute
@@ -1130,6 +1137,7 @@ export interface FileRoutesByTo {
   '/admin/instagram': typeof AdminAuthedInstagramRoute
   '/admin/knowledge': typeof AdminAuthedKnowledgeRoute
   '/admin/log': typeof AdminAuthedLogRoute
+  '/admin/media': typeof AdminAuthedMediaRoute
   '/admin/modules': typeof AdminAuthedModulesRoute
   '/admin/news': typeof AdminAuthedNewsRoute
   '/admin/notifications': typeof AdminAuthedNotificationsRoute
@@ -1282,6 +1290,7 @@ export interface FileRoutesById {
   '/admin/_authed/instagram': typeof AdminAuthedInstagramRoute
   '/admin/_authed/knowledge': typeof AdminAuthedKnowledgeRoute
   '/admin/_authed/log': typeof AdminAuthedLogRoute
+  '/admin/_authed/media': typeof AdminAuthedMediaRoute
   '/admin/_authed/modules': typeof AdminAuthedModulesRoute
   '/admin/_authed/news': typeof AdminAuthedNewsRoute
   '/admin/_authed/notifications': typeof AdminAuthedNotificationsRoute
@@ -1435,6 +1444,7 @@ export interface FileRouteTypes {
     | '/admin/instagram'
     | '/admin/knowledge'
     | '/admin/log'
+    | '/admin/media'
     | '/admin/modules'
     | '/admin/news'
     | '/admin/notifications'
@@ -1584,6 +1594,7 @@ export interface FileRouteTypes {
     | '/admin/instagram'
     | '/admin/knowledge'
     | '/admin/log'
+    | '/admin/media'
     | '/admin/modules'
     | '/admin/news'
     | '/admin/notifications'
@@ -1735,6 +1746,7 @@ export interface FileRouteTypes {
     | '/admin/_authed/instagram'
     | '/admin/_authed/knowledge'
     | '/admin/_authed/log'
+    | '/admin/_authed/media'
     | '/admin/_authed/modules'
     | '/admin/_authed/news'
     | '/admin/_authed/notifications'
@@ -2247,6 +2259,13 @@ declare module '@tanstack/react-router' {
       path: '/log'
       fullPath: '/admin/log'
       preLoaderRoute: typeof AdminAuthedLogRouteImport
+      parentRoute: typeof AdminAuthedRoute
+    }
+    '/admin/_authed/media': {
+      id: '/admin/_authed/media'
+      path: '/media'
+      fullPath: '/admin/media'
+      preLoaderRoute: typeof AdminAuthedMediaRouteImport
       parentRoute: typeof AdminAuthedRoute
     }
     '/admin/_authed/modules': {
@@ -2980,6 +2999,7 @@ interface AdminAuthedRouteChildren {
   AdminAuthedInstagramRoute: typeof AdminAuthedInstagramRoute
   AdminAuthedKnowledgeRoute: typeof AdminAuthedKnowledgeRoute
   AdminAuthedLogRoute: typeof AdminAuthedLogRoute
+  AdminAuthedMediaRoute: typeof AdminAuthedMediaRoute
   AdminAuthedModulesRoute: typeof AdminAuthedModulesRoute
   AdminAuthedNewsRoute: typeof AdminAuthedNewsRoute
   AdminAuthedNotificationsRoute: typeof AdminAuthedNotificationsRoute
@@ -3035,6 +3055,7 @@ const AdminAuthedRouteChildren: AdminAuthedRouteChildren = {
   AdminAuthedInstagramRoute: AdminAuthedInstagramRoute,
   AdminAuthedKnowledgeRoute: AdminAuthedKnowledgeRoute,
   AdminAuthedLogRoute: AdminAuthedLogRoute,
+  AdminAuthedMediaRoute: AdminAuthedMediaRoute,
   AdminAuthedModulesRoute: AdminAuthedModulesRoute,
   AdminAuthedNewsRoute: AdminAuthedNewsRoute,
   AdminAuthedNotificationsRoute: AdminAuthedNotificationsRoute,

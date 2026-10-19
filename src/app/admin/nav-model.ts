@@ -42,6 +42,11 @@ export type NavShop = {
    * рабочем месте консультанта. null/нет — не известно, бейджа нет.
    */
   consultantTasksOpen?: number | null;
+  /**
+   * Число моделей каталога, по которым покупатели просили фото/видео, а медиа нет.
+   * Бейдж «Фото и видео» в рабочем месте консультанта.
+   */
+  consultantMediaDemands?: number | null;
   ticketsOpen: number;
   /** Непрочитанные новости платформы — бейдж «Что нового». */
   newsUnread?: number;
@@ -68,8 +73,8 @@ const PHYSICAL = new Set(["confectionery", "flowers"]);
 
 /**
  * Рабочее место консультанта: клиент не продаёт (`sells === false`) и
- * отвечает по прайсу (BOVI). Тогда меню — шесть его страниц сверху: «Обзор»,
- * «Задачи», «Диалоги», «Прайс», «База знаний», «Настройки бота».
+ * отвечает по прайсу (BOVI). Тогда меню — страницы сверху: «Обзор»,
+ * «Задачи», «Диалоги», «Прайс», «Фото и видео», «База знаний», «Настройки бота».
  */
 export function consultantWorkspace(shop: { sells?: boolean; pricelist?: unknown }): boolean {
   return shop.sells === false && Boolean(shop.pricelist);
@@ -80,6 +85,7 @@ export const WORKSPACE_PAGES = [
   "/admin/tasks",
   "/admin/chat",
   "/admin/pricelist",
+  "/admin/media",
   "/admin/knowledge",
   "/admin/consultant",
 ] as const;
@@ -282,12 +288,20 @@ export function buildAdminNav(shop: NavShop): AdminNav {
       : null;
     const dialogs: NavItem | null = m.manager_chat ? { ...chat, label: "ws.nav.dialogs" } : null;
     const price: NavItem = { to: "/admin/pricelist", label: "ws.nav.price" };
+    const media: NavItem = {
+      to: "/admin/media",
+      label: "ws.nav.media",
+      badge:
+        (shop.consultantMediaDemands ?? 0) > 0
+          ? { value: shop.consultantMediaDemands!, tone: "danger" }
+          : undefined,
+    };
     const knowledge: NavItem = { to: "/admin/knowledge", label: "ws.nav.knowledge" };
     const botSettings: NavItem = { to: "/admin/consultant", label: "ws.nav.botSettings" };
     const workspace: NavGroup = {
       id: "consultant",
       label: "ws.nav.group",
-      items: compact<NavItem>([tasks, dialogs, price, knowledge, botSettings]),
+      items: compact<NavItem>([tasks, dialogs, price, media, knowledge, botSettings]),
     };
     const mine = new Set<string>(WORKSPACE_PAGES);
     const without = (g: NavGroup): NavGroup => ({
@@ -298,7 +312,7 @@ export function buildAdminNav(shop: NavShop): AdminNav {
       workspace,
       ...[sales, catalog, learning, marketing, analytics, help, settings].map(without),
     ].filter((g) => g.items.length > 0);
-    const primary = compact<NavItem>([overview, tasks, dialogs, price, knowledge]).slice(0, 4);
+    const primary = compact<NavItem>([overview, tasks, dialogs, price, media, knowledge]).slice(0, 4);
     return { overview, groups, primary, pinned: workspace.items.map((i) => i.to) };
   }
 

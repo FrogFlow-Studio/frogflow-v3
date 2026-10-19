@@ -311,6 +311,8 @@ export type PricelistDecision = {
    * по прайсу покупателю не уходит, вопрос — менеджеру.
    */
   priceBlocked: boolean;
+  /** Товары, по которым покупатель просил фото или видео, но в базе их нет (спрос на медиа). */
+  missingMedia?: { product: ConsultantProduct; kind: "image" | "video" }[];
 };
 
 /**
@@ -574,6 +576,7 @@ async function decide(data: PricelistData, input: PricelistInput): Promise<Price
   });
   let contactAsked = false;
   const attachments: PricelistDecision["attachments"] = [];
+  const missingMedia: { product: ConsultantProduct; kind: "image" | "video" }[] = [];
   const mediaSent: string[] = [];
   let mediaList: ProductMedia[] | undefined;
   const call = async (extra: Partial<ModelRequest> = {}) => {
@@ -791,6 +794,7 @@ async function decide(data: PricelistData, input: PricelistInput): Promise<Price
     rateMissing,
     ...(rateApprox ? { rateApprox } : {}),
     priceBlocked,
+    ...(missingMedia.length ? { missingMedia } : {}),
   };
 
   async function sendPhoto(args: Record<string, unknown>): Promise<unknown> {
@@ -821,9 +825,11 @@ async function decide(data: PricelistData, input: PricelistInput): Promise<Price
         note: "Этот файл покупатель уже получил — он для всей модели, других нет. Скажите, что фото выше; менеджера из-за этого не зовите.",
       };
     }
+    missingMedia.push({ product, kind: wanted === "video" ? "video" : "image" });
     return {
       found: false,
       product: product.name,
+      shop_url: data.shopUrl,
       ...(wanted === "video" ? { kind: "video" } : {}),
     };
   }

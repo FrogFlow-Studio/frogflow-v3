@@ -58,6 +58,8 @@ export async function runPricelistTurn(
     fetchImage?: PricelistInput["fetchImage"];
     /** Канал диалога: в Instagram и WhatsApp заказ передаётся без телефона. */
     channel?: string;
+    contact?: string;
+    dryRun?: boolean;
   },
 ): Promise<PricelistTurn> {
   const data = args.data ?? (await loadPricelistData(ctx));
@@ -72,6 +74,12 @@ export async function runPricelistTurn(
     channel: args.channel,
     call: (req) => args.callModel({ model: args.model, ...req, ...modelParams(args.model) }),
   });
+  if (decision.missingMedia?.length && !args.dryRun) {
+    const { recordMediaDemand } = await import("./media-catalog.server");
+    for (const item of decision.missingMedia) {
+      void recordMediaDemand(ctx, item.product, args.contact, args.text).catch(() => {});
+    }
+  }
   const r = data.rate;
   // Рубли просят, а курса нет — продавцу раз в сутки (условная отметка).
   if (decision.rateMissing) {

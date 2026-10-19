@@ -180,6 +180,7 @@ describe("меню админки", () => {
     expect(ws({}).pinned).toEqual([
       "/admin/tasks",
       "/admin/pricelist",
+      "/admin/media",
       "/admin/knowledge",
       "/admin/consultant",
     ]);
