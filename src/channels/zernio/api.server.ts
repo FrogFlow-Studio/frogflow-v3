@@ -202,7 +202,10 @@ export async function sendInboxMessage(
   // Обрезанный текст с кнопками лучше молчания: единая страховка для всех отправок.
   const capped =
     platform === "instagram" && buttons.length && !opts.interactive ? capButtonText(text) : text;
-  const body: Record<string, unknown> = { accountId, message: capped };
+  const body: Record<string, unknown> = { accountId };
+  if (capped || !opts.attachmentUrl) {
+    body.message = capped;
+  }
   if (opts.attachmentUrl) {
     body.attachmentUrl = opts.attachmentUrl;
     body.attachmentType = opts.attachmentType ?? "image";

@@ -8,6 +8,7 @@ import {
 import { COPY, escapeHtml } from "@/channels/telegram/copy";
 import { notifyAdminsHtml } from "@/channels/telegram/notify";
 import { liveTransport, type ZernioTransport } from "./api.server";
+import { isAttachmentRejected } from "./errors";
 import { findManagerMessage } from "./manager-guard";
 import { pauseHours, pauseNoticeRu } from "@/core/consultant/pause";
 import {
@@ -617,9 +618,20 @@ export async function handleZernioMessage(
     return processed(SKIPPED_NOTE[r.skipped]);
   }
 
-  const sent = await transport.send(m.conversationId, m.accountId, r.reply, {
+  const firstAttachment = r.attachments?.[0];
+  let sent = await transport.send(m.conversationId, m.accountId, r.reply, {
     platform: m.platform,
+    ...(firstAttachment
+      ? { attachmentUrl: firstAttachment.url, attachmentType: firstAttachment.kind }
+      : {}),
   });
+  // Если канал отклонил именно вложение (например, PLATFORM_LIMITATION) — ответ уходит текстом без фото
+  if (!sent.ok && firstAttachment && isAttachmentRejected(sent.failure)) {
+    console.warn(`[zernio] фото товара не принято каналом ${customer.userKey}: ${sent.error}`);
+    sent = await transport.send(m.conversationId, m.accountId, r.reply, {
+      platform: m.platform,
+    });
+  }
   // Журнал ответов: цена ответа, кеш, инструменты — и что ответ не ушёл.
   const { recordConsultantRun } = await import("@/core/consultant/runs");
   await recordConsultantRun(ctx, {
@@ -646,9 +658,11 @@ export async function handleZernioMessage(
     else await notifyReplyNotSent(ctx, customer, m, text, r.reply);
     return { status: "failed", note: sent.error };
   }
-  // Фото и видео товара из фотобазы — следом за ответом, каждое отдельно.
+  // Дополнительные фото и видео товара (если больше одного) — следом за ответом.
   // Не принял Instagram файл — ответ уже ушёл, остальное не держим.
-  for (const a of r.attachments ?? []) {
+  const extraAttachments =
+    firstAttachment && sent.ok ? (r.attachments ?? []).slice(1) : (r.attachments ?? []);
+  for (const a of extraAttachments) {
     const media = await transport.send(m.conversationId, m.accountId, "", {
       platform: m.platform,
       attachmentUrl: a.url,

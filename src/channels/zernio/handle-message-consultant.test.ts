@@ -200,3 +200,64 @@ describe("сообщение без своего ответа (core/consultant/b
     expect(runs()[0]).toMatchObject({ status: "cancelled", reply_kind: "stale" });
   });
 });
+
+describe("фото и видео товара консультанта", () => {
+  it("первое фото уходит вместе с текстом ответа", async () => {
+    engine.result = {
+      reply: "Вот фото комплекта.",
+      handoff: null,
+      usage,
+      attachments: [{ url: "https://app.test/img/1.jpg", kind: "image" }],
+    };
+    const calls: Array<{ text: string; opts?: Record<string, unknown> }> = [];
+    const t = {
+      send: vi.fn(async (_c: string, _a: string, text: string, opts?: Record<string, unknown>) => {
+        calls.push({ text, opts });
+        return { ok: true };
+      }),
+      tail: async () => [],
+    } as unknown as ZernioTransport;
+    const r = await handleZernioMessage(ctx, payload("А фото есть?"), t);
+    expect(r.status).toBe("processed");
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toEqual({
+      text: "Вот фото комплекта.",
+      opts: {
+        platform: "instagram",
+        attachmentUrl: "https://app.test/img/1.jpg",
+        attachmentType: "image",
+      },
+    });
+  });
+
+  it("если канал отклонил фото — ответ уходит текстом без фото", async () => {
+    engine.result = {
+      reply: "Вот фото комплекта.",
+      handoff: null,
+      usage,
+      attachments: [{ url: "https://app.test/img/1.jpg", kind: "image" }],
+    };
+    const calls: Array<{ text: string; opts?: Record<string, unknown> }> = [];
+    const t = {
+      send: vi.fn(async (_c: string, _a: string, text: string, opts?: Record<string, unknown>) => {
+        calls.push({ text, opts });
+        if (opts?.attachmentUrl) {
+          return {
+            ok: false,
+            error: "Attachments are not supported",
+            failure: { status: 400, code: "PLATFORM_LIMITATION" },
+          };
+        }
+        return { ok: true };
+      }),
+      tail: async () => [],
+    } as unknown as ZernioTransport;
+    const r = await handleZernioMessage(ctx, payload("А фото есть?"), t);
+    expect(r.status).toBe("processed");
+    expect(calls).toHaveLength(2);
+    expect(calls[0]!.opts?.attachmentUrl).toBe("https://app.test/img/1.jpg");
+    expect(calls[1]!.opts?.attachmentUrl).toBeUndefined();
+    expect(calls[1]!.text).toBe("Вот фото комплекта.");
+  });
+});
+
