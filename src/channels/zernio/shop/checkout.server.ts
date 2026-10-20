@@ -818,17 +818,27 @@ async function sendPayChoice(
     },
   ];
   // Форма Продамуса *.kz принимает только карты РФ (скрин формы Копилки, 10.10): говорим это прямо.
-  const anyCard =
-    pdm.ready && buttons.some((b) => b.payload === "PAY:pdm")
-      ? `\n\n${plain(prodamusAnyCardLine(s.m, pdm.currency))}`.trimEnd()
-      : "";
+  const notes: string[] = [];
+  if (rk.ready && buttons.some((b) => b.payload === "PAY:rk")) {
+    notes.push(plain(s.m.cardOnlineLine));
+  }
+  const pdmActive = pdm.ready && buttons.some((b) => b.payload === "PAY:pdm");
+  const anyCard = pdmActive ? plain(prodamusAnyCardLine(s.m, pdm.currency)) : "";
+  if (anyCard) notes.push(anyCard);
+  if (
+    buttons.some((b) => b.payload === "PAY:manual") &&
+    /kaspi|каспи/i.test(p.instructions ?? "")
+  ) {
+    notes.push(plain(s.m.kaspiTransferLine));
+  }
+  const notesBlock = notes.length ? `\n\n${notes.join("\n")}` : "";
   // «1700 ₸ / 470 ₽»: покупатели из России принимали 1700 за рубли (Копилка, 10.10).
   const rub = anyCard
     ? await rubEquivalent(s.ctx, pdm, { id: p.orderId, due: p.due, currency: p.currency })
     : null;
   return reply(
     s,
-    `${plain(s.m.manualTitleNew(p.no))}\n${itemsLine(p.items)}\n${plain(s.m.amountToPay(withRub(formatMoney(p.due, p.currency), rub)))}\n\n${plain(s.m.choosePayMethodNamed(buttons.map((b) => b.title)))}${anyCard}`,
+    `${plain(s.m.manualTitleNew(p.no))}\n${itemsLine(p.items)}\n${plain(s.m.amountToPay(withRub(formatMoney(p.due, p.currency), rub)))}\n\n${plain(s.m.choosePayMethodNamed(buttons.map((b) => b.title)))}${notesBlock}`,
     { force: true, buttons },
   );
 }

@@ -516,13 +516,21 @@ export async function finishCheckout(b: Bot, countryCode: string) {
     });
     const { rubEquivalent, withRub } = await import("@/core/payments/rub-equivalent");
     // «1700 ₸ / 470 ₽»: покупатели из России принимали 1700 за рубли (Копилка, 10.10).
-    const rub =
+    const anyCard =
       prodamus.ready && prodamusAnyCardLine(b.m, prodamus.currency)
-        ? await rubEquivalent(b.ctx, prodamus, { id: order.id, due, currency: order.currency })
-        : null;
+        ? prodamusAnyCardLine(b.m, prodamus.currency)
+        : "";
+    const rub = anyCard
+      ? await rubEquivalent(b.ctx, prodamus, { id: order.id, due, currency: order.currency })
+      : null;
+    const notes: string[] = [];
+    if (rk.ready) notes.push(b.m.cardOnlineLine);
+    if (anyCard) notes.push(anyCard);
+    if (/kaspi|каспи/i.test(method.instructions ?? "")) notes.push(b.m.kaspiTransferLine);
+    const notesBlock = notes.length ? `\n\n${notes.join("\n")}` : "";
     await send(
       b,
-      `${b.m.manualTitleNew(no)}\n\n${b.m.amountToPay(withRub(formatMoney(due, order.currency), rub))}${await consentLine(b)}\n\n${b.m.choosePayMethod}${prodamus.ready && prodamusAnyCardLine(b.m, prodamus.currency) ? `\n\n${prodamusAnyCardLine(b.m, prodamus.currency)}` : ""}`,
+      `${b.m.manualTitleNew(no)}\n\n${b.m.amountToPay(withRub(formatMoney(due, order.currency), rub))}${await consentLine(b)}\n\n${b.m.choosePayMethod}${notesBlock}`,
       {
         reply_markup: {
           inline_keyboard: [

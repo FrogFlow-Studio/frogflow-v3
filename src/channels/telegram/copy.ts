@@ -240,6 +240,10 @@ export type Msg = {
   payByCardBtn: string;
   /** Под выбором оплаты, касса Продамуса не в рублях: карта РФ тоже подходит. */
   cardAnyCountryLine: string;
+  /** Под выбором оплаты: онлайн-оплата картой через Robokassa (KZ/RU). */
+  cardOnlineLine: string;
+  /** Под выбором оплаты: ручной перевод Kaspi только для Казахстана. */
+  kaspiTransferLine: string;
   prodamusCardHint: string;
   robokassaHint: string;
   paymentReceived: (no: number) => string;
@@ -459,6 +463,10 @@ const ru: Msg = {
   payLinkHint:
     "Нажмите кнопку ниже. Если не открывается — скопируйте ссылку и откройте её в браузере или в приложении Kaspi.",
   payByCardBtn: "💳 Картой РФ",
+  cardOnlineLine:
+    "💳 «Оплата картой» — Казахстан, зарубежные карты и СНГ (Кыргызстан, Узбекистан, Беларусь и др.).",
+  kaspiTransferLine:
+    "🧾 «Перевод Kaspi» — только для Казахстана (приложение Kaspi.kz).",
   cardAnyCountryLine:
     "💳 «Картой РФ» — только карты российских банков: сумма в тенге спишется в рублях по курсу банка. Карту Казахстана или другой страны форма не примет — выберите другой способ оплаты.",
   prodamusCardHint:
@@ -771,7 +779,7 @@ const ru: Msg = {
   choosePayMethod: "Выберите способ оплаты:",
   payConsent: (offer, privacy) =>
     `Оплачивая заказ, вы принимаете ${[offer && `<a href="${offer}">условия оферты</a>`, privacy && `<a href="${privacy}">согласие на обработку персональных данных</a>`].filter(Boolean).join(" и ")}.`,
-  payViaRobokassaBtn: "💳 Оплатить картой онлайн",
+  payViaRobokassaBtn: "💳 Оплата картой",
   payViaCryptoBtn: "₿ Оплатить криптовалютой",
   cryptoHint:
     "Откройте ссылку, выберите монету и оплатите. Заказ подтвердится сам, когда сеть подтвердит платёж.",
@@ -911,6 +919,11 @@ const kk: Msg = {
   payLinkHint:
     "Төмендегі батырманы басыңыз. Ашылмаса — сілтемені көшіріп, браузерде немесе Kaspi қосымшасында ашыңыз.",
   payByCardBtn: "💳 РФ картасымен",
+  payViaRobokassaBtn: "💳 Картамен төлеу",
+  cardOnlineLine:
+    "💳 «Картамен төлеу» — Қазақстан, шетелдік және ТМД карталары (Қырғызстан, Өзбекстан және т.б.).",
+  kaspiTransferLine:
+    "🧾 «Kaspi аударым» — тек Қазақстан үшін (Kaspi.kz қосымшасы).",
   cardAnyCountryLine:
     "💳 «РФ картасымен» — тек Ресей банктерінің карталары: теңгедегі сома банк бағамы бойынша рубльмен шешіледі. Қазақстан немесе басқа ел картасын форма қабылдамайды — басқа төлем тәсілін таңдаңыз.",
   prodamusCardHint:
@@ -1250,6 +1263,11 @@ const en: Msg = {
   payLinkHint:
     "Tap the button below. If it does not open, copy the link and open it in your browser or the Kaspi app.",
   payByCardBtn: "💳 Russian card",
+  payViaRobokassaBtn: "💳 Pay by card",
+  cardOnlineLine:
+    "💳 “Pay by card” — Kazakhstan, international and CIS cards (Kyrgyzstan, Uzbekistan, etc.).",
+  kaspiTransferLine:
+    "🧾 “Kaspi transfer” — Kazakhstan only (Kaspi.kz app).",
   cardAnyCountryLine:
     "💳 «Russian card» accepts Russian bank cards only: the tenge amount is charged in rubles at your bank's rate. Cards from Kazakhstan or other countries won't work there — please choose another payment method.",
   prodamusCardHint:
@@ -1619,6 +1637,11 @@ const uz: Msg = {
   payLinkHint:
     "Quyidagi tugmani bosing. Ochilmasa — havolani nusxalab, brauzerda yoki Kaspi ilovasida oching.",
   payByCardBtn: "💳 RF kartasi",
+  payViaRobokassaBtn: "💳 Kartadan to‘lov",
+  cardOnlineLine:
+    "💳 «Kartadan to‘lov» — Qozog‘iston, xorijiy va MDH kartalari (Qirg‘iziston, O‘zbekiston va boshqalar).",
+  kaspiTransferLine:
+    "🧾 «Kaspi o‘tkazma» — faqat Qozog‘iston uchun (Kaspi.kz ilovasi).",
   cardAnyCountryLine:
     "💳 «RF kartasi» — faqat Rossiya banklari kartalari: tengedagi summa bank kursi bo‘yicha rublda yechiladi. Qozog‘iston yoki boshqa davlat kartasini forma qabul qilmaydi — boshqa to‘lov usulini tanlang.",
   prodamusCardHint:
