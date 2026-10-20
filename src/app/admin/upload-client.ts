@@ -53,7 +53,7 @@ function put(
   file: File,
   headers: Record<string, string>,
   onProgress?: (sent: number, total: number) => void,
-): Promise<{ ok: boolean; status: number }> {
+): Promise<{ ok: boolean; status: number; text?: string }> {
   if (!onProgress)
     return fetch(url, {
       method: "PUT",
@@ -61,14 +61,19 @@ function put(
       headers,
       signal: AbortSignal.timeout(PUT_TIMEOUT_MS),
     })
-      .then((r) => ({ ok: r.ok, status: r.status }))
+      .then(async (r) => ({ ok: r.ok, status: r.status, text: r.ok ? undefined : await r.text().catch(() => "") }))
       .catch(() => ({ ok: false, status: 0 }));
   return new Promise((resolve) => {
     const xhr = new XMLHttpRequest();
     xhr.open("PUT", url);
     for (const [k, v] of Object.entries(headers)) xhr.setRequestHeader(k, v);
     xhr.upload.onprogress = (e) => onProgress(e.loaded, e.lengthComputable ? e.total : file.size);
-    xhr.onload = () => resolve({ ok: xhr.status >= 200 && xhr.status < 300, status: xhr.status });
+    xhr.onload = () =>
+      resolve({
+        ok: xhr.status >= 200 && xhr.status < 300,
+        status: xhr.status,
+        text: xhr.status >= 200 && xhr.status < 300 ? undefined : xhr.responseText,
+      });
     xhr.onerror = () => resolve({ ok: false, status: 0 });
     xhr.onabort = () => resolve({ ok: false, status: 0 });
     xhr.send(file);
@@ -94,6 +99,21 @@ export async function uploadFile(
     onProgress,
   );
   if (!sent.ok) {
+    if (sent.text) {
+      try {
+        const parsed = JSON.parse(sent.text) as { message?: string; error?: string };
+        if (parsed.message && parsed.message.toLowerCase().includes("exceeded")) {
+          throw shownError(
+            `Файл превышает глобальный лимит хранилища Supabase (50 МБ). Увеличьте "Global file size limit" в панели Supabase (Storage -> Settings).`,
+          );
+        }
+        if (parsed.message) {
+          throw shownError(`Ошибка хранилища (${sent.status}): ${parsed.message}`);
+        }
+      } catch (e) {
+        if (e instanceof Error && e.message.includes("Supabase")) throw e;
+      }
+    }
     if (sent.status === 413) {
       throw fail(t, { problem: "too_big", mb: 500 }, fallback(sent.status));
     }
