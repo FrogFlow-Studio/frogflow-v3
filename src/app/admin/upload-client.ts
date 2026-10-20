@@ -10,7 +10,7 @@ import { shownError } from "@/lib/shown-error";
 /** Ответ сервера на подпись и подтверждение: мс; сам файл идёт отдельно. */
 const CALL_TIMEOUT_MS = 30_000;
 /** Загрузка файла без хода отправки: до 50 МБ при плохой связи. */
-const PUT_TIMEOUT_MS = 5 * 60_000;
+const PUT_TIMEOUT_MS = 30 * 60_000;
 
 type Answer = { key?: string; url?: string; problem?: string; mb?: number };
 

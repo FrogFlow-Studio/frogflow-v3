@@ -50,6 +50,10 @@ export function CourseCard({ productId, t }: { productId: string; t: AdminT }) {
       try {
         const key = await uploadFile("file", file, t, (status) =>
           t("product.uploadFailed", { status }),
+          (sent, total) =>
+            setUploading(
+              `${file.name} (${total > 0 ? Math.round((sent / total) * 100) : 0}%)`,
+            ),
         );
         edit(index, (l) => ({ ...l, files: [...l.files, { path: key, name: file.name }] }));
       } finally {

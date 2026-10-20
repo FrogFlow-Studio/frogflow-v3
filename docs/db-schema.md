@@ -458,7 +458,7 @@ M68: `conversation_id TEXT`, `zernio_account_id TEXT`, `outreach_error TEXT`.
 
 | бакет | public | file_size_limit (после M05) | MIME | назначение |
 |---|---|---|---|---|
-| `product-files` | **false** (M33) | 200 МБ | `NULL` (сняты M05) | платные материалы, только signed URL под `service_role` |
+| `product-files` | **false** (M33) | 500 МБ | `NULL` (сняты M05) | платные материалы, только signed URL под `service_role` |
 | `product-images` | **false** (M20) | 50 МБ | image/jpeg, png, gif, webp | фото товаров; раздача через `/api/public/img/$` |
 | `payment-proofs` | false | 50 МБ | `NULL` | чеки по заказам **и по `subscription_invoices`** |
 | `broadcast-images` | **true** | 50 МБ | image/* | картинки рассылок; политика `Public Read broadcast-images` |

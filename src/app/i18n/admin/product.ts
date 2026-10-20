@@ -92,7 +92,7 @@ export const ru = {
   "product.isCourseHint":
     "Файл не обязателен: после оплаты покупатель получит ссылку на уроки. Уроки и домашние задания добавляются ниже после сохранения; без уроков курс не появится в каталоге.",
   "product.filesOptional": "необязательно",
-  "product.filesHint": "PDF, ZIP, видео до 200 МБ. Покупатель получает все файлы своего языка.",
+  "product.filesHint": "PDF, ZIP, видео до 500 МБ. Покупатель получает все файлы своего языка.",
   "products.noFile": "нет файла",
   "products.onSaleLabel": "в продаже",
   "product.card.course": "Уроки курса",
@@ -339,7 +339,7 @@ export const kk: SectionDict<typeof ru> = {
     "Файл міндетті емес: төлемнен кейін сатып алушы сабақтарға сілтеме алады. Сабақтар мен үй тапсырмалары сақтағаннан кейін төменде қосылады; сабақсыз курс каталогта көрінбейді.",
   "product.filesOptional": "міндетті емес",
   "product.filesHint":
-    "PDF, ZIP, 200 МБ-қа дейінгі бейне. Сатып алушы өз тіліндегі барлық файлды алады.",
+    "PDF, ZIP, 500 МБ-қа дейінгі бейне. Сатып алушы өз тіліндегі барлық файлды алады.",
   "products.noFile": "файл жоқ",
   "products.onSaleLabel": "сатылымда",
   "product.card.course": "Курс сабақтары",
@@ -585,7 +585,7 @@ export const en: SectionDict<typeof ru> = {
     "A file is optional: after payment the buyer gets a link to the lessons. Lessons and homework are added below after saving; without lessons the course won't appear in the catalog.",
   "product.filesOptional": "optional",
   "product.filesHint":
-    "PDF, ZIP, video up to 200 MB. The buyer receives all files in their language.",
+    "PDF, ZIP, video up to 500 MB. The buyer receives all files in their language.",
   "products.noFile": "no file",
   "products.onSaleLabel": "on sale",
   "product.card.course": "Course lessons",
@@ -828,7 +828,7 @@ export const uz: SectionDict<typeof ru> = {
   "product.isCourseHint":
     "Fayl majburiy emas: to‘lovdan so‘ng xaridor darslar havolasini oladi. Darslar va uy vazifalari saqlangandan keyin quyida qo‘shiladi; darssiz kurs katalogda ko‘rinmaydi.",
   "product.filesOptional": "ixtiyoriy",
-  "product.filesHint": "PDF, ZIP, 200 MB gacha video. Xaridor o‘z tilidagi barcha fayllarni oladi.",
+  "product.filesHint": "PDF, ZIP, 500 MB gacha video. Xaridor o‘z tilidagi barcha fayllarni oladi.",
   "products.noFile": "fayl yo‘q",
   "products.onSaleLabel": "sotuvda",
   "product.card.course": "Kurs darslari",

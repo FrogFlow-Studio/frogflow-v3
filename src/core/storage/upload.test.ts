@@ -13,9 +13,9 @@ describe("uploadProblem", () => {
     expect(uploadProblem("image", MB, "text/html")).toBe("bad_type");
   });
 
-  it("файл: до 200 МБ любого типа, то есть больше лимита Vercel в 4,5 МБ", () => {
-    expect(uploadProblem("file", 150 * MB, "video/mp4")).toBeNull();
-    expect(uploadProblem("file", 201 * MB, "application/zip")).toBe("too_big");
+  it("файл: до 500 МБ любого типа, то есть больше лимита Vercel в 4,5 МБ", () => {
+    expect(uploadProblem("file", 450 * MB, "video/mp4")).toBeNull();
+    expect(uploadProblem("file", 501 * MB, "application/zip")).toBe("too_big");
   });
 
   it("фото в чат: JPEG или PNG до 5 МБ — общий предел Telegram, Instagram и WhatsApp", () => {
