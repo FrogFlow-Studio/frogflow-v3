@@ -12,9 +12,11 @@ import {
 
 const STATUS: Record<UploadProblem, number> = { too_big: 413, bad_type: 415, empty: 400 };
 
-function problem(p: UploadProblem, max: number) {
-  return Response.json({ problem: p, mb: mb(max) }, { status: STATUS[p] });
+function problem(p: UploadProblem, max: number, message?: string) {
+  return Response.json({ problem: p, mb: mb(max), ...(message ? { message } : {}) }, { status: STATUS[p] });
 }
+
+let productFilesLimitEnsured = false;
 
 /**
  * Загрузка в общие бакеты в два шага, файл мимо функции Vercel:
@@ -43,13 +45,47 @@ export const Route = createFileRoute("/api/admin/upload")({
         const bucket = serviceDb().storage.from(spec.bucket);
 
         if (body.action === "sign") {
+          const fileSize = Number(body.size);
           const p = uploadProblem(
             kind,
-            Number(body.size),
+            fileSize,
             String(body.type ?? ""),
             String(body.name ?? ""),
           );
           if (p) return problem(p, spec.max);
+
+          if (kind === "file" && !productFilesLimitEnsured) {
+            try {
+              const { data: bInfo } = await serviceDb().storage.getBucket("product-files");
+              if (
+                bInfo &&
+                typeof bInfo.file_size_limit === "number" &&
+                bInfo.file_size_limit < spec.max
+              ) {
+                const up = await serviceDb().storage.updateBucket("product-files", {
+                  public: false,
+                  fileSizeLimit: spec.max,
+                });
+                if (up.error) {
+                  console.warn("[upload] product-files limit sync error:", up.error);
+                  if (fileSize > bInfo.file_size_limit) {
+                    return problem(
+                      "too_big",
+                      spec.max,
+                      `Лимит хранилища Supabase (${Math.round(bInfo.file_size_limit / 1048576)} МБ) меньше размера файла. Увеличьте Global file size limit в панели Supabase (Storage -> Settings).`,
+                    );
+                  }
+                } else {
+                  productFilesLimitEnsured = true;
+                }
+              } else {
+                productFilesLimitEnsured = true;
+              }
+            } catch (err) {
+              console.warn("[upload] product-files limit check error:", err);
+            }
+          }
+
           const key = newUploadKey(
             ctx.tenant.id,
             randomBytes(12).toString("hex"),

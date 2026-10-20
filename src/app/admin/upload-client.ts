@@ -9,10 +9,10 @@ import { shownError } from "@/lib/shown-error";
 
 /** Ответ сервера на подпись и подтверждение: мс; сам файл идёт отдельно. */
 const CALL_TIMEOUT_MS = 30_000;
-/** Загрузка файла без хода отправки: до 50 МБ при плохой связи. */
+/** Загрузка файла без хода отправки: до 500 МБ при нормальной связи (30 минут). */
 const PUT_TIMEOUT_MS = 30 * 60_000;
 
-type Answer = { key?: string; url?: string; problem?: string; mb?: number };
+type Answer = { key?: string; url?: string; problem?: string; mb?: number; message?: string };
 
 async function call(body: Record<string, unknown>): Promise<{ status: number; j: Answer }> {
   try {
@@ -38,6 +38,7 @@ const PROBLEM_TEXT: Record<string, AdminKey> = {
 };
 
 function fail(t: AdminT, j: Answer, fallback: string): Error {
+  if (j.message) return shownError(j.message);
   const key = j.problem ? PROBLEM_TEXT[j.problem] : undefined;
   return shownError(key ? t(key, { mb: j.mb ?? "" }) : fallback);
 }
@@ -92,7 +93,12 @@ export async function uploadFile(
     { "content-type": type, "cache-control": "max-age=3600", "x-upsert": "false" },
     onProgress,
   );
-  if (!sent.ok) throw shownError(fallback(sent.status));
+  if (!sent.ok) {
+    if (sent.status === 413) {
+      throw fail(t, { problem: "too_big", mb: 500 }, fallback(sent.status));
+    }
+    throw shownError(fallback(sent.status));
+  }
 
   const done = await call({ action: "confirm", kind, key: sign.j.key });
   if (done.status !== 200 || !done.j.key) throw fail(t, done.j, fallback(done.status));

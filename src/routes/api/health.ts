@@ -23,6 +23,25 @@ export const Route = createFileRoute("/api/health")({
         } catch (err) {
           dbError = err instanceof Error ? err.message : String(err);
         }
+        let storage: Record<string, unknown> | undefined;
+        try {
+          const { serviceDb } = await import("@/core/db/client.server");
+          const { data: bData, error: bErr } = await serviceDb().storage.getBucket("product-files");
+          let updateAttempt: unknown = null;
+          if (bData && typeof bData.file_size_limit === "number" && bData.file_size_limit < 524288000) {
+            updateAttempt = await serviceDb().storage.updateBucket("product-files", {
+              public: false,
+              fileSizeLimit: 524288000,
+            });
+          }
+          storage = {
+            productFiles: bData ?? null,
+            ...(bErr ? { bucketError: bErr.message } : {}),
+            ...(updateAttempt ? { updateAttempt } : {}),
+          };
+        } catch (err) {
+          storage = { error: err instanceof Error ? err.message : String(err) };
+        }
         return withNoStore(
           Response.json({
             ok: !dbError && report.ok,
@@ -32,6 +51,7 @@ export const Route = createFileRoute("/api/health")({
             env: e?.VERCEL_ENV ?? "local",
             envReport: report,
             tenantsOnV2: tenants,
+            storage,
             ...(dbError ? { dbError } : {}),
           }),
         );

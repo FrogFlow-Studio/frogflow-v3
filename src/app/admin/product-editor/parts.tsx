@@ -20,7 +20,12 @@ export async function upload(
     kind,
     file,
     t,
-    (status) => (status === 0 ? t("product.uploadBroken") : t("product.uploadFailed", { status })),
+    (status) => {
+      if (status === 0 && file.size > 200 * 1024 * 1024) {
+        return `${t("product.uploadBroken")} (${Math.round(file.size / 1048576)} МБ: сброс соединения или лимит хранилища Supabase)`;
+      }
+      return status === 0 ? t("product.uploadBroken") : t("product.uploadFailed", { status });
+    },
     onProgress,
   );
   return { key, name: file.name };

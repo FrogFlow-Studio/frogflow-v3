@@ -585,6 +585,11 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
                   ))}
                 </div>
                 {uploading && <UploadProgress p={uploading} t={t} />}
+                {uploadError != null && (
+                  <div className="mt-2 text-xs text-danger">
+                    {String((uploadError as { message?: string })?.message ?? uploadError)}
+                  </div>
+                )}
                 <p className="mt-2 text-xs text-muted">{t("product.filesHint")}</p>
               </Card>
             )}
@@ -889,6 +894,11 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
                 />
               </label>
               {uploading && <UploadProgress p={uploading} t={t} />}
+              {uploadError != null && (
+                <div className="mt-2 text-xs text-danger">
+                  {String((uploadError as { message?: string })?.message ?? uploadError)}
+                </div>
+              )}
               <p className="mt-1 text-xs text-muted">{t("product.firstIsCover")}</p>
             </Card>
           </div>
