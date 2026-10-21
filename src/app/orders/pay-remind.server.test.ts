@@ -13,7 +13,7 @@ vi.mock("@/core/customers/customers", () => ({
   getCustomerByTelegramId: (...a: unknown[]) => buyer(...a),
 }));
 
-const { reminderText } = await import("./pay-remind.server");
+const { reminderText, humanReminderText } = await import("./pay-remind.server");
 
 const ctx = {
   tenant: { id: "b", settings: { default_locale: "ru", slug: "propisi" } },
@@ -65,5 +65,37 @@ describe("текст напоминания об оплате", () => {
     expect(t).toContain("https://shop.test/s/propisi/order/9?t=tok-b-9");
     expect(t).not.toContain("Kaspi");
     expect(t).not.toContain("пришлите сюда");
+  });
+
+  it("humanReminderText: уважительное персонализированное напоминание для WhatsApp с именем и товарами", async () => {
+    buyer.mockResolvedValue({ firstName: "Айгерим", state: { locale: "ru" } });
+    const ctxWithDb = {
+      ...ctx,
+      db: {
+        from: (table: string) => {
+          expect(table).toBe("order_items");
+          return {
+            select: () => ({
+              eq: () => ({
+                limit: async () => ({
+                  data: [{ name_snapshot: "Комплект евро Сатин" }],
+                }),
+              }),
+            }),
+          };
+        },
+      },
+    } as unknown as TenantContext;
+
+    const t = await humanReminderText(ctxWithDb, { ...base, platform: "whatsapp" });
+    expect(t).toContain("Айгерим, добрый день!");
+    expect(t).toContain("Заметили ваш заказ #501 («Комплект евро Сатин»)");
+    expect(t).toContain("Kaspi <8 700> & Co");
+  });
+
+  it("humanReminderText: возвращает null для telegram (остаётся структурированный HTML)", async () => {
+    buyer.mockResolvedValue({ firstName: "Айгерим", state: { locale: "ru" } });
+    const t = await humanReminderText(ctx, { ...base, platform: "telegram" });
+    expect(t).toBeNull();
   });
 });

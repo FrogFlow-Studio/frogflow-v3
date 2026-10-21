@@ -1081,10 +1081,45 @@ async function answerConsultant(
     const tools = loaded ? [...CATALOG_TOOLS, REMEMBER_TOOL, ...TOOLS] : TOOLS;
     let contactAsked = Boolean(state.contact_asked);
     const phoneNow = phoneIn(incoming);
+    const hasPhoto = Boolean(opts.imageUrls?.length || opts.images?.length);
+    const userIncoming = incoming || (hasPhoto ? "Здравствуйте, посмотрите фото" : "");
     const messages: Anthropic.MessageParam[] = buildConsultantMessages(
       state.recent ?? [],
-      incoming,
+      userIncoming,
     );
+    if (hasPhoto) {
+      const { fetchImage, MAX_IMAGES_PER_TURN } = await import("./pricelist/images");
+      type LoadedImg = {
+        mediaType: "image/jpeg" | "image/png" | "image/gif" | "image/webp";
+        data: string;
+      };
+      const ready = [...(opts.images ?? [])].slice(0, MAX_IMAGES_PER_TURN);
+      const fetched = await Promise.all(
+        (opts.imageUrls ?? [])
+          .slice(0, MAX_IMAGES_PER_TURN - ready.length)
+          .map((u) => fetchImage(u)),
+      );
+      const images: LoadedImg[] = [
+        ...ready,
+        ...fetched.filter((img): img is LoadedImg => img !== null),
+      ];
+      if (images.length > 0 && messages.length > 0) {
+        const last = messages[messages.length - 1]!;
+        const note =
+          "[Покупатель прислал фото — оно ниже. Рассмотрите его детально, определите, какой товар изображён, и найдите подходящие товары в каталоге с помощью search_products.]";
+        const contentText = typeof last.content === "string" ? last.content : userIncoming;
+        last.content = [
+          ...images.map(
+            (img) =>
+              ({
+                type: "image",
+                source: { type: "base64", media_type: img.mediaType, data: img.data },
+              }) as Anthropic.ImageBlockParam,
+          ),
+          { type: "text", text: [note, contentText].filter(Boolean).join("\n\n") },
+        ];
+      }
+    }
     const toolTexts: string[] = [];
     let stopped: "limited" | "late" | null = null;
     let reply = "";

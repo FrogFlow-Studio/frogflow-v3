@@ -1,6 +1,7 @@
 import type { Tenant } from "@/core/tenant/types";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { PayRemindHold, PayReminder, PayReminderOrder } from "@/core/orders/pay-remind";
+import type { Locale } from "@/core/i18n/locale";
 
 /**
  * Крон: напоминание об оплате заказов из бота, Instagram и WhatsApp
@@ -18,7 +19,8 @@ export async function runChatPayReminders(tenant: Tenant) {
       const order = await getOrder(ctx, r.orderId);
       if (!order) return false;
       const { notifyCustomer } = await import("@/app/admin/admin.server");
-      return notifyCustomer(ctx, order, await reminderText(ctx, r));
+      const text = (await humanReminderText(ctx, r)) ?? (await reminderText(ctx, r));
+      return notifyCustomer(ctx, order, text);
     },
     undefined,
     (o, why) => heldNotice(ctx, o, why),
@@ -82,4 +84,73 @@ export async function reminderText(ctx: TenantContext, r: PayReminder): Promise<
   if (r.platform === "telegram") return html;
   const { plain } = await import("@/channels/zernio/shop-flow");
   return plain(html);
+}
+
+/**
+ * Персонализированное уважительное напоминание для WhatsApp и Direct (Retention Engine).
+ * Если известно имя покупателя, вместо шаблонного сухого текста формирует обращение:
+ * «Айгерим, добрый день! Заметили ваш заказ #101 («...») на сумму 15 000 ₸.
+ * Если возникли сложности или нужно подсказать по доставке — напишите сюда...»
+ */
+export async function humanReminderText(
+  ctx: TenantContext,
+  r: PayReminder,
+): Promise<string | null> {
+  // Для Telegram-бота оставляем структурированный HTML reminderText
+  if (r.platform === "telegram") return null;
+
+  const { getCustomerByTelegramId } = await import("@/core/customers/customers");
+  const { formatMoney } = await import("@/core/money/money");
+  const { isLocale } = await import("@/core/i18n/locale");
+
+  const buyer = await getCustomerByTelegramId(ctx, r.telegramId).catch(() => null);
+  const name = buyer?.firstName?.trim();
+  if (!name) return null;
+
+  const locale: Locale = isLocale(buyer?.state?.locale)
+    ? (buyer.state.locale as Locale)
+    : (ctx.tenant.settings.default_locale ?? "ru");
+
+  const { data: items } = await ctx.db
+    .from("order_items")
+    .select("name_snapshot")
+    .eq("order_id", r.orderId)
+    .limit(3);
+
+  const itemNames = (items ?? [])
+    .map((i: { name_snapshot?: string | null }) => i.name_snapshot?.trim())
+    .filter(Boolean) as string[];
+
+  const itemSummary = itemNames.length > 0 ? ` («${itemNames.join(", ")}»)` : "";
+  const amount = formatMoney(r.due, r.currency);
+
+  if (locale === "kk") {
+    return `${name}, қайырлы күн! Сіздің #${r.no}${itemSummary} сомасы ${amount} болатын тапсырысыңызды байқадық.
+
+Тапсырыс немесе жеткізу бойынша сұрақтарыңыз болса — осында жазыңыз, көмектесуге дайынбыз!
+
+${r.instructions ? `${r.instructions}\n\n` : ""}Төлем жасаған соң чекті осында жіберіңіз — бірден дайындауға кірісеміз.`;
+  }
+
+  if (locale === "uz") {
+    return `${name}, xayrli kun! #${r.no}${itemSummary} raqamli ${amount} miqdoridagi buyurtmangizni ko'rdik.
+
+Buyurtma yoki yetkazib berish bo‘yicha savollaringiz bo‘lsa — shu yerga yozing, yordam berishdan mamnun bo'lamiz!
+
+${r.instructions ? `${r.instructions}\n\n` : ""}To‘lovdan so‘ng chekni shu yerga yuboring — buyurtmani darhol tayyorlashga kirishamiz.`;
+  }
+
+  if (locale === "en") {
+    return `Hello ${name}! We noticed your order #${r.no}${itemSummary} for ${amount}.
+
+If you have any questions about the items, shipping, or payment — feel free to reply here, we're happy to help!
+
+${r.instructions ? `${r.instructions}\n\n` : ""}Once paid, please send the receipt here and we'll process your order right away.`;
+  }
+
+  return `${name}, добрый день! Заметили ваш заказ #${r.no}${itemSummary} на сумму ${amount}.
+
+Если возникли вопросы по заказу, доставке или оплате — напишите сюда, с радостью подскажем!
+
+${r.instructions ? `${r.instructions}\n\n` : ""}После оплаты отправьте сюда чек — сразу передадим заказ в работу.`;
 }

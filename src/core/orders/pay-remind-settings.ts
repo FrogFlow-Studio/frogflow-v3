@@ -2,7 +2,7 @@
 export const PAY_REMIND_KEY = "chat_pay_reminder_hours";
 /** Ключ метки «напомнили» у заказов из чата: общий у крона и кнопки «Напомнить». */
 export const PAY_REMIND_EVENT_KEY = "chat";
-export const PAY_REMIND_HOURS = [1, 2, 3, 6, 12] as const;
+export const PAY_REMIND_HOURS = [0.5, 1, 2, 3, 6, 12] as const;
 
 /** Часы из настройки; пусто, «0» и всё, чего нет в списке, — выключено. */
 export function parsePayRemindHours(raw: string | null | undefined): number | null {

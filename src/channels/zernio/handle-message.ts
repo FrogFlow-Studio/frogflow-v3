@@ -202,6 +202,27 @@ export async function handleZernioMessage(
   });
   if (await isBlocked(ctx, customer.telegramId)) return ignored("покупатель заблокирован");
 
+  // Голосовые сообщения (WhatsApp / Direct): транскрибация речи в текст (Whisper API).
+  // Если расшифровка удалась — текст подставляется в m.text, и сообщение обрабатывается как текстовый запрос.
+  // Если ключ не задан или расшифровка не удалась — m.text остаётся пустым, и срабатывает стандартный ответ («напишите текстом»).
+  if (!m.text.trim() && m.attachments.length > 0) {
+    const voiceAtt = m.attachments.find(
+      (a) =>
+        a.url &&
+        (a.type === "audio" ||
+          a.type === "voice" ||
+          a.mimeType?.toLowerCase().startsWith("audio/")),
+    );
+    if (voiceAtt?.url) {
+      const { transcribeVoice } = await import("@/core/speech/transcribe.server");
+      const transcript = await transcribeVoice(voiceAtt.url);
+      if (transcript) {
+        m.text = transcript;
+        m.attachments = m.attachments.filter((a) => a !== voiceAtt);
+      }
+    }
+  }
+
   // Продаёт ли клиент сейчас (core/tenant/sells): консультант без товаров (BOVI)
   // с модулем магазина из v1 — нет, тогда сценарий магазина пропускаем и отвечает
   // консультант. Считается один раз на сообщение и только когда нужен.
@@ -592,10 +613,9 @@ export async function handleZernioMessage(
     return processed("менеджер отвечает из приложения — консультант на паузе");
   }
 
-  // Консультант по прайсу видит фото покупателя (v1 BOVI): ссылки на снимки,
+  // Консультант видит фото покупателя (BOVI и витрины каталога): ссылки на снимки,
   // кроме самой публикации и гифок-реакций; подпись «[вложение: …]» ему не нужна.
-  const { pricelistMode } = await import("@/core/consultant/pricelist/mode");
-  const imageUrls = pricelistMode(ctx.tenant) ? customerImageUrls(m) : [];
+  const imageUrls = customerImageUrls(m);
   // Голосовое — «напишите текстом»; публикация без слов — ждёт вопроса (consultant-inbox).
   const pre = await inbox.beforeConsultant(ctx, customer, m, transport, {
     customerPhotos: customerImageUrls(m).length,

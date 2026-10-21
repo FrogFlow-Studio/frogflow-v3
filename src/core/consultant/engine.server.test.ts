@@ -280,6 +280,22 @@ describe("консультант: цена ответа и кеш промпта
     expect(u.usd).toBeCloseTo((100 * 1 + 50 * 5) / 1e6, 9);
   });
 
+  it("передаёт картинку покупателя в messages модели (Vision-to-Product)", async () => {
+    content = [{ type: "text", text: "Вижу на фото синий комплект. Сейчас найду его в каталоге." }];
+    const ctx = ctxOf();
+    create.mockClear();
+    await runConsultant(ctx, null, "посмотрите фото", {
+      platform: "whatsapp",
+      images: [{ mediaType: "image/jpeg", data: "abcd1234" }],
+    });
+    expect(create).toHaveBeenCalled();
+    const lastCall = create.mock.calls[0]![0] as { messages: Array<{ content: unknown }> };
+    const lastUserMsg = lastCall.messages[lastCall.messages.length - 1];
+    expect(Array.isArray(lastUserMsg?.content)).toBe(true);
+    const blocks = lastUserMsg?.content as Array<{ type: string; source?: { data: string } }>;
+    expect(blocks.some((b) => b.type === "image" && b.source?.data === "abcd1234")).toBe(true);
+  });
+
   it("кеш промпта держится час, и запись в него считается по часовой ставке", async () => {
     usage = { input_tokens: 0, output_tokens: 0, cache_creation_input_tokens: 1_000_000 };
     const ctx = ctxOf();
