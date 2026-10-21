@@ -68,6 +68,7 @@ const CANCEL_WORDS = new Set([
   "отмена",
   "отменить",
   "отмени",
+  "отмените",
   "стоп",
   "сброс",
   "сбросить",
@@ -75,6 +76,7 @@ const CANCEL_WORDS = new Set([
   "начать заново",
   "/start",
   "/stop",
+  "/cancel",
   "хватит",
   "cancel",
   "болдырмау",
@@ -82,12 +84,22 @@ const CANCEL_WORDS = new Set([
   "bekor qilish",
 ]);
 
+/**
+ * Естественные фразы отмены заказа или сценария:
+ * «отмените покупку», «ладно. отмените заказ», «передумал», «не хочу покупать».
+ * Не является отменой, если это вопрос («отменяется ли заказ?», «а если отмена?»).
+ */
+const CANCEL_PHRASE =
+  /^(?:ладно[.,\s]+|ну[.,\s]+|хорошо[.,\s]+|я[.,\s]+)?(?:отмен(?:а|и|ить|ите)|сброс(?:ить)?|стоп|хватит|передумал(?:а)?|не буду (?:брать|покупать)|не хочу покупать)(?:\s+(?:покупку|заказ|вс[её])(?:\s*#?\d+)?)?[.!]?$/i;
+
 /** Выход из сценария — работает на любом шаге, иначе на выборе страны можно запереться. */
 export function isCancel(text: string): boolean {
-  return CANCEL_WORDS.has(
-    text
-      .trim()
-      .toLowerCase()
-      .replace(/[.!]+$/, ""),
-  );
+  if (text.includes("?") || /\bли\b/i.test(text)) return false;
+  const normalized = text
+    .trim()
+    .toLowerCase()
+    .replace(/[.!]+$/, "")
+    .replace(/\s+/g, " ");
+  if (CANCEL_WORDS.has(normalized)) return true;
+  return CANCEL_PHRASE.test(normalized);
 }

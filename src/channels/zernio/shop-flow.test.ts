@@ -340,7 +340,7 @@ describe("classifyIncoming", () => {
 
 describe("isCancel", () => {
   it("все обычные способы выйти и ни одной обычной реплики", () => {
-    for (const input of ["отмена", "Отмена!", "стоп", "заново", "/start", "хватит"])
+    for (const input of ["отмена", "Отмена!", "стоп", "заново", "/start", "хватит", "Ладно. Отмените покупку", "ладно, отмените заказ", "отмените заказ", "отмени покупку", "передумал", "я передумала", "не хочу покупать"])
       expect(isCancel(input), input).toBe(true);
     for (const input of ["Казахстан", "018", "отменяется ли заказ?"])
       expect(isCancel(input), input).toBe(false);

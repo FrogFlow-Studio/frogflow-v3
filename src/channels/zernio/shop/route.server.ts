@@ -368,10 +368,14 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
   const idleNow = !mode || mode === "idle";
   const startCall = idleNow && !inDialog(s) && text.trim().toLowerCase() === "/start";
   if (isCancel(text) && !startCall) {
-    if (idleNow && !inDialog(s)) return "question";
+    if (idleNow && !inDialog(s) && !s.customer.state.pending_order_id) return "question";
     // Сразу после оформления «отмена» — про заказ, а не про шаг (AATeach 11.10, #1396).
     if (await cancelFreshOrder(s)) return "handled";
     await setMode(s, { mode: "idle" });
+    const consultant = await import("@/core/consultant/engine.server");
+    if (consultant.isPaused(s.customer)) {
+      s.customer = await consultant.resumeConsultant(s.ctx, s.customer);
+    }
     await reply(s, `${plain(s.m.useMenu)}\n\n${hint(s)}`, {
       force: true,
       buttons: [BTN.catalog(s.m), BTN.cart(s.m)],

@@ -124,30 +124,40 @@ export async function repeatBuy(
 }
 
 /**
- * «Отмена» сразу после оформления: свежий заказ без чека отменяется (остаток
+ * «Отмена» сразу после оформления: свежий заказ без подтверждённой оплаты отменяется (остаток
  * и баллы возвращает rejectOrder). vagflay написала «Отмена» после #1396 —
  * бот показал меню, заказ висел. false — отменять нечего, обычный выход из шага.
  */
 export async function cancelFreshOrder(s: Shop): Promise<boolean> {
   const mode = s.customer.state.mode;
   const id = Number(s.customer.state.pending_order_id);
-  if (!mode || !PAY_MODES.includes(mode) || !id) return false;
+  if (!id) return false;
+  if (mode && !PAY_MODES.includes(mode) && mode !== "idle") return false;
   const order = await getOrder(s.ctx, id);
   if (
     !order ||
     order.telegram_id !== s.customer.telegramId ||
-    order.status !== "awaiting_payment" ||
-    order.payment_proof_path ||
-    !(Date.now() - Date.parse(order.created_at) < CANCEL_FRESH_MS)
+    order.status !== "awaiting_payment"
   )
     return false;
   const done = await rejectOrder(s.ctx, id, "buyer", {
     from: ["awaiting_payment"],
     to: "cancelled",
+    restoreStock: true,
   });
   if (!done) return false;
-  await setMode(s, { mode: "idle", pending_order_id: undefined, pending_display_no: undefined });
-  s.why = "покупатель отменил свежий заказ";
+  await setMode(s, {
+    mode: "idle",
+    pending_order_id: undefined,
+    pending_display_no: undefined,
+    placing_order: undefined,
+    pay_choice_pending: undefined,
+  });
+  const consultant = await import("@/core/consultant/engine.server");
+  if (consultant.isPaused(s.customer)) {
+    s.customer = await consultant.resumeConsultant(s.ctx, s.customer);
+  }
+  s.why = "покупатель отменил заказ";
   await reply(s, EVENING_COPY[s.locale].orderCancelled(displayNo(order)), {
     force: true,
     buttons: [BTN.catalog(s.m)],

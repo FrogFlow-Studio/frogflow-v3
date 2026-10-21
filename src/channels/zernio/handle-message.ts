@@ -558,16 +558,22 @@ export async function handleZernioMessage(
     );
   }
   if (consultant.isPaused(customerNow)) {
-    // Телефон после передачи заказа (заказ ушёл без него) — в задачу менеджеру.
-    const { phoneIn } = await import("@/core/consultant/memory");
-    const phone = m.text ? phoneIn(m.text) : undefined;
-    if (phone) {
-      const { addContactToOpenTask } = await import("@/core/consultant/tasks");
-      await addContactToOpenTask(ctx, customerNow.userKey, phone);
+    const { isResetIntent } = await import("@/core/consultant/prompt");
+    const { isCancel } = await import("./flow/replies");
+    if (m.text && (isResetIntent(m.text) || isCancel(m.text))) {
+      customerNow = await consultant.resumeConsultant(ctx, customerNow);
+    } else {
+      // Телефон после передачи заказа (заказ ушёл без него) — в задачу менеджеру.
+      const { phoneIn } = await import("@/core/consultant/memory");
+      const phone = m.text ? phoneIn(m.text) : undefined;
+      if (phone) {
+        const { addContactToOpenTask } = await import("@/core/consultant/tasks");
+        await addContactToOpenTask(ctx, customerNow.userKey, phone);
+      }
+      // В журнал ответов: сводка качества считает, сколько раз бот молчал при менеджере.
+      await recordSilentRun(ctx, customerNow, m, text, "paused");
+      return processed("консультант на паузе");
     }
-    // В журнал ответов: сводка качества считает, сколько раз бот молчал при менеджере.
-    await recordSilentRun(ctx, customerNow, m, text, "paused");
-    return processed("консультант на паузе");
   }
   customer = customerNow;
   // Стикер или гифка-реакция — не вопрос (v1 BOVI): консультант молчит.
