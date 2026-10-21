@@ -26,6 +26,14 @@ export type ProductWithFiles = {
     file_name?: string | null;
     sort_order?: number | null;
   }> | null;
+  product_variants?: Array<{
+    id?: string;
+    name?: string;
+    file_path?: string | null;
+    file_name?: string | null;
+    filePath?: string | null;
+    fileName?: string | null;
+  }> | null;
 };
 
 export const MATERIAL_LANGUAGES: readonly Locale[] = ["ru", "kk", "en", "uz"];
@@ -100,19 +108,31 @@ export function editableMaterials(
   return legacy;
 }
 
-/** Сколько файлов выдаст товар по всем языкам — с учётом старых полей v1. */
+/** Сколько файлов выдаст товар по всем языкам — с учётом старых полей v1 и файлов вариантов. */
 export function materialCount(product: ProductWithFiles | null | undefined): number {
-  return MATERIAL_LANGUAGES.reduce((n, l) => n + materialsForProduct(product, l).length, 0);
+  const base = MATERIAL_LANGUAGES.reduce((n, l) => n + materialsForProduct(product, l).length, 0);
+  const variantFiles = (product?.product_variants ?? []).filter((v) =>
+    Boolean(v.file_path || v.filePath),
+  ).length;
+  return base + variantFiles;
 }
 
 export function materialLanguages(product: ProductWithFiles | null | undefined): Locale[] {
-  return MATERIAL_LANGUAGES.filter((l) => materialsForProduct(product, l).length > 0);
+  const base = MATERIAL_LANGUAGES.filter((l) => materialsForProduct(product, l).length > 0);
+  if (
+    base.length === 0 &&
+    product?.product_variants?.some((v) => Boolean(v.file_path || v.filePath))
+  ) {
+    return ["ru"];
+  }
+  return base;
 }
 
 /** Физический товар выдаётся не файлом; цифровой без файлов продавать нельзя. */
 export function productSellable(product: ProductWithFiles | null | undefined): boolean {
   if (!product) return false;
   if (product.fulfillment_kind === "physical") return true;
+  if (product.product_variants?.some((v) => Boolean(v.file_path || v.filePath))) return true;
   return materialLanguages(product).length > 0;
 }
 

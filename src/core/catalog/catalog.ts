@@ -11,7 +11,14 @@ type ProductRow = Database["public"]["Tables"]["products"]["Row"];
 export type CategoryRow = { id: string; name: string; parent_id: string | null };
 
 export type ProductImage = { image_path: string; sort_order: number };
-export type ProductVariant = { id: string; name: string; price: number; sort_order: number };
+export type ProductVariant = {
+  id: string;
+  name: string;
+  price: number;
+  sort_order: number;
+  file_path?: string | null;
+  file_name?: string | null;
+};
 export type ProductMaterialFile = {
   language: string | null;
   file_path: string | null;

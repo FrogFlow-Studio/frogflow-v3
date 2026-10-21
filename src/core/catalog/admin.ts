@@ -348,7 +348,19 @@ export async function getProductForAdmin(ctx: TenantContext, id: string): Promis
     .eq("id", id)
     .maybeSingle();
   if (dataError) throw serverFailure(`Каталог: ${dataError.message}`);
-  return (data as Product | null) ?? null;
+  if (!data) return null;
+  const prod = data as Product;
+  if (prod.product_variants?.length) {
+    const { getVariantMaterials, resolveVariantMaterial } = await import("./variant-materials");
+    const vm = await getVariantMaterials(ctx, id);
+    if (Object.keys(vm).length > 0) {
+      prod.product_variants = prod.product_variants.map((v) => {
+        const mat = resolveVariantMaterial(vm, v.id, v.name);
+        return mat ? { ...v, file_path: mat.filePath, file_name: mat.fileName } : v;
+      });
+    }
+  }
+  return prod;
 }
 
 export type ProductInput = {
@@ -522,7 +534,12 @@ export async function setProductMaterials(
   }
 }
 
-export type VariantInput = { name: string; price: number };
+export type VariantInput = {
+  name: string;
+  price: number;
+  filePath?: string | null;
+  fileName?: string | null;
+};
 
 export async function setProductVariants(
   ctx: TenantContext,
@@ -545,6 +562,7 @@ export async function setProductVariants(
     free.set(key, [...(free.get(key) ?? []), row.id]);
   }
   const fresh: {
+    id: string;
     bot_id: string;
     product_id: string;
     name: string;
@@ -552,17 +570,31 @@ export async function setProductVariants(
     sort_order: number;
   }[] = [];
   const kept: { id: string; v: VariantInput; sort: number }[] = [];
+  const variantFileMap: Record<string, { filePath: string; fileName: string | null }> = {};
+
   variants.forEach((v, i) => {
-    const id = free.get(v.name.trim())?.shift();
-    if (id) kept.push({ id, v, sort: i });
-    else
+    const trimmed = v.name.trim();
+    const id = free.get(trimmed)?.shift() ?? crypto.randomUUID();
+    const hasKeptId = (existing ?? []).some((r) => r.id === id);
+    if (hasKeptId) {
+      kept.push({ id, v, sort: i });
+    } else {
       fresh.push({
+        id,
         bot_id: ctx.tenant.id,
         product_id: productId,
-        name: v.name.trim(),
+        name: trimmed,
         price: v.price,
         sort_order: i,
       });
+    }
+    if (v.filePath?.trim()) {
+      variantFileMap[id] = { filePath: v.filePath.trim(), fileName: v.fileName?.trim() || null };
+      variantFileMap[trimmed] = {
+        filePath: v.filePath.trim(),
+        fileName: v.fileName?.trim() || null,
+      };
+    }
   });
   if (fresh.length) {
     const { error } = await ctx.db.from("product_variants").insert(fresh);
@@ -571,7 +603,7 @@ export async function setProductVariants(
   for (const k of kept) {
     const { error } = await ctx.db
       .from("product_variants")
-      .update({ price: k.v.price, sort_order: k.sort })
+      .update({ price: k.v.price, sort_order: k.sort, name: k.v.name.trim() })
       .eq("id", k.id);
     if (error) throw serverFailure(`Каталог: ${error.message}`);
   }
@@ -580,4 +612,8 @@ export async function setProductVariants(
     const { error } = await ctx.db.from("product_variants").delete().in("id", chunk);
     if (error) throw serverFailure(`Каталог: ${error.message}`);
   }
+
+  // Сохраняем привязку файлов к вариантам цифрового товара
+  const { saveVariantMaterials } = await import("./variant-materials");
+  await saveVariantMaterials(ctx, productId, variantFileMap);
 }

@@ -98,7 +98,12 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
     (p?.product_variants ?? [])
       .slice()
       .sort((a, b) => a.sort_order - b.sort_order)
-      .map((v) => ({ name: v.name, price: Number(v.price) })),
+      .map((v) => ({
+        name: v.name,
+        price: Number(v.price),
+        filePath: v.file_path ?? null,
+        fileName: v.file_name ?? null,
+      })),
   );
   const [kind, setKind] = useState<"digital" | "physical">(
     (p?.fulfillment_kind as "digital" | "physical") ?? defaultFulfillment,
@@ -147,7 +152,14 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
           preorderFrom: /^\d{4}-\d{2}-\d{2}$/.test(preorderFrom) ? preorderFrom : null,
           images: images.map((i) => i.key),
           materials,
-          variants: variants.filter((v) => v.name.trim()),
+          variants: variants
+            .filter((v) => v.name.trim())
+            .map((v) => ({
+              name: v.name.trim(),
+              price: v.price,
+              filePath: v.filePath ?? null,
+              fileName: v.fileName ?? null,
+            })),
           isCourse: shop.modules.courses && kind === "digital" && isCourse,
         },
       },
@@ -527,12 +539,18 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
                 title={t("product.card.files")}
                 help={<HelpTip article="products" anchor="files" />}
                 actions={
-                  materials.length === 0 && isCourse && shop.modules.courses ? (
+                  materials.length === 0 && variants.some((v) => Boolean(v.filePath)) ? (
+                    <Badge tone="ok">
+                      {variants.filter((v) => Boolean(v.filePath)).length} в вариантах
+                    </Badge>
+                  ) : materials.length === 0 && isCourse && shop.modules.courses ? (
                     <Badge>{t("product.filesOptional")}</Badge>
                   ) : materials.length === 0 ? (
                     <Badge tone="danger">{t("product.needFile")}</Badge>
                   ) : (
-                    <Badge tone="ok">{materials.length}</Badge>
+                    <Badge tone="ok">
+                      {materials.length + variants.filter((v) => Boolean(v.filePath)).length}
+                    </Badge>
                   )
                 }
               >
@@ -916,9 +934,12 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
                 </p>
                 <div className="space-y-2">
                   {variants.map((v, i) => (
-                    <div key={i} className="flex gap-2">
+                    <div
+                      key={i}
+                      className="flex flex-col gap-2 rounded-lg border border-border/50 p-2 sm:flex-row sm:items-center"
+                    >
                       <input
-                        className="input"
+                        className="input flex-1"
                         placeholder={t("product.variantName")}
                         value={v.name}
                         onChange={(e) =>
@@ -927,33 +948,96 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
                           )
                         }
                       />
-                      <input
-                        className="input w-36"
-                        type="number"
-                        min={0}
-                        step="0.01"
-                        value={v.price}
-                        onChange={(e) =>
-                          setVariants((x) =>
-                            x.map((y, j) =>
-                              j === i ? { ...y, price: Number(e.target.value) } : y,
-                            ),
-                          )
-                        }
-                      />
-                      <button
-                        type="button"
-                        className="btn-ghost"
-                        onClick={() => setVariants((x) => x.filter((_, j) => j !== i))}
-                      >
-                        ✕
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <input
+                          className="input w-28 sm:w-32"
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          placeholder="0"
+                          value={v.price}
+                          onChange={(e) =>
+                            setVariants((x) =>
+                              x.map((y, j) =>
+                                j === i ? { ...y, price: Number(e.target.value) } : y,
+                              ),
+                            )
+                          }
+                        />
+                        {kind === "digital" && (
+                          <div className="flex items-center gap-1">
+                            {v.filePath ? (
+                              <div
+                                className="flex max-w-[160px] sm:max-w-[200px] items-center gap-1 rounded bg-surface-2 px-2 py-1 text-xs"
+                                title={v.fileName ?? v.filePath}
+                              >
+                                <span className="truncate">
+                                  📎 {v.fileName ?? v.filePath.split("/").pop()}
+                                </span>
+                                <button
+                                  type="button"
+                                  className="text-muted hover:text-danger ml-0.5"
+                                  onClick={() =>
+                                    setVariants((x) =>
+                                      x.map((y, j) =>
+                                        j === i ? { ...y, filePath: null, fileName: null } : y,
+                                      ),
+                                    )
+                                  }
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            ) : (
+                              <label className="btn-secondary cursor-pointer whitespace-nowrap px-2 py-1 text-xs">
+                                + файл
+                                <input
+                                  type="file"
+                                  className="hidden"
+                                  onChange={async (e) => {
+                                    const file = e.target.files?.[0];
+                                    if (!file) return;
+                                    setUploadError(null);
+                                    setUploading({ name: file.name, sent: 0, total: file.size });
+                                    try {
+                                      const r = await upload("file", file, t, (sent, total) =>
+                                        setUploading({ name: file.name, sent, total }),
+                                      );
+                                      setVariants((x) =>
+                                        x.map((y, j) =>
+                                          j === i ? { ...y, filePath: r.key, fileName: r.name } : y,
+                                        ),
+                                      );
+                                    } catch (err) {
+                                      setUploadError(err);
+                                    } finally {
+                                      setUploading(null);
+                                    }
+                                  }}
+                                />
+                              </label>
+                            )}
+                          </div>
+                        )}
+                        <button
+                          type="button"
+                          className="btn-ghost"
+                          onClick={() => setVariants((x) => x.filter((_, j) => j !== i))}
+                        >
+                          ✕
+                        </button>
+                      </div>
                     </div>
                   ))}
                   <button
                     type="button"
                     className="btn-secondary"
-                    onClick={() => setVariants((x) => [...x, { name: "", price: 0 }])}
+                    onClick={() =>
+                      setVariants((x) => [
+                        ...x,
+                        { name: "", price: 0, filePath: null, fileName: null },
+                      ])
+                    }
                   >
                     {t("product.addVariant")}
                   </button>

@@ -4,6 +4,11 @@ import type { Customer } from "@/core/customers/customers";
 import { setState } from "@/core/customers/customers";
 import { listCart, clearCart, priceCart, type CartItem } from "@/core/cart/cart";
 import {
+  loadVariantMaterialsForProducts,
+  resolveVariantMaterial,
+  type VariantMaterialsMap,
+} from "@/core/catalog/variant-materials";
+import {
   materialLanguages,
   materialsForProduct,
   type MaterialSnapshot,
@@ -454,10 +459,25 @@ export async function placeOrder(
       }
     }
 
+    // Файлы вариантов цифровых товаров (app_settings variant_materials:<id>)
+    const pids = [...new Set(items.map((it) => it.products?.id).filter(Boolean))] as string[];
+    const variantMaterialsMap = await loadVariantMaterialsForProducts(ctx, pids);
+
     // Акция с лимитом: штуки по акции и остальные по полной — двумя позициями; метка акции
     // на первой, по ней считается проданное по лимиту (soldForOffer).
     const rows = priced.lines.flatMap(({ item, unit, name, offerSplit }) => {
-      if (!offerSplit) return [orderItemSnapshot(ctx, order.id, item, unit.amount, name)];
+      if (!offerSplit)
+        return [
+          orderItemSnapshot(
+            ctx,
+            order.id,
+            item,
+            unit.amount,
+            name,
+            Number(item.quantity),
+            variantMaterialsMap,
+          ),
+        ];
       const out = [];
       if (offerSplit.offerQty > 0)
         out.push(
@@ -468,11 +488,20 @@ export async function placeOrder(
             unit.amount,
             `${name} ${OFFER_ROW_MARK}`,
             offerSplit.offerQty,
+            variantMaterialsMap,
           ),
         );
       if (offerSplit.restQty > 0)
         out.push(
-          orderItemSnapshot(ctx, order.id, item, offerSplit.restUnit, name, offerSplit.restQty),
+          orderItemSnapshot(
+            ctx,
+            order.id,
+            item,
+            offerSplit.restUnit,
+            name,
+            offerSplit.restQty,
+            variantMaterialsMap,
+          ),
         );
       return out;
     });
@@ -636,9 +665,43 @@ function orderItemSnapshot(
   price: number,
   name: string,
   quantity: number = Number(item.quantity),
+  variantMaterialsMap?: Map<string, VariantMaterialsMap>,
 ) {
   const p = item.products!;
   const byLang: Record<string, MaterialSnapshot[]> = {};
+
+  // Если у выбранного варианта есть свой файл — выдаём только его
+  const vm = item.product_variant_id && variantMaterialsMap?.get(p.id);
+  const vMaterial = vm
+    ? resolveVariantMaterial(vm, item.product_variant_id, item.product_variants?.name)
+    : null;
+
+  if (vMaterial?.filePath) {
+    const single: MaterialSnapshot[] = [
+      { path: vMaterial.filePath, name: vMaterial.fileName ?? name, url: null },
+    ];
+    const lang = vMaterial.language ?? "ru";
+    byLang[lang] = single;
+    return {
+      bot_id: ctx.tenant.id,
+      order_id: orderId,
+      product_id: p.id,
+      product_variant_id: item.product_variant_id,
+      name_snapshot: name,
+      price_snapshot: price,
+      quantity,
+      file_path_snapshot: vMaterial.filePath,
+      file_name_snapshot: vMaterial.fileName ?? name,
+      file_path_kz_snapshot: null,
+      file_name_kz_snapshot: null,
+      file_url_snapshot: null,
+      file_url_kz_snapshot: null,
+      material_files_snapshot: toJson(byLang.ru ?? single),
+      material_files_kz_snapshot: toJson(byLang.kk ?? []),
+      material_files_by_lang: toJson(byLang),
+    };
+  }
+
   for (const lang of materialLanguages(p)) byLang[lang] = materialsForProduct(p, lang);
   return {
     bot_id: ctx.tenant.id,

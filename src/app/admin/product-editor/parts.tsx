@@ -8,7 +8,12 @@ export type Img = { key: string };
 
 export type Mat = { language: Locale; filePath: string; fileName: string | null };
 
-export type Variant = { name: string; price: number };
+export type Variant = {
+  name: string;
+  price: number;
+  filePath?: string | null;
+  fileName?: string | null;
+};
 
 export async function upload(
   kind: "image" | "file",

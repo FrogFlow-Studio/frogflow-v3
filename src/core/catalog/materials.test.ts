@@ -39,6 +39,27 @@ describe("materials", () => {
     expect(productSellable(null)).toBe(false);
   });
 
+  it("цифровой товар с файлами в вариантах продаётся", () => {
+    expect(
+      productSellable({
+        fulfillment_kind: "digital",
+        product_variants: [{ file_path: "5.pdf" }],
+      }),
+    ).toBe(true);
+    expect(
+      materialLanguages({
+        fulfillment_kind: "digital",
+        product_variants: [{ file_path: "5.pdf" }],
+      }),
+    ).toEqual(["ru"]);
+    expect(
+      materialCount({
+        fulfillment_kind: "digital",
+        product_variants: [{ file_path: "5.pdf" }, { file_path: "6.pdf" }],
+      }),
+    ).toBe(2);
+  });
+
   it("не путает языки — включая en/uz, не только ru/kk", () => {
     const p = {
       product_material_files: [
