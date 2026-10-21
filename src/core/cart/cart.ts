@@ -34,6 +34,17 @@ export async function addToCart(
   productId: string,
   variantId?: string | null,
 ): Promise<AddToCartResult> {
+  if (!productId && variantId) {
+    const { data: vRow, error: vRowErr } = await ctx.db
+      .from("product_variants")
+      .select("product_id")
+      .eq("id", variantId)
+      .maybeSingle();
+    if (vRowErr) throw serverFailure(`Корзина: ${vRowErr.message}`);
+    if (!vRow) return "unavailable";
+    productId = vRow.product_id;
+  }
+
   const { data: product, error } = await ctx.db
     .from("products")
     .select(

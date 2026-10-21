@@ -174,7 +174,10 @@ export async function productCard(
         : priced.map(({ v, money }) => [
             {
               text: `${v.name} — ${formatMoney(money.amount, money.currency)}`,
-              callback_data: `add:${p.id}:${v.id}`,
+              callback_data:
+                `add:${p.id}:${v.id}`.length <= 64
+                  ? `add:${p.id}:${v.id}`
+                  : `add::${v.id}`,
             },
           ]),
     };
