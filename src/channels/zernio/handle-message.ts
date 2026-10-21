@@ -802,12 +802,16 @@ async function executeConsultantOrder(
       variantId = orderAction.variantId;
     } else if (orderAction.variantName) {
       const vNameNorm = orderAction.variantName.toLowerCase().trim();
-      const matched = variants.find(
-        (v) =>
-          v.name.toLowerCase().trim() === vNameNorm ||
-          v.name.toLowerCase().includes(vNameNorm) ||
-          vNameNorm.includes(v.name.toLowerCase()),
-      );
+      const numMatch = vNameNorm.match(/\b\d{1,3}\b/)?.[0];
+      const matched = variants.find((v) => {
+        const vn = v.name.toLowerCase().trim();
+        if (vn === vNameNorm || vn.includes(vNameNorm) || vNameNorm.includes(vn)) return true;
+        if (numMatch) {
+          const vNum = vn.match(/\b\d{1,3}\b/)?.[0];
+          if (vNum === numMatch) return true;
+        }
+        return false;
+      });
       if (matched) variantId = matched.id;
     }
   }

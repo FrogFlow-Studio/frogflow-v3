@@ -161,7 +161,8 @@ export async function stepAnswerFits(s: Shop, mode: string, text: string): Promi
       return normalizePhone(text) !== null;
     case "awaiting_variant_choice": {
       const list = memory(s.customer).list;
-      return matchOrdinal(text, list?.kind === "variants" ? list.ids.length : 0) !== null;
+      if (matchOrdinal(text, list?.kind === "variants" ? list.ids.length : 0) !== null) return true;
+      return /\b\d{1,3}\b/.test(text.trim());
     }
     case "awaiting_delivery_lang":
       return matchDeliveryLangChoice(text, await cartLanguageChoices(s.ctx, s.customer)) !== null;

@@ -386,4 +386,151 @@ describe("фото и видео товара консультанта", () => {
     // 2-е сообщение — счёт на оплату в Kaspi
     expect(sentTexts.some((txt) => txt.includes("Заказ") && txt.includes("100 ₸"))).toBe(true);
   });
+
+  it("orderAction с вариантом (например, «5 класс») — оформляет конкретный вариант товара", async () => {
+    ctx.tenant.modules = { ...ctx.tenant.modules, whatsapp: true, wa_shop: true } as never;
+    db.tables.products = [
+      {
+        id: "p-ladder",
+        bot_id: "b",
+        name: "Лестницы Части речи и члены предложения",
+        price: 2500,
+        currency: "KZT",
+        is_active: true,
+        sort_order: 1,
+        fulfillment_kind: "digital",
+        file_path: "materials/ladder.pdf",
+        product_variants: [
+          {
+            id: "v-5",
+            product_id: "p-ladder",
+            name: "5 класс",
+            price: 2500,
+            sort_order: 1,
+            is_active: true,
+            file_path: "materials/ladder-5.pdf",
+          },
+          {
+            id: "v-6",
+            product_id: "p-ladder",
+            name: "6 класс",
+            price: 2500,
+            sort_order: 2,
+            is_active: true,
+            file_path: "materials/ladder-6.pdf",
+          },
+        ],
+      },
+    ];
+    db.tables.product_variants = [
+      {
+        id: "v-5",
+        product_id: "p-ladder",
+        name: "5 класс",
+        price: 2500,
+        sort_order: 1,
+        is_active: true,
+        file_path: "materials/ladder-5.pdf",
+      },
+      {
+        id: "v-6",
+        product_id: "p-ladder",
+        name: "6 класс",
+        price: 2500,
+        sort_order: 2,
+        is_active: true,
+        file_path: "materials/ladder-6.pdf",
+      },
+    ];
+    db.tables.payment_methods = [
+      {
+        bot_id: "b",
+        country_code: "KZ",
+        country_name: "Казахстан",
+        currency: "KZT",
+        is_active: true,
+        sort_order: 1,
+        instructions: "Kaspi Pay: https://pay.kaspi.kz/pay/test",
+      },
+    ];
+    db.tables.orders = [];
+    db.tables.order_items = [];
+    db.tables.cart_items = [];
+    let cart = db.tables.cart_items;
+    Object.defineProperty(db.tables, "cart_items", {
+      configurable: true,
+      enumerable: true,
+      get() {
+        for (const c of cart ?? []) {
+          if (c.products) continue;
+          c.products = db.tables.products?.find((p) => p.id === c.product_id) ?? null;
+          c.product_variants =
+            ((c.products as { product_variants?: Array<{ id: string }> })?.product_variants ?? []).find(
+              (v: { id: string }) => v.id === c.variant_id,
+            ) ?? null;
+        }
+        return cart;
+      },
+      set(v) {
+        cart = v;
+      },
+    });
+    let orders = db.tables.orders;
+    Object.defineProperty(db.tables, "orders", {
+      configurable: true,
+      enumerable: true,
+      get() {
+        for (const o of orders ?? []) {
+          const items = (db.tables.order_items ?? []).filter((i) => i.order_id === o.id);
+          if (items.length) o.order_items = items;
+        }
+        return orders;
+      },
+      set(v) {
+        orders = v;
+      },
+    });
+    const origRpc = db.rpc.bind(db);
+    db.rpc = ((name: string, args: Record<string, unknown>) =>
+      name === "claim_order_placement" ? { data: true, error: null } : origRpc(name, args)) as never;
+
+    engine.result = {
+      reply: "Отлично, оформляю «Лестницы» за 5 класс! Счёт на оплату формируется...",
+      handoff: null,
+      orderAction: { productName: "Лестницы", variantName: "5 класс" },
+      usage,
+    };
+
+    const sentTexts: string[] = [];
+    const t = {
+      send: vi.fn(async (_c: string, _a: string, text: string) => {
+        sentTexts.push(text);
+        return { ok: true };
+      }),
+      tail: async () => [],
+    } as unknown as ZernioTransport;
+
+    const waPayload = {
+      account: { platform: "whatsapp", accountId: "acc-1" },
+      conversation: { id: "conv-1" },
+      message: {
+        text: "Давайте 5 класс",
+        platformMessageId: "mid-wa-2",
+        sender: { id: "77772928100", phone: "+77772928100", name: "Турки" },
+      },
+    } as never;
+
+    setEnvForTests({});
+    const r = await handleZernioMessage(ctx, waPayload, t);
+    expect(r.status).toBe("processed");
+    expect(r.note).toBe("ответ консультанта + заказ");
+
+    expect(sentTexts[0]).toContain("Отлично, оформляю «Лестницы» за 5 класс!");
+    expect(
+      sentTexts.some(
+        (txt) => txt.includes("Заказ") && txt.includes("Лестницы") && txt.includes("2500 ₸"),
+      ),
+    ).toBe(true);
+    expect(db.tables.order_items![0]!.product_variant_id).toBe("v-5");
+  });
 });

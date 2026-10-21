@@ -540,10 +540,31 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
       const mem = memory(s.customer);
       const pid = mem.variant_product;
       const ids = mem.list?.kind === "variants" ? mem.list.ids : [];
+      let matchedVariantId: string | null = null;
       const idx = matchOrdinal(text, ids.length);
-      if (pid && idx !== null) {
+      if (idx !== null && ids[idx]) {
+        matchedVariantId = ids[idx]!;
+      }
+      if (!matchedVariantId && pid) {
+        const p = await getProduct(s.ctx, pid);
+        if (p && p.product_variants?.length) {
+          const norm = text.toLowerCase().trim();
+          const num = norm.match(/\b\d{1,3}\b/)?.[0];
+          const found = p.product_variants.find((v) => {
+            const vn = v.name.toLowerCase().trim();
+            if (vn === norm || vn.includes(norm) || norm.includes(vn)) return true;
+            if (num) {
+              const vNum = vn.match(/\b\d{1,3}\b/)?.[0];
+              if (vNum === num) return true;
+            }
+            return false;
+          });
+          if (found) matchedVariantId = found.id;
+        }
+      }
+      if (pid && matchedVariantId) {
         await setMode(s, { mode: "idle" });
-        await addAndShowCart(s, pid, ids[idx]!);
+        await addAndShowCart(s, pid, matchedVariantId);
         return "handled";
       }
       if (pid) {
