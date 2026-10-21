@@ -769,6 +769,7 @@ async function notifyHandoff(
     link: card.link,
     sourceId: m.platformMessageId,
   });
+  const phone = handoff.customerContact || customer.contactPhone || m.senderPhone;
   const lines = [
     ...warn,
     ticket ? `📨 Обращение #${ticket.number}` : "",
@@ -777,7 +778,7 @@ async function notifyHandoff(
       : `🙋 <b>Клиент ждёт менеджера</b> (${escapeHtml(handoff.reason)})`,
     `${PLATFORM_LABEL[m.platform]} · 👤 ${escapeHtml(who)}${customer.username ? ` · @${escapeHtml(customer.username)}` : ""}`,
     handoff.customerName ? `Имя: ${escapeHtml(handoff.customerName)}` : "",
-    handoff.customerContact ? `📞 ${escapeHtml(handoff.customerContact)}` : "",
+    phone ? `📞 ${escapeHtml(phone)}` : "",
     `📋 ${escapeHtml(handoff.summary)}`,
     ...card.lines,
     "",
