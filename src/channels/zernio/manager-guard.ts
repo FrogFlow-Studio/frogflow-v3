@@ -89,8 +89,9 @@ export function findManagerMessage(
     const m = tail[i];
     if (!m || m.direction !== "outgoing") continue;
     if (sentByZernioScenario(m)) continue;
+    if (m.sentVia !== null && m.sentVia !== undefined && m.sentVia !== "human") continue;
     const text = (m.message ?? "").trim();
-    if (!text) continue;
+    if (!text || /^\d{1,3}$/.test(text)) continue;
     const at = Date.parse(m.createdAt ?? "");
     if (!Number.isFinite(at) || at <= since) continue;
     const folded = foldReply(text);

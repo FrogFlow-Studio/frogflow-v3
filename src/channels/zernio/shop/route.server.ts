@@ -924,6 +924,9 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
  * реплика уходит продавцу как обычно; новый список — новая подсказка.
  */
 async function listWordsHint(s: Shop): Promise<boolean> {
+  // Если включён ИИ-консультант — реплика (приветствие, вопрос) идёт ему, а не шаблонная заглушка.
+  const { consultantEnabled } = await import("@/core/consultant/engine.server");
+  if (await consultantEnabled(s.ctx)) return false;
   const mem = memory(s.customer);
   const list = mem.list;
   if (!list || mem.hinted || !s.bot.features.catalog) return false;

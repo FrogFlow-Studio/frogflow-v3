@@ -583,18 +583,26 @@ export async function handleZernioMessage(
   const memory = consultantMemory(customer);
   let tail: Awaited<ReturnType<ZernioTransport["tail"]>> = [];
   try {
-    tail = await transport.tail(m.accountId, m.conversationId);
+    tail = await transport.tail(m.accountId, m.conversationId, 20);
   } catch (e) {
     // Переписку не прочитали — отвечаем как есть: молчание дороже одного лишнего ответа.
     console.warn(`[zernio] tail unavailable for ${m.conversationId}: ${String(e)}`);
   }
   const hours = pauseHours(ctx.tenant);
+  const directReplyAt = (customerNow.state.direct as { last_reply_at?: string } | undefined)?.last_reply_at;
+  const directLastReply = (customerNow.state.direct as { last_reply?: string } | undefined)?.last_reply;
+  const lastBotReplyAt =
+    [directReplyAt, memory.last_reply_at]
+      .filter((x): x is string => Boolean(x))
+      .sort()
+      .at(-1) ?? null;
   const guard = {
-    lastBotReplyAt: memory.last_reply_at,
+    lastBotReplyAt,
     ourReplies: [
       ...(memory.recent ?? []).filter((t) => t.role === "assistant").map((t) => t.text),
       // Ответы менеджера, пересланные из Telegram, — тоже «наши» (core/consultant/relay).
       ...(memory.relayed ?? []),
+      ...(directLastReply ? [directLastReply] : []),
     ],
     resumedAt: memory.resumed_at,
     // «Пока не верну сам» — окна нет, смотрим обычные 12 часов.

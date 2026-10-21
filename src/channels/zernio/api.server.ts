@@ -262,10 +262,11 @@ export async function sendInboxMessage(
 export async function listConversationMessages(
   accountId: string,
   conversationId: string,
+  limit: number = 100,
 ): Promise<ZernioInboxMessage[]> {
   const result = await request<{ messages?: ZernioInboxMessage[] }>(
     `/inbox/conversations/${encodeURIComponent(conversationId)}/messages`,
-    { query: { accountId, limit: "100", sortOrder: "desc" } },
+    { query: { accountId, limit: String(limit), sortOrder: "desc" } },
   );
   return (result.messages ?? [])
     .map(normalizeInboxMessage)
