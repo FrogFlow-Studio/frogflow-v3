@@ -58,6 +58,9 @@ export async function triageQuestion(
     );
   // «Классный уголок» четыре раза, правила и товара нет (Копилка 13.10 — тишина).
   if (t.kind === "product_request") {
+    // Если включён ИИ-консультант — отдаём вопрос ему: он ищет по каталогу и консультирует клиента.
+    const consultant = await import("@/core/consultant/engine.server");
+    if (await consultant.consultantEnabled(s.ctx)) return null;
     // Без каталога звать некуда: прежний путь.
     if (!s.bot.features.catalog) return null;
     return sellerQuestionReply(
