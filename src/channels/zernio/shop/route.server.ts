@@ -756,7 +756,7 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
       const link = s.customer.state.pay_link;
       if (
         mode === "awaiting_payment" &&
-        LINK_QUESTION.test(text) &&
+        (LINK_QUESTION.test(text) || /оплат\w*\s*карт|карт\w*\s*(онлайн|рф)|картамен|pay\s*by\s*card/i.test(text)) &&
         (link === "pdm" || link === "rk") &&
         (await choosePayment(s, link, { asText: true })) !== undefined
       )
