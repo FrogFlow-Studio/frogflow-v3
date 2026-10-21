@@ -206,6 +206,32 @@ describe("консультант: передача менеджеру", () => {
     const st = (saved.at(-1) as { consultant: { paused_until?: string } }).consultant;
     expect(st.paused_until).toBeTruthy();
   });
+
+  it("покупка в чате с магазином (shopInChat) — order_product возвращает orderAction без передачи менеджеру и без паузы", async () => {
+    content = [
+      tool("order_product", {
+        product_name: "Лестницы Части речи и члены предложения",
+        variant_name: "7 класс",
+        quantity: "1",
+      }),
+      text("Отлично, оформляю «Лестницы» 7 класс! Счёт на оплату формируется..."),
+    ];
+    const r = await runConsultant(ctxOf(), customer(), "Да. Давайте оформим", {
+      platform: "whatsapp",
+      shopInChat: true,
+    });
+    expect(r?.handoff).toBeNull();
+    expect(r?.orderAction).toEqual({
+      productId: undefined,
+      productName: "Лестницы Части речи и члены предложения",
+      variantId: undefined,
+      variantName: "7 класс",
+      quantity: 1,
+    });
+    expect(r?.reply).toContain("Лестницы");
+    const st = (saved.at(-1) as { consultant: { paused_until?: string } }).consultant;
+    expect(st.paused_until).toBeUndefined();
+  });
 });
 
 describe("консультант: сообщения для модели", () => {

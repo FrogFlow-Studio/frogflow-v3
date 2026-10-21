@@ -233,9 +233,19 @@ export type Handoff = {
   summary: string;
 };
 
+export type ConsultantOrderAction = {
+  productId?: string;
+  productName?: string;
+  variantId?: string;
+  variantName?: string;
+  quantity?: number;
+};
+
 export type ConsultantResult = {
   reply: string;
   handoff: Handoff | null;
+  /** Действие по заказу товара прямо из чата (order_product). */
+  orderAction?: ConsultantOrderAction | null;
   usage: {
     inputTokens: number;
     outputTokens: number;
@@ -402,6 +412,37 @@ const TOOLS: Anthropic.Tool[] = [
     },
   },
 ];
+
+export const ORDER_PRODUCT_TOOL: Anthropic.Tool = {
+  name: "order_product",
+  description:
+    "Инициировать покупку/оформление заказа выбранного товара для покупателя прямо в чате. Вызывайте ТОЛЬКО когда клиент прямо подтвердил желание купить («да», «беру», «оформляем», «давайте», «хочу купить», «согласен», «заказываю» и т.п.) и товар понятен из контекста диалога или каталога.",
+  input_schema: {
+    type: "object",
+    properties: {
+      product_id: {
+        type: "string",
+        description: "ID товара (если известен)",
+      },
+      product_name: {
+        type: "string",
+        description: "Название товара из каталога (например: Лестницы Части речи и члены предложения)",
+      },
+      variant_id: {
+        type: "string",
+        description: "ID конкретного варианта товара (если есть варианты, например 5 класс, 7 класс и т.д.)",
+      },
+      variant_name: {
+        type: "string",
+        description: "Название выбранного варианта (например: 7 класс)",
+      },
+      quantity: {
+        type: "number",
+        description: "Количество единиц товара (по умолчанию 1)",
+      },
+    },
+  },
+};
 
 /**
  * История диалога — отдельными сообщениями Anthropic, а не одной строкой.
@@ -970,6 +1011,7 @@ async function answerConsultant(
   const finish = async (out: {
     reply: string;
     handoff: Handoff | null;
+    orderAction?: ConsultantOrderAction | null;
     clearError: boolean;
     patch: Partial<ConsultantState>;
     /** В историю, если покупателю ушло другое (рубли вместо тенге). */
@@ -1036,6 +1078,7 @@ async function answerConsultant(
     return {
       reply,
       handoff,
+      ...(out.orderAction ? { orderAction: out.orderAction } : {}),
       // Тест-чат: что консультант запомнил за ход (рубли, товары) — следующему вопросу.
       ...(!customer && opts.dryRun && opts.testState
         ? { testState: withPatch(state, out.patch) as ConsultantState }
@@ -1078,7 +1121,11 @@ async function answerConsultant(
       toolsUsed.push(...out.tools);
       return await finish(out);
     }
-    const tools = loaded ? [...CATALOG_TOOLS, REMEMBER_TOOL, ...TOOLS] : TOOLS;
+    const tools = [
+      ...(loaded ? [...CATALOG_TOOLS, REMEMBER_TOOL] : []),
+      ...(opts.shopInChat ? [ORDER_PRODUCT_TOOL] : []),
+      ...TOOLS,
+    ];
     let contactAsked = Boolean(state.contact_asked);
     const phoneNow = phoneIn(incoming);
     const hasPhoto = Boolean(opts.imageUrls?.length || opts.images?.length);
@@ -1124,6 +1171,7 @@ async function answerConsultant(
     let stopped: "limited" | "late" | null = null;
     let reply = "";
     let handoff: Handoff | null = null;
+    let orderAction: ConsultantOrderAction | null = null;
     let response: Anthropic.Message | null = null;
     for (let round = 0; round < MAX_ROUNDS; round++) {
       const last = round === MAX_ROUNDS - 1;
@@ -1196,6 +1244,30 @@ async function answerConsultant(
             ]
               .filter(Boolean)
               .join("\n");
+          if (block.name === "order_product") {
+            const pid = str("product_id");
+            const pname = str("product_name");
+            const vid = str("variant_id");
+            const vname = str("variant_name");
+            const qty =
+              typeof input.quantity === "number" && input.quantity > 0
+                ? Math.floor(input.quantity)
+                : 1;
+            orderAction = {
+              productId: pid,
+              productName: pname,
+              variantId: vid,
+              variantName: vname,
+              quantity: qty,
+            };
+            results.push({
+              type: "tool_result",
+              tool_use_id: block.id,
+              content:
+                "Заказ инициирован в системе магазина. Напишите клиенту короткое приветливое подтверждение (1–2 предложения), что вы оформляете заказ — система сейчас пришлёт детали и кнопку для оплаты в этот чат.",
+            });
+            continue;
+          }
           if (block.name === "handoff_to_manager")
             handoff = {
               kind: "handoff",
@@ -1285,6 +1357,7 @@ async function answerConsultant(
     return await finish({
       reply,
       handoff,
+      orderAction,
       clearError: facts.ok,
       patch: loaded ? { profile: known, contact_asked: contactAsked || undefined } : {},
     });

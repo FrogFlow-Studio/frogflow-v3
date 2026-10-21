@@ -698,7 +698,18 @@ export async function handleZernioMessage(
       notifyAdminsHtml(ctx, html, { kind: "consultant_model" }),
     );
   }
-  return processed(r.handoff ? `ответ + передача менеджеру (${r.handoff.reason})` : undefined);
+
+  if (r.orderAction && shopOn) {
+    await executeConsultantOrder(ctx, customer, m, transport, bot, r.orderAction);
+  }
+
+  return processed(
+    r.handoff
+      ? `ответ + передача менеджеру (${r.handoff.reason})`
+      : r.orderAction
+        ? "ответ консультанта + заказ"
+        : undefined,
+  );
 }
 
 type ParsedMessage = ReturnType<typeof parseZernioMessage>;
@@ -733,6 +744,107 @@ async function recordSilentRun(
     replyKind: why,
     status: "cancelled",
   });
+}
+
+/**
+ * Оформление заказа, инициированное ИИ-консультантом прямо в чате (order_product):
+ * подбирает товар (и вариант, если есть), кладёт в корзину и запускает чекаут (continueCheckout).
+ * В WhatsApp с 1-тапом покупатель сразу получает кнопку оплаты (Kaspi / Robokassa).
+ */
+async function executeConsultantOrder(
+  ctx: TenantContext,
+  customer: Customer,
+  m: ParsedMessage,
+  transport: ZernioTransport,
+  bot: import("@/core/instagram/direct-bot-settings").DirectBotSettings,
+  orderAction: import("@/core/consultant/engine.server").ConsultantOrderAction,
+): Promise<void> {
+  const { getProduct, PRODUCT_SELECT, sortedVariants } = await import("@/core/catalog/catalog");
+  const { addToCart, clearCart } = await import("@/core/cart/cart");
+  const { localeOf } = await import("./shop/context.server");
+  const { directCopy } = await import("./shop/copy");
+  const { continueCheckout } = await import("./shop/checkout.server");
+  const { sendProductCard } = await import("./shop/catalog.server");
+  const { showCart } = await import("./shop/cart.server");
+
+  let product: import("@/core/catalog/catalog").Product | null = null;
+  if (orderAction.productId) {
+    product = await getProduct(ctx, orderAction.productId);
+  }
+  if (!product && orderAction.productName) {
+    const pNameNorm = orderAction.productName.toLowerCase().trim();
+    const { data: rows } = await ctx.db
+      .from("products")
+      .select(PRODUCT_SELECT)
+      .eq("is_active", true)
+      .order("sort_order");
+    const found = (rows as import("@/core/catalog/catalog").Product[] | null) ?? [];
+    product =
+      found.find((p) => p.name.toLowerCase().trim() === pNameNorm) ??
+      found.find(
+        (p) =>
+          p.name.toLowerCase().includes(pNameNorm) ||
+          pNameNorm.includes(p.name.toLowerCase()),
+      ) ??
+      null;
+  }
+  if (!product) {
+    console.warn(
+      `[consultant-order] товар не найден: ${orderAction.productId || orderAction.productName}`,
+    );
+    return;
+  }
+
+  const variants = sortedVariants(product);
+  let variantId: string | null = null;
+  if (variants.length > 0) {
+    if (orderAction.variantId && variants.some((v) => v.id === orderAction.variantId)) {
+      variantId = orderAction.variantId;
+    } else if (orderAction.variantName) {
+      const vNameNorm = orderAction.variantName.toLowerCase().trim();
+      const matched = variants.find(
+        (v) =>
+          v.name.toLowerCase().trim() === vNameNorm ||
+          v.name.toLowerCase().includes(vNameNorm) ||
+          vNameNorm.includes(v.name.toLowerCase()),
+      );
+      if (matched) variantId = matched.id;
+    }
+  }
+
+  const locale = localeOf(ctx, customer);
+  const s: import("./shop/context.server").Shop = {
+    ctx,
+    customer,
+    transport,
+    conversationId: m.conversationId!,
+    accountId: m.accountId!,
+    platform: m.platform,
+    locale,
+    m: directCopy(ctx.tenant, m.platform, locale),
+    bot,
+    inboundAt:
+      m.sentAt && Number.isFinite(Date.parse(m.sentAt)) ? Date.parse(m.sentAt) : null,
+    why: "покупка через ИИ-консультанта",
+  };
+
+  // Товар с вариантами, но вариант не указан — выдаём карточку с выбором вариантов
+  if (variants.length > 0 && !variantId) {
+    await sendProductCard(s, product, true);
+    return;
+  }
+
+  let addRes = await addToCart(s.ctx, s.customer, product.id, variantId);
+  if (addRes === "mixed_cart") {
+    await clearCart(s.ctx, s.customer);
+    addRes = await addToCart(s.ctx, s.customer, product.id, variantId);
+  }
+  if (addRes !== "ok") {
+    await showCart(s, true);
+    return;
+  }
+
+  await continueCheckout(s);
 }
 
 /**

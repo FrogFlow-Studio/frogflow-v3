@@ -115,7 +115,10 @@ vi.mock("@anthropic-ai/sdk", () => {
   };
 });
 // Модель консультанта подменена ответом сценария (`consultant`); маршрут до неё — настоящий.
-const consultantStub: { reply: string | null | undefined } = { reply: undefined };
+const consultantStub: {
+  reply: string | null | undefined;
+  orderAction?: import("@/core/consultant/engine.server").ConsultantOrderAction | null;
+} = { reply: undefined, orderAction: null };
 vi.mock("@/core/consultant/engine.server", async (orig) => {
   const real = await orig<typeof import("@/core/consultant/engine.server")>();
   return {
@@ -123,7 +126,12 @@ vi.mock("@/core/consultant/engine.server", async (orig) => {
     runConsultant: async (...args: Parameters<typeof real.runConsultant>) => {
       if (consultantStub.reply === undefined) return real.runConsultant(...args);
       if (consultantStub.reply === null) return null;
-      return { reply: consultantStub.reply, usage: { inputTokens: 0, outputTokens: 0, usd: 0 } };
+      return {
+        reply: consultantStub.reply,
+        handoff: null,
+        ...(consultantStub.orderAction ? { orderAction: consultantStub.orderAction } : {}),
+        usage: { inputTokens: 0, outputTokens: 0, usd: 0 },
+      };
     },
   };
 });
@@ -143,6 +151,7 @@ beforeEach(() => {
   notices.count = 0;
   mailbox.to = [];
   consultantStub.reply = undefined;
+  consultantStub.orderAction = null;
   modelRounds.list = [];
 });
 const realAutomationApi = { ...liveAutomationApi };
@@ -169,6 +178,7 @@ describe("золотые диалоги", () => {
         // Консультант включён: ключ ИИ есть, ответ модели — из сценария.
         setEnvForTests({ ANTHROPIC_API_KEY: "sk-test" });
         consultantStub.reply = s.consultant;
+        consultantStub.orderAction = s.consultantOrder ?? null;
       }
       if (s.pricelist) {
         setEnvForTests({ ANTHROPIC_API_KEY: "sk-test" });

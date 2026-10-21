@@ -347,6 +347,7 @@ export interface Scenario {
    * Не задано — консультант не настроен, как раньше.
    */
   consultant?: string | null;
+  consultantOrder?: import("@/core/consultant/engine.server").ConsultantOrderAction;
   /**
    * Консультант по прайсу (BOVI) на настоящем коде: подменён только ответ API
    * модели — `rounds`, по раунду на вызов. Прайс — `catalog`; курса рубля нет, если не задан `rubRate`
@@ -5545,6 +5546,35 @@ export const SCENARIOS: Scenario[] = [
       {
         say: { text: "Палитра на казахском есть?" },
         expect: { ruleMessages: 1, sellerNotices: 1 },
+      },
+    ],
+  },
+  {
+    id: "consultant-direct-checkout-wa-ru",
+    title:
+      "консультант в WhatsApp: при согласии купить («Да. Давайте оформим») сразу оформляет заказ и присылает оплату, а не зовёт в каталог",
+    origin:
+      "Копилка Русоведа 21.10: клиент спросил про лестницы и согласился купить, бот звал писать «каталог»",
+    channel: "whatsapp",
+    locale: "ru",
+    full: true,
+    vertical: "consultant",
+    modules: { whatsapp: true, wa_shop: true },
+    consultant: "Отлично, оформляю заказ! Счёт на оплату формируется...",
+    consultantOrder: { productName: "Прописи" },
+    products: PRODUCTS,
+    steps: [
+      {
+        say: { text: "Да. Давайте оформим" },
+        expect: {
+          says: [
+            "Отлично, оформляю заказ! Счёт на оплату формируется...",
+            "Заказ #",
+            "018. Прописи",
+            (c) => c.afterProofManual,
+          ],
+          notSays: ["напишите «каталог»", "напишите каталог"],
+        },
       },
     ],
   },

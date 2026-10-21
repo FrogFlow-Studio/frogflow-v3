@@ -1,3 +1,4 @@
+import { setEnvForTests } from "@/config/env";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fakeDb, type FakeDb } from "../../../tests/fake-db";
 import type { TenantContext } from "@/core/tenant/resolve.server";
@@ -23,10 +24,26 @@ vi.mock("@/core/customers/customers", () => ({
   setState: vi.fn(async (_c: unknown, c: Customer) => c),
 }));
 const notifyAdminsHtml = vi.fn(async (_ctx: unknown, _html: string, _o?: unknown) => 1);
-vi.mock("@/channels/telegram/notify", () => ({ notifyAdminsHtml }));
-vi.mock("@/core/instagram/direct-bot-settings", () => ({
-  loadDirectBotSettings: vi.fn(async () => ({ enabled: true, ignoreExcluded: false })),
-}));
+vi.mock("@/channels/telegram/notify", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/channels/telegram/notify")>();
+  return {
+    ...actual,
+    notifyAdminsHtml,
+    adminTelegramApi: () => null,
+  };
+});
+vi.mock("@/core/instagram/direct-bot-settings", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/core/instagram/direct-bot-settings")>();
+  return {
+    ...actual,
+    loadDirectBotSettings: vi.fn(async () => ({
+      enabled: true,
+      ignoreExcluded: false,
+      triggers: [],
+      features: { express: true, cart: true, checkout: true, catalog: true },
+    })),
+  };
+});
 vi.mock("@/core/pipeline/sources", () => ({ leadFromHandoff: vi.fn(async () => {}) }));
 vi.mock("@/core/consultant/relay", () => ({
   issueHandoffRef: vi.fn(async () => null),
@@ -267,5 +284,106 @@ describe("фото и видео товара консультанта", () => {
     expect(runs()[0]).toMatchObject({ reply_text: "Вот фото комплекта." });
     expect(runs()[0]!.error_code).toBeNull();
   });
-});
 
+  it("orderAction от консультанта — товар оформляется и присылает сообщение с оплатой", async () => {
+    ctx.tenant.modules = { ...ctx.tenant.modules, whatsapp: true, wa_shop: true } as never;
+    db.tables.products = [
+      {
+        id: "p-ladder",
+        bot_id: "b",
+        name: "Лестницы Части речи и члены предложения",
+        price: 100,
+        currency: "KZT",
+        is_active: true,
+        sort_order: 1,
+        fulfillment_kind: "digital",
+        file_path: "materials/ladder.pdf",
+        product_variants: [],
+      },
+    ];
+    db.tables.payment_methods = [
+      {
+        bot_id: "b",
+        country_code: "KZ",
+        country_name: "Казахстан",
+        currency: "KZT",
+        is_active: true,
+        sort_order: 1,
+        instructions: "Kaspi Pay: https://pay.kaspi.kz/pay/test",
+      },
+    ];
+    db.tables.orders = [];
+    db.tables.order_items = [];
+    db.tables.cart_items = [];
+    let cart = db.tables.cart_items;
+    Object.defineProperty(db.tables, "cart_items", {
+      configurable: true,
+      enumerable: true,
+      get() {
+        for (const c of cart ?? []) {
+          if (c.products) continue;
+          c.products = db.tables.products?.find((p) => p.id === c.product_id) ?? null;
+          c.product_variants = null;
+        }
+        return cart;
+      },
+      set(v) {
+        cart = v;
+      },
+    });
+    let orders = db.tables.orders;
+    Object.defineProperty(db.tables, "orders", {
+      configurable: true,
+      enumerable: true,
+      get() {
+        for (const o of orders ?? []) {
+          const items = (db.tables.order_items ?? []).filter((i) => i.order_id === o.id);
+          if (items.length) o.order_items = items;
+        }
+        return orders;
+      },
+      set(v) {
+        orders = v;
+      },
+    });
+    const origRpc = db.rpc.bind(db);
+    db.rpc = ((name: string, args: Record<string, unknown>) =>
+      name === "claim_order_placement" ? { data: true, error: null } : origRpc(name, args)) as never;
+
+    engine.result = {
+      reply: "Отлично, оформляю «Лестницы»! Счёт на оплату формируется...",
+      handoff: null,
+      orderAction: { productName: "Лестницы Части речи и члены предложения" },
+      usage,
+    };
+
+    const sentTexts: string[] = [];
+    const t = {
+      send: vi.fn(async (_c: string, _a: string, text: string) => {
+        sentTexts.push(text);
+        return { ok: true };
+      }),
+      tail: async () => [],
+    } as unknown as ZernioTransport;
+
+    const waPayload = {
+      account: { platform: "whatsapp", accountId: "acc-1" },
+      conversation: { id: "conv-1" },
+      message: {
+        text: "Да. Давайте оформим",
+        platformMessageId: "mid-wa-1",
+        sender: { id: "77772928100", phone: "+77772928100", name: "Турки" },
+      },
+    } as never;
+
+    setEnvForTests({});
+    const r = await handleZernioMessage(ctx, waPayload, t);
+    expect(r.status).toBe("processed");
+    expect(r.note).toBe("ответ консультанта + заказ");
+
+    // 1-е сообщение — дружелюбный ответ консультанта
+    expect(sentTexts[0]).toContain("Отлично, оформляю «Лестницы»!");
+    // 2-е сообщение — счёт на оплату в Kaspi
+    expect(sentTexts.some((txt) => txt.includes("Заказ") && txt.includes("100 ₸"))).toBe(true);
+  });
+});
