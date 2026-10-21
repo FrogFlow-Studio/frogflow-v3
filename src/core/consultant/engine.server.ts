@@ -358,7 +358,7 @@ async function catalogSnippet(ctx: TenantContext): Promise<{ text: string; price
         ? `, по акции −${offer.percent}% до ${untilText(offer.ends_at, ctx.timezone)}${offer.left != null ? `, осталось ${offer.left} шт.` : ""}`
         : "";
       const desc = (p.description ?? "").replace(/\s+/g, " ").slice(0, 160);
-      return `- ${p.name}: ${price}${promo}${stock}${desc ? `. ${desc}` : ""}`;
+      return `- [id:${p.id}] ${p.name}: ${price}${promo}${stock}${desc ? `. ${desc}` : ""}`;
     }),
   );
   return { text: lines.join("\n"), prices };
@@ -422,7 +422,7 @@ export const ORDER_PRODUCT_TOOL: Anthropic.Tool = {
     properties: {
       product_id: {
         type: "string",
-        description: "ID товара (если известен)",
+        description: "ID товара (если указан в [id:...])",
       },
       product_name: {
         type: "string",

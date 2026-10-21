@@ -700,7 +700,11 @@ export async function handleZernioMessage(
   }
 
   if (r.orderAction && shopOn) {
-    await executeConsultantOrder(ctx, customer, m, transport, bot, r.orderAction);
+    try {
+      await executeConsultantOrder(ctx, customer, m, transport, bot, r.orderAction);
+    } catch (e) {
+      console.error(`[consultant-order] сбой чекаута: ${String(e)}`);
+    }
   }
 
   return processed(
@@ -764,34 +768,77 @@ async function executeConsultantOrder(
   const { localeOf } = await import("./shop/context.server");
   const { directCopy } = await import("./shop/copy");
   const { continueCheckout } = await import("./shop/checkout.server");
-  const { sendProductCard } = await import("./shop/catalog.server");
+  const { sendProductCard, showCatalog } = await import("./shop/catalog.server");
   const { showCart } = await import("./shop/cart.server");
+
+  const locale = localeOf(ctx, customer);
+  const s: import("./shop/context.server").Shop = {
+    ctx,
+    customer,
+    transport,
+    conversationId: m.conversationId!,
+    accountId: m.accountId!,
+    platform: m.platform,
+    locale,
+    m: directCopy(ctx.tenant, m.platform, locale),
+    bot,
+    inboundAt:
+      m.sentAt && Number.isFinite(Date.parse(m.sentAt)) ? Date.parse(m.sentAt) : null,
+    why: "покупка через ИИ-консультанта",
+  };
 
   let product: import("@/core/catalog/catalog").Product | null = null;
   if (orderAction.productId) {
     product = await getProduct(ctx, orderAction.productId);
   }
   if (!product && orderAction.productName) {
-    const pNameNorm = orderAction.productName.toLowerCase().trim();
     const { data: rows } = await ctx.db
       .from("products")
       .select(PRODUCT_SELECT)
+      .eq("bot_id", ctx.tenant.id)
       .eq("is_active", true)
       .order("sort_order");
     const found = (rows as import("@/core/catalog/catalog").Product[] | null) ?? [];
-    product =
-      found.find((p) => p.name.toLowerCase().trim() === pNameNorm) ??
-      found.find(
-        (p) =>
-          p.name.toLowerCase().includes(pNameNorm) ||
-          pNameNorm.includes(p.name.toLowerCase()),
-      ) ??
-      null;
+
+    const clean = (str: string) =>
+      (str ?? "")
+        .toLowerCase()
+        .replace(/["'«»„“.,:;!?()[\]\-_/\\]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    const qClean = clean(orderAction.productName);
+
+    if (qClean) {
+      // 1. Точное совпадение очищенных названий
+      product = found.find((p) => clean(p.name) === qClean) ?? null;
+      // 2. Вхождение подстроки в очищенных названиях
+      if (!product) {
+        product =
+          found.find((p) => clean(p.name).includes(qClean)) ??
+          found.find((p) => qClean.includes(clean(p.name))) ??
+          null;
+      }
+      // 3. Совпадение по токенам (словам и числам)
+      if (!product) {
+        const qTokens = qClean.split(" ").filter((t) => t.length > 2 || /\d/.test(t));
+        let bestScore = 0;
+        for (const p of found) {
+          const pTokens = clean(p.name).split(" ").filter((t) => t.length > 2 || /\d/.test(t));
+          const matches = qTokens.filter((t) => pTokens.includes(t));
+          if (matches.length > bestScore && matches.length >= Math.min(2, qTokens.length)) {
+            bestScore = matches.length;
+            product = p;
+          }
+        }
+      }
+    }
   }
+
   if (!product) {
     console.warn(
       `[consultant-order] товар не найден: ${orderAction.productId || orderAction.productName}`,
     );
+    await showCatalog(s, null, 0, true);
     return;
   }
 
@@ -815,22 +862,6 @@ async function executeConsultantOrder(
       if (matched) variantId = matched.id;
     }
   }
-
-  const locale = localeOf(ctx, customer);
-  const s: import("./shop/context.server").Shop = {
-    ctx,
-    customer,
-    transport,
-    conversationId: m.conversationId!,
-    accountId: m.accountId!,
-    platform: m.platform,
-    locale,
-    m: directCopy(ctx.tenant, m.platform, locale),
-    bot,
-    inboundAt:
-      m.sentAt && Number.isFinite(Date.parse(m.sentAt)) ? Date.parse(m.sentAt) : null,
-    why: "покупка через ИИ-консультанта",
-  };
 
   // Товар с вариантами, но вариант не указан — выдаём карточку с выбором вариантов
   if (variants.length > 0 && !variantId) {
