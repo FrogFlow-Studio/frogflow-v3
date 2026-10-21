@@ -33,7 +33,22 @@ export async function storeCover(ctx: TenantContext): Promise<string | null> {
   if (error) throw serverFailure(error.message);
   const known = new Set(cats.map((c) => c.id));
   const visible = visibleCategoryIds(cats);
-  for (const p of (data ?? []) as Product[]) {
+  const prodsList = (data ?? []) as Product[];
+  const pidsWithVariants = prodsList.filter((p) => p.product_variants?.length).map((p) => p.id);
+  if (pidsWithVariants.length) {
+    const { loadVariantMaterialsForProducts } = await import("@/core/catalog/variant-materials");
+    const vmMap = await loadVariantMaterialsForProducts(ctx, pidsWithVariants);
+    for (const p of prodsList) {
+      const vm = vmMap.get(p.id);
+      if (vm && p.product_variants) {
+        p.product_variants = p.product_variants.map((v) => {
+          const file = vm[v.id] || (v.name ? vm[v.name] : null);
+          return file?.filePath ? { ...v, filePath: file.filePath, fileName: file.fileName } : v;
+        });
+      }
+    }
+  }
+  for (const p of prodsList) {
     const ids = Array.isArray(p.category_ids) ? (p.category_ids as string[]) : [];
     if (!productOnStorefront(ids, known, visible) || !productSellable(p)) continue;
     const img = sortedImages(p)[0];

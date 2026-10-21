@@ -380,7 +380,21 @@ export async function storeCatalogPage(
   await eachPage<Product>(
     (a, b) => catalogQuery(ctx, sort).range(a, b),
     "store catalog",
-    (rows) => {
+    async (rows) => {
+      const pidsWithVariants = rows.filter((p) => p.product_variants?.length).map((p) => p.id);
+      if (pidsWithVariants.length) {
+        const { loadVariantMaterialsForProducts } = await import("@/core/catalog/variant-materials");
+        const vmMap = await loadVariantMaterialsForProducts(ctx, pidsWithVariants);
+        for (const p of rows) {
+          const vm = vmMap.get(p.id);
+          if (vm && p.product_variants) {
+            p.product_variants = p.product_variants.map((v) => {
+              const file = vm[v.id] || (v.name ? vm[v.name] : null);
+              return file?.filePath ? { ...v, filePath: file.filePath, fileName: file.fileName } : v;
+            });
+          }
+        }
+      }
       for (const p of rows) {
         if (search && !search.has(p.id)) continue;
         const ids = Array.isArray(p.category_ids) ? (p.category_ids as string[]) : [];
@@ -494,6 +508,20 @@ export async function storeRelated(
   ]);
   const known = new Set(cats.map((c) => c.id));
   const visible = visibleCategoryIds(cats);
+  const pidsWithVariants = data.filter((p) => p.product_variants?.length).map((p) => p.id);
+  if (pidsWithVariants.length) {
+    const { loadVariantMaterialsForProducts } = await import("@/core/catalog/variant-materials");
+    const vmMap = await loadVariantMaterialsForProducts(ctx, pidsWithVariants);
+    for (const p of data) {
+      const vm = vmMap.get(p.id);
+      if (vm && p.product_variants) {
+        p.product_variants = p.product_variants.map((v) => {
+          const file = vm[v.id] || (v.name ? vm[v.name] : null);
+          return file?.filePath ? { ...v, filePath: file.filePath, fileName: file.fileName } : v;
+        });
+      }
+    }
+  }
   const shown = data.filter((p) => {
     const ids = Array.isArray(p.category_ids) ? (p.category_ids as string[]) : [];
     return (

@@ -81,7 +81,22 @@ export async function listProductsInCategory(
     ? await q.contains("category_ids", JSON.stringify([categoryId]))
     : await q.eq("category_ids", "[]");
   if (error) throw serverFailure(`products: ${error.message}`);
-  return (data ?? []) as Product[];
+  const products = (data ?? []) as Product[];
+  const pidsWithVariants = products.filter((p) => p.product_variants?.length).map((p) => p.id);
+  if (pidsWithVariants.length) {
+    const { loadVariantMaterialsForProducts } = await import("./variant-materials");
+    const vmMap = await loadVariantMaterialsForProducts(ctx, pidsWithVariants);
+    for (const p of products) {
+      const vm = vmMap.get(p.id);
+      if (vm && p.product_variants) {
+        p.product_variants = p.product_variants.map((v) => {
+          const file = vm[v.id] || (v.name ? vm[v.name] : null);
+          return file?.filePath ? { ...v, filePath: file.filePath, fileName: file.fileName } : v;
+        });
+      }
+    }
+  }
+  return products;
 }
 
 export async function getProduct(ctx: TenantContext, id: string): Promise<Product | null> {

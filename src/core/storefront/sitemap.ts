@@ -60,7 +60,22 @@ export async function storefrontSitemap(ctx: TenantContext, base: string): Promi
   const visible = visibleCategoryIds(cats);
 
   const out: SitemapEntry[] = [{ loc: `${base}`, priority: 1 }];
-  const listed = ((products.data ?? []) as Product[]).filter((p) =>
+  const prodsList = ((products.data ?? []) as Product[]);
+  const pidsWithVariants = prodsList.filter((p) => p.product_variants?.length).map((p) => p.id);
+  if (pidsWithVariants.length) {
+    const { loadVariantMaterialsForProducts } = await import("@/core/catalog/variant-materials");
+    const vmMap = await loadVariantMaterialsForProducts(ctx, pidsWithVariants);
+    for (const p of prodsList) {
+      const vm = vmMap.get(p.id);
+      if (vm && p.product_variants) {
+        p.product_variants = p.product_variants.map((v) => {
+          const file = vm[v.id] || (v.name ? vm[v.name] : null);
+          return file?.filePath ? { ...v, filePath: file.filePath, fileName: file.fileName } : v;
+        });
+      }
+    }
+  }
+  const listed = prodsList.filter((p) =>
     listedOnStorefront(p, known, visible),
   );
   // Пустая категория в карту не идёт: товары подкатегорий считаются и за родителя.
