@@ -175,4 +175,24 @@ describe("фильтр «Язык материалов»", () => {
     );
     expect(matchesLangFilter({ file_url_kz: "https://x" }, { lang: "kk", has: true })).toBe(true);
   });
+it("цифровой товар с файлами в вариантах показывает files > 0 и не показывает «нет файла»", async () => {
+    const { ctx, db } = shop(1);
+    const prodId = id(1);
+    const vId = "00000000-0000-4000-8000-000000000099";
+    db.tables.product_variants = [
+      { id: vId, product_id: prodId, name: "5 класс", price: 2500, sort_order: 0 },
+    ];
+    db.tables.app_settings = [
+      {
+        bot_id: BOT,
+        key: `variant_materials:${prodId}`,
+        value: JSON.stringify({ [vId]: { filePath: "bot/test.pdf", fileName: "test.pdf" } }),
+      },
+    ];
+
+    const { rows } = await listProductsForAdmin(ctx);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.files).toBe(1);
+    expect(rows[0]!.langs).toContain("ru");
+  });
 });

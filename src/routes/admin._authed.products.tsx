@@ -593,6 +593,9 @@ function ProductsPage() {
                       ) : (
                         <span className="text-muted">—</span>
                       )}
+                      {p.fulfillment_kind === "digital" && p.variants > 0 && p.files > 0 && (
+                        <div className="mt-0.5 text-[11px] text-muted">в вариантах</div>
+                      )}
                       {p.langs.length > 0 && (
                         <div
                           className="mt-1 text-xs text-muted"

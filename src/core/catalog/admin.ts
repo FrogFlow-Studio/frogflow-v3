@@ -11,9 +11,11 @@ import {
   MATERIAL_COLUMNS,
   MATERIAL_LANGUAGES,
   materialCount,
+  materialLanguages,
   materialsForProduct,
   type ProductWithFiles,
 } from "./materials";
+import type { VariantMaterialsMap } from "./variant-materials";
 import type { Locale } from "@/core/i18n/locale";
 import { pickerTerm } from "./picker";
 import { toJson } from "@/core/json";
@@ -245,7 +247,7 @@ export async function listProductIdsForAdmin(
 }
 
 const LIST_SELECT =
-  "id, name, description, price, currency, country_prices, is_active, sort_order, fulfillment_kind, stock_quantity, category_ids, created_at, file_path, file_url, file_path_kz, file_url_kz, product_images(image_path, sort_order), product_material_files(language, file_path), product_variants(id)";
+  "id, name, description, price, currency, country_prices, is_active, sort_order, fulfillment_kind, stock_quantity, category_ids, created_at, file_path, file_url, file_path_kz, file_url_kz, product_images(image_path, sort_order), product_material_files(language, file_path), product_variants(id, name)";
 
 /**
  * Страница списка товаров. Порядок — выбранный (`sort`), в конце всегда id:
@@ -291,31 +293,56 @@ export async function listProductsForAdmin(
     data = (page.data ?? []) as ProductListSource[];
     total = count.count ?? offset + data.length;
   }
-  const rows = data.map((p) => ({
-    id: p.id,
-    name: p.name,
-    price: Number(p.price),
-    currency: p.currency,
-    country_prices:
-      p.country_prices && typeof p.country_prices === "object" && !Array.isArray(p.country_prices)
-        ? (p.country_prices as Record<string, number>)
-        : null,
-    is_active: p.is_active,
-    sort_order: p.sort_order,
-    fulfillment_kind: p.fulfillment_kind,
-    stock_quantity: p.stock_quantity,
-    category_ids: p.category_ids,
-    created_at: p.created_at,
-    images: p.product_images?.length ?? 0,
-    // Товар v1 с файлом в старых полях — не «нет файла» (core/catalog/materials).
-    files: materialCount(p),
-    langs: MATERIAL_LANGUAGES.filter((l) => materialsForProduct(p, l).length > 0),
-    variants: p.product_variants?.length ?? 0,
-    has_description: Boolean(p.description?.trim()),
-    is_course: isCourseProduct(p),
-    cover:
-      p.product_images?.slice().sort((a, b) => a.sort_order - b.sort_order)[0]?.image_path ?? null,
-  }));
+  const pidsWithVariants = data
+    .filter((p) => (p.product_variants?.length ?? 0) > 0 && p.fulfillment_kind === "digital")
+    .map((p) => p.id);
+  const vmMap =
+    pidsWithVariants.length > 0
+      ? await (await import("./variant-materials")).loadVariantMaterialsForProducts(
+          ctx,
+          pidsWithVariants,
+        )
+      : new Map<string, VariantMaterialsMap>();
+
+  const rows = data.map((p) => {
+    const vm = vmMap.get(p.id);
+    const enrichedVariants = vm
+      ? (p.product_variants ?? []).map((v) => ({
+          ...v,
+          file_path: vm[v.id]?.filePath ?? (v.name ? vm[v.name.trim()]?.filePath : null) ?? null,
+          file_name: vm[v.id]?.fileName ?? (v.name ? vm[v.name.trim()]?.fileName : null) ?? null,
+        }))
+      : (p.product_variants ?? []);
+    const productForMaterials = {
+      ...p,
+      product_variants: enrichedVariants,
+    };
+    return {
+      id: p.id,
+      name: p.name,
+      price: Number(p.price),
+      currency: p.currency,
+      country_prices:
+        p.country_prices && typeof p.country_prices === "object" && !Array.isArray(p.country_prices)
+          ? (p.country_prices as Record<string, number>)
+          : null,
+      is_active: p.is_active,
+      sort_order: p.sort_order,
+      fulfillment_kind: p.fulfillment_kind,
+      stock_quantity: p.stock_quantity,
+      category_ids: p.category_ids,
+      created_at: p.created_at,
+      images: p.product_images?.length ?? 0,
+      // Товар v1 с файлом в старых полях или файлами в вариантах — не «нет файла».
+      files: materialCount(productForMaterials),
+      langs: materialLanguages(productForMaterials),
+      variants: p.product_variants?.length ?? 0,
+      has_description: Boolean(p.description?.trim()),
+      is_course: isCourseProduct(p),
+      cover:
+        p.product_images?.slice().sort((a, b) => a.sort_order - b.sort_order)[0]?.image_path ?? null,
+    };
+  });
   return { rows, total, hasMore: offset + rows.length < total };
 }
 
@@ -338,7 +365,7 @@ type ProductListSource = {
   file_url_kz: string | null;
   product_images: Array<{ image_path: string; sort_order: number }> | null;
   product_material_files: Array<{ language: string | null; file_path: string | null }> | null;
-  product_variants: Array<{ id: string }> | null;
+  product_variants: Array<{ id: string; name?: string | null }> | null;
 };
 
 export async function getProductForAdmin(ctx: TenantContext, id: string): Promise<Product | null> {

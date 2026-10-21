@@ -28,7 +28,7 @@ export type ProductWithFiles = {
   }> | null;
   product_variants?: Array<{
     id?: string;
-    name?: string;
+    name?: string | null;
     file_path?: string | null;
     file_name?: string | null;
     filePath?: string | null;
