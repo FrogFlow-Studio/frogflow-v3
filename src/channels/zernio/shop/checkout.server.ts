@@ -1006,7 +1006,7 @@ export async function alreadyBoughtExpress(s: Shop, productId: string): Promise<
   );
 }
 
-async function sendManualInstructions(
+export async function sendManualInstructions(
   s: Shop,
   p: {
     no: number;
@@ -1019,11 +1019,11 @@ async function sendManualInstructions(
     items?: string[];
   },
 ): Promise<boolean> {
-  // Реквизиты — ссылка (pay.kaspi.kz): в Instagram ссылка в тексте у части
+  // Реквизиты — ссылка (pay.kaspi.kz): в Instagram и WhatsApp ссылка в тексте у части
   // покупателей не нажимается, жали «Перевод Kaspi» по три раза и писали «Не
-  // нажимается» (Копилка русоведа, 09.10). Ссылка — ещё и кнопкой, в тексте
-  // остаётся, чтобы её можно было скопировать.
-  const link = s.platform === "instagram" ? payLinkOf(p.instructions) : null;
+  // нажимается» (Копилка русоведа, 09.10). Кнопка оплаты позволяет перейти в 1 клик.
+  // Ссылка также остаётся в тексте, чтобы её можно было скопировать.
+  const link = payLinkOf(p.instructions);
   const text =
     `${plain(s.m.manualTitleNew(p.no))}\n${itemsLine(p.items)}\n${plain(s.m.amountToPay(formatMoney(p.due, p.currency)))}\n${p.depositLine}\n` +
     `${p.instructions || plain(s.m.defaultInstructions)}\n\n` +

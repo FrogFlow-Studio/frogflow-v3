@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { askCountry } from "./shop/checkout.server";
+import { askCountry, payLinkOf, sendManualInstructions } from "./shop/checkout.server";
 import type { Shop } from "./shop/context.server";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Customer } from "@/core/customers/customers";
@@ -35,7 +35,12 @@ describe("WhatsApp Zero-Friction: авто-определение страны �
     userKey: string;
     contactPhone?: string | null;
     platform?: "whatsapp" | "instagram";
-  }): { s: Shop; sent: string[]; db: ReturnType<typeof fakeDb> } {
+  }): {
+    s: Shop;
+    sent: string[];
+    sentOpts: Array<Record<string, unknown> | undefined>;
+    db: ReturnType<typeof fakeDb>;
+  } {
     const db = fakeDb();
     db.tables.bot_users = [
       { id: "u1", bot_id: BOT, user_key: opts.userKey, state: { locale: "ru" } },
@@ -73,9 +78,11 @@ describe("WhatsApp Zero-Friction: авто-определение страны �
     };
 
     const sent: string[] = [];
+    const sentOpts: Array<Record<string, unknown> | undefined> = [];
     const transport = {
-      send: vi.fn(async (_c, _a, text: string) => {
+      send: vi.fn(async (_c, _a, text: string, opts?: Record<string, unknown>) => {
         sent.push(text);
+        sentOpts.push(opts);
         return { ok: true };
       }),
       tail: vi.fn(async () => []),
@@ -96,7 +103,7 @@ describe("WhatsApp Zero-Friction: авто-определение страны �
       bot: DEFAULT_DIRECT_BOT,
     };
 
-    return { s, sent, db };
+    return { s, sent, sentOpts, db };
   }
 
   it("покупатель из Казахстана в WhatsApp (+7 701...) сразу получает KZ без шага выбора страны", async () => {
@@ -136,5 +143,35 @@ describe("WhatsApp Zero-Friction: авто-определение страны �
     expect(s.customer.state.mode).toBe("awaiting_country");
     expect(sent.length).toBeGreaterThan(0);
     expect(sent[0]).toMatch(/страну|Казахстан|Россия/i);
+  });
+
+  it("sendManualInstructions в WhatsApp создаёт URL-кнопку для прямой ссылки Kaspi", async () => {
+    const { s, sentOpts } = createShop({
+      userKey: "wa_77011234567",
+      contactPhone: "+77011234567",
+      platform: "whatsapp",
+    });
+
+    const kaspiUrl = "https://pay.kaspi.kz/pay/test12345";
+    expect(payLinkOf(`Переведите по ссылке: ${kaspiUrl}`)).toBe(kaspiUrl);
+
+    await sendManualInstructions(s, {
+      no: 101,
+      due: 5000,
+      currency: "KZT",
+      instructions: `Оплата Kaspi: ${kaspiUrl}`,
+      qr: null,
+      physical: false,
+      depositLine: "",
+    });
+
+    expect(sentOpts.length).toBe(1);
+    const buttons = sentOpts[0]?.buttons as Array<{ type: string; title: string; url: string }>;
+    expect(buttons).toBeDefined();
+    expect(buttons[0]).toEqual({
+      type: "url",
+      title: "💳 Оплатить в Kaspi",
+      url: kaspiUrl,
+    });
   });
 });
