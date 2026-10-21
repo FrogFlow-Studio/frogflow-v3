@@ -138,7 +138,9 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
           keywords: String(f.get("keywords")),
           // Тема — служебная часть ключевых слов (core/catalog/topics), сервер их соединит.
           topics: cleanTopics(String(f.get("topics") ?? "")),
-          price: Number(f.get("price")) || 0,
+          price:
+            Number(f.get("price")) ||
+            (variants.length > 0 ? Math.min(...variants.map((v) => v.price)) : 0),
           currency: String(f.get("currency") || shop.currency),
           countryPrices,
           categoryIds: f.getAll("categoryIds").map(String),
@@ -153,13 +155,18 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
           images: images.map((i) => i.key),
           materials,
           variants: variants
-            .filter((v) => v.name.trim())
-            .map((v) => ({
-              name: v.name.trim(),
-              price: v.price,
-              filePath: v.filePath ?? null,
-              fileName: v.fileName ?? null,
-            })),
+            .filter((v) => v.name.trim() || v.filePath)
+            .map((v, i) => {
+              const fallbackName = v.fileName
+                ? v.fileName.replace(/\.[^/.]+$/, "")
+                : `Вариант ${i + 1}`;
+              return {
+                name: (v.name.trim() || fallbackName).slice(0, 80),
+                price: Number(v.price) || 0,
+                filePath: v.filePath ?? null,
+                fileName: v.fileName ?? null,
+              };
+            }),
           isCourse: shop.modules.courses && kind === "digital" && isCourse,
         },
       },
@@ -249,15 +256,16 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
       categories: f.getAll("categoryIds").length,
     });
   };
+  const variantFilesCount = variants.filter((v) => Boolean(v.filePath)).length;
   const readiness = productReadiness({
     name: live.name,
     description: live.description,
-    price: live.price,
+    price: live.price ?? (variants.length > 0 ? variants[0]?.price ?? null : null),
     categories: live.categories,
     variants: variants.length,
     photos: images.length,
     kind,
-    files: materials.length,
+    files: materials.length + variantFilesCount,
     isCourse,
   });
   const targetCountries = useMemo(() => {
@@ -554,6 +562,11 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
                   )
                 }
               >
+                {materials.length === 0 && variants.some((v) => Boolean(v.filePath)) && (
+                  <div className="mb-3 rounded-md border border-ok/30 bg-ok/10 p-2.5 text-xs text-ok">
+                    📎 Файлы привязаны к вариантам ниже ({variants.filter((v) => Boolean(v.filePath)).length} шт.). Покупатель получит только файл выбранного им варианта (например, конкретного класса).
+                  </div>
+                )}
                 <ul className="space-y-2 text-sm">
                   {materials.map((m, i) => (
                     <li key={m.filePath} className="flex items-center gap-2">
@@ -635,7 +648,10 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
                     min={0}
                     step="0.01"
                     defaultValue={p ? Number(p.price) : ""}
-                    required
+                    required={variants.length === 0}
+                    placeholder={
+                      variants.length > 0 ? `от ${Math.min(...variants.map((v) => v.price))}` : "0"
+                    }
                   />
                 </Field>
                 <Field
@@ -977,13 +993,14 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
                                 <button
                                   type="button"
                                   className="text-muted hover:text-danger ml-0.5"
-                                  onClick={() =>
+                                  onClick={() => {
                                     setVariants((x) =>
                                       x.map((y, j) =>
                                         j === i ? { ...y, filePath: null, fileName: null } : y,
                                       ),
-                                    )
-                                  }
+                                    );
+                                    setDirty(true);
+                                  }}
                                 >
                                   ✕
                                 </button>
@@ -1008,6 +1025,7 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
                                           j === i ? { ...y, filePath: r.key, fileName: r.name } : y,
                                         ),
                                       );
+                                      setDirty(true);
                                     } catch (err) {
                                       setUploadError(err);
                                     } finally {
@@ -1022,7 +1040,10 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
                         <button
                           type="button"
                           className="btn-ghost"
-                          onClick={() => setVariants((x) => x.filter((_, j) => j !== i))}
+                          onClick={() => {
+                            setVariants((x) => x.filter((_, j) => j !== i));
+                            setDirty(true);
+                          }}
                         >
                           ✕
                         </button>
@@ -1032,12 +1053,13 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
                   <button
                     type="button"
                     className="btn-secondary"
-                    onClick={() =>
+                    onClick={() => {
                       setVariants((x) => [
                         ...x,
                         { name: "", price: 0, filePath: null, fileName: null },
-                      ])
-                    }
+                      ]);
+                      setDirty(true);
+                    }}
                   >
                     {t("product.addVariant")}
                   </button>
