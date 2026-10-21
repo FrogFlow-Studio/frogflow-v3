@@ -1,3 +1,4 @@
+import { countryFromPhone } from "@/core/country/phone";
 import { getSetting } from "@/core/settings/settings";
 import { recordEngage } from "@/core/automsg/engage";
 import { setEmail, setState } from "@/core/customers/customers";
@@ -97,6 +98,31 @@ export async function askCountry(s: Shop, forCheckout: boolean) {
     if (forCheckout) await proceedToFulfillmentOrPlace(s, only.country_code);
     else await reply(s, s.m.countrySaved(only.country_name), { force: true });
     return;
+  }
+  // В WhatsApp (или если известен телефон) определяем страну по префиксу номера:
+  // Казахстан (+7 7...), Россия (+7 9...), Кыргызстан (+996...), Узбекистан (+998...), Беларусь (+375...).
+  // Если у продавца есть однозначный способ оплаты для страны покупателя — оформляем без лишних шагов.
+  const rawPhone =
+    s.customer.contactPhone ??
+    (s.platform === "whatsapp" ? s.customer.userKey.replace(/^wa_/, "") : null) ??
+    s.customer.state.phone;
+  const inferred = countryFromPhone(rawPhone);
+  if (inferred) {
+    const matching = methods.filter((m) => m.country_code.toUpperCase() === inferred);
+    if (matching.length === 1) {
+      const target = matching[0]!;
+      await setMode(s, {
+        mode: "idle",
+        country_code: target.country_code,
+        country_name: target.country_name,
+        placing_order: undefined,
+      });
+      s.customer.state.country_code = target.country_code;
+      s.customer.state.country_name = target.country_name;
+      if (forCheckout) await proceedToFulfillmentOrPlace(s, target.country_code);
+      else await reply(s, s.m.countrySaved(target.country_name), { force: true });
+      return;
+    }
   }
   await setMode(s, { mode: "awaiting_country", placing_order: forCheckout ? true : undefined });
   // Цены во всех валютах: это шаг оплаты — у каждой страны сумма корзины.
