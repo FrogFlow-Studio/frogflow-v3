@@ -51,4 +51,35 @@ describe("addToCart: товар с вариантами", () => {
     expect(await addToCart(ctx, customer, "cake", "v-other")).toBe("unavailable");
     expect(db.tables.cart_items).toHaveLength(0);
   });
+
+  it("цифровой товар с файлами в вариантах (variant_materials) кладётся в корзину", async () => {
+    const { db, ctx, customer } = setup();
+    db.tables.products!.push({
+      id: "digital-vars",
+      bot_id: BOT,
+      is_active: true,
+      stock_quantity: null,
+      fulfillment_kind: "digital",
+      file_path: null,
+      file_url: null,
+      product_material_files: [],
+    });
+    db.tables.product_variants!.push(
+      { id: "dv-1", product_id: "digital-vars", name: "Вариант 1", price: 100 },
+      { id: "dv-2", product_id: "digital-vars", name: "Вариант 2", price: 100 },
+    );
+    db.tables.app_settings = [
+      {
+        bot_id: BOT,
+        key: "variant_materials:digital-vars",
+        value: JSON.stringify({
+          "dv-1": { filePath: "path/1.pdf", fileName: "1.pdf" },
+          "Вариант 2": { filePath: "path/2.pdf", fileName: "2.pdf" },
+        }),
+      },
+    ];
+    expect(await addToCart(ctx, customer, "digital-vars", "dv-1")).toBe("ok");
+    expect(await addToCart(ctx, customer, "digital-vars", "dv-2")).toBe("ok");
+    expect(db.tables.cart_items!.map((r) => r.product_variant_id)).toEqual(["dv-1", "dv-2"]);
+  });
 });

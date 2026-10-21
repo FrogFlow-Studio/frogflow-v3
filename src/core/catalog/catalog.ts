@@ -92,7 +92,20 @@ export async function getProduct(ctx: TenantContext, id: string): Promise<Produc
     .eq("is_active", true)
     .maybeSingle();
   if (dataError) throw serverFailure(`Каталог: ${dataError.message}`);
-  return (data as Product | null) ?? null;
+  const product = (data as Product | null) ?? null;
+  if (product?.product_variants?.length) {
+    const { getVariantMaterials } = await import("./variant-materials");
+    const vm = await getVariantMaterials(ctx, id);
+    if (Object.keys(vm).length > 0) {
+      product.product_variants = product.product_variants.map((v) => {
+        const file = vm[v.id] || (v.name ? vm[v.name] : null);
+        return file?.filePath
+          ? { ...v, filePath: file.filePath, fileName: file.fileName }
+          : v;
+      });
+    }
+  }
+  return product;
 }
 
 /** Поисковая фраза → ilike-шаблон; спецсимволы PostgREST-фильтра гасятся. */

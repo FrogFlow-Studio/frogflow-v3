@@ -46,15 +46,17 @@ export async function addToCart(
 
   // callback_data приходит от клиента: вариант обязан принадлежать товару, а
   // товар с вариантами нельзя положить «без варианта» по служебной цене «от».
+  let variantRow: { id: string; name?: string | null } | null = null;
   if (variantId) {
     const { data: v, error: vError } = await ctx.db
       .from("product_variants")
-      .select("id")
+      .select("id, name")
       .eq("id", variantId)
       .eq("product_id", productId)
       .maybeSingle();
     if (vError) throw serverFailure(`Корзина: ${vError.message}`);
     if (!v) return "unavailable";
+    variantRow = v;
   } else {
     const { data: any, error: anyError } = await ctx.db
       .from("product_variants")
@@ -68,7 +70,20 @@ export async function addToCart(
 
   const kind = product.fulfillment_kind === "physical" ? "physical" : "digital";
   // Цифровой товар без файла — оплата без выдачи; отказ до корзины, не после.
-  if (kind === "digital" && !productSellable(product)) return "unavailable";
+  if (kind === "digital") {
+    let sellable = productSellable(product);
+    if (!sellable) {
+      const { getVariantMaterials } = await import("@/core/catalog/variant-materials");
+      const vm = await getVariantMaterials(ctx, productId);
+      const vName = variantRow?.name;
+      sellable = Boolean(
+        (variantId && vm[variantId]?.filePath) ||
+        (vName && vm[vName]?.filePath) ||
+        Object.values(vm).some((entry) => Boolean(entry?.filePath))
+      );
+    }
+    if (!sellable) return "unavailable";
+  }
   // Курс с потоками: набор во все потоки закончился — не продаём.
   if (kind === "digital" && ctx.tenant.modules.courses) {
     const { courseEnrollOpen } = await import("@/core/courses/enroll.server");
