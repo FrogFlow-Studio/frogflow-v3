@@ -883,6 +883,18 @@ export async function listPostComments(
       else if (row.status === "failed") failed.add(id);
     }
   }
+  const { data: fallbackSends } = await ctx.db
+    .from("comment_dm_fallback_sends")
+    .select("comment_id, status")
+    .eq("platform_post_id", postId);
+  for (const s of fallbackSends ?? []) {
+    if (s.status === "sent") {
+      sent.add(s.comment_id);
+      failed.delete(s.comment_id);
+    } else if (s.status === "failed" && !sent.has(s.comment_id)) {
+      failed.add(s.comment_id);
+    }
+  }
   const now = new Date();
   return {
     automation,
