@@ -47,7 +47,29 @@ export const Route = createFileRoute("/api/img/$botId/$")({
             .limit(1)
             .maybeSingle();
           if (ownedError) throw serverFailure(`Картинки: ${ownedError.message}`);
-          if (owned) file = (await storage.download(rel)).data;
+          let isOwned = Boolean(owned);
+          if (!isOwned) {
+            const { data: ownedSetting } = await serviceDb()
+              .from("app_settings")
+              .select("id")
+              .eq("bot_id", botId)
+              .eq("key", "vip_payment_qr_path")
+              .eq("value", rel)
+              .limit(1)
+              .maybeSingle();
+            isOwned = Boolean(ownedSetting);
+          }
+          if (!isOwned) {
+            const { data: ownedPayment } = await serviceDb()
+              .from("payment_methods")
+              .select("id")
+              .eq("bot_id", botId)
+              .eq("qr_code_path", rel)
+              .limit(1)
+              .maybeSingle();
+            isOwned = Boolean(ownedPayment);
+          }
+          if (isOwned) file = (await storage.download(rel)).data;
         }
         if (!file) return new Response("not found", { status: 404 });
         // Файл браузер кладёт в бакет сам, тип задаёт тоже он. Картинку отдаём

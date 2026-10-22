@@ -15,6 +15,8 @@ import {
 import { adminT, intlLocale, type AdminKey, type AdminT } from "@/app/i18n/admin";
 import { Badge, Card, Empty, ErrorBox, Field, PageTitle, Switch, useAction } from "@/app/ui";
 import { HelpTip } from "@/app/admin/help-panel";
+import { imagePath } from "@/core/catalog/image-url";
+import { uploadFile } from "@/app/admin/upload-client";
 
 export const Route = createFileRoute("/admin/_authed/vip")({
   loader: () => vipStateFn(),
@@ -44,7 +46,7 @@ function VipPage() {
       <PageTitle title={t("vip.title")} subtitle={t("vip.subtitle")} />
       <div className="grid gap-4 lg:grid-cols-2">
         <BotCard state={state} t={t} />
-        <SettingsCard state={state} t={t} />
+        <SettingsCard state={state} t={t} botId={shop.botId} />
         <TariffsCard state={state} t={t} />
         <SubscribersCard state={state} t={t} locale={intlLocale(shop.locale)} />
       </div>
@@ -131,11 +133,12 @@ function BotCard({ state, t }: { state: State; t: AdminT }) {
   );
 }
 
-function SettingsCard({ state, t }: { state: State; t: AdminT }) {
+function SettingsCard({ state, t, botId }: { state: State; t: AdminT; botId: string }) {
   const router = useRouter();
   const s = state.settings;
   const [test, setTest] = useState(s.testMode);
   const [auto, setAuto] = useState(s.autoConfirm);
+  const [qr, setQr] = useState<string | null>(s.qrPath || null);
   const [saved, setSaved] = useState(false);
   const [cron, setCron] = useState<string | null>(null);
   const save = useAction(async (f: FormData) => {
@@ -148,6 +151,7 @@ function SettingsCard({ state, t }: { state: State; t: AdminT }) {
         vip_auto_confirm: auto ? "true" : "false",
         vip_welcome_message: String(f.get("welcome") ?? ""),
         vip_payment_instructions: String(f.get("instructions") ?? ""),
+        vip_payment_qr_path: qr ?? "",
       },
     });
     setSaved(true);
@@ -220,6 +224,38 @@ function SettingsCard({ state, t }: { state: State; t: AdminT }) {
         </Field>
         <Field label={t("vip.settings.instructions")} hint={t("vip.settings.instructionsHint")}>
           <textarea className="input" name="instructions" rows={3} defaultValue={s.instructions} />
+        </Field>
+        <Field label={t("settings.pay.qr")}>
+          <div className="flex items-center gap-3">
+            {qr && (
+              <img
+                src={imagePath(botId, qr)}
+                alt="QR"
+                className="h-16 w-16 rounded border border-line object-cover"
+              />
+            )}
+            <label className="btn-secondary cursor-pointer text-xs">
+              {qr ? t("settings.pay.qrReplace") : t("settings.pay.qrUpload")}
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  const key = await uploadFile("image", file, t, (status) =>
+                    t("product.uploadFailed", { status }),
+                  ).catch(() => null);
+                  if (key) setQr(key);
+                }}
+              />
+            </label>
+            {qr && (
+              <button type="button" className="btn-ghost text-xs" onClick={() => setQr(null)}>
+                {t("settings.pay.qrRemove")}
+              </button>
+            )}
+          </div>
         </Field>
         <div className="flex items-center gap-3">
           <button className="btn-primary" disabled={save.busy}>

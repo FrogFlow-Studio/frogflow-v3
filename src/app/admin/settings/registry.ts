@@ -412,6 +412,7 @@ export const SETTINGS_REGISTRY: readonly SettingsEntry[] = [
       "vip_group_id",
       "vip_auto_confirm",
       "vip_payment_instructions",
+      "vip_payment_qr_path",
       "vip_test_mode",
       "vip_warn_days",
       "vip_warn_days_2",
