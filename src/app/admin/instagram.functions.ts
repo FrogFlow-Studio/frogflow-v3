@@ -301,3 +301,9 @@ export const catchupPublicFn = createServerFn({ method: "POST" })
     const { sendCatchupCommentReplies } = await import("@/channels/zernio/automations.server");
     return { results: await sendCatchupCommentReplies(ctx, data) };
   });
+
+export const triggerCommentFallbackFn = createServerFn({ method: "POST" }).handler(async () => {
+  const ctx = await igWrite();
+  const { runCommentDmFallback } = await import("@/channels/zernio/automations.server");
+  return await runCommentDmFallback(ctx);
+});

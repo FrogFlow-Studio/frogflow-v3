@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { catchupPrivateFn, catchupPublicFn, postCommentsFn } from "@/app/admin/instagram.functions";
+import { catchupPrivateFn, catchupPublicFn, postCommentsFn, triggerCommentFallbackFn } from "@/app/admin/instagram.functions";
 import { HelpTip } from "@/app/admin/help-panel";
 import { Badge, Card, ErrorBox, Field, useAction } from "@/app/ui";
 import { BLOCK_REASON, type Data, REPLY_STATUS, useAdminI18n } from "./shared";
@@ -40,6 +40,14 @@ export function CatchupCard({ data }: { data: Data }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [message, setMessage] = useState("");
   const [publicText, setPublicText] = useState("");
+  const [fallbackResult, setFallbackResult] = useState<Awaited<
+    ReturnType<typeof triggerCommentFallbackFn>
+  > | null>(null);
+
+  const triggerCheck = useAction(async () => {
+    const r = await triggerCommentFallbackFn();
+    setFallbackResult(r);
+  });
   const [results, setResults] = useState<Array<{ commentId: string; ok: boolean; error?: string }>>(
     [],
   );
@@ -167,7 +175,22 @@ export function CatchupCard({ data }: { data: Data }) {
         >
           {load.busy ? t("instagram.catchup.loading") : t("instagram.catchup.load")}
         </button>
+        <button
+          type="button"
+          className="btn-secondary text-xs"
+          disabled={triggerCheck.busy}
+          onClick={() => void triggerCheck.run()}
+          title="Запустить немедленный поиск и отправку ответов по свежим постам"
+        >
+          {triggerCheck.busy ? "Проверяем…" : "⚡ Проверить сейчас"}
+        </button>
       </div>
+      {fallbackResult && (
+        <p className="mt-2 text-xs text-green-500">
+          ✓ Проверка завершена: проверено правил — {fallbackResult.automationsChecked}, комментариев — {fallbackResult.commentsChecked}, отправлено DM — {fallbackResult.sent}.
+        </p>
+      )}
+      <ErrorBox error={triggerCheck.error} />
       <ErrorBox error={load.error} />
       {loaded && (
         <div className="mt-3 space-y-3">

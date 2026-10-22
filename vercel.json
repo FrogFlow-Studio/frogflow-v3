@@ -53,7 +53,7 @@
     },
     {
       "path": "/api/cron/comment-dm-fallback",
-      "schedule": "7,22,37,52 * * * *"
+      "schedule": "*/2 * * * *"
     },
     {
       "path": "/api/cron/giveaways",
