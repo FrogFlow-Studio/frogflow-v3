@@ -75,10 +75,10 @@ export function commentOnRulePost(
  * Штатный ответ у Zernio уходит в пределах минуты; без паузы каждый новый
  * комментарий немедленно дублировался бы нашей же резервной отправкой.
  */
-export const FALLBACK_MIN_AGE_MS = 5 * 60 * 1000;
+export const FALLBACK_MIN_AGE_MS = 2 * 60 * 1000;
 
-/** Крон каждые 15 минут; 10 минут — длиннее одного прогона и короче следующего тика. */
-export const STALE_PENDING_MS = 10 * 60 * 1000;
+/** Крон каждые 2 минуты; 3 минуты — длиннее одного прогона и короче следующего тика. */
+export const STALE_PENDING_MS = 3 * 60 * 1000;
 
 /** С запасом от документированного 7-дневного окна private-reply у Zernio. */
 export const FALLBACK_MAX_AGE_MS = 6.5 * 24 * 60 * 60 * 1000;

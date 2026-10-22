@@ -1183,6 +1183,7 @@ export async function runCommentDmFallback(
               .select("comment_id")
               .eq("automation_id", autoId)
               .in("comment_id", siblingIds)
+              .in("status", ["sent", "pending"])
               .limit(1);
             if (earlierErr) {
               console.error(
