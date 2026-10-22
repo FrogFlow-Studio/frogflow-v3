@@ -89,6 +89,11 @@ export async function triageQuestion(
     console.info(`[triage:${s.ctx.tenant.id}] ${s.customer.userKey}: без вопроса — без обращения`);
     return "handled";
   }
+  // Если у магазина есть Робокасса — зарубежные карты и СНГ принимаются онлайн:
+  // не говорим «оплату подключаем», а даём покупателю оформить заказ и оплатить картой.
+  const { robokassaFor } = await import("@/core/payments/payment");
+  const rk = await robokassaFor(s.ctx).catch(() => ({ ready: false as const }));
+  if (rk.ready) return null;
   // Чтение способов оплаты не удалось — не знаем, есть ли способ: прежний путь.
   const methods = await listActivePaymentMethods(s.ctx).catch(() => null);
   if (!methods) return null;

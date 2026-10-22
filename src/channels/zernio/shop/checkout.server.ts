@@ -1060,10 +1060,15 @@ async function sendPayLink(s: Shop, text: string, title: string, url: string, as
     await reply(s, plain(s.m.payLinkAsText(url)), { force: true });
     return;
   }
-  await reply(s, text, {
+  const fullText = `${text}\n\n${url}`;
+  // В Instagram сообщение с кнопками не принимает больше 640 знаков текста.
+  // Если текст со ссылкой помещается в 640 знаков (как у Робокассы ~315 знаков) — отправляем
+  // ссылку прямо в тексте сообщения вместе с кнопкой, чтобы у клиента ВСЕГДА была ссылка.
+  const msgText = fullText.length <= 640 ? fullText : text;
+  await reply(s, msgText, {
     force: true,
     buttons: [{ type: "url", title, url }],
-    textWithoutButtons: `${text}\n\n${url}`,
+    textWithoutButtons: fullText,
   });
 }
 

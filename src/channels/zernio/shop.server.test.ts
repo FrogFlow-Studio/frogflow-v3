@@ -42,6 +42,8 @@ vi.mock("@/core/catalog/catalog", async (orig) => ({
 const consultant = vi.hoisted(() => ({ enabled: false, paused: 0 }));
 vi.mock("@/core/consultant/engine.server", () => ({
   consultantEnabled: async () => consultant.enabled,
+  isPaused: () => false,
+  resumeConsultant: async (_ctx: unknown, c: unknown) => c,
   pauseConsultant: async (_ctx: unknown, c: unknown) => {
     consultant.paused++;
     return c;

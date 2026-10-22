@@ -294,10 +294,43 @@ export async function consultantEnabled(ctx: TenantContext): Promise<boolean> {
 export async function loadConsultant(
   ctx: TenantContext,
 ): Promise<{ profile: ConsultantProfile; docs: KnowledgeDoc[]; enabled: boolean }> {
-  const s = await getSettings(ctx, [KEYS.profile, KEYS.knowledge, KEYS.enabled, "shop_name"]);
+  const s = await getSettings(ctx, [
+    KEYS.profile,
+    KEYS.knowledge,
+    KEYS.enabled,
+    "shop_name",
+    "prodamus_enabled",
+    "robokassa_enabled",
+  ]);
   const v = s[KEYS.enabled];
+  const profile = parseProfile(s[KEYS.profile], s.shop_name ?? ctx.tenant.name);
+  if (!profile.payment_info) {
+    const methods: string[] = [];
+    if (ctx.tenant.modules.prodamus && s.prodamus_enabled === "true") {
+      methods.push(
+        "Россия: картой любого банка РФ (МИР, Visa, Mastercard) онлайн в рублях через Продамус (сумма списывается в рублях по курсу банка).",
+      );
+      if (!profile.countries.includes("RU")) profile.countries.push("RU");
+    }
+    if (ctx.tenant.modules.robokassa && s.robokassa_enabled === "true") {
+      methods.push(
+        "Казахстан, СНГ (Кыргызстан, Узбекистан, Беларусь и др.) и зарубежные страны: картой онлайн через Робокассу.",
+      );
+      for (const c of ["BY", "KG", "UZ"]) {
+        if (!profile.countries.includes(c)) profile.countries.push(c);
+      }
+    }
+    methods.push(
+      "Казахстан: перевод Kaspi или картой онлайн. Все материалы электронные — отправляются сразу после оплаты сюда в чат.",
+    );
+    profile.payment_info = methods.join(" ");
+  }
+  if (!profile.delivery_info) {
+    profile.delivery_info =
+      "Все материалы электронные — отправляются файлами или ссылками прямо в этот чат сразу после оплаты. Доставка не требуется.";
+  }
   return {
-    profile: parseProfile(s[KEYS.profile], s.shop_name ?? ctx.tenant.name),
+    profile,
     docs: parseKnowledge(s[KEYS.knowledge]),
     enabled:
       v === "true" ? true : v === "false" ? false : isConsultantVertical(ctx.tenant.vertical),

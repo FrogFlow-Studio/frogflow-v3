@@ -150,6 +150,20 @@ async function kaspiForeignReply(
   const country = fromModel ?? (typeof remembered === "string" ? remembered : null);
   if (!country || order.country_code !== "KZ") return false;
   if (!foreignPayOn(await getSetting(s.ctx, CHAT_FOREIGN_PAY_KEY))) return false;
+  // Робокасса принимает зарубежные карты и СНГ: возвращаем выбор оплаты («Оплата картой»)
+  const { robokassaFor } = await import("@/core/payments/payment");
+  const rk = await robokassaFor(s.ctx, order.currency);
+  if (rk.ready) {
+    const { setMode } = await import("./context.server");
+    const { resumePendingPayChoice } = await import("./checkout.server");
+    await setMode(s, {
+      mode: "choose_pay",
+      pending_order_id: order.id,
+      pending_display_no: displayNo(order),
+    });
+    await resumePendingPayChoice(s);
+    return true;
+  }
   // Способы оплаты не прочитались — не знаем, есть ли способ: прежний ответ.
   const methods = await listActivePaymentMethods(s.ctx).catch(() => null);
   if (!methods) return false;
@@ -482,6 +496,11 @@ export async function foreignOrderHold(
   const country = memory(s.customer).foreign_country;
   if (typeof country !== "string" || !country) return false;
   if (!foreignPayOn(await getSetting(s.ctx, CHAT_FOREIGN_PAY_KEY))) return false;
+  // Если у магазина включена Робокасса — зарубежные карты и СНГ принимаются онлайн:
+  // заказ не задерживаем, покупатель получает выбор оплаты с кнопкой «Оплата картой»!
+  const { robokassaFor } = await import("@/core/payments/payment");
+  const rk = await robokassaFor(s.ctx, order.currency);
+  if (rk.ready) return false;
   const methods = await listActivePaymentMethods(s.ctx).catch(() => null);
   if (!methods) return false;
   if (
