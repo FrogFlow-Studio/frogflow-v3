@@ -996,6 +996,19 @@ export async function sendAltChannel(
  * Строка comment_dm_fallback_sends резервируется ДО отправки: уникальность
  * (automation_id, comment_id) — единственная защита от повтора при гонке.
  */
+/** Свежесть правила: время создания по ISO createdAt либо по временной метке в ObjectId (Zernio). */
+export function automationFreshness(a: CommentAutomation): number {
+  if (a.createdAt) {
+    const t = Date.parse(a.createdAt);
+    if (!Number.isNaN(t)) return t;
+  }
+  const id = automationId(a);
+  if (/^[0-9a-f]{24}$/i.test(id)) {
+    return parseInt(id.slice(0, 8), 16) * 1000;
+  }
+  return 0;
+}
+
 export async function runCommentDmFallback(
   ctx: TenantContext,
   api: AutomationApi = liveAutomationApi,
@@ -1013,13 +1026,21 @@ export async function runCommentDmFallback(
     if (limited === null) throw e;
     return { ...result, rateLimitedSec: limited };
   }
+  // Берём до 20 самых свежих правил: жалобы и новые комментарии идут по свежим публикациям,
+  // а старые правила не задерживают проверку новых.
   const active = all
     .filter((a) => a.isActive !== false && a.trigger !== "story_reply" && a.platformPostId)
     .filter((a) => automationId(a))
-    .sort((a, b) => (automationId(a) < automationId(b) ? -1 : 1));
-  // Обход по кругу с места, где остановились: правила за пределом одного запуска не теряются.
+    .sort((a, b) => {
+      const diff = automationFreshness(b) - automationFreshness(a);
+      if (diff !== 0) return diff;
+      return automationId(a).localeCompare(automationId(b));
+    })
+    .slice(0, MAX_AUTOMATIONS_PER_RUN);
+
+  // Обход по кругу с места, где остановились (если бюджет прервал прошлый запуск).
   const cursor = await getSetting(ctx, FALLBACK_CURSOR_KEY);
-  const start = cursor ? active.findIndex((a) => automationId(a) >= cursor) : 0;
+  const start = cursor ? active.findIndex((a) => automationId(a) === cursor) : 0;
   const perPost = start > 0 ? [...active.slice(start), ...active.slice(0, start)] : active;
   let sendsThisRun = 0;
   const saveCursor = async (next: string) => {
@@ -1325,7 +1346,7 @@ export async function runCommentDmFallback(
         let publicError: string | null = null;
         const commentReply = pickCommentReply(automation);
         const prompt = automation.unresolvedPrompt?.trim();
-        if (!reply.ok && altStatus === "sent" && commentReply && !publicByZernio.has(commentId)) {
+        if ((reply.ok || altStatus === "sent") && commentReply && !publicByZernio.has(commentId)) {
           const r = await api.publicReply(postId, commentId, automation.accountId, commentReply);
           publicStatus = r.ok ? "sent" : "failed";
           publicError = r.ok ? null : (r.error?.slice(0, 500) ?? null);

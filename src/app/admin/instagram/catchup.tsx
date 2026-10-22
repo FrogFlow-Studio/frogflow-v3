@@ -12,7 +12,31 @@ export function CatchupCard({ data }: { data: Data }) {
   const [accountId, setAccountId] = useState(data.accounts[0]!.id);
   const { posts } = usePosts(accountId);
   const [postId, setPostId] = useState("");
+  const [manual, setManual] = useState(false);
+  const [manualId, setManualId] = useState("");
   const [loaded, setLoaded] = useState<Awaited<ReturnType<typeof postCommentsFn>> | null>(null);
+
+  const allPosts = useMemo(() => {
+    const list = [...(posts ?? [])];
+    const seen = new Set(list.map((p) => p.platformPostId));
+    for (const a of data.automations) {
+      if (a.accountId === accountId && a.platformPostId && !seen.has(a.platformPostId)) {
+        seen.add(a.platformPostId);
+        list.push({
+          platformPostId: a.platformPostId,
+          zernioPostId: a.postId,
+          caption: a.postTitle || a.name,
+          kind: "reel",
+          publishedAt: null,
+          thumbnail: null,
+          permalink: null,
+        });
+      }
+    }
+    return list;
+  }, [posts, data.automations, accountId]);
+
+  const targetPostId = (manual ? manualId.trim() : postId).trim();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [message, setMessage] = useState("");
   const [publicText, setPublicText] = useState("");
@@ -21,7 +45,8 @@ export function CatchupCard({ data }: { data: Data }) {
   );
 
   const load = useAction(async () => {
-    const r = await postCommentsFn({ data: { accountId, postId } });
+    if (!targetPostId) return;
+    const r = await postCommentsFn({ data: { accountId, postId: targetPostId } });
     setLoaded(r);
     setResults([]);
     setSelected(
@@ -87,34 +112,57 @@ export function CatchupCard({ data }: { data: Data }) {
             ))}
           </select>
         )}
-        <select
-          className="input min-w-48 flex-1"
-          value={postId}
-          onChange={(e) => {
-            setPostId(e.target.value);
+        {manual ? (
+          <input
+            className="input min-w-48 flex-1"
+            placeholder="Platform Post ID (например, 17913946659536537)"
+            value={manualId}
+            onChange={(e) => {
+              setManualId(e.target.value);
+              setLoaded(null);
+            }}
+          />
+        ) : (
+          <select
+            className="input min-w-48 flex-1"
+            value={postId}
+            onChange={(e) => {
+              setPostId(e.target.value);
+              setLoaded(null);
+            }}
+          >
+            <option value="">
+              {posts === null && allPosts.length === 0
+                ? t("instagram.catchup.loadingPosts")
+                : t("instagram.catchup.choosePost")}
+            </option>
+            {allPosts.map((p) => (
+              <option key={p.platformPostId} value={p.platformPostId}>
+                {[
+                  p.publishedAt ? new Date(p.publishedAt).toLocaleDateString(intl) : "",
+                  p.kind,
+                  p.caption || p.platformPostId,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </option>
+            ))}
+          </select>
+        )}
+        <button
+          type="button"
+          className="btn-ghost text-xs text-muted"
+          onClick={() => {
+            setManual((m) => !m);
             setLoaded(null);
           }}
+          title={manual ? "Выбрать из списка публикаций" : "Ввести ID публикации вручную"}
         >
-          <option value="">
-            {posts === null
-              ? t("instagram.catchup.loadingPosts")
-              : t("instagram.catchup.choosePost")}
-          </option>
-          {(posts ?? []).map((p) => (
-            <option key={p.platformPostId} value={p.platformPostId}>
-              {[
-                p.publishedAt ? new Date(p.publishedAt).toLocaleDateString(intl) : "",
-                p.kind,
-                p.caption || p.platformPostId,
-              ]
-                .filter(Boolean)
-                .join(" · ")}
-            </option>
-          ))}
-        </select>
+          {manual ? "Из списка" : "Ввести ID"}
+        </button>
         <button
           className="btn-secondary text-xs"
-          disabled={!postId || load.busy}
+          disabled={!targetPostId || load.busy}
           onClick={() => void load.run().catch(() => {})}
         >
           {load.busy ? t("instagram.catchup.loading") : t("instagram.catchup.load")}
