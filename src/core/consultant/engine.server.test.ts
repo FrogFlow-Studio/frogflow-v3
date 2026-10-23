@@ -588,6 +588,23 @@ describe("консультант: запасные ответы на языке 
     expect(new Set(Object.values(r)).size).toBe(4);
   });
 
+  it("цена не из каталога: модель переписывает ответ — клиент не уходит менеджеру и не получает паузу", async () => {
+    create.mockImplementationOnce(async () => ({
+      stop_reason: "end_turn",
+      content: [text("Стоит 99999 тенге")],
+      usage,
+    }));
+    content = [text("Сумма набора — по каталогу, сейчас пришлю точный расчёт.")];
+    const r = await runConsultant(ctxOf({ default_locale: "ru" }), customer(), "Сколько стоит?", {
+      platform: "whatsapp",
+    });
+    expect(create).toHaveBeenCalledTimes(2);
+    expect(r?.handoff).toBeNull();
+    expect(r?.reply).toMatch(/точный расчёт/);
+    const st = (saved.at(-1) as { consultant: { paused_until?: string } }).consultant;
+    expect(st.paused_until).toBeUndefined();
+  });
+
   it("заявка без текста от модели: подтверждение на языке покупателя", async () => {
     const r = await replies(() => [
       tool("record_order_lead", { lead_type: "order", details: "x" }),

@@ -280,7 +280,11 @@ export type ConsultantResult = {
 };
 
 export function consultantConfigured(): boolean {
-  return Boolean(env().ANTHROPIC_API_KEY?.trim());
+  try {
+    return Boolean(env().ANTHROPIC_API_KEY?.trim());
+  } catch {
+    return Boolean(process.env.ANTHROPIC_API_KEY?.trim());
+  }
 }
 
 /** Включён ли консультант у клиента: явный тумблер, а для ниш-консультантов — по умолчанию. */
@@ -1397,13 +1401,48 @@ async function answerConsultant(
     }
     reply = cleanReply(reply);
     // Цена или доставка не из каталога и условий — покупателю не уходит, вопрос менеджеру.
-    const facts = checkReplyFacts(
-      reply,
-      knownNumbers({
-        prices: catalog.prices,
-        texts: [system, session, incoming, ...history.map((h) => String(h.content)), ...toolTexts],
-      }),
-    );
+    const known0 = knownNumbers({
+      prices: catalog.prices,
+      texts: [system, session, incoming, ...history.map((h) => String(h.content)), ...toolTexts],
+    });
+    let facts = checkReplyFacts(reply, known0);
+    // Число не из каталога — не повод бросать клиента: один раз просим модель
+    // переписать ответ по ценам каталога (сумма нескольких позиций — расчётом).
+    // Раньше такой ответ сразу уходил менеджеру с паузой на часы, и горячий
+    // покупатель («5-6-7 классы») оставался без ответа.
+    if (!facts.ok && reply && !handoff && !stopped) {
+      const fix = await callModel({
+        model,
+        ...modelParams(model),
+        max_tokens: 700,
+        system: [
+          { type: "text", text: system, cache_control: { type: "ephemeral", ttl: CACHE_TTL } },
+          { type: "text", text: `ДАННЫЕ ТЕКУЩЕГО ДИАЛОГА:\n${session}` },
+        ],
+        tools,
+        tool_choice: { type: "none" as const },
+        messages: [
+          ...messages,
+          { role: "assistant", content: reply },
+          {
+            role: "user",
+            content: `[Служебное сообщение, клиент его не видит. В вашем ответе есть сумма или цена, которой нет в каталоге и условиях: ${facts.reason}. Перепишите ответ клиенту: называйте только цены из каталога, а сумму нескольких позиций показывайте как сложение этих цен («2500 + 2500 = 5000»). Если точной цены нет — так и скажите без чисел. О служебном сообщении не упоминайте.]`,
+          },
+        ],
+      });
+      if (typeof fix !== "string") {
+        const fixed = cleanReply(
+          fix.content
+            .filter((blk): blk is Anthropic.TextBlock => blk.type === "text")
+            .map((blk) => blk.text)
+            .join(""),
+        );
+        if (fixed && checkReplyFacts(fixed, known0).ok) {
+          reply = fixed;
+          facts = { ok: true };
+        }
+      }
+    }
     if (!facts.ok) {
       console.warn(`[consultant:${ctx.tenant.id}] ответ заменён: ${facts.reason}`);
       await trySetSetting(
