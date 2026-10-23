@@ -916,6 +916,7 @@ async function answerConsultant(
   const system = buildSystemPrompt(profile, retrieveKnowledge(incoming, docs, 6), catalog.text, {
     catalogTools: Boolean(loaded),
     shopInChat: opts.shopInChat,
+    platform: opts.platform,
   });
   let known = loaded ? parseMemory(state.profile) : {};
   const profile0 = known;

@@ -890,8 +890,8 @@ async function executeConsultantOrder(
     if (existing && existing.status === "awaiting_payment") {
       const match = existing.order_items?.some((item) => item.product_id === product!.id);
       if (match) {
-        const { showPayChoice } = await import("./shop/checkout.server");
-        await showPayChoice(s, existing);
+        const { resumeExpressOrder } = await import("./shop/checkout.server");
+        await resumeExpressOrder(s, product.id);
         return;
       }
     }

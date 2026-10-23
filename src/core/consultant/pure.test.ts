@@ -69,6 +69,21 @@ describe("profile / prompt", () => {
     });
     expect(booking).toContain("ГЛАВНАЯ ЦЕЛЬ — ЗАПИСЬ");
   });
+  it("WhatsApp: не навязывает Kaspi и повторный заказ, прочие каналы не получают этот блок", () => {
+    const profile = parseProfile(null, "Bloom");
+    const whatsapp = buildSystemPrompt(profile, docs, "- Роза, 5000 KZT", {
+      shopInChat: true,
+      platform: "whatsapp",
+    });
+    expect(whatsapp).toContain("WHATSAPP: ПРАВИЛА БЕЗ НАВЯЗЧИВЫХ ПРОДАЖ");
+    expect(whatsapp).toContain("не добавляйте автоматически");
+    expect(whatsapp).toContain("не создавайте новый заказ");
+    const instagram = buildSystemPrompt(profile, docs, "- Роза, 5000 KZT", {
+      shopInChat: true,
+      platform: "instagram",
+    });
+    expect(instagram).not.toContain("WHATSAPP: ПРАВИЛА БЕЗ НАВЯЗЧИВЫХ ПРОДАЖ");
+  });
   it("чистит markdown и сценарии", () => {
     expect(cleanReply("**Да**, есть.\nКлиент: беру\nАссистент: ок\n\n\n\n_итого_ 5")).toBe(
       "Да, есть.\n\nитого 5",
