@@ -1385,6 +1385,12 @@ async function answerConsultant(
     }
     if (!reply && handoff)
       reply = handoff.kind === "lead" ? leadDoneReply(bLocale) : dialogHandoffReply(bLocale);
+    if (!reply && orderAction) {
+      reply =
+        bLocale === "kk"
+          ? "Тапсырысты рәсімдеп жатырмын — төлем мәліметтері осы чатқа қазір жіберіледі."
+          : "Оформляю заказ — детали и оплата сейчас появятся в этом чате.";
+    }
     if (!reply) reply = clarifyReply(bLocale);
 
     return await finish({

@@ -883,6 +883,20 @@ async function executeConsultantOrder(
     return;
   }
 
+  // Не создаём дубликат заказа, если у клиента уже есть неоплаченный заказ на этот же товар
+  if (s.customer.state.pending_order_id) {
+    const { getOrder } = await import("@/core/orders/orders");
+    const existing = await getOrder(s.ctx, s.customer.state.pending_order_id);
+    if (existing && existing.status === "awaiting_payment") {
+      const match = existing.order_items?.some((item) => item.product_id === product!.id);
+      if (match) {
+        const { showPayChoice } = await import("./shop/checkout.server");
+        await showPayChoice(s, existing);
+        return;
+      }
+    }
+  }
+
   let addRes = await addToCart(s.ctx, s.customer, product.id, variantId);
   if (addRes === "mixed_cart") {
     await clearCart(s.ctx, s.customer);
