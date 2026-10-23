@@ -765,6 +765,88 @@ async function recordSilentRun(
 }
 
 /**
+ * Подбор товара и варианта по строке заказа консультанта: id, точное название,
+ * вхождение, совпадение по словам. needVariant — у товара есть варианты, а
+ * выбранный не назван.
+ */
+async function resolveConsultantLine(
+  ctx: TenantContext,
+  action: import("@/core/consultant/engine.server").ConsultantOrderAction,
+): Promise<{
+  product: import("@/core/catalog/catalog").Product;
+  variantId: string | null;
+  needVariant: boolean;
+} | null> {
+  const { getProduct, PRODUCT_SELECT, sortedVariants } = await import("@/core/catalog/catalog");
+  let product: import("@/core/catalog/catalog").Product | null = null;
+  if (action.productId) product = await getProduct(ctx, action.productId);
+  if (!product && action.productName) {
+    const { data: rows } = await ctx.db
+      .from("products")
+      .select(PRODUCT_SELECT)
+      .eq("bot_id", ctx.tenant.id)
+      .eq("is_active", true)
+      .order("sort_order");
+    const found = (rows as import("@/core/catalog/catalog").Product[] | null) ?? [];
+    const clean = (str: string) =>
+      (str ?? "")
+        .toLowerCase()
+        .replace(/["'«»„“.,:;!?()[\]\-_/\\]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    const qClean = clean(action.productName);
+    if (qClean) {
+      // 1. Точное совпадение очищенных названий
+      product = found.find((p) => clean(p.name) === qClean) ?? null;
+      // 2. Вхождение подстроки в очищенных названиях
+      if (!product) {
+        product =
+          found.find((p) => clean(p.name).includes(qClean)) ??
+          found.find((p) => qClean.includes(clean(p.name))) ??
+          null;
+      }
+      // 3. Совпадение по токенам (словам и числам)
+      if (!product) {
+        const qTokens = qClean.split(" ").filter((t) => t.length > 2 || /\d/.test(t));
+        let bestScore = 0;
+        for (const p of found) {
+          const pTokens = clean(p.name)
+            .split(" ")
+            .filter((t) => t.length > 2 || /\d/.test(t));
+          const matches = qTokens.filter((t) => pTokens.includes(t));
+          if (matches.length > bestScore && matches.length >= Math.min(2, qTokens.length)) {
+            bestScore = matches.length;
+            product = p;
+          }
+        }
+      }
+    }
+  }
+  if (!product) return null;
+  const variants = sortedVariants(product);
+  let variantId: string | null = null;
+  if (variants.length > 0) {
+    if (action.variantId && variants.some((v) => v.id === action.variantId)) {
+      variantId = action.variantId;
+    } else if (action.variantName) {
+      const vNameNorm = action.variantName.toLowerCase().trim();
+      const numMatch = vNameNorm.match(/\b\d{1,3}\b/)?.[0];
+      const matched = variants.find((v) => {
+        const vn = v.name.toLowerCase().trim();
+        if (vn === vNameNorm || vn.includes(vNameNorm) || vNameNorm.includes(vn)) return true;
+        if (numMatch) {
+          const vNum = vn.match(/\b\d{1,3}\b/)?.[0];
+          if (vNum === numMatch) return true;
+        }
+        return false;
+      });
+      if (matched) variantId = matched.id;
+    }
+  }
+  return { product, variantId, needVariant: variants.length > 0 && !variantId };
+}
+
+/**
  * Оформление заказа, инициированное ИИ-консультантом прямо в чате (order_product):
  * подбирает товар (и вариант, если есть), кладёт в корзину и запускает чекаут (continueCheckout).
  * В WhatsApp с 1-тапом покупатель сразу получает кнопку оплаты (Kaspi / Robokassa).
@@ -777,7 +859,6 @@ async function executeConsultantOrder(
   bot: import("@/core/instagram/direct-bot-settings").DirectBotSettings,
   orderAction: import("@/core/consultant/engine.server").ConsultantOrderAction,
 ): Promise<void> {
-  const { getProduct, PRODUCT_SELECT, sortedVariants } = await import("@/core/catalog/catalog");
   const { addToCart, clearCart } = await import("@/core/cart/cart");
   const { localeOf } = await import("./shop/context.server");
   const { directCopy } = await import("./shop/copy");
@@ -801,110 +882,55 @@ async function executeConsultantOrder(
     why: "покупка через ИИ-консультанта",
   };
 
-  let product: import("@/core/catalog/catalog").Product | null = null;
-  if (orderAction.productId) {
-    product = await getProduct(ctx, orderAction.productId);
-  }
-  if (!product && orderAction.productName) {
-    const { data: rows } = await ctx.db
-      .from("products")
-      .select(PRODUCT_SELECT)
-      .eq("bot_id", ctx.tenant.id)
-      .eq("is_active", true)
-      .order("sort_order");
-    const found = (rows as import("@/core/catalog/catalog").Product[] | null) ?? [];
-
-    const clean = (str: string) =>
-      (str ?? "")
-        .toLowerCase()
-        .replace(/["'«»„“.,:;!?()[\]\-_/\\]/g, " ")
-        .replace(/\s+/g, " ")
-        .trim();
-    const qClean = clean(orderAction.productName);
-
-    if (qClean) {
-      // 1. Точное совпадение очищенных названий
-      product = found.find((p) => clean(p.name) === qClean) ?? null;
-      // 2. Вхождение подстроки в очищенных названиях
-      if (!product) {
-        product =
-          found.find((p) => clean(p.name).includes(qClean)) ??
-          found.find((p) => qClean.includes(clean(p.name))) ??
-          null;
-      }
-      // 3. Совпадение по токенам (словам и числам)
-      if (!product) {
-        const qTokens = qClean.split(" ").filter((t) => t.length > 2 || /\d/.test(t));
-        let bestScore = 0;
-        for (const p of found) {
-          const pTokens = clean(p.name).split(" ").filter((t) => t.length > 2 || /\d/.test(t));
-          const matches = qTokens.filter((t) => pTokens.includes(t));
-          if (matches.length > bestScore && matches.length >= Math.min(2, qTokens.length)) {
-            bestScore = matches.length;
-            product = p;
-          }
-        }
-      }
+  const actions = [orderAction, ...(orderAction.extra ?? [])];
+  const lines: Array<{ product: import("@/core/catalog/catalog").Product; variantId: string | null }> =
+    [];
+  for (const action of actions) {
+    const line = await resolveConsultantLine(ctx, action);
+    if (!line) {
+      console.warn(
+        `[consultant-order] товар не найден: ${action.productId || action.productName}`,
+      );
+      await showCatalog(s, null, 0, true);
+      return;
     }
-  }
-
-  if (!product) {
-    console.warn(
-      `[consultant-order] товар не найден: ${orderAction.productId || orderAction.productName}`,
-    );
-    await showCatalog(s, null, 0, true);
-    return;
-  }
-
-  const variants = sortedVariants(product);
-  let variantId: string | null = null;
-  if (variants.length > 0) {
-    if (orderAction.variantId && variants.some((v) => v.id === orderAction.variantId)) {
-      variantId = orderAction.variantId;
-    } else if (orderAction.variantName) {
-      const vNameNorm = orderAction.variantName.toLowerCase().trim();
-      const numMatch = vNameNorm.match(/\b\d{1,3}\b/)?.[0];
-      const matched = variants.find((v) => {
-        const vn = v.name.toLowerCase().trim();
-        if (vn === vNameNorm || vn.includes(vNameNorm) || vNameNorm.includes(vn)) return true;
-        if (numMatch) {
-          const vNum = vn.match(/\b\d{1,3}\b/)?.[0];
-          if (vNum === numMatch) return true;
-        }
-        return false;
-      });
-      if (matched) variantId = matched.id;
+    // Товар с вариантами, но вариант не указан — выдаём карточку с выбором вариантов
+    if (line.needVariant) {
+      await sendProductCard(s, line.product, true);
+      return;
     }
+    // Одна позиция дважды — одна строка корзины (количество в корзине не копим)
+    if (!lines.some((l) => l.product.id === line.product.id && l.variantId === line.variantId))
+      lines.push({ product: line.product, variantId: line.variantId });
   }
 
-  // Товар с вариантами, но вариант не указан — выдаём карточку с выбором вариантов
-  if (variants.length > 0 && !variantId) {
-    await sendProductCard(s, product, true);
-    return;
-  }
-
-  // Не создаём дубликат заказа, если у клиента уже есть неоплаченный заказ на этот же товар
+  // Не создаём дубликат заказа, если у клиента уже есть неоплаченный заказ на тот же состав
   if (s.customer.state.pending_order_id) {
     const { getOrder } = await import("@/core/orders/orders");
     const existing = await getOrder(s.ctx, s.customer.state.pending_order_id);
     if (existing && existing.status === "awaiting_payment") {
-      const match = existing.order_items?.some((item) => item.product_id === product!.id);
-      if (match) {
-        const { resumeExpressOrder } = await import("./shop/checkout.server");
-        await resumeExpressOrder(s, product.id);
-        return;
+      const have = new Set((existing.order_items ?? []).map((i) => i.product_id));
+      const want = new Set(lines.map((l) => l.product.id));
+      const same = have.size === want.size && [...want].every((id) => have.has(id));
+      if (same) {
+        const checkout = await import("./shop/checkout.server");
+        const resumed =
+          lines.length === 1
+            ? await checkout.resumeExpressOrder(s, lines[0]!.product.id)
+            : await checkout.resumePendingPayChoice(s);
+        if (resumed) return;
       }
     }
   }
 
-  let addRes = await addToCart(s.ctx, s.customer, product.id, variantId);
-  if (addRes === "mixed_cart") {
-    await clearCart(s.ctx, s.customer);
-    addRes = await addToCart(s.ctx, s.customer, product.id, variantId);
-  }
-  if (addRes !== "ok") {
-    await showCart(s, true);
-    return;
+  // Новая покупка — новая корзина: хвосты прошлых попыток не попадают в заказ
+  await clearCart(s.ctx, s.customer);
+  for (const l of lines) {
+    const addRes = await addToCart(s.ctx, s.customer, l.product.id, l.variantId);
+    if (addRes !== "ok") {
+      await showCart(s, true);
+      return;
+    }
   }
 
   await continueCheckout(s);

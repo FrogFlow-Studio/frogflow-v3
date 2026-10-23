@@ -239,6 +239,8 @@ export type ConsultantOrderAction = {
   variantId?: string;
   variantName?: string;
   quantity?: number;
+  /** Остальные позиции той же покупки («5, 6 и 7 классы» — одним заказом). */
+  extra?: ConsultantOrderAction[];
 };
 
 export type ConsultantResult = {
@@ -472,6 +474,21 @@ export const ORDER_PRODUCT_TOOL: Anthropic.Tool = {
       quantity: {
         type: "number",
         description: "Количество единиц товара (по умолчанию 1)",
+      },
+      items: {
+        type: "array",
+        description:
+          "Ещё позиции в ТОЙ ЖЕ покупке, если клиент берёт несколько (например, сборники за 5, 6 и 7 классы: первая позиция — в полях выше, остальные — здесь). Заказ будет один на все позиции.",
+        items: {
+          type: "object",
+          properties: {
+            product_id: { type: "string" },
+            product_name: { type: "string" },
+            variant_id: { type: "string" },
+            variant_name: { type: "string" },
+            quantity: { type: "number" },
+          },
+        },
       },
     },
   },
@@ -1287,12 +1304,32 @@ async function answerConsultant(
               typeof input.quantity === "number" && input.quantity > 0
                 ? Math.floor(input.quantity)
                 : 1;
+            const extra: ConsultantOrderAction[] = (
+              Array.isArray(input.items) ? input.items.slice(0, 10) : []
+            )
+              .map((raw) => {
+                const o = (raw ?? {}) as Record<string, unknown>;
+                const s = (k: string) =>
+                  typeof o[k] === "string" && (o[k] as string).trim()
+                    ? (o[k] as string)
+                    : undefined;
+                return {
+                  productId: s("product_id"),
+                  productName: s("product_name"),
+                  variantId: s("variant_id"),
+                  variantName: s("variant_name"),
+                  quantity:
+                    typeof o.quantity === "number" && o.quantity > 0 ? Math.floor(o.quantity) : 1,
+                };
+              })
+              .filter((a) => a.productId || a.productName);
             orderAction = {
               productId: pid,
               productName: pname,
               variantId: vid,
               variantName: vname,
               quantity: qty,
+              ...(extra.length ? { extra } : {}),
             };
             results.push({
               type: "tool_result",

@@ -234,6 +234,31 @@ describe("консультант: передача менеджеру", () => {
   });
 });
 
+describe("консультант: покупка нескольких позиций", () => {
+  it("order_product с items — одна покупка на все позиции, пустой текст не даёт «уточните»", async () => {
+    content = [
+      tool("order_product", {
+        product_name: "Формативное оценивание по русскому языку",
+        variant_name: "5 класс",
+        items: [
+          { product_name: "Формативное оценивание по русскому языку", variant_name: "6 класс" },
+          { product_name: "Формативное оценивание по русскому языку", variant_name: "7 класс" },
+          { quantity: 3 },
+        ],
+      }),
+    ];
+    const r = await runConsultant(ctxOf(), customer(), "5-6_7", {
+      platform: "whatsapp",
+      shopInChat: true,
+    });
+    expect(r?.handoff).toBeNull();
+    expect(r?.orderAction?.variantName).toBe("5 класс");
+    expect(r?.orderAction?.extra?.map((e) => e.variantName)).toEqual(["6 класс", "7 класс"]);
+    expect(r?.reply).not.toMatch(/Уточните/);
+    expect(r?.reply).toMatch(/Оформляю заказ/);
+  });
+});
+
 describe("консультант: сообщения для модели", () => {
   it("история — отдельные сообщения с ролями, а не одна строка", async () => {
     const c = customer({
