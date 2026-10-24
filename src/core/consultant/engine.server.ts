@@ -3,6 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { env, envPresence } from "@/config/env";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Customer } from "@/core/customers/customers";
+import type { Locale } from "@/core/i18n/locale";
 import { updateStateSection } from "@/core/customers/customers";
 import {
   BURST,
@@ -295,6 +296,23 @@ function orderLeadNotCreatedReply(locale: string): string {
   if (locale === "en")
     return "The order hasn't been placed and no request was sent to a manager. If you'd like to buy it, reply: “Yes, place the order.”";
   return "Заказ пока не оформлен и менеджеру не передан. Если хотите купить, напишите: «Да, оформляйте».";
+}
+
+const SHOP_ORDER_PROMISE =
+  /(?:(?<![\p{L}\p{N}])(?:оформля|созда|записыва)\p{L}*\s+(?:вам\s+)?(?:заказ\p{L}*|покупк\p{L}*)|(?<![\p{L}\p{N}])(?:заказ\p{L}*|покупк\p{L}*)\s+(?:уже\s+)?(?:оформлен\p{L}*|создан\p{L}*)|(?<![\p{L}\p{N}])(?:детал\p{L}*(?:\s+и\s+оплат\p{L}*)?|сч[её]т\p{L}*|ссылк\p{L}*)\s+(?:сейчас\s+)?(?:появ\p{L}*|отправ\p{L}*|пришл\p{L}*|сформир\p{L}*)|(?<![\p{L}\p{N}])оплат\p{L}*\s+(?:сейчас\s+)?(?:появ\p{L}*|сформир\p{L}*))/iu;
+
+/** Не отправляем покупателю неподтверждённое обещание заказа из shop-in-chat. */
+export function guardShopOrderReply(
+  reply: string,
+  locale: Locale,
+  result: { orderAction?: boolean; handoff?: Handoff | null },
+): string {
+  if (result.orderAction || !SHOP_ORDER_PROMISE.test(reply)) return reply;
+  return result.handoff
+    ? result.handoff.kind === "lead"
+      ? leadDoneReply(locale)
+      : dialogHandoffReply(locale)
+    : orderNotCreatedReply(locale);
 }
 
 export type ConsultantState = {
@@ -1540,6 +1558,8 @@ async function answerConsultant(
     ) {
       reply = orderLeadNotCreatedReply(bLocale);
     }
+    if (opts.shopInChat)
+      reply = guardShopOrderReply(reply, bLocale, { orderAction: Boolean(orderAction), handoff });
     // Цена или доставка не из каталога и условий — покупателю не уходит, вопрос менеджеру.
     const known0 = knownNumbers({
       prices: catalog.prices,

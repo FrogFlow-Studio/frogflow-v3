@@ -229,6 +229,17 @@ describe("консультант: передача менеджеру", () => {
     expect(confirmedOrderIntent("Да, давайте оформим", [])).toBe(true);
   });
 
+  it("не обещает заказ и оплату, если модель не вызвала order_product", async () => {
+    content = [text("Оформляю заказ — детали и оплата сейчас появятся в этом чате.")];
+    const r = await runConsultant(ctxOf(), customer(), "Здравствуйте. У вас есть папка?", {
+      platform: "whatsapp",
+      shopInChat: true,
+    });
+
+    expect(r?.orderAction).toBeFalsy();
+    expect(r?.reply).toBe("Пока заказ не оформлен. Что именно вы хотели узнать о товаре?");
+  });
+
   it("не создаёт orderAction, даже если модель нарушила запрет и вызвала инструмент без согласия", async () => {
     content = [
       tool("order_product", { product_name: "Папка МО классных руководителей" }),

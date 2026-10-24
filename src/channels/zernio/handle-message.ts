@@ -653,9 +653,20 @@ export async function handleZernioMessage(
     return processed(SKIPPED_NOTE[r.skipped]);
   }
 
+  const outboundReply = shopOn
+    ? consultant.guardShopOrderReply(
+        r.reply,
+        isLocale(customer.state.locale)
+          ? customer.state.locale
+          : isLocale(ctx.tenant.settings.default_locale)
+            ? ctx.tenant.settings.default_locale
+            : "ru",
+        { orderAction: Boolean(r.orderAction), handoff: r.handoff },
+      )
+    : r.reply;
   // Текст ответа консультанта — всегда первым, гарантированно текстом.
   // В Instagram Direct подпись к медиа не поддерживается Meta: текст и фото идут отдельными сообщениями.
-  const sent = await transport.send(m.conversationId, m.accountId, r.reply, {
+  const sent = await transport.send(m.conversationId, m.accountId, outboundReply, {
     platform: m.platform,
   });
   // Журнал ответов: цена ответа, кеш, инструменты — и что ответ не ушёл.
@@ -667,7 +678,7 @@ export async function handleZernioMessage(
     userKey: customer.userKey,
     source: isPollEvent(currentZernioEventId()) ? "poll" : "webhook",
     incomingText: text,
-    replyText: r.reply,
+    replyText: outboundReply,
     replyKind: r.handoff ? `handoff:${r.handoff.reason}` : "reply",
     model: r.model ?? null,
     usage: r.usage,
@@ -681,7 +692,7 @@ export async function handleZernioMessage(
     // и о ней продавец теперь знает) или короткое «ответ не ушёл»: без передачи
     // пауза не ставится, следующий вопрос бот примет как обычно.
     if (r.handoff) await notifyHandoff(ctx, customer, m, r.handoff, { replyNotSent: true });
-    else await notifyReplyNotSent(ctx, customer, m, text, r.reply);
+    else await notifyReplyNotSent(ctx, customer, m, text, outboundReply);
     return { status: "failed", note: sent.error };
   }
   // Фото и видео товара из фотобазы — следом за ответом, каждое отдельно.
@@ -701,7 +712,7 @@ export async function handleZernioMessage(
       telegramId: customer.telegramId,
       direction: "out",
       sender: "bot",
-      text: r.reply,
+      text: outboundReply,
       reason: makeReason({ source: "consultant", handoff: r.handoff ? true : undefined }),
     });
   }

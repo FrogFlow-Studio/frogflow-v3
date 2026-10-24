@@ -58,6 +58,7 @@ const pauseConsultant = vi.fn(async () => {});
 const runConsultant = vi.fn(async () => engine.result);
 vi.mock("@/core/consultant/engine.server", () => ({
   consultantEnabled: async () => true,
+  guardShopOrderReply: (reply: string) => reply,
   isPaused: () => engine.paused,
   pauseConsultant,
   runConsultant,
@@ -348,7 +349,9 @@ describe("фото и видео товара консультанта", () => {
     });
     const origRpc = db.rpc.bind(db);
     db.rpc = ((name: string, args: Record<string, unknown>) =>
-      name === "claim_order_placement" ? { data: true, error: null } : origRpc(name, args)) as never;
+      name === "claim_order_placement"
+        ? { data: true, error: null }
+        : origRpc(name, args)) as never;
 
     engine.result = {
       reply: "Отлично, оформляю «Лестницы»! Счёт на оплату формируется...",
@@ -465,9 +468,9 @@ describe("фото и видео товара консультанта", () => {
           if (c.products) continue;
           c.products = db.tables.products?.find((p) => p.id === c.product_id) ?? null;
           c.product_variants =
-            ((c.products as { product_variants?: Array<{ id: string }> })?.product_variants ?? []).find(
-              (v: { id: string }) => v.id === c.variant_id,
-            ) ?? null;
+            (
+              (c.products as { product_variants?: Array<{ id: string }> })?.product_variants ?? []
+            ).find((v: { id: string }) => v.id === c.variant_id) ?? null;
         }
         return cart;
       },
@@ -492,7 +495,9 @@ describe("фото и видео товара консультанта", () => {
     });
     const origRpc = db.rpc.bind(db);
     db.rpc = ((name: string, args: Record<string, unknown>) =>
-      name === "claim_order_placement" ? { data: true, error: null } : origRpc(name, args)) as never;
+      name === "claim_order_placement"
+        ? { data: true, error: null }
+        : origRpc(name, args)) as never;
 
     engine.result = {
       reply: "Отлично, оформляю «Лестницы» за 5 класс! Счёт на оплату формируется...",

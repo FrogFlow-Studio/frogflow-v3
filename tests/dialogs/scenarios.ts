@@ -5578,4 +5578,27 @@ export const SCENARIOS: Scenario[] = [
       },
     ],
   },
+  {
+    id: "consultant-no-false-order-wa-ru",
+    title: "вопрос о наличии в WhatsApp не превращается в ложное обещание оформить заказ",
+    origin:
+      "Копилка Русоведа, тест Якова 24.10: на «У вас есть папка классного руководителя?» бот ответил «Оформляю заказ — детали и оплата сейчас появятся»",
+    channel: "whatsapp",
+    locale: "ru",
+    full: true,
+    vertical: "consultant",
+    modules: { whatsapp: true, wa_shop: true },
+    consultant: "Оформляю заказ — детали и оплата сейчас появятся в этом чате.",
+    products: PRODUCTS,
+    steps: [
+      {
+        say: { text: "Здравствуйте. У вас есть папка классного руководителя?" },
+        expect: {
+          says: ["Пока заказ не оформлен"],
+          notSays: ["Оформляю заказ", "детали и оплата сейчас появятся"],
+          orderCount: 0,
+        },
+      },
+    ],
+  },
 ];
