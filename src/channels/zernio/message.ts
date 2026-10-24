@@ -253,6 +253,10 @@ export function parseZernioMessage(payload: ZernioWebhookMessagePayload): Parsed
   // Настоящее место нажатия — корень события; message.metadata — запасное чтение.
   const interactive = payload.metadata ?? message.metadata ?? {};
   const text = (message.text ?? "").trim();
+  const interactiveType = str(interactive.interactiveType).trim();
+  const interactiveId = str(interactive.interactiveId).trim();
+  if (interactiveId === "0" || str(interactive.postbackPayload).trim() === "0")
+    metadata.zernioOpaqueButtonTap = true;
   // Кнопка шаблона WhatsApp: свой payload — нажатие; равный тексту кнопки —
   // просто слова покупателя (так их увидят «Стоп»/«Отписаться» и слова-вызовы).
   // Без текста кнопки сравнить не с чем: нажатием считаем только наш вид
@@ -263,13 +267,14 @@ export function parseZernioMessage(payload: ZernioWebhookMessagePayload): Parsed
     (text ? templatePayload !== text : /^[A-Z][A-Z_]*(:.*)?$/.test(templatePayload))
       ? templatePayload
       : "";
-  const postbackPayload =
+  const rawPostbackPayload =
     str(interactive.postbackPayload) ||
-    (INTERACTIVE_TAP_TYPES.has(str(interactive.interactiveType))
-      ? str(interactive.interactiveId)
-      : "") ||
+    (INTERACTIVE_TAP_TYPES.has(interactiveType) ? interactiveId : "") ||
     templateTap ||
     null;
+  // В некоторых ответах Zernio присылает "0" вместо id действия; это не наш
+  // postback. Оставляем видимый текст кнопки, чтобы роутер разобрал его по шагу чата.
+  const postbackPayload = rawPostbackPayload === "0" ? null : rawPostbackPayload;
 
   const order = interactive.order;
   const nativeOrder: NativeOrder | null = order

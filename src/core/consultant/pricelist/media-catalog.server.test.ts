@@ -62,7 +62,7 @@ describe("каталог фото и видео консультанта", () =>
     vi.spyOn(settingsModule, "getSettings").mockResolvedValue({
       [TASKS_KEY]: JSON.stringify(tasks),
       [MEDIA_DEMANDS_KEY]: "{}",
-    } as any);
+    });
 
     const demands = await loadMediaDemandMap(ctx);
     expect(demands["Traumina Cube Silk"]?.count).toBe(1);
@@ -82,7 +82,7 @@ describe("каталог фото и видео консультанта", () =>
       [PRODUCT_MEDIA_KEY]: JSON.stringify([
         { id: "1", match: "Model With Media", path: "1.jpg", kind: "image", createdAt: "" },
       ]),
-    } as any);
+    });
 
     const count = await openMediaDemandsCount(ctx);
     expect(count).toBe(1); // Только "Model Without Media"
@@ -106,7 +106,7 @@ describe("каталог фото и видео консультанта", () =>
     vi.spyOn(settingsModule, "getSettings").mockResolvedValue({
       [TASKS_KEY]: JSON.stringify(tasks),
       [MEDIA_DEMANDS_KEY]: "{}",
-    } as any);
+    });
 
     const demands = await loadMediaDemandMap(ctx);
     expect(Object.keys(demands)).toHaveLength(0);
@@ -130,7 +130,7 @@ describe("каталог фото и видео консультанта", () =>
     vi.spyOn(settingsModule, "getSettings").mockResolvedValue({
       [TASKS_KEY]: JSON.stringify(tasks),
       [MEDIA_DEMANDS_KEY]: "{}",
-    } as any);
+    });
 
     const demands = await loadMediaDemandMap(ctx);
     expect(demands["BOVI КПБ CAETANO"]).toBeDefined();

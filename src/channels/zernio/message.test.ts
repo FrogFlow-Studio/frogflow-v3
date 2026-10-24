@@ -315,6 +315,17 @@ describe("parseZernioMessage — аккаунт и нажатия (опись v1
     expect(parsed.postbackPayload).toBe("BUY:42");
   });
 
+  it("служебный id 0 не перехватывает текст кнопки WhatsApp", () => {
+    const parsed = parseZernioMessage({
+      ...waListReply,
+      message: { ...waListReply.message, text: "Оплата картой" },
+      metadata: { interactiveType: "button_reply", interactiveId: "0" },
+    });
+    expect(parsed.text).toBe("Оплата картой");
+    expect(parsed.postbackPayload).toBeNull();
+    expect(parsed.metadata.zernioOpaqueButtonTap).toBe(true);
+  });
+
   it("запасное чтение из message.metadata работает, если форма вернётся", () => {
     const { metadata, ...withoutTopLevel } = waListReply;
     const parsed = parseZernioMessage({

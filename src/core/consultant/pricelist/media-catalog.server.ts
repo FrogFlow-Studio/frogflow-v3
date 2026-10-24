@@ -9,12 +9,8 @@ import {
   type ProductMedia,
   type ProductMediaKind,
 } from "./media";
-import {
-  loadProductMediaStrict,
-  productMediaUrl,
-  updateProductMedia,
-} from "./media.server";
-import { getSettings, getSettingsStrict, updateSettingStamped } from "@/core/settings/settings";
+import { loadProductMediaStrict, productMediaUrl, updateProductMedia } from "./media.server";
+import { getSettings, updateSettingStamped } from "@/core/settings/settings";
 import { isIssuedUploadKey } from "@/core/storage/upload";
 import { UserError } from "@/core/i18n/user-error";
 
@@ -92,15 +88,69 @@ export function parseMediaDemands(raw: unknown): Record<string, MediaDemandItem>
 }
 
 const MODEL_STOP_WORDS = new Set([
-  "bovi", "кпб", "кз", "цвет", "жаккард", "сатин", "хлопок", "подод",
-  "наволочки", "простыня", "простынь", "размер", "100%", "махровое",
-  "полотенце", "одеяло", "подушка", "халат", "коврик", "ванную", "в",
-  "и", "для", "наволочка", "пододеяльник", "комплект", "белье", "белья",
-  "белый", "белая", "серый", "серая", "зеленый", "зеленая", "синий", "синяя",
-  "розовый", "розовая", "бежевый", "бежевая", "голубой", "голубая", "черный",
-  "tc", "silk", "daune", "wk2", "wk2+", "de", "luxe", "вышивка", "линейка",
-  "линейки", "суть", "клиент", "покупатель", "просит", "фото", "видео", "базе",
-  "нет", "шт", "штук"
+  "bovi",
+  "кпб",
+  "кз",
+  "цвет",
+  "жаккард",
+  "сатин",
+  "хлопок",
+  "подод",
+  "наволочки",
+  "простыня",
+  "простынь",
+  "размер",
+  "100%",
+  "махровое",
+  "полотенце",
+  "одеяло",
+  "подушка",
+  "халат",
+  "коврик",
+  "ванную",
+  "в",
+  "и",
+  "для",
+  "наволочка",
+  "пододеяльник",
+  "комплект",
+  "белье",
+  "белья",
+  "белый",
+  "белая",
+  "серый",
+  "серая",
+  "зеленый",
+  "зеленая",
+  "синий",
+  "синяя",
+  "розовый",
+  "розовая",
+  "бежевый",
+  "бежевая",
+  "голубой",
+  "голубая",
+  "черный",
+  "tc",
+  "silk",
+  "daune",
+  "wk2",
+  "wk2+",
+  "de",
+  "luxe",
+  "вышивка",
+  "линейка",
+  "линейки",
+  "суть",
+  "клиент",
+  "покупатель",
+  "просит",
+  "фото",
+  "видео",
+  "базе",
+  "нет",
+  "шт",
+  "штук",
 ]);
 
 export function getModelCoreTokens(name: string): string[] {
@@ -126,14 +176,16 @@ export async function loadMediaDemandMap(
   if (catalogModels.size === 0 && settings[CATALOG_KEY]) {
     try {
       const rawPl = JSON.parse(settings[CATALOG_KEY]);
-      const list = Array.isArray(rawPl) ? rawPl : rawPl.products ?? [];
+      const list = Array.isArray(rawPl) ? rawPl : (rawPl.products ?? []);
       for (const p of list) {
         if (p && typeof p.name === "string") {
           const m = modelName(p.name);
           if (m) catalogModels.add(m);
         }
       }
-    } catch {}
+    } catch {
+      // Повреждённый legacy-каталог не блокирует загрузку остальных медиа-данных.
+    }
   }
 
   try {
@@ -458,7 +510,12 @@ export async function attachModelMedia(
 /** Быстрый подсчёт моделей, по которым покупатели просили фото, а медиа ещё нет (для бейджа в меню). */
 export async function openMediaDemandsCount(ctx: TenantContext): Promise<number> {
   try {
-    const settings = await getSettings(ctx, [MEDIA_DEMANDS_KEY, TASKS_KEY, PRODUCT_MEDIA_KEY, CATALOG_KEY]);
+    const settings = await getSettings(ctx, [
+      MEDIA_DEMANDS_KEY,
+      TASKS_KEY,
+      PRODUCT_MEDIA_KEY,
+      CATALOG_KEY,
+    ]);
     const media = parseProductMedia(settings[PRODUCT_MEDIA_KEY]);
     const demands = await loadMediaDemandMap(ctx);
 
@@ -468,7 +525,9 @@ export async function openMediaDemandsCount(ctx: TenantContext): Promise<number>
       const normModel = model.trim().toLowerCase();
       const hasMedia = media.some((m) => {
         const normMatch = m.match.trim().toLowerCase();
-        return normModel === normMatch || normModel.includes(normMatch) || normMatch.includes(normModel);
+        return (
+          normModel === normMatch || normModel.includes(normMatch) || normMatch.includes(normModel)
+        );
       });
       if (!hasMedia) unfulfilled++;
     }
@@ -478,4 +537,3 @@ export async function openMediaDemandsCount(ctx: TenantContext): Promise<number>
     return 0;
   }
 }
-

@@ -100,17 +100,18 @@ function MediaCatalogPage() {
 
   return (
     <>
-      <PageTitle
-        title={t("ws.mediaCatalog.title")}
-        subtitle={t("ws.mediaCatalog.subtitle")}
-      />
+      <PageTitle title={t("ws.mediaCatalog.title")} subtitle={t("ws.mediaCatalog.subtitle")} />
 
       {/* Top Stat Cards */}
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Stat
           label={t("ws.mediaCatalog.stat.total")}
           value={data.totalModels}
-          hint={data.totalProducts > 0 ? `${data.totalProducts} позиций в прайсе` : `${data.totalMediaFiles} файлов`}
+          hint={
+            data.totalProducts > 0
+              ? `${data.totalProducts} позиций в прайсе`
+              : `${data.totalMediaFiles} файлов`
+          }
         />
         <Stat
           label={t("ws.mediaCatalog.stat.withMedia")}
@@ -120,7 +121,11 @@ function MediaCatalogPage() {
         <Stat
           label={t("ws.mediaCatalog.stat.withoutMedia")}
           value={data.withoutMediaCount}
-          hint={data.demandedWithoutMediaCount > 0 ? `из них ${data.demandedWithoutMediaCount} ждут фото` : "требуют фото/видео"}
+          hint={
+            data.demandedWithoutMediaCount > 0
+              ? `из них ${data.demandedWithoutMediaCount} ждут фото`
+              : "требуют фото/видео"
+          }
         />
         <div
           className={`card p-4 transition-colors ${
@@ -291,7 +296,8 @@ function MediaCatalogPage() {
           {filteredModels.length > visibleCount && (
             <div className="flex flex-col items-center justify-center gap-2 py-4">
               <div className="text-xs text-muted">
-                Показано {Math.min(visibleCount, filteredModels.length)} из {filteredModels.length} моделей
+                Показано {Math.min(visibleCount, filteredModels.length)} из {filteredModels.length}{" "}
+                моделей
               </div>
               <div className="flex flex-wrap items-center justify-center gap-2">
                 <button
@@ -393,7 +399,7 @@ function ModelCard({
     const key = await uploadFile(
       "consultantMedia",
       file,
-      t as any,
+      t,
       (status) => `Ошибка загрузки (${status})`,
     );
 
@@ -616,7 +622,9 @@ function ModelCard({
         ) : (
           !showUpload && (
             <div className="flex items-center justify-between rounded-lg border border-dashed border-line p-3 text-xs text-muted">
-              <span>{t("ws.mediaCatalog.empty")} — у консультанта нет фото или видео для этого товара.</span>
+              <span>
+                {t("ws.mediaCatalog.empty")} — у консультанта нет фото или видео для этого товара.
+              </span>
               {canEdit && (
                 <button
                   type="button"
@@ -634,10 +642,7 @@ function ModelCard({
         {showUpload && canEdit && (
           <div className="mt-2 rounded-lg border border-accent/40 bg-accent/5 p-3 text-xs">
             <div className="grid gap-3 sm:grid-cols-2">
-              <Field
-                label="Файл (фото или видео)"
-                hint={t("ws.mediaCatalog.uploadHint")}
-              >
+              <Field label="Файл (фото или видео)" hint={t("ws.mediaCatalog.uploadHint")}>
                 <input
                   id={uploadInputId}
                   type="file"

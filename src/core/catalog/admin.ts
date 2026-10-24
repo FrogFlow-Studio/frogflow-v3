@@ -9,7 +9,6 @@ import { isAdminInputStorageKey, isTenantStorageKey } from "@/core/storage/keys"
 import { PRODUCT_SELECT, type Product } from "./catalog";
 import {
   MATERIAL_COLUMNS,
-  MATERIAL_LANGUAGES,
   materialCount,
   materialLanguages,
   materialsForProduct,
@@ -298,10 +297,9 @@ export async function listProductsForAdmin(
     .map((p) => p.id);
   const vmMap =
     pidsWithVariants.length > 0
-      ? await (await import("./variant-materials")).loadVariantMaterialsForProducts(
-          ctx,
-          pidsWithVariants,
-        )
+      ? await (
+          await import("./variant-materials")
+        ).loadVariantMaterialsForProducts(ctx, pidsWithVariants)
       : new Map<string, VariantMaterialsMap>();
 
   const rows = data.map((p) => {
@@ -340,7 +338,8 @@ export async function listProductsForAdmin(
       has_description: Boolean(p.description?.trim()),
       is_course: isCourseProduct(p),
       cover:
-        p.product_images?.slice().sort((a, b) => a.sort_order - b.sort_order)[0]?.image_path ?? null,
+        p.product_images?.slice().sort((a, b) => a.sort_order - b.sort_order)[0]?.image_path ??
+        null,
     };
   });
   return { rows, total, hasMore: offset + rows.length < total };

@@ -763,6 +763,20 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
         await reply(s, s.m.receiptHowTo, { force: true });
         return "handled";
       }
+      const opaquePaymentTapText = text
+        .trim()
+        .replace(/^[^\p{L}\p{N}]+/u, "")
+        .replace(/[.!?]+$/u, "");
+      if (
+        mode === "awaiting_payment" &&
+        s.customer.state.pending_order_id &&
+        msg.metadata.zernioOpaqueButtonTap === true &&
+        (isOpenPaymentAction(text) ||
+          /^(?:оплата\s+картой|оплатить\s+картой|pay\s+by\s+card)$/iu.test(opaquePaymentTapText))
+      ) {
+        // URL уже показан в предыдущем сообщении; не повторяем ссылку или подсказку.
+        return "handled";
+      }
       // «А ссылка где?» после кнопки оплаты: та же ссылка текстом, а не «пришлите
       // чек» (заказ #98 Копилки, 10.10). Ссылку Kaspi не повторяем: это новый счёт.
       const link = s.customer.state.pay_link;

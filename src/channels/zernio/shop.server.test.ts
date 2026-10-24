@@ -908,6 +908,24 @@ describe("строгий режим «Только по заказам» (Educat
     expect(result.outcome).toBe("handled");
     expect(sent).toHaveLength(1);
   });
+
+  it.each(["💳 Открыть оплату", "Оплата картой"])(
+    "opaque button tap «%s» не повторяет ссылку или подсказку над текущей оплатой",
+    async (text) => {
+      const { send, sent } = setup({
+        platform: "whatsapp",
+        state: {
+          locale: "ru",
+          mode: "awaiting_payment",
+          pending_order_id: 7,
+          pending_display_no: 268,
+        },
+      });
+      const result = await send({ text, metadata: { zernioOpaqueButtonTap: true } });
+      expect(result.outcome).toBe("handled");
+      expect(sent).toEqual([]);
+    },
+  );
 });
 
 describe("номер телефона в переписке — не коды товаров (Б2, скрин Якова 04.10)", () => {

@@ -54,7 +54,8 @@ vi.mock("@anthropic-ai/sdk", () => {
   };
 });
 
-const { runConsultant, isPaused, buildConsultantMessages, KEYS } = await import("./engine.server");
+const { runConsultant, isPaused, buildConsultantMessages, confirmedOrderIntent, KEYS } =
+  await import("./engine.server");
 const { getSetting } = await import("@/core/settings/settings");
 
 const BOT = "11111111-1111-1111-1111-111111111111";
@@ -207,6 +208,45 @@ describe("консультант: передача менеджеру", () => {
     expect(st.paused_until).toBeTruthy();
   });
 
+  it("явное намерение: наличие и оплата не согласие; «да» работает после вопроса об оформлении", () => {
+    expect(confirmedOrderIntent("Здравствуйте. У вас есть папка?", [])).toBe(false);
+    expect(confirmedOrderIntent("Оплата картой", [])).toBe(false);
+    expect(
+      confirmedOrderIntent("Да", [{ role: "assistant", text: "Какая папка вам нужна?" }]),
+    ).toBe(false);
+    expect(confirmedOrderIntent("Да", [{ role: "assistant", text: "Оформляем заказ?" }])).toBe(
+      true,
+    );
+    expect(confirmedOrderIntent("Да, давайте оформим", [])).toBe(true);
+  });
+
+  it("не создаёт orderAction, даже если модель нарушила запрет и вызвала инструмент без согласия", async () => {
+    content = [
+      tool("order_product", { product_name: "Папка МО классных руководителей" }),
+      text("Оформляю заказ — детали и оплата сейчас появятся в этом чате."),
+    ];
+    const c = customer({
+      consultant: {
+        recent: [
+          { role: "customer", text: "Мо для Казахстана" },
+          { role: "assistant", text: "Вам нужна папка для России или Казахстана?" },
+        ],
+      },
+    } as never);
+    const r = await runConsultant(
+      ctxOf(),
+      c,
+      "Здравствуйте. У вас есть папка классного руководителя?",
+      { platform: "whatsapp", shopInChat: true },
+    );
+
+    expect(r?.orderAction).toBeFalsy();
+    expect(args().tools).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ name: "order_product" })]),
+    );
+    expect(r?.reply).toBe("Пока заказ не оформлен. Что именно вы хотели узнать о товаре?");
+  });
+
   it("покупка в чате с магазином (shopInChat) — order_product возвращает orderAction без передачи менеджеру и без паузы", async () => {
     content = [
       tool("order_product", {
@@ -247,7 +287,7 @@ describe("консультант: покупка нескольких позиц
         ],
       }),
     ];
-    const r = await runConsultant(ctxOf(), customer(), "5-6_7", {
+    const r = await runConsultant(ctxOf(), customer(), "Беру 5, 6 и 7 классы", {
       platform: "whatsapp",
       shopInChat: true,
     });

@@ -197,6 +197,44 @@ export function callUsd(
 const PRICELIST_RESERVE_CALLS = 8;
 
 export type ConsultantTurn = { role: "customer" | "assistant"; text: string };
+
+const EXPLICIT_ORDER_INTENT =
+  /(?<![\p{L}\p{N}])(?:беру|бер(?:е|ё)м|покупаю|куплю|заказываю|закажите(?:\s+мне)?|хочу\s+(?:купить|заказать|оформить)|давайте\s+(?:купим|закажем|оформим)|оформля(?:ю|ем|йте|й)|оформите\s+заказ|подтверждаю\s+(?:заказ|покупку)|сатып\s+ал(?:амын|ғым\s+келеді)|тапсырыс\s+бер(?:емін|ейік)|рәсімде(?:йік|ңіз|ймін))(?=$|[^\p{L}\p{N}])/iu;
+const ORDER_WORDS =
+  /(?:оформ\w*|заказ\w*|закаж\w*|куп\w*|покуп\w*|бер[её]м\w*|бер[её]те|сатып\s+ал\w*|тапсырыс)/iu;
+const SHORT_AFFIRMATIVE =
+  /^(?:да|ага|угу|ок(?:ей)?|конечно|согласен|согласна|давайте|иә|ия|жарайды|мақұл|yes|yep|sure)[.!]?$/iu;
+
+/**
+ * Согласие на покупку берём только из текущей реплики либо из короткого
+ * утвердительного ответа на последний прямой вопрос об оформлении.
+ */
+export function confirmedOrderIntent(
+  text: string,
+  recent: readonly ConsultantTurn[] = [],
+): boolean {
+  const current = text.trim();
+  if (
+    !current ||
+    /^(?:нет|не|не надо|не хочу|передумал(?:а)?|отмена|отмените)[.!]?$/iu.test(current)
+  )
+    return false;
+  if (EXPLICIT_ORDER_INTENT.test(current)) return true;
+  if (!SHORT_AFFIRMATIVE.test(current)) return false;
+  const last = recent.at(-1);
+  return Boolean(
+    last?.role === "assistant" && last.text.includes("?") && ORDER_WORDS.test(last.text),
+  );
+}
+
+function orderNotCreatedReply(locale: string): string {
+  if (locale === "kk")
+    return "Тапсырыс әзірге рәсімделмеді. Тауар туралы нақты нені білгіңіз келеді?";
+  if (locale === "en")
+    return "I haven't placed an order. What would you like to know about the product?";
+  return "Пока заказ не оформлен. Что именно вы хотели узнать о товаре?";
+}
+
 export type ConsultantState = {
   recent?: ConsultantTurn[];
   paused_until?: string;
@@ -1174,9 +1212,12 @@ async function answerConsultant(
       toolsUsed.push(...out.tools);
       return await finish(out);
     }
+    const orderProductAllowed = Boolean(
+      opts.shopInChat && confirmedOrderIntent(incoming, state.recent ?? []),
+    );
     const tools = [
       ...(loaded ? [...CATALOG_TOOLS, REMEMBER_TOOL] : []),
-      ...(opts.shopInChat ? [ORDER_PRODUCT_TOOL] : []),
+      ...(orderProductAllowed ? [ORDER_PRODUCT_TOOL] : []),
       ...TOOLS,
     ];
     let contactAsked = Boolean(state.contact_asked);
@@ -1225,6 +1266,7 @@ async function answerConsultant(
     let reply = "";
     let handoff: Handoff | null = null;
     let orderAction: ConsultantOrderAction | null = null;
+    let orderToolRejected = false;
     let response: Anthropic.Message | null = null;
     for (let round = 0; round < MAX_ROUNDS; round++) {
       const last = round === MAX_ROUNDS - 1;
@@ -1298,6 +1340,16 @@ async function answerConsultant(
               .filter(Boolean)
               .join("\n");
           if (block.name === "order_product") {
+            if (!orderProductAllowed) {
+              orderToolRejected = true;
+              results.push({
+                type: "tool_result",
+                tool_use_id: block.id,
+                content:
+                  "Заказ НЕ оформлен: текущая реплика не подтверждает покупку. Не вызывайте order_product повторно, не обещайте оплату; ответьте по существу на вопрос клиента.",
+              });
+              continue;
+            }
             const pid = str("product_id");
             const pname = str("product_name");
             const vid = str("variant_id");
@@ -1398,6 +1450,15 @@ async function answerConsultant(
       };
     }
     reply = cleanReply(reply);
+    // Модель могла сообщить об оформлении в том же ответе, что и отклонённый tool call.
+    if (
+      orderToolRejected &&
+      /(?:оформля\w*\s+заказ|заказ.{0,40}(?:оформлен|создан)|(?:детали|оплат\w*|сч[её]т).{0,80}(?:появ|отправ|приш|сформир)|ссылк\w*.{0,60}(?:появ|отправ|приш))/iu.test(
+        reply,
+      )
+    ) {
+      reply = orderNotCreatedReply(bLocale);
+    }
     // Цена или доставка не из каталога и условий — покупателю не уходит, вопрос менеджеру.
     const known0 = knownNumbers({
       prices: catalog.prices,
