@@ -204,6 +204,35 @@ const ORDER_WORDS =
   /(?:оформ\w*|заказ\w*|закаж\w*|куп\w*|покуп\w*|бер[её]м\w*|бер[её]те|сатып\s+ал\w*|тапсырыс)/iu;
 const SHORT_AFFIRMATIVE =
   /^(?:да|ага|угу|ок(?:ей)?|конечно|согласен|согласна|давайте|иә|ия|жарайды|мақұл|yes|yep|sure)[.!]?$/iu;
+const SELECTION_QUESTION =
+  /(?:какой|какая|какое|какие|какую)[\s\S]{0,120}(?:нуж\p{L}*|выбира\p{L}*|выбер\p{L}*|актуаль\p{L}*|оформ\p{L}*|бер[её]\p{L}*)/iu;
+const CONTEXTUAL_SELECTION_PREFIX =
+  /^(?:а\s*)?(?:можно\s+(?:мне|нам)|мне\s+(?:нужен|нужна|нужно|нужны))\s+/iu;
+const NON_PRODUCT_REQUEST =
+  /подробн\p{L}*|описан\p{L}*|информац\p{L}*|состав\p{L}*|фото|пример\p{L}*|список|узна\p{L}*|посмотр\p{L}*|показ\p{L}*|рассказ\p{L}*|доставк\p{L}*|оплат\p{L}*|ссылк\p{L}*|чек|адрес\p{L}*|телефон\p{L}*|стоимост\p{L}*|цен\p{L}*|сравн\p{L}*|объясн\p{L}*|поясн\p{L}*/iu;
+const GENERIC_SELECTION_WORDS = new Set([
+  "а",
+  "для",
+  "из",
+  "на",
+  "в",
+  "и",
+  "или",
+  "мне",
+  "нам",
+  "папка",
+  "папки",
+  "папку",
+  "папке",
+  "товар",
+  "товара",
+  "вариант",
+  "варианта",
+  "нужен",
+  "нужна",
+  "нужно",
+  "нужны",
+]);
 
 /**
  * Согласие на покупку берём только из текущей реплики либо из короткого
@@ -220,8 +249,33 @@ export function confirmedOrderIntent(
   )
     return false;
   if (EXPLICIT_ORDER_INTENT.test(current)) return true;
-  if (!SHORT_AFFIRMATIVE.test(current)) return false;
   const last = recent.at(-1);
+  const prefix = CONTEXTUAL_SELECTION_PREFIX.exec(current)?.[0];
+  if (
+    last?.role === "assistant" &&
+    SELECTION_QUESTION.test(last.text) &&
+    prefix &&
+    !NON_PRODUCT_REQUEST.test(current)
+  ) {
+    const words = (value: string) =>
+      (
+        value
+          .toLowerCase()
+          .replace(/ё/g, "е")
+          .match(/[\p{L}\p{N}]+/gu) ?? []
+      ).filter((word) => !GENERIC_SELECTION_WORDS.has(word));
+    const requested = words(current.slice(prefix.length));
+    const offered = words(last.text);
+    const matchesOffered = (word: string) =>
+      offered.some(
+        (known) =>
+          word === known ||
+          (word.length >= 4 && known.startsWith(word.slice(0, 4))) ||
+          (known.length >= 4 && word.startsWith(known.slice(0, 4))),
+      );
+    if (requested.length > 0 && requested.some(matchesOffered)) return true;
+  }
+  if (!SHORT_AFFIRMATIVE.test(current)) return false;
   return Boolean(
     last?.role === "assistant" && last.text.includes("?") && ORDER_WORDS.test(last.text),
   );
@@ -233,6 +287,14 @@ function orderNotCreatedReply(locale: string): string {
   if (locale === "en")
     return "I haven't placed an order. What would you like to know about the product?";
   return "Пока заказ не оформлен. Что именно вы хотели узнать о товаре?";
+}
+
+function orderLeadNotCreatedReply(locale: string): string {
+  if (locale === "kk")
+    return "Тапсырыс әлі рәсімделмеді, менеджерге өтініш жіберілген жоқ. Сатып алғыңыз келсе, «Иә, рәсімдеңіз» деп жазыңыз.";
+  if (locale === "en")
+    return "The order hasn't been placed and no request was sent to a manager. If you'd like to buy it, reply: “Yes, place the order.”";
+  return "Заказ пока не оформлен и менеджеру не передан. Если хотите купить, напишите: «Да, оформляйте».";
 }
 
 export type ConsultantState = {
@@ -1218,7 +1280,7 @@ async function answerConsultant(
     const tools = [
       ...(loaded ? [...CATALOG_TOOLS, REMEMBER_TOOL] : []),
       ...(orderProductAllowed ? [ORDER_PRODUCT_TOOL] : []),
-      ...TOOLS,
+      ...TOOLS.filter((tool) => !(opts.shopInChat && tool.name === "record_order_lead")),
     ];
     let contactAsked = Boolean(state.contact_asked);
     const phoneNow = phoneIn(incoming);
@@ -1267,6 +1329,7 @@ async function answerConsultant(
     let handoff: Handoff | null = null;
     let orderAction: ConsultantOrderAction | null = null;
     let orderToolRejected = false;
+    let orderLeadRejected = false;
     let response: Anthropic.Message | null = null;
     for (let round = 0; round < MAX_ROUNDS; round++) {
       const last = round === MAX_ROUNDS - 1;
@@ -1311,6 +1374,16 @@ async function answerConsultant(
           }
           const str = (k: string) =>
             typeof input[k] === "string" && input[k].trim() ? (input[k] as string) : undefined;
+          if (opts.shopInChat && block.name === "record_order_lead") {
+            orderLeadRejected = true;
+            results.push({
+              type: "tool_result",
+              tool_use_id: block.id,
+              content:
+                "В магазине в чате не создавайте заявку менеджеру. Если покупатель выбрал товар и подтвердил покупку — используйте order_product; иначе ответьте на вопрос или уточните выбор.",
+            });
+            continue;
+          }
           // Покупку без телефона менеджеру не отдаём: сначала контакт и способ получения (v1).
           if (
             loaded &&
@@ -1458,6 +1531,14 @@ async function answerConsultant(
       )
     ) {
       reply = orderNotCreatedReply(bLocale);
+    }
+    if (
+      orderLeadRejected &&
+      /(?:передал[аио]?\s+менеджер|менеджер\w*.{0,40}свяж|заявк\w*.{0,40}(?:создал|запис|передал)|записал.{0,40}передал)/iu.test(
+        reply,
+      )
+    ) {
+      reply = orderLeadNotCreatedReply(bLocale);
     }
     // Цена или доставка не из каталога и условий — покупателю не уходит, вопрос менеджеру.
     const known0 = knownNumbers({

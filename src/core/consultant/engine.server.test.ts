@@ -211,6 +211,15 @@ describe("консультант: передача менеджеру", () => {
   it("явное намерение: наличие и оплата не согласие; «да» работает после вопроса об оформлении", () => {
     expect(confirmedOrderIntent("Здравствуйте. У вас есть папка?", [])).toBe(false);
     expect(confirmedOrderIntent("Оплата картой", [])).toBe(false);
+    const selectionContext = [
+      {
+        role: "assistant" as const,
+        text: "Также есть отдельная Папка МО классных руководителей для Казахстана. Какая вам сейчас нужна?",
+      },
+    ];
+    expect(confirmedOrderIntent("Можно мне МО для Казахстана", selectionContext)).toBe(true);
+    expect(confirmedOrderIntent("Можно мне подробнее о МО", selectionContext)).toBe(false);
+    expect(confirmedOrderIntent("Можно мне МО для Казахстана", [])).toBe(false);
     expect(
       confirmedOrderIntent("Да", [{ role: "assistant", text: "Какая папка вам нужна?" }]),
     ).toBe(false);
@@ -245,6 +254,70 @@ describe("консультант: передача менеджеру", () => {
       expect.arrayContaining([expect.objectContaining({ name: "order_product" })]),
     );
     expect(r?.reply).toBe("Пока заказ не оформлен. Что именно вы хотели узнать о товаре?");
+  });
+
+  it("в shopInChat модель не может превратить выбор товара в заявку менеджеру", async () => {
+    content = [
+      tool("record_order_lead", {
+        lead_type: "order",
+        details: "Папка МО классных руководителей для Казахстана — 2500 KZT",
+      }),
+      text("Спасибо, всё записал и передал менеджеру — он свяжется с вами для подтверждения."),
+    ];
+    const c = customer({
+      consultant: {
+        recent: [
+          {
+            role: "assistant",
+            text: "Папка МО классных руководителей для Казахстана — 2500 KZT. Какая вам сейчас нужна?",
+          },
+        ],
+      },
+    } as never);
+    const r = await runConsultant(ctxOf(), c, "Можно мне МО для Казахстана", {
+      platform: "whatsapp",
+      shopInChat: true,
+    });
+
+    expect(args().tools).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ name: "record_order_lead" })]),
+    );
+    expect(args().tools).toEqual(
+      expect.arrayContaining([expect.objectContaining({ name: "order_product" })]),
+    );
+    expect(r?.handoff).toBeNull();
+    expect(r?.orderAction).toBeFalsy();
+    expect(r?.reply).toBe(
+      "Заказ пока не оформлен и менеджеру не передан. Если хотите купить, напишите: «Да, оформляйте».",
+    );
+  });
+
+  it("контекстный выбор конкретного товара разрешает order_product без handoff", async () => {
+    content = [
+      tool("order_product", {
+        product_name: "Папка МО классных руководителей для Казахстана",
+        quantity: 1,
+      }),
+      text("Оформляю заказ — детали и оплата появятся в этом чате."),
+    ];
+    const c = customer({
+      consultant: {
+        recent: [
+          {
+            role: "assistant",
+            text: "Папка МО классных руководителей для Казахстана — 2500 KZT. Какая вам сейчас нужна?",
+          },
+        ],
+      },
+    } as never);
+    const r = await runConsultant(ctxOf(), c, "Можно мне МО для Казахстана", {
+      platform: "whatsapp",
+      shopInChat: true,
+    });
+
+    expect(r?.handoff).toBeNull();
+    expect(r?.orderAction?.productName).toBe("Папка МО классных руководителей для Казахстана");
+    expect(r?.reply).toContain("Оформляю заказ");
   });
 
   it("покупка в чате с магазином (shopInChat) — order_product возвращает orderAction без передачи менеджеру и без паузы", async () => {
