@@ -911,6 +911,70 @@ describe("строгий режим «Только по заказам» (Educat
     expect(sent).toEqual([]);
   });
 
+  it.each(["Оплатить в Kaspi", "💳 Открыть оплату"])(
+    "idle payment CTA «%s» без активного заказа не уходит консультанту и не создаёт заказ",
+    async (text) => {
+      const { send, sent, db } = setup({
+        platform: "whatsapp",
+        state: { locale: "ru", mode: "idle" },
+      });
+
+      const result = await send({ text });
+
+      expect(result.outcome).toBe("handled");
+      expect(sent).toHaveLength(1);
+      expect(sent[0]!.text).toMatch(/не вижу открытого заказа/iu);
+      expect(db.tables.orders).toHaveLength(0);
+    },
+  );
+
+  it("idle payment CTA восстанавливает свежий неоплаченный заказ вместо нового чекаута", async () => {
+    const { send, sent, db } = setup({
+      platform: "whatsapp",
+      state: { locale: "ru", mode: "idle" },
+    });
+    db.tables.orders = [
+      {
+        id: 7,
+        bot_id: BOT,
+        order_no: 7,
+        display_no: 268,
+        telegram_id: -1,
+        status: "awaiting_payment",
+        fulfillment_kind: "digital",
+        country_code: "KZ",
+        total: 1000,
+        currency: "KZT",
+        created_at: new Date().toISOString(),
+        payment_proof_path: null,
+        payment_proof_hash: null,
+        order_items: [{ product_id: "p1", name_snapshot: "Папка МО", quantity: 1 }],
+      },
+    ];
+    db.tables.payment_methods = [
+      {
+        id: "pay-kz",
+        bot_id: BOT,
+        country_code: "KZ",
+        is_active: true,
+        sort_order: 0,
+        instructions: "Перевод Kaspi на номер продавца",
+      },
+    ];
+
+    const result = await send({ text: "💳 Открыть оплату" });
+
+    expect(result.outcome).toBe("handled");
+    expect(sent).toHaveLength(1);
+    expect(sent[0]!.text).toContain("Папка МО");
+    expect(sent[0]!.text).toContain("1000 ₸");
+    expect(db.tables.orders).toHaveLength(1);
+    expect(db.tables.bot_users![0]!.state as Record<string, unknown>).toMatchObject({
+      mode: "choose_pay",
+      pending_order_id: 7,
+    });
+  });
+
   it("ожидаем чек: нажатие «Оплатить в Kaspi» не возвращает ИИ к выбору товара", async () => {
     const { send, sent } = setup({
       platform: "whatsapp",

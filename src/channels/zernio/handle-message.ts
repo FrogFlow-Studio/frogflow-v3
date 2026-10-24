@@ -661,7 +661,16 @@ export async function handleZernioMessage(
           : isLocale(ctx.tenant.settings.default_locale)
             ? ctx.tenant.settings.default_locale
             : "ru",
-        { orderAction: Boolean(r.orderAction), handoff: r.handoff },
+        {
+          orderAction: Boolean(r.orderAction),
+          handoff: r.handoff,
+          hasActivePaymentOrder: Boolean(
+            customer.state.pending_order_id &&
+            ["choose_pay", "awaiting_payment", "awaiting_proof"].includes(
+              customer.state.mode ?? "",
+            ),
+          ),
+        },
       )
     : r.reply;
   // Текст ответа консультанта — всегда первым, гарантированно текстом.

@@ -280,6 +280,38 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
   // оплаты, а не шаг оплаты (Копилка 12.10, _marina_lyalina_ #149).
   if (await dropPaidStep(s)) mode = s.customer.state.mode;
 
+  // Старая кнопка оплаты не должна выглядеть как новый вопрос консультанту.
+  // Если state сбросился, восстанавливаем только существующий неоплаченный
+  // заказ; без него не создаём заказ и не просим прислать чек.
+  if (
+    text &&
+    (!mode || mode === "idle") &&
+    (KASPI_PAYMENT_INTENT.test(text) || isOpenPaymentAction(text))
+  ) {
+    const stateOrderId = Number(s.customer.state.pending_order_id);
+    const recentOrderId = await recentAwaitingPaymentOrder(s.ctx, s.customer);
+    const orderIds = [...new Set([stateOrderId, recentOrderId])].filter(
+      (id): id is number => typeof id === "number" && Number.isSafeInteger(id) && id > 0,
+    );
+    let activeOrder: OrderWithItems | null = null;
+    for (const id of orderIds) {
+      const candidate = await getOrder(s.ctx, id);
+      if (
+        candidate?.telegram_id === s.customer.telegramId &&
+        candidate.status === "awaiting_payment"
+      ) {
+        activeOrder = candidate;
+        break;
+      }
+    }
+    if (activeOrder) {
+      await setMode(s, { mode: "choose_pay", pending_order_id: activeOrder.id });
+      if (await resumePendingPayChoice(s)) return "handled";
+    }
+    await reply(s, s.m.paymentNoActiveOrder, { force: true });
+    return "handled";
+  }
+
   // Вложение без ссылки (Zernio сменил форму события): если ждём чек — просим
   // прислать ещё раз, а не отвечаем как на вопрос и не теряем его молча.
   if (msg.mediaWithoutUrl && msg.attachments.length === 0 && !text) {

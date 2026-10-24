@@ -205,6 +205,8 @@ export type Msg = {
   /** Непонятная реплика, пока способ оплаты не выбран: не «пришлите чек». */
   choosePayHint: string;
   payLinkAboveHint: string;
+  /** Устаревшая кнопка оплаты без активного заказа: не отправляем CTA в обычный вопрос ИИ. */
+  paymentNoActiveOrder: string;
   /** Instagram/WhatsApp: просьба прислать чек — без «нажмите кнопку ниже», под ней кнопок нет (заказ #93 Копилки). */
   dmReceiptPrompt: string;
   payLinkAsText: (url: string) => string;
@@ -454,6 +456,8 @@ const ru: Msg = {
     "Выберите способ оплаты кнопкой в сообщении выше. Если есть вопрос — напишите, продавец ответит здесь.",
   payLinkAboveHint:
     "Если уже оплатили — заказ подтвердится сам в течение минуты, материалы придут сюда. Если ещё нет — оплатите по кнопке в сообщении выше.",
+  paymentNoActiveOrder:
+    "Не вижу открытого заказа, к которому относится эта кнопка оплаты. Если вы уже оплатили — дождитесь подтверждения; если хотите оформить заказ, напишите, какой товар выбрать.",
   dmReceiptPrompt: "Пришлите, пожалуйста, сюда фото или скриншот чека об оплате (можно PDF).",
   payLinkAsText: (url) => `🔗 Ссылка на оплату — откройте её и оплатите:\n${url}`,
   payKaspiBtn: "🧾 Перевод Kaspi",
@@ -465,8 +469,7 @@ const ru: Msg = {
   payByCardBtn: "💳 Картой РФ",
   cardOnlineLine:
     "💳 «Оплата картой» — Казахстан, зарубежные карты и СНГ (Кыргызстан, Узбекистан, Беларусь и др.).",
-  kaspiTransferLine:
-    "🧾 «Перевод Kaspi» — только для Казахстана (приложение Kaspi.kz).",
+  kaspiTransferLine: "🧾 «Перевод Kaspi» — только для Казахстана (приложение Kaspi.kz).",
   cardAnyCountryLine:
     "💳 «Картой РФ» — только карты российских банков: сумма в тенге спишется в рублях по курсу банка. Карту Казахстана или другой страны форма не примет — выберите другой способ оплаты.",
   prodamusCardHint:
@@ -910,6 +913,8 @@ const kk: Msg = {
     "Жоғарыдағы хабарламадағы батырма арқылы төлем тәсілін таңдаңыз. Сұрағыңыз болса — жазыңыз, сатушы осында жауап береді.",
   payLinkAboveHint:
     "Төлеп қойсаңыз — тапсырыс бір минут ішінде өзі расталады, материалдар осында келеді. Әлі төлемесеңіз — жоғарыдағы хабарламадағы батырма арқылы төлеңіз.",
+  paymentNoActiveOrder:
+    "Бұл төлем батырмасына байланыстырылған ашық тапсырыс көрінбейді. Төлеп қойған болсаңыз — растауды күтіңіз; тапсырыс бергіңіз келсе, қай тауар керек екенін жазыңыз.",
   dmReceiptPrompt: "Төлем чегінің фотосын немесе скриншотын осында жіберіңізші (PDF те болады).",
   payLinkAsText: (url) => `🔗 Төлем сілтемесі — ашып, төлеңіз:\n${url}`,
   payKaspiBtn: "🧾 Kaspi аударым",
@@ -922,8 +927,7 @@ const kk: Msg = {
   payViaRobokassaBtn: "💳 Картамен төлеу",
   cardOnlineLine:
     "💳 «Картамен төлеу» — Қазақстан, шетелдік және ТМД карталары (Қырғызстан, Өзбекстан және т.б.).",
-  kaspiTransferLine:
-    "🧾 «Kaspi аударым» — тек Қазақстан үшін (Kaspi.kz қосымшасы).",
+  kaspiTransferLine: "🧾 «Kaspi аударым» — тек Қазақстан үшін (Kaspi.kz қосымшасы).",
   cardAnyCountryLine:
     "💳 «РФ картасымен» — тек Ресей банктерінің карталары: теңгедегі сома банк бағамы бойынша рубльмен шешіледі. Қазақстан немесе басқа ел картасын форма қабылдамайды — басқа төлем тәсілін таңдаңыз.",
   prodamusCardHint:
@@ -1253,6 +1257,8 @@ const en: Msg = {
     "Pick a payment method with a button in the message above. If you have a question, write it here and the seller will reply.",
   payLinkAboveHint:
     "If you have already paid, the order will be confirmed automatically within a minute and the materials will arrive here. If not yet, pay with the button in the message above.",
+  paymentNoActiveOrder:
+    "I can't find an open order linked to this payment button. If you've already paid, please wait for confirmation; if you'd like to place an order, tell me which item you want.",
   dmReceiptPrompt:
     "Please send a photo or screenshot of your payment receipt here (a PDF works too).",
   payLinkAsText: (url) => `🔗 Payment link — open it and pay:\n${url}`,
@@ -1266,8 +1272,7 @@ const en: Msg = {
   payViaRobokassaBtn: "💳 Pay by card",
   cardOnlineLine:
     "💳 “Pay by card” — Kazakhstan, international and CIS cards (Kyrgyzstan, Uzbekistan, etc.).",
-  kaspiTransferLine:
-    "🧾 “Kaspi transfer” — Kazakhstan only (Kaspi.kz app).",
+  kaspiTransferLine: "🧾 “Kaspi transfer” — Kazakhstan only (Kaspi.kz app).",
   cardAnyCountryLine:
     "💳 «Russian card» accepts Russian bank cards only: the tenge amount is charged in rubles at your bank's rate. Cards from Kazakhstan or other countries won't work there — please choose another payment method.",
   prodamusCardHint:
@@ -1624,6 +1629,8 @@ const uz: Msg = {
     "Yuqoridagi xabardagi tugma orqali to‘lov usulini tanlang. Savolingiz bo‘lsa, yozing, sotuvchi shu yerda javob beradi.",
   payLinkAboveHint:
     "Agar to‘lagan bo‘lsangiz — buyurtma bir daqiqa ichida avtomatik tasdiqlanadi, materiallar shu yerga keladi. Hali to‘lamagan bo‘lsangiz — yuqoridagi xabardagi tugma orqali to‘lang.",
+  paymentNoActiveOrder:
+    "Bu to‘lov tugmasiga bog‘langan ochiq buyurtmani topmadim. To‘lab bo‘lgan bo‘lsangiz — tasdiqni kuting; buyurtma bermoqchi bo‘lsangiz, qaysi mahsulot kerakligini yozing.",
   dmReceiptPrompt:
     "Iltimos, to‘lov chekining rasmi yoki skrinshotini shu yerga yuboring (PDF ham bo‘ladi).",
   payLinkAsText: (url) => `🔗 To‘lov havolasi — oching va to‘lang:\n${url}`,
@@ -1640,8 +1647,7 @@ const uz: Msg = {
   payViaRobokassaBtn: "💳 Kartadan to‘lov",
   cardOnlineLine:
     "💳 «Kartadan to‘lov» — Qozog‘iston, xorijiy va MDH kartalari (Qirg‘iziston, O‘zbekiston va boshqalar).",
-  kaspiTransferLine:
-    "🧾 «Kaspi o‘tkazma» — faqat Qozog‘iston uchun (Kaspi.kz ilovasi).",
+  kaspiTransferLine: "🧾 «Kaspi o‘tkazma» — faqat Qozog‘iston uchun (Kaspi.kz ilovasi).",
   cardAnyCountryLine:
     "💳 «RF kartasi» — faqat Rossiya banklari kartalari: tengedagi summa bank kursi bo‘yicha rublda yechiladi. Qozog‘iston yoki boshqa davlat kartasini forma qabul qilmaydi — boshqa to‘lov usulini tanlang.",
   prodamusCardHint:

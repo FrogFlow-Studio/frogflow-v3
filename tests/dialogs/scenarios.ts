@@ -5613,6 +5613,32 @@ export const SCENARIOS: Scenario[] = [
     ],
   },
   {
+    id: "consultant-honesty-no-order-wa-ru",
+    title:
+      "без активного заказа продавец не обещает материалы после чека и не просит оплатить заранее",
+    origin:
+      "Копилка Русоведа 24.10: на «А это точно честно?» бот обещал материалы после чека и личный контроль при mode=idle без созданного заказа",
+    channel: "whatsapp",
+    locale: "ru",
+    full: true,
+    vertical: "consultant",
+    modules: { whatsapp: true, wa_shop: true },
+    consultant:
+      "Да, честно. Мы сразу высылаем материалы после чека. Можете сначала оплатить, а чек прислать сюда — я прослежу.",
+    products: PRODUCTS,
+    steps: [
+      {
+        say: { text: "А это точно честно?" },
+        expect: {
+          says: ["деньги или чек"],
+          notSays: ["высылаем материалы после чека", "я прослежу", "можете сначала оплатить"],
+          orderCount: 0,
+          tasks: [],
+        },
+      },
+    ],
+  },
+  {
     id: "consultant-no-false-order-wa-ru",
     title: "вопрос о наличии в WhatsApp не превращается в ложное обещание оформить заказ",
     origin:

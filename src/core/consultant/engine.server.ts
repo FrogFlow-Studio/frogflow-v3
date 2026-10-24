@@ -298,21 +298,51 @@ function orderLeadNotCreatedReply(locale: string): string {
   return "Заказ пока не оформлен и менеджеру не передан. Оформить его прямо здесь, в чате?";
 }
 
+function paymentNotCreatedReply(locale: string): string {
+  if (locale === "kk")
+    return "Бұл чат күйінде төлемге байланыстырылған тапсырыс көрінбейді. Әзірге ақша жібермеңіз және чек жолдамаңыз; алдымен тауарды нақтылап, тапсырысты рәсімдейік.";
+  if (locale === "en")
+    return "I can't see an order linked to this payment in the chat state. Please don't pay or send a receipt yet; let's confirm the item and place the order first.";
+  if (locale === "uz")
+    return "Bu suhbat holatida to‘lovga bog‘langan buyurtmani ko‘rmayapman. Hozircha pul yubormang va chek jo‘natmang; avval mahsulotni aniqlab, buyurtmani rasmiylashtiraylik.";
+  return "Я не вижу в состоянии чата заказа, привязанного к оплате. Не отправляйте деньги или чек; сначала уточним товар и оформим заказ.";
+}
+
+function paymentOrderPendingReply(locale: string): string {
+  if (locale === "kk")
+    return "Алдымен тапсырыстың рәсімделгені, сомасы және төлем тәсілі көрсетілген хабарламаны күтіңіз; оған дейін ақша жібермеңіз және чек жолдамаңыз.";
+  if (locale === "en")
+    return "Please wait for the order confirmation with its amount and payment method before paying or sending a receipt.";
+  if (locale === "uz")
+    return "Avval buyurtma tasdig‘i, summasi va to‘lov usuli ko‘rsatilgan xabarni kuting; ungacha pul yubormang va chek jo‘natmang.";
+  return "Сначала дождитесь сообщения с оформленным заказом, суммой и способом оплаты; до этого не отправляйте деньги или чек.";
+}
+
 const SHOP_ORDER_PROMISE =
   /(?:(?<![\p{L}\p{N}])(?:оформ|созда|запис)\p{L}*\s+(?:вам\s+)?(?:к\s+)?(?:заказ\p{L}*|покупк\p{L}*)|(?<![\p{L}\p{N}])(?:заказ\p{L}*|покупк\p{L}*)\s+(?:уже\s+)?(?:оформлен\p{L}*|создан\p{L}*)|(?<![\p{L}\p{N}])(?:детал\p{L}*(?:\s+и\s+оплат\p{L}*)?|сч[её]т\p{L}*|ссылк\p{L}*)\s+(?:сейчас\s+)?(?:появ\p{L}*|отправ\p{L}*|пришл\p{L}*|сформир\p{L}*)|(?<![\p{L}\p{N}])оплат\p{L}*\s+(?:сейчас\s+)?(?:появ\p{L}*|сформир\p{L}*))/iu;
+
+const SHOP_UNTRACKED_PAYMENT_PROMISE =
+  /(?:(?:оплат\p{L}*|pay\p{L}*|төле\p{L}*|төлем\p{L}*|to['’‘]?lov\p{L}*|tolov\p{L}*)[^.!?\n]{0,100}(?:чек\p{L}*|квитанц\p{L}*|скрин\p{L}*|receipt|screenshot|chek)|(?:материал\p{L}*|файл\p{L}*|доступ\p{L}*|materials?|files?|access|material\p{L}*|fayl\p{L}*|kirish\p{L}*)[^.!?\n]{0,100}(?:чек\p{L}*|оплат\p{L}*|төлем\p{L}*|to['’‘]?lov\p{L}*|tolov\p{L}*|receipt|payment|chek))/iu;
 
 /** Не отправляем покупателю неподтверждённое обещание заказа из shop-in-chat. */
 export function guardShopOrderReply(
   reply: string,
   locale: Locale,
-  result: { orderAction?: boolean; handoff?: Handoff | null },
+  result: {
+    orderAction?: boolean;
+    handoff?: Handoff | null;
+    hasActivePaymentOrder?: boolean;
+  },
 ): string {
-  if (result.orderAction || !SHOP_ORDER_PROMISE.test(reply)) return reply;
-  return result.handoff
-    ? result.handoff.kind === "lead"
-      ? leadDoneReply(locale)
-      : dialogHandoffReply(locale)
-    : orderNotCreatedReply(locale);
+  const orderPromise = SHOP_ORDER_PROMISE.test(reply);
+  const paymentPromise =
+    !result.hasActivePaymentOrder && SHOP_UNTRACKED_PAYMENT_PROMISE.test(reply);
+  if ((!orderPromise || result.orderAction) && !paymentPromise) return reply;
+  if (result.handoff)
+    return result.handoff.kind === "lead" ? leadDoneReply(locale) : dialogHandoffReply(locale);
+  if (paymentPromise)
+    return result.orderAction ? paymentOrderPendingReply(locale) : paymentNotCreatedReply(locale);
+  return result.orderAction ? reply : orderNotCreatedReply(locale);
 }
 
 export type ConsultantState = {
@@ -1057,10 +1087,22 @@ async function answerConsultant(
   });
   let known = loaded ? parseMemory(state.profile) : {};
   const profile0 = known;
+  const paymentMode = customer?.state.mode;
+  const pendingOrderId = customer?.state.pending_order_id;
+  const hasActivePaymentOrder = Boolean(
+    pendingOrderId &&
+    ["choose_pay", "awaiting_payment", "awaiting_proof"].includes(paymentMode ?? ""),
+  );
+  const checkoutContext = !opts.shopInChat
+    ? ""
+    : hasActivePaymentOrder
+      ? `Активный шаг оплаты: заказ #${String(pendingOrderId)} (${paymentMode}). Не утверждай, что платёж или чек принят, если это не подтверждено системным статусом.`
+      : "К этому чату не передан активный заказ для оплаты. Не делай вывод по истории, что заказ или ссылка существуют; не проси оплачивать или присылать чек и не обещай выдачу материалов после оплаты.";
   const session = [
     `Канал: ${opts.platform}`,
     customer?.firstName ? `Имя клиента в профиле: ${customer.firstName}` : "",
     state.contact ? `Контакт клиента, который он уже давал: ${state.contact}` : "",
+    checkoutContext,
     loaded && formatProfile(profile0)
       ? `Что известно о покупателе: ${formatProfile(profile0)}`
       : "",
@@ -1583,7 +1625,11 @@ async function answerConsultant(
       reply = orderLeadNotCreatedReply(bLocale);
     }
     if (opts.shopInChat)
-      reply = guardShopOrderReply(reply, bLocale, { orderAction: Boolean(orderAction), handoff });
+      reply = guardShopOrderReply(reply, bLocale, {
+        orderAction: Boolean(orderAction),
+        handoff,
+        hasActivePaymentOrder,
+      });
     // Цена или доставка не из каталога и условий — покупателю не уходит, вопрос менеджеру.
     const known0 = knownNumbers({
       prices: catalog.prices,

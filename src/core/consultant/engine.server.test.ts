@@ -54,8 +54,14 @@ vi.mock("@anthropic-ai/sdk", () => {
   };
 });
 
-const { runConsultant, isPaused, buildConsultantMessages, confirmedOrderIntent, KEYS } =
-  await import("./engine.server");
+const {
+  runConsultant,
+  isPaused,
+  buildConsultantMessages,
+  confirmedOrderIntent,
+  guardShopOrderReply,
+  KEYS,
+} = await import("./engine.server");
 const { getSetting } = await import("@/core/settings/settings");
 
 const BOT = "11111111-1111-1111-1111-111111111111";
@@ -98,6 +104,66 @@ beforeEach(() => {
 afterEach(() => {
   setEnvForTests(undefined);
   create.mockClear();
+});
+
+describe("guardShopOrderReply: честность оплаты и выдачи", () => {
+  const unsupported =
+    "Да, честно. Мы сразу высылаем материалы после чека. Можете сначала оплатить, а чек прислать сюда — я прослежу.";
+
+  it("без активного заказа не обещает выдачу после чека и не просит платить заранее", () => {
+    const reply = guardShopOrderReply(unsupported, "ru", {
+      orderAction: false,
+      handoff: null,
+      hasActivePaymentOrder: false,
+    });
+
+    expect(reply).toMatch(/не отправляйте деньги или чек/iu);
+    expect(reply).not.toContain("высылаем материалы");
+    expect(reply).not.toContain("я прослежу");
+  });
+
+  it("при активном платёжном шаге не стирает корректное объяснение процесса", () => {
+    expect(
+      guardShopOrderReply(unsupported, "ru", {
+        orderAction: false,
+        handoff: null,
+        hasActivePaymentOrder: true,
+      }),
+    ).toBe(unsupported);
+  });
+
+  it("не просит оплатить до появления карточки заказа даже если order_action уже вызван", () => {
+    const reply = guardShopOrderReply(
+      "Pay first and send a receipt; I'll send the materials right away.",
+      "en",
+      { orderAction: true, handoff: null, hasActivePaymentOrder: false },
+    );
+
+    expect(reply).toContain("Please wait for the order confirmation");
+    expect(reply).not.toContain("send the materials right away");
+  });
+
+  it("распознаёт оплату и чек в узбекской реплике", () => {
+    const reply = guardShopOrderReply(
+      "To‘lovdan keyin chek yuboring, materiallar darhol keladi.",
+      "uz",
+      { orderAction: false, handoff: null, hasActivePaymentOrder: false },
+    );
+
+    expect(reply).toContain("pul yubormang va chek jo‘natmang");
+    expect(reply).not.toContain("materiallar darhol keladi");
+  });
+
+  it("при передаче менеджеру убирает неподтверждённое обещание, но сохраняет передачу", () => {
+    const reply = guardShopOrderReply(unsupported, "ru", {
+      orderAction: false,
+      handoff: { kind: "handoff", reason: "human_requested", summary: "Вопрос об оплате" },
+      hasActivePaymentOrder: false,
+    });
+
+    expect(reply).not.toContain("высылаем материалы");
+    expect(reply).toMatch(/менеджер|продавц/iu);
+  });
 });
 
 describe("консультант: ответ и состояние", () => {
