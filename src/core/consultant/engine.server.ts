@@ -1,6 +1,6 @@
 import { previewReadonly } from "@/lib/preview";
 import Anthropic from "@anthropic-ai/sdk";
-import { env } from "@/config/env";
+import { env, envPresence } from "@/config/env";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Customer } from "@/core/customers/customers";
 import { updateStateSection } from "@/core/customers/customers";
@@ -280,11 +280,7 @@ export type ConsultantResult = {
 };
 
 export function consultantConfigured(): boolean {
-  try {
-    return Boolean(env().ANTHROPIC_API_KEY?.trim());
-  } catch {
-    return Boolean(process.env.ANTHROPIC_API_KEY?.trim());
-  }
+  return envPresence().has("ANTHROPIC_API_KEY");
 }
 
 /** Включён ли консультант у клиента: явный тумблер, а для ниш-консультантов — по умолчанию. */
@@ -465,11 +461,13 @@ export const ORDER_PRODUCT_TOOL: Anthropic.Tool = {
       },
       product_name: {
         type: "string",
-        description: "Название товара из каталога (например: Лестницы Части речи и члены предложения)",
+        description:
+          "Название товара из каталога (например: Лестницы Части речи и члены предложения)",
       },
       variant_id: {
         type: "string",
-        description: "ID конкретного варианта товара (если есть варианты, например 5 класс, 7 класс и т.д.)",
+        description:
+          "ID конкретного варианта товара (если есть варианты, например 5 класс, 7 класс и т.д.)",
       },
       variant_name: {
         type: "string",

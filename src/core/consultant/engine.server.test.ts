@@ -79,7 +79,7 @@ function ctxOf(settings: Record<string, unknown> = {}): TenantContext {
 const customer = (state: DialogState = {}): Customer =>
   ({ userKey: "ig:1", platform: "instagram", telegramId: -1, firstName: "Аня", state }) as Customer;
 const text = (t: string) => ({ type: "text", text: t });
-const tool = (name: string, input: Record<string, string>) => ({
+const tool = (name: string, input: Record<string, unknown>) => ({
   type: "tool_use",
   id: "t1",
   name,

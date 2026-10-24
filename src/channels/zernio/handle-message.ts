@@ -589,8 +589,10 @@ export async function handleZernioMessage(
     console.warn(`[zernio] tail unavailable for ${m.conversationId}: ${String(e)}`);
   }
   const hours = pauseHours(ctx.tenant);
-  const directReplyAt = (customerNow.state.direct as { last_reply_at?: string } | undefined)?.last_reply_at;
-  const directLastReply = (customerNow.state.direct as { last_reply?: string } | undefined)?.last_reply;
+  const directReplyAt = (customerNow.state.direct as { last_reply_at?: string } | undefined)
+    ?.last_reply_at;
+  const directLastReply = (customerNow.state.direct as { last_reply?: string } | undefined)
+    ?.last_reply;
   const lastBotReplyAt =
     [directReplyAt, memory.last_reply_at]
       .filter((x): x is string => Boolean(x))
@@ -877,20 +879,19 @@ async function executeConsultantOrder(
     locale,
     m: directCopy(ctx.tenant, m.platform, locale),
     bot,
-    inboundAt:
-      m.sentAt && Number.isFinite(Date.parse(m.sentAt)) ? Date.parse(m.sentAt) : null,
+    inboundAt: m.sentAt && Number.isFinite(Date.parse(m.sentAt)) ? Date.parse(m.sentAt) : null,
     why: "покупка через ИИ-консультанта",
   };
 
   const actions = [orderAction, ...(orderAction.extra ?? [])];
-  const lines: Array<{ product: import("@/core/catalog/catalog").Product; variantId: string | null }> =
-    [];
+  const lines: Array<{
+    product: import("@/core/catalog/catalog").Product;
+    variantId: string | null;
+  }> = [];
   for (const action of actions) {
     const line = await resolveConsultantLine(ctx, action);
     if (!line) {
-      console.warn(
-        `[consultant-order] товар не найден: ${action.productId || action.productName}`,
-      );
+      console.warn(`[consultant-order] товар не найден: ${action.productId || action.productName}`);
       await showCatalog(s, null, 0, true);
       return;
     }
