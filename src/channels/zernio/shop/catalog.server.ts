@@ -95,10 +95,23 @@ export async function listedSectionByName(
   return matchSectionName(text, rows);
 }
 
+/** Вопрос с упоминанием категории не является выбором пункта меню. */
+function isQuestionAboutSection(text: string): boolean {
+  const value = text.trim();
+  return (
+    /[?？]/u.test(value) ||
+    /(?:^|[^\p{L}\p{N}])(?:у\s+вас\s+есть|есть\s+ли|можно(?:\s+ли)?|сколько|какой|какая|какие|где|когда|почему|зачем|подскажите|скажите)(?=$|[^\p{L}\p{N}])/iu.test(
+      value,
+    )
+  );
+}
+
 /** Название раздела из свежего списка — открыть его, как по номеру. */
 export async function pickSectionByName(s: Shop, text: string): Promise<boolean> {
   const found = await listedSectionByName(s.ctx, s.customer, text);
-  if (!found) return false;
+  // Нечёткое совпадение по одному слову («есть папка классного руководителя?» →
+  // «Папки») раньше открывало подкатегории вместо ответа консультанта.
+  if (!found || (!found.exact && isQuestionAboutSection(text))) return false;
   await openEntry(s, found.id);
   return true;
 }

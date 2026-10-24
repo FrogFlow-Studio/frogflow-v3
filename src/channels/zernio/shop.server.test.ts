@@ -413,6 +413,45 @@ describe("раздел с подразделами и своими товара�
   });
 });
 
+describe("вопрос о товаре не выбирает похожий раздел каталога", () => {
+  const folder = { ...category("folder", null, 1), name: "Папки" };
+  const categoryListState = () => ({
+    locale: "ru",
+    mode: "idle",
+    direct: {
+      list: { kind: "categories", ids: ["folder"], at: new Date().toISOString() },
+    },
+  });
+
+  it("вопрос «есть папка…?» не открывает подкатегории раздела «Папки»", async () => {
+    const { db, send, sent } = setup({ state: categoryListState() });
+    db.tables.categories = [folder, category("a", "folder", 1), category("b", "folder", 2)];
+    const previous = consultant.enabled;
+    consultant.enabled = true;
+    try {
+      const result = await send({ text: "Здравствуйте. У вас есть папка классного руководителя?" });
+      expect(result.outcome).toBe("question");
+      expect(sent).toEqual([]);
+    } finally {
+      consultant.enabled = previous;
+    }
+  });
+
+  it("короткий точный ответ «Папки» по-прежнему открывает раздел", async () => {
+    const { db, send, sent } = setup({ state: categoryListState() });
+    db.tables.categories = [folder, category("a", "folder", 1), category("b", "folder", 2)];
+    const previous = consultant.enabled;
+    consultant.enabled = true;
+    try {
+      const result = await send({ text: "Папки" });
+      expect(result.outcome).toBe("handled");
+      expect(rows(sent).map((row) => row.id)).toContain("CAT:a:0");
+    } finally {
+      consultant.enabled = previous;
+    }
+  });
+});
+
 describe("каталог WhatsApp: постбэк CAT:<раздел>:<смещение>", () => {
   it("пустой раздел в постбэке — это корень: показываются разделы верхнего уровня", async () => {
     const { db, send, sent } = setup();
