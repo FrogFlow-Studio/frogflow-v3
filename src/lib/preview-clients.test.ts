@@ -98,6 +98,20 @@ describe("предпросмотр: клиент не доходит до сет
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 
+  it("Whisper: транскрибация в предпросмотре не делает сетевых запросов", async () => {
+    setEnvForTests({ PREVIEW_READONLY: "1" });
+    const { transcribeVoice } = await import("@/core/speech/transcribe.server");
+    const fetchImpl = vi.fn();
+
+    expect(
+      await transcribeVoice("https://cdn.test/voice.ogg", {
+        apiKey: "sk-test",
+        fetchFn: fetchImpl as never,
+      }),
+    ).toBeNull();
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
   it("ИИ-помощник: понятная ошибка «предпросмотр», а не «нет ключа»", async () => {
     setEnvForTests({ PREVIEW_READONLY: "1", ANTHROPIC_API_KEY: "sk-test" });
     const { assistText } = await import("@/core/assistant/assistant.server");

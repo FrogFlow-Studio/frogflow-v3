@@ -1,4 +1,5 @@
 import { env } from "@/config/env";
+import { previewReadonly } from "@/lib/preview";
 
 export const MAX_AUDIO_BYTES = 25 * 1024 * 1024; // 25 MB limit for Whisper API
 export const AUDIO_FETCH_TIMEOUT_MS = 15_000;
@@ -18,6 +19,7 @@ export async function transcribeVoice(
   url: string,
   opts: TranscribeOptions = {},
 ): Promise<string | null> {
+  if (previewReadonly()) return null;
   const apiKey = (opts.apiKey ?? env().OPENAI_API_KEY)?.trim();
   if (!apiKey || !/^https?:\/\//i.test(url)) return null;
 
