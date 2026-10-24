@@ -247,6 +247,8 @@ async function handleLoginCode(s: Shop, nonce: string): Promise<ShopOutcome> {
 /** «Не проходит российская карта»: оплата уже не удалась — ссылку не повторяем. */
 /** «А ссылка где?», «пришлите ссылку», «where is the link». */
 const LINK_QUESTION = /ссылк|сілтеме|havola|\blink\b/i;
+const KASPI_PAYMENT_INTENT =
+  /(?:оплат|pay|төле|to['’]?lash)[^\n]{0,24}kaspi|kaspi[^\n]{0,24}(?:оплат|pay|төле|to['’]?lash)/iu;
 const PAY_FAILED = /не\s*(смог|могу|получ|проход|прош|выход|принима)|ошибк|отклон|отказ/i;
 
 async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
@@ -745,6 +747,12 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
       // а не второй раз про скрепку (AATeach 12.10, asya_6465, galinka.iva).
       const offered = await cantSendReceipt(s, text);
       if (offered) return offered;
+      // URL-кнопка Kaspi в WhatsApp может вернуться текстом «Оплатить в Kaspi».
+      // Это действие по уже созданному заказу, а не новый запрос подобрать товар.
+      if (mode === "awaiting_proof" && KASPI_PAYMENT_INTENT.test(text)) {
+        await reply(s, s.m.afterProofManual, { force: true });
+        return "handled";
+      }
       // «Не знаю как», «как отправить чек»: объяснить, как приложить скриншот,
       // а не молчать (строгий режим) и не повторять «пришлите чек» (#72, 10.10).
       if (mode === "awaiting_proof" && isReceiptHowQuestion(text)) {
@@ -754,9 +762,15 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
       // «А ссылка где?» после кнопки оплаты: та же ссылка текстом, а не «пришлите
       // чек» (заказ #98 Копилки, 10.10). Ссылку Kaspi не повторяем: это новый счёт.
       const link = s.customer.state.pay_link;
+      if (mode === "awaiting_payment" && link == null && KASPI_PAYMENT_INTENT.test(text)) {
+        await reply(s, s.m.payLinkAboveHint, { force: true });
+        return "handled";
+      }
       if (
         mode === "awaiting_payment" &&
-        (LINK_QUESTION.test(text) || /оплат\w*\s*карт|карт\w*\s*(онлайн|рф)|картамен|pay\s*by\s*card/i.test(text)) &&
+        (LINK_QUESTION.test(text) ||
+          /оплат\w*\s*карт|карт\w*\s*(онлайн|рф)|картамен|pay\s*by\s*card/i.test(text) ||
+          (link === "rk" && KASPI_PAYMENT_INTENT.test(text))) &&
         (link === "pdm" || link === "rk") &&
         (await choosePayment(s, link, { asText: true })) !== undefined
       )

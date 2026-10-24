@@ -871,6 +871,17 @@ describe("строгий режим «Только по заказам» (Educat
     expect((await send({ text: "спасибо" })).outcome).toBe("question");
     expect(sent).toEqual([]);
   });
+
+  it("ожидаем чек: нажатие «Оплатить в Kaspi» не возвращает ИИ к выбору товара", async () => {
+    const { send, sent } = setup({
+      platform: "whatsapp",
+      state: { locale: "ru", mode: "awaiting_proof", pending_order_id: 7, pending_display_no: 268 },
+    });
+    const result = await send({ text: "Оплатить в Kaspi" });
+    expect(result.outcome).toBe("handled");
+    expect(sent).toHaveLength(1);
+    expect(sent[0]!.text).toContain("После оплаты пришлите сюда фото или PDF чека");
+  });
 });
 
 describe("номер телефона в переписке — не коды товаров (Б2, скрин Якова 04.10)", () => {
