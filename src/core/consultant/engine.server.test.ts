@@ -164,6 +164,36 @@ describe("guardShopOrderReply: честность оплаты и выдачи",
     expect(reply).not.toContain("высылаем материалы");
     expect(reply).toMatch(/менеджер|продавц/iu);
   });
+
+  it.each([
+    ["ru", "Поняла, отменяю. Если передумаете — пишите."],
+    ["kk", "Тапсырысты жойдым."],
+    ["en", "I've canceled your order."],
+    ["uz", "Buyurtmani bekor qildim."],
+  ] as const)("не подтверждает неподтверждённую отмену в locale=%s", (locale, claim) => {
+    const reply = guardShopOrderReply(claim, locale, {
+      orderAction: false,
+      handoff: { kind: "handoff", reason: "complaint", summary: "Просьба отменить заказ" },
+      hasActivePaymentOrder: true,
+    });
+
+    expect(reply).not.toBe(claim);
+    expect(reply).toMatch(/менеджер|manager|menejer/iu);
+    expect(reply).toMatch(
+      /статус заказа не изменён|тапсырыс күйі өзгерген жоқ|order status hasn't changed|buyurtma holati o‘zgarmadi/iu,
+    );
+  });
+
+  it("без передачи менеджеру не выдумывает, что отмена выполнена", () => {
+    const reply = guardShopOrderReply("Заказ отменён.", "ru", {
+      orderAction: false,
+      handoff: null,
+      hasActivePaymentOrder: true,
+    });
+
+    expect(reply).toMatch(/не могу подтвердить изменение статуса/iu);
+    expect(reply).not.toMatch(/заказ отменён/iu);
+  });
 });
 
 describe("консультант: ответ и состояние", () => {

@@ -928,6 +928,57 @@ describe("строгий режим «Только по заказам» (Educat
     },
   );
 
+  it("«Давайте отменим заказ» отменяет связанный неоплаченный заказ по реальному статусу", async () => {
+    const { send, sent, db } = setup({
+      platform: "whatsapp",
+      state: {
+        locale: "ru",
+        mode: "awaiting_payment",
+        pending_order_id: 7,
+        pending_display_no: 107,
+      },
+    });
+    db.tables.orders = [
+      {
+        id: 7,
+        bot_id: BOT,
+        order_no: 7,
+        display_no: 107,
+        telegram_id: -1,
+        status: "awaiting_payment",
+        fulfillment_kind: "digital",
+        total: 1000,
+        currency: "KZT",
+        payment_proof_path: null,
+        payment_proof_hash: null,
+        order_items: [],
+      },
+    ];
+
+    const result = await send({ text: "Давайте отменим заказ" });
+
+    expect(result.outcome).toBe("handled");
+    expect(db.tables.orders![0]!.status).toBe("cancelled");
+    expect(sent.at(-1)?.text).toMatch(/Заказ #107 отменён/iu);
+  });
+
+  it("если связанный заказ недоступен для автоотмены, не стирает шаг и передаёт вопрос дальше", async () => {
+    const { send, sent } = setup({
+      platform: "whatsapp",
+      state: {
+        locale: "ru",
+        mode: "awaiting_payment",
+        pending_order_id: 7,
+        pending_display_no: 107,
+      },
+    });
+
+    const result = await send({ text: "Давайте отменим заказ" });
+
+    expect(result.outcome).toBe("question");
+    expect(sent).toHaveLength(0);
+  });
+
   it("idle payment CTA восстанавливает свежий неоплаченный заказ вместо нового чекаута", async () => {
     const { send, sent, db } = setup({
       platform: "whatsapp",

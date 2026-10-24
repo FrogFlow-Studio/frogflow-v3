@@ -318,8 +318,30 @@ function paymentOrderPendingReply(locale: string): string {
   return "Сначала дождитесь сообщения с оформленным заказом, суммой и способом оплаты; до этого не отправляйте деньги или чек.";
 }
 
+function cancellationNotConfirmedReply(locale: string, handedOff: boolean): string {
+  if (handedOff) {
+    if (locale === "kk")
+      return "Өтінішіңізді менеджерге жібердім. Тапсырыс күйі өзгерген жоқ; растауын күтіңіз.";
+    if (locale === "en")
+      return "I've passed your request to the manager. The order status hasn't changed; please wait for confirmation.";
+    if (locale === "uz")
+      return "So‘rovingizni menejerga yubordim. Buyurtma holati o‘zgarmadi; tasdiqni kuting.";
+    return "Передал просьбу менеджеру. Статус заказа не изменён; дождитесь подтверждения.";
+  }
+  if (locale === "kk")
+    return "Тапсырыс күйінің өзгергенін растай алмаймын. Жабылды деп есептемей тұрып, сатушыға хабарласыңыз.";
+  if (locale === "en")
+    return "I can't confirm that the order status has changed. Please contact the seller before treating it as closed.";
+  if (locale === "uz")
+    return "Buyurtma holati o‘zgarganini tasdiqlay olmayman. Yopildi deb hisoblashdan oldin sotuvchiga murojaat qiling.";
+  return "Не могу подтвердить изменение статуса заказа. Свяжитесь с продавцом, прежде чем считать заказ закрытым.";
+}
+
 const SHOP_ORDER_PROMISE =
   /(?:(?<![\p{L}\p{N}])(?:оформ|созда|запис)\p{L}*\s+(?:вам\s+)?(?:к\s+)?(?:заказ\p{L}*|покупк\p{L}*)|(?<![\p{L}\p{N}])(?:заказ\p{L}*|покупк\p{L}*)\s+(?:уже\s+)?(?:оформлен\p{L}*|создан\p{L}*)|(?<![\p{L}\p{N}])(?:детал\p{L}*(?:\s+и\s+оплат\p{L}*)?|сч[её]т\p{L}*|ссылк\p{L}*)\s+(?:сейчас\s+)?(?:появ\p{L}*|отправ\p{L}*|пришл\p{L}*|сформир\p{L}*)|(?<![\p{L}\p{N}])оплат\p{L}*\s+(?:сейчас\s+)?(?:появ\p{L}*|сформир\p{L}*))/iu;
+
+const SHOP_CANCELLATION_PROMISE =
+  /(?:(?<![\p{L}\p{N}])(?:отменяю|отменяем|отменим|отменю|отменит|отменят|отменил(?:а|и|о)?|аннулирую|аннулируем|аннулирует|аннулировал(?:а|и|о)?|cancel(?:l?ed|l?ing)|will\s+cancel|bekor\s+qil\p{L}*|жой\p{L}*|болдырм\p{L}*)(?![\p{L}\p{N}])|(?:заказ|order|buyurtma|тапсырыс)[^.!?\n]{0,40}(?:отменен|отменён|аннулирован|cancelled|canceled|bekor|жой|болдырм))/iu;
 
 const SHOP_UNTRACKED_PAYMENT_PROMISE =
   /(?:(?:оплат\p{L}*|pay\p{L}*|төле\p{L}*|төлем\p{L}*|to['’‘]?lov\p{L}*|tolov\p{L}*)[^.!?\n]{0,100}(?:чек\p{L}*|квитанц\p{L}*|скрин\p{L}*|receipt|screenshot|chek)|(?:материал\p{L}*|файл\p{L}*|доступ\p{L}*|materials?|files?|access|material\p{L}*|fayl\p{L}*|kirish\p{L}*)[^.!?\n]{0,100}(?:чек\p{L}*|оплат\p{L}*|төлем\p{L}*|to['’‘]?lov\p{L}*|tolov\p{L}*|receipt|payment|chek))/iu;
@@ -334,6 +356,8 @@ export function guardShopOrderReply(
     hasActivePaymentOrder?: boolean;
   },
 ): string {
+  if (SHOP_CANCELLATION_PROMISE.test(reply))
+    return cancellationNotConfirmedReply(locale, Boolean(result.handoff));
   const orderPromise = SHOP_ORDER_PROMISE.test(reply);
   const paymentPromise =
     !result.hasActivePaymentOrder && SHOP_UNTRACKED_PAYMENT_PROMISE.test(reply);

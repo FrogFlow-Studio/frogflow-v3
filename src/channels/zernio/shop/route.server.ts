@@ -406,6 +406,15 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
     if (idleNow && !inDialog(s) && !s.customer.state.pending_order_id) return "question";
     // Сразу после оформления «отмена» — про заказ, а не про шаг (AATeach 11.10, #1396).
     if (await cancelFreshOrder(s)) return "handled";
+    // Если заказ есть, но его нельзя отменить автоматом (уже оплачен/не найден/неожиданный статус),
+    // не сбрасываем контекст и не обещаем отмену: пусть запрос проверит менеджер.
+    if (s.customer.state.pending_order_id) {
+      const consultant = await import("@/core/consultant/engine.server");
+      if (consultant.isPaused(s.customer)) {
+        s.customer = await consultant.resumeConsultant(s.ctx, s.customer);
+      }
+      return "question";
+    }
     await setMode(s, { mode: "idle" });
     const consultant = await import("@/core/consultant/engine.server");
     if (consultant.isPaused(s.customer)) {
