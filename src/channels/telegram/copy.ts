@@ -205,6 +205,8 @@ export type Msg = {
   /** Непонятная реплика, пока способ оплаты не выбран: не «пришлите чек». */
   choosePayHint: string;
   payLinkAboveHint: string;
+  /** Повторный тап по уже выбранному способу оплаты: не создаём повторную ссылку/счёт. */
+  payMethodAlreadySelected: string;
   /** Устаревшая кнопка оплаты без активного заказа: не отправляем CTA в обычный вопрос ИИ. */
   paymentNoActiveOrder: string;
   /** Instagram/WhatsApp: просьба прислать чек — без «нажмите кнопку ниже», под ней кнопок нет (заказ #93 Копилки). */
@@ -456,6 +458,8 @@ const ru: Msg = {
     "Выберите способ оплаты кнопкой в сообщении выше. Если есть вопрос — напишите, продавец ответит здесь.",
   payLinkAboveHint:
     "Если уже оплатили — заказ подтвердится сам в течение минуты, материалы придут сюда. Если ещё нет — оплатите по кнопке в сообщении выше.",
+  payMethodAlreadySelected:
+    "Способ оплаты уже выбран. Чтобы оплатить, откройте ссылку в предыдущем сообщении; повторно отправлять заказ не нужно.",
   paymentNoActiveOrder:
     "Не вижу открытого заказа, к которому относится эта кнопка оплаты. Если вы уже оплатили — дождитесь подтверждения; если хотите оформить заказ, напишите, какой товар выбрать.",
   dmReceiptPrompt: "Пришлите, пожалуйста, сюда фото или скриншот чека об оплате (можно PDF).",
@@ -913,6 +917,8 @@ const kk: Msg = {
     "Жоғарыдағы хабарламадағы батырма арқылы төлем тәсілін таңдаңыз. Сұрағыңыз болса — жазыңыз, сатушы осында жауап береді.",
   payLinkAboveHint:
     "Төлеп қойсаңыз — тапсырыс бір минут ішінде өзі расталады, материалдар осында келеді. Әлі төлемесеңіз — жоғарыдағы хабарламадағы батырма арқылы төлеңіз.",
+  payMethodAlreadySelected:
+    "Төлем тәсілі бұрын таңдалған. Төлеу үшін жоғарыдағы хабарламадағы сілтемені ашыңыз; тапсырысты қайта жіберудің қажеті жоқ.",
   paymentNoActiveOrder:
     "Бұл төлем батырмасына байланыстырылған ашық тапсырыс көрінбейді. Төлеп қойған болсаңыз — растауды күтіңіз; тапсырыс бергіңіз келсе, қай тауар керек екенін жазыңыз.",
   dmReceiptPrompt: "Төлем чегінің фотосын немесе скриншотын осында жіберіңізші (PDF те болады).",
@@ -1257,6 +1263,8 @@ const en: Msg = {
     "Pick a payment method with a button in the message above. If you have a question, write it here and the seller will reply.",
   payLinkAboveHint:
     "If you have already paid, the order will be confirmed automatically within a minute and the materials will arrive here. If not yet, pay with the button in the message above.",
+  payMethodAlreadySelected:
+    "Payment method already selected. Open the payment link in the previous message; you don't need to request the order again.",
   paymentNoActiveOrder:
     "I can't find an open order linked to this payment button. If you've already paid, please wait for confirmation; if you'd like to place an order, tell me which item you want.",
   dmReceiptPrompt:
@@ -1629,6 +1637,8 @@ const uz: Msg = {
     "Yuqoridagi xabardagi tugma orqali to‘lov usulini tanlang. Savolingiz bo‘lsa, yozing, sotuvchi shu yerda javob beradi.",
   payLinkAboveHint:
     "Agar to‘lagan bo‘lsangiz — buyurtma bir daqiqa ichida avtomatik tasdiqlanadi, materiallar shu yerga keladi. Hali to‘lamagan bo‘lsangiz — yuqoridagi xabardagi tugma orqali to‘lang.",
+  payMethodAlreadySelected:
+    "To‘lov usuli allaqachon tanlangan. To‘lash uchun yuqoridagi xabardagi havolani oching; buyurtmani qayta so‘rash shart emas.",
   paymentNoActiveOrder:
     "Bu to‘lov tugmasiga bog‘langan ochiq buyurtmani topmadim. To‘lab bo‘lgan bo‘lsangiz — tasdiqni kuting; buyurtma bermoqchi bo‘lsangiz, qaysi mahsulot kerakligini yozing.",
   dmReceiptPrompt:

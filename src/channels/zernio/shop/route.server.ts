@@ -1490,9 +1490,26 @@ async function handlePostback(s: Shop, payload: string): Promise<ShopOutcome> {
       await finishCheckout(s, cc);
       return "handled";
     }
-    case "PAY":
-      await choosePayment(s, a === "kaspi" || a === "rk" || a === "pdm" ? a : "manual");
+    case "PAY": {
+      const kind = a === "kaspi" || a === "rk" || a === "pdm" ? a : "manual";
+      const state = s.customer.state;
+      const selectedKind =
+        state.mode === "awaiting_proof"
+          ? "manual"
+          : state.mode === "awaiting_payment"
+            ? state.pay_link === "pdm" || state.pay_link === "rk"
+              ? state.pay_link
+              : state.pay_link == null
+                ? "kaspi"
+                : null
+            : null;
+      if (selectedKind === kind) {
+        await reply(s, s.m.payMethodAlreadySelected, { force: true });
+        return "handled";
+      }
+      await choosePayment(s, kind);
       return "handled";
+    }
     default:
       // Чужой postback (например, из comment-автоматизации Zernio) — не наш.
       return "question";

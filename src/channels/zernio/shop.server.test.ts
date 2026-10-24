@@ -1012,6 +1012,28 @@ describe("строгий режим «Только по заказам» (Educat
     expect(sent).toHaveLength(1);
   });
 
+  it.each([
+    ["PAY:pdm", { mode: "awaiting_payment", pay_link: "pdm" }],
+    ["PAY:rk", { mode: "awaiting_payment", pay_link: "rk" }],
+    ["PAY:kaspi", { mode: "awaiting_payment" }],
+    ["PAY:manual", { mode: "awaiting_proof" }],
+  ] as const)(
+    "повторный tap %s не отправляет заказ/ссылку заново",
+    async (postbackPayload, state) => {
+      const { send, sent } = setup({
+        platform: "whatsapp",
+        state: { locale: "ru", pending_order_id: 7, pending_display_no: 268, ...state },
+      });
+
+      const result = await send({ postbackPayload });
+
+      expect(result.outcome).toBe("handled");
+      expect(sent).toHaveLength(1);
+      expect(sent[0]!.text).toBe(COPY.ru.payMethodAlreadySelected);
+      expect(sent[0]!.buttons).toBeUndefined();
+    },
+  );
+
   it.each(["💳 Открыть оплату", "Оплата картой"])(
     "opaque button tap «%s» не повторяет ссылку или подсказку над текущей оплатой",
     async (text) => {
