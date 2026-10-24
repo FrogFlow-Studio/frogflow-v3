@@ -292,14 +292,14 @@ function orderNotCreatedReply(locale: string): string {
 
 function orderLeadNotCreatedReply(locale: string): string {
   if (locale === "kk")
-    return "Тапсырыс әлі рәсімделмеді, менеджерге өтініш жіберілген жоқ. Сатып алғыңыз келсе, «Иә, рәсімдеңіз» деп жазыңыз.";
+    return "Тапсырыс әзірге рәсімделмеді және менеджерге берілген жоқ. Оны осы чатта рәсімдейік пе?";
   if (locale === "en")
-    return "The order hasn't been placed and no request was sent to a manager. If you'd like to buy it, reply: “Yes, place the order.”";
-  return "Заказ пока не оформлен и менеджеру не передан. Если хотите купить, напишите: «Да, оформляйте».";
+    return "The order hasn't been placed or sent to a manager. Would you like me to place it here in the chat?";
+  return "Заказ пока не оформлен и менеджеру не передан. Оформить его прямо здесь, в чате?";
 }
 
 const SHOP_ORDER_PROMISE =
-  /(?:(?<![\p{L}\p{N}])(?:оформля|созда|записыва)\p{L}*\s+(?:вам\s+)?(?:заказ\p{L}*|покупк\p{L}*)|(?<![\p{L}\p{N}])(?:заказ\p{L}*|покупк\p{L}*)\s+(?:уже\s+)?(?:оформлен\p{L}*|создан\p{L}*)|(?<![\p{L}\p{N}])(?:детал\p{L}*(?:\s+и\s+оплат\p{L}*)?|сч[её]т\p{L}*|ссылк\p{L}*)\s+(?:сейчас\s+)?(?:появ\p{L}*|отправ\p{L}*|пришл\p{L}*|сформир\p{L}*)|(?<![\p{L}\p{N}])оплат\p{L}*\s+(?:сейчас\s+)?(?:появ\p{L}*|сформир\p{L}*))/iu;
+  /(?:(?<![\p{L}\p{N}])(?:оформ|созда|запис)\p{L}*\s+(?:вам\s+)?(?:к\s+)?(?:заказ\p{L}*|покупк\p{L}*)|(?<![\p{L}\p{N}])(?:заказ\p{L}*|покупк\p{L}*)\s+(?:уже\s+)?(?:оформлен\p{L}*|создан\p{L}*)|(?<![\p{L}\p{N}])(?:детал\p{L}*(?:\s+и\s+оплат\p{L}*)?|сч[её]т\p{L}*|ссылк\p{L}*)\s+(?:сейчас\s+)?(?:появ\p{L}*|отправ\p{L}*|пришл\p{L}*|сформир\p{L}*)|(?<![\p{L}\p{N}])оплат\p{L}*\s+(?:сейчас\s+)?(?:появ\p{L}*|сформир\p{L}*))/iu;
 
 /** Не отправляем покупателю неподтверждённое обещание заказа из shop-in-chat. */
 export function guardShopOrderReply(
@@ -521,7 +521,7 @@ const TOOLS: Anthropic.Tool[] = [
   {
     name: "handoff_to_manager",
     description:
-      "Передать диалог живому менеджеру: клиент просит человека, жалуется, задаёт вопрос вне базы знаний и каталога, или готов завершить сделку. Вызывайте вместе с короткой репликой клиенту.",
+      "Передать диалог живому менеджеру: клиент просит человека, жалуется, задаёт вопрос вне базы знаний и каталога, или в сервисном сценарии готов завершить сделку. В магазине в чате не передавайте покупку с reason=purchase — используйте order_product после подтверждения клиента.",
     input_schema: {
       type: "object",
       properties: {
@@ -1351,6 +1351,7 @@ async function answerConsultant(
     let response: Anthropic.Message | null = null;
     for (let round = 0; round < MAX_ROUNDS; round++) {
       const last = round === MAX_ROUNDS - 1;
+      let purchaseHandoffRejectedThisRound = false;
       const got = await callModel({
         model,
         ...modelParams(model),
@@ -1399,6 +1400,22 @@ async function answerConsultant(
               tool_use_id: block.id,
               content:
                 "В магазине в чате не создавайте заявку менеджеру. Если покупатель выбрал товар и подтвердил покупку — используйте order_product; иначе ответьте на вопрос или уточните выбор.",
+            });
+            continue;
+          }
+          if (
+            opts.shopInChat &&
+            block.name === "handoff_to_manager" &&
+            str("reason") === "purchase"
+          ) {
+            orderLeadRejected = true;
+            purchaseHandoffRejectedThisRound = true;
+            results.push({
+              type: "tool_result",
+              tool_use_id: block.id,
+              content: orderProductAllowed
+                ? "В магазине в чате не передавайте покупку менеджеру. Покупатель подтвердил покупку: оформите выбранный товар инструментом order_product. Если он просит человека, передайте диалог с reason human_requested."
+                : "В магазине в чате не передавайте покупку менеджеру и не создавайте заказ: выбор товара ещё не подтверждает покупку. Коротко уточните, хочет ли покупатель оформить выбранный товар. Если он просит человека, передайте диалог с reason human_requested.",
             });
             continue;
           }
@@ -1512,8 +1529,15 @@ async function answerConsultant(
       if (text.trim() && !needsData && !askContact) reply = text;
       // Ещё раунд и тогда, когда нужно спросить контакт или модель только
       // запомнила сказанное и ничего не ответила.
-      const more = needsData || askContact || !text.trim();
-      if (last || !loaded || !more || response.stop_reason !== "tool_use" || handoff) break;
+      const more = needsData || askContact || !text.trim() || purchaseHandoffRejectedThisRound;
+      if (
+        last ||
+        (!loaded && !purchaseHandoffRejectedThisRound) ||
+        !more ||
+        response.stop_reason !== "tool_use" ||
+        handoff
+      )
+        break;
       messages.push({ role: "assistant", content: response.content });
       messages.push({ role: "user", content: results });
     }
@@ -1552,7 +1576,7 @@ async function answerConsultant(
     }
     if (
       orderLeadRejected &&
-      /(?:передал[аио]?\s+менеджер|менеджер\w*.{0,40}свяж|заявк\w*.{0,40}(?:создал|запис|передал)|записал.{0,40}передал)/iu.test(
+      /(?:передал[аио]?\s+менеджер|менеджер\w*.{0,40}свяж|заявк\w*.{0,40}(?:создал|запис|передал)|записал.{0,40}передал|(?:запис|оформ|созда)\p{L}*\s+(?:к\s+)?заказ\p{L}*)/iu.test(
         reply,
       )
     ) {

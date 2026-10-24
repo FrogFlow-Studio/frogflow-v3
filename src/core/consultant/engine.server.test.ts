@@ -299,8 +299,71 @@ describe("консультант: передача менеджеру", () => {
     expect(r?.handoff).toBeNull();
     expect(r?.orderAction).toBeFalsy();
     expect(r?.reply).toBe(
-      "Заказ пока не оформлен и менеджеру не передан. Если хотите купить, напишите: «Да, оформляйте».",
+      "Заказ пока не оформлен и менеджеру не передан. Оформить его прямо здесь, в чате?",
     );
+  });
+
+  it("в shopInChat purchase-handoff не превращает короткий выбор товара в заявку менеджеру", async () => {
+    content = [
+      tool("handoff_to_manager", {
+        reason: "purchase",
+        summary: "Папка МО классных руководителей для Казахстана — 2500 KZT",
+      }),
+      text("Записываю к заказу и передаю менеджеру."),
+    ];
+    const c = customer({
+      consultant: {
+        recent: [
+          {
+            role: "assistant",
+            text: "Папка МО классных руководителей для Казахстана — 2500 KZT. Какая папка вам нужна?",
+          },
+        ],
+      },
+    } as never);
+    const r = await runConsultant(ctxOf(), c, "МО для Казахстана", {
+      platform: "whatsapp",
+      shopInChat: true,
+    });
+
+    expect(r?.handoff).toBeNull();
+    expect(r?.orderAction).toBeFalsy();
+    expect(r?.reply).toMatch(/заказ пока не оформлен/iu);
+    expect(r?.reply).toContain("менеджеру не передан");
+  });
+
+  it("после явного согласия ошибочный purchase-handoff восстанавливается через order_product", async () => {
+    create.mockResolvedValueOnce({
+      stop_reason: "tool_use",
+      content: [
+        tool("handoff_to_manager", { reason: "purchase", summary: "Папка МО для Казахстана" }),
+        text("Передаю менеджеру."),
+      ],
+      usage,
+    });
+    create.mockResolvedValueOnce({
+      stop_reason: "tool_use",
+      content: [
+        tool("order_product", { product_name: "Папка МО для Казахстана" }),
+        text("Оформляю заказ — ссылка оплаты появится в чате."),
+      ],
+      usage,
+    });
+    const c = customer({
+      consultant: {
+        recent: [
+          { role: "assistant", text: "Папка МО для Казахстана — 2500 KZT. Оформляем заказ?" },
+        ],
+      },
+    } as never);
+    const r = await runConsultant(ctxOf(), c, "Да, оформляйте", {
+      platform: "whatsapp",
+      shopInChat: true,
+    });
+
+    expect(create).toHaveBeenCalledTimes(2);
+    expect(r?.handoff).toBeNull();
+    expect(r?.orderAction?.productName).toBe("Папка МО для Казахстана");
   });
 
   it("контекстный выбор конкретного товара разрешает order_product без handoff", async () => {

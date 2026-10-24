@@ -5579,6 +5579,40 @@ export const SCENARIOS: Scenario[] = [
     ],
   },
   {
+    id: "consultant-selection-is-not-purchase-wa-ru",
+    title: "короткий выбор папки в ответ на уточнение не становится заявкой или заказом",
+    origin:
+      "Копилка Русоведа 24.10: на «МО для Казахстана» после уточнения выбора бот ответил «Записываю к заказу» и передал заявку менеджеру",
+    channel: "whatsapp",
+    locale: "ru",
+    full: true,
+    vertical: "consultant",
+    modules: { whatsapp: true, wa_shop: true },
+    state: {
+      consultant: {
+        recent: [
+          {
+            role: "assistant",
+            text: "Папка МО классных руководителей для Казахстана — 2500 KZT. Какая папка вам нужна?",
+          },
+        ],
+      },
+    },
+    consultant: "Записываю к заказу: Папка МО классных руководителей для Казахстана — 2500 KZT.",
+    products: PRODUCTS,
+    steps: [
+      {
+        say: { text: "МО для Казахстана" },
+        expect: {
+          says: ["Пока заказ не оформлен"],
+          notSays: ["Записываю к заказу", "передал менеджеру"],
+          orderCount: 0,
+          tasks: [],
+        },
+      },
+    ],
+  },
+  {
     id: "consultant-no-false-order-wa-ru",
     title: "вопрос о наличии в WhatsApp не превращается в ложное обещание оформить заказ",
     origin:
