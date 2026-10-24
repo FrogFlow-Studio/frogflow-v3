@@ -928,7 +928,7 @@ describe("строгий режим «Только по заказам» (Educat
     },
   );
 
-  it("«Давайте отменим заказ» отменяет связанный неоплаченный заказ по реальному статусу", async () => {
+  it("«Отмените пожалуйста» отменяет связанный неоплаченный заказ по реальному статусу", async () => {
     const { send, sent, db } = setup({
       platform: "whatsapp",
       state: {
@@ -955,7 +955,7 @@ describe("строгий режим «Только по заказам» (Educat
       },
     ];
 
-    const result = await send({ text: "Давайте отменим заказ" });
+    const result = await send({ text: "Отмените пожалуйста" });
 
     expect(result.outcome).toBe("handled");
     expect(db.tables.orders![0]!.status).toBe("cancelled");
