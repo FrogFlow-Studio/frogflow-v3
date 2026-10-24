@@ -70,6 +70,19 @@ export function isReceiptHowQuestion(text: string): boolean {
   return RECEIPT_HOW.test(t) || BARE_DONT_KNOW.test(t);
 }
 
+/** Короткие подписи URL-кнопки «Открыть оплату» в Direct/WhatsApp. */
+const OPEN_PAYMENT_ACTION =
+  /^(?:открыть(?:\s+ссылку(?:\s+на)?)?\s+оплат\p{L}*|перейти\s+(?:к\s+)?оплат\p{L}*|продолжить\s+оплат\p{L}*|оплатить(?:\s+сейчас)?|open\s+(?:the\s+)?payment|continue\s+to\s+pay|pay\s+now)$/iu;
+
+export function isOpenPaymentAction(text: string): boolean {
+  const value = text
+    .trim()
+    .replace(/^[^\p{L}\p{N}]+/u, "")
+    .replace(/[.!?]+$/u, "")
+    .trim();
+  return value.length <= 80 && OPEN_PAYMENT_ACTION.test(value);
+}
+
 /** «Не получается оплатить», «оплата не проходит» — ещё не оплатил, это не жалоба (Копилка 12.10, #131). */
 const CANT_PAY_MARKERS =
   /(не\s*(смог|могу|можу|получ|проход|прош|выход)\p{L}*\s*(оплат|заплат|перев)|(оплат|заплат)\p{L}*\s*не\s*(смог|могу|получ|прош|проход|выход))/iu;

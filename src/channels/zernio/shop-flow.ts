@@ -40,6 +40,7 @@ export {
   isPaidReport,
   isFromRussia,
   isReceiptHowQuestion,
+  isOpenPaymentAction,
   type IncomingKind,
   classifyIncoming,
   plain,

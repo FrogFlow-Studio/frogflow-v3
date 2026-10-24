@@ -11,6 +11,7 @@ import {
   isPayTrouble,
   isFromRussia,
   isReceiptHowQuestion,
+  isOpenPaymentAction,
   LOCALE_PICK_ECHO_MS,
   matchCountry,
   matchDeliveryLangChoice,
@@ -48,6 +49,27 @@ const countries = [
   { code: "UZ", name: "🇺🇿 Узбекистан" },
   { code: "OTHER", name: "Другая страна" },
 ];
+
+describe("isOpenPaymentAction", () => {
+  it.each([
+    "💳 Открыть оплату",
+    "Открыть ссылку на оплату",
+    "Перейти к оплате",
+    "Продолжить оплату",
+    "Оплатить сейчас",
+    "Open payment",
+    "Pay now",
+  ])("распознаёт короткую кнопку оплаты: %s", (text) => {
+    expect(isOpenPaymentAction(text)).toBe(true);
+  });
+
+  it.each(["Как открыть оплату?", "Откройте каталог", "Не могу открыть оплату"])(
+    "не считает обычный вопрос/проблему кнопкой оплаты: %s",
+    (text) => {
+      expect(isOpenPaymentAction(text)).toBe(false);
+    },
+  );
+});
 
 describe("extractProductNumber", () => {
   it("принимает номер в том виде, в каком его пишут покупатели", () => {

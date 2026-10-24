@@ -63,6 +63,7 @@ import {
   isPaidReport,
   isFromRussia,
   isReceiptHowQuestion,
+  isOpenPaymentAction,
   matchDeliveryLangChoice,
   matchLoyaltyPointsChoice,
   matchDirectCommand,
@@ -747,9 +748,12 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
       // а не второй раз про скрепку (AATeach 12.10, asya_6465, galinka.iva).
       const offered = await cantSendReceipt(s, text);
       if (offered) return offered;
-      // URL-кнопка Kaspi в WhatsApp может вернуться текстом «Оплатить в Kaspi».
-      // Это действие по уже созданному заказу, а не новый запрос подобрать товар.
-      if (mode === "awaiting_proof" && KASPI_PAYMENT_INTENT.test(text)) {
+      // URL-кнопка оплаты в WhatsApp может вернуться текстом. Это действие по
+      // текущему заказу, а не новый запрос подобрать товар.
+      if (
+        mode === "awaiting_proof" &&
+        (KASPI_PAYMENT_INTENT.test(text) || isOpenPaymentAction(text))
+      ) {
         await reply(s, s.m.afterProofManual, { force: true });
         return "handled";
       }
@@ -762,13 +766,18 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
       // «А ссылка где?» после кнопки оплаты: та же ссылка текстом, а не «пришлите
       // чек» (заказ #98 Копилки, 10.10). Ссылку Kaspi не повторяем: это новый счёт.
       const link = s.customer.state.pay_link;
-      if (mode === "awaiting_payment" && link == null && KASPI_PAYMENT_INTENT.test(text)) {
+      if (
+        mode === "awaiting_payment" &&
+        link == null &&
+        (KASPI_PAYMENT_INTENT.test(text) || isOpenPaymentAction(text))
+      ) {
         await reply(s, s.m.payLinkAboveHint, { force: true });
         return "handled";
       }
       if (
         mode === "awaiting_payment" &&
         (LINK_QUESTION.test(text) ||
+          isOpenPaymentAction(text) ||
           /оплат\w*\s*карт|карт\w*\s*(онлайн|рф)|картамен|pay\s*by\s*card/i.test(text) ||
           (link === "rk" && KASPI_PAYMENT_INTENT.test(text))) &&
         (link === "pdm" || link === "rk") &&
