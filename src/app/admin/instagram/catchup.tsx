@@ -1,5 +1,10 @@
 import { useMemo, useState } from "react";
-import { catchupPrivateFn, catchupPublicFn, postCommentsFn, triggerCommentFallbackFn } from "@/app/admin/instagram.functions";
+import {
+  catchupPrivateFn,
+  catchupPublicFn,
+  postCommentsFn,
+  triggerCommentFallbackFn,
+} from "@/app/admin/instagram.functions";
 import { HelpTip } from "@/app/admin/help-panel";
 import { Badge, Card, ErrorBox, Field, useAction } from "@/app/ui";
 import { BLOCK_REASON, type Data, REPLY_STATUS, useAdminI18n } from "./shared";
@@ -187,7 +192,8 @@ export function CatchupCard({ data }: { data: Data }) {
       </div>
       {fallbackResult && (
         <p className="mt-2 text-xs text-green-500">
-          ✓ Проверка завершена: проверено правил — {fallbackResult.automationsChecked}, комментариев — {fallbackResult.commentsChecked}, отправлено DM — {fallbackResult.sent}.
+          ✓ Проверка завершена: проверено правил — {fallbackResult.automationsChecked}, комментариев
+          — {fallbackResult.commentsChecked}, отправлено DM — {fallbackResult.sent}.
         </p>
       )}
       <ErrorBox error={triggerCheck.error} />

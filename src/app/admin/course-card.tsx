@@ -48,12 +48,13 @@ export function CourseCard({ productId, t }: { productId: string; t: AdminT }) {
     for (const file of Array.from(files ?? [])) {
       setUploading(file.name);
       try {
-        const key = await uploadFile("file", file, t, (status) =>
-          t("product.uploadFailed", { status }),
+        const key = await uploadFile(
+          "file",
+          file,
+          t,
+          (status) => t("product.uploadFailed", { status }),
           (sent, total) =>
-            setUploading(
-              `${file.name} (${total > 0 ? Math.round((sent / total) * 100) : 0}%)`,
-            ),
+            setUploading(`${file.name} (${total > 0 ? Math.round((sent / total) * 100) : 0}%)`),
         );
         edit(index, (l) => ({ ...l, files: [...l.files, { path: key, name: file.name }] }));
       } finally {

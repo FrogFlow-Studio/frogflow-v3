@@ -175,7 +175,7 @@ describe("фильтр «Язык материалов»", () => {
     );
     expect(matchesLangFilter({ file_url_kz: "https://x" }, { lang: "kk", has: true })).toBe(true);
   });
-it("цифровой товар с файлами в вариантах показывает files > 0 и не показывает «нет файла»", async () => {
+  it("цифровой товар с файлами в вариантах показывает files > 0 и не показывает «нет файла»", async () => {
     const { ctx, db } = shop(1);
     const prodId = id(1);
     const vId = "00000000-0000-4000-8000-000000000099";

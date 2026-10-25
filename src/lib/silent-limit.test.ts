@@ -28,6 +28,9 @@ const ALLOWED: Record<string, string[]> = {
     "последние события без клиента для оператора: ограничены параметром limit, это обзор",
   ],
   "src/app/admin/audit.server.ts": [`${SHOWN} (журнал действий команды)`],
+  "src/app/orders/pay-remind.server.ts": [
+    "до трёх названий товаров в тексте напоминания об оплате: остальное — в карточке заказа",
+  ],
   "src/app/admin/chat.functions.ts": [`${SHOWN} (подбор товара в счёт: поиск, INVOICE_PAGE)`],
   "src/core/inbox/triage.server.ts": [
     "контекст для разбора реплики перед обращением: последние HISTORY реплик, старые не нужны",
@@ -76,7 +79,13 @@ const ALLOWED: Record<string, string[]> = {
     `${SHOWN} (покупатели в админке, есть поиск)`,
   ],
   "src/core/orders/balance.ts": ["счёт попыток: достаточно RK_ATTEMPTS, дальше всё равно отказ"],
-  "src/core/orders/order-queries.ts": [`${SHOWN} (последние заказы покупателя)`],
+  "src/core/orders/order-queries.ts": [
+    `${SHOWN} (последние заказы покупателя)`,
+    `${SHOWN} (до 10 последних заказов покупателя для ответа консультанта о статусе)`,
+  ],
+  "src/core/orders/origin.ts": [
+    "диагностика происхождения заказа: 20 свежих отправок в окне вокруг заказа, неполный список даёт «не определено», ничего не меняет",
+  ],
   "src/core/pipeline/board.ts": [
     `${SHOWN} (открытые заказы на доске)`,
     `${SHOWN} (закрытые за окно на доске)`,
@@ -129,7 +138,7 @@ const ALLOWED: Record<string, string[]> = {
 };
 
 describe("молчаливые обрезки .limit(N) (Б28)", () => {
-  const files = execSync("git ls-files src/*.ts src/*.tsx", { encoding: "utf8" })
+  const files = execSync('git ls-files "src/*.ts" "src/*.tsx"', { encoding: "utf8" })
     .trim()
     .split("\n")
     .map((f) => f.trim())

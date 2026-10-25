@@ -156,7 +156,13 @@ export type SendOptions = {
 };
 
 /** failure — поля отказа Zernio: по ним очередь решает, повторять ли. */
-export type SendResult = { ok: boolean; error?: string; failure?: ZernioFailure };
+export type SendResult = {
+  ok: boolean;
+  error?: string;
+  failure?: ZernioFailure;
+  /** Вложение ушло отдельным сообщением и не прошло, а текст уже доставлен: повторять текст нельзя. */
+  textSent?: boolean;
+};
 
 /** Временный Supabase token не должен превращать повтор одного файла в новую отправку. */
 function idempotencyBody(body: Record<string, unknown>): Record<string, unknown> {
@@ -217,10 +223,16 @@ export async function sendInboxMessage(
   const capped =
     platform === "instagram" && buttons.length && !opts.interactive ? capButtonText(text) : text;
 
-  // В Instagram Direct (Meta Graph API / Zernio) нельзя объединять текст и вложение
-  // в один запрос (400 PLATFORM_LIMITATION). Отправляем последовательно:
-  // сначала текст (с кнопками, если есть), затем медиа отдельным сообщением.
-  if (platform === "instagram" && capped && opts.attachmentUrl) {
+  // Instagram Direct: текст и вложение без кнопок — двумя сообщениями (19.10: Meta
+  // отвечала 400 PLATFORM_LIMITATION). Карточка с кнопками («В корзину») — одним
+  // сообщением с фото, как до 19.10: фото над кнопкой, отказ фото ловит вызывающий.
+  if (
+    platform === "instagram" &&
+    capped &&
+    opts.attachmentUrl &&
+    !buttons.length &&
+    !opts.interactive
+  ) {
     const textRes = await sendInboxMessage(conversationId, accountId, capped, {
       ...opts,
       attachmentUrl: undefined,
@@ -229,12 +241,11 @@ export async function sendInboxMessage(
       idempotencyScope: opts.idempotencyScope ? `${opts.idempotencyScope}:text` : undefined,
     });
     if (!textRes.ok) return textRes;
-    return await sendInboxMessage(conversationId, accountId, "", {
+    const mediaRes = await sendInboxMessage(conversationId, accountId, "", {
       ...opts,
-      buttons: undefined,
-      interactive: undefined,
       idempotencyScope: opts.idempotencyScope ? `${opts.idempotencyScope}:media` : undefined,
     });
+    return mediaRes.ok ? mediaRes : { ...mediaRes, textSent: true };
   }
 
   const body: Record<string, unknown> = { accountId };

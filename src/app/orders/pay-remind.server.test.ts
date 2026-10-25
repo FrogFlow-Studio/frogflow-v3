@@ -98,4 +98,14 @@ describe("текст напоминания об оплате", () => {
     const t = await humanReminderText(ctx, { ...base, platform: "telegram" });
     expect(t).toBeNull();
   });
+
+  it("счёт ссылкой и предоплата: персональный текст не подменяет ссылку и сумму задатка", async () => {
+    buyer.mockResolvedValue({ firstName: "Айгерим", state: { locale: "ru" } });
+    expect(
+      await humanReminderText(ctx, { ...base, platform: "instagram", invoiceLink: true }),
+    ).toBeNull();
+    expect(
+      await humanReminderText(ctx, { ...base, platform: "whatsapp", due: 1000, total: 4000 }),
+    ).toBeNull();
+  });
 });

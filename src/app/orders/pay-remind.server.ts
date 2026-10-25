@@ -98,6 +98,9 @@ export async function humanReminderText(
 ): Promise<string | null> {
   // Для Telegram-бота оставляем структурированный HTML reminderText
   if (r.platform === "telegram") return null;
+  // Счёт ссылкой (#194) и предоплата — только в reminderText: без ссылки на оплату
+  // и суммы предоплаты напоминание просило бы чек за то, что оплачивается по ссылке.
+  if (r.invoiceLink || r.due < r.total) return null;
 
   const { getCustomerByTelegramId } = await import("@/core/customers/customers");
   const { formatMoney } = await import("@/core/money/money");
@@ -111,11 +114,13 @@ export async function humanReminderText(
     ? (buyer.state.locale as Locale)
     : (ctx.tenant.settings.default_locale ?? "ru");
 
-  const { data: items } = await ctx.db
+  const { data: items, error } = await ctx.db
     .from("order_items")
     .select("name_snapshot")
     .eq("order_id", r.orderId)
     .limit(3);
+  // Состав не прочитался — прежний текст напоминания, без названий.
+  if (error) return null;
 
   const itemNames = (items ?? [])
     .map((i: { name_snapshot?: string | null }) => i.name_snapshot?.trim())

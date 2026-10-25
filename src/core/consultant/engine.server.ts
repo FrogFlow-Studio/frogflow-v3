@@ -1652,10 +1652,11 @@ async function answerConsultant(
                 handoff = {
                   kind: "handoff",
                   reason: "unknown_question",
-                  summary:
-                    outcome.kind === "not_cancellable"
-                      ? `Покупатель просит отменить заказ №${outcome.orderNumber}; текущий статус: ${outcome.status}. Заказ автоматически не изменён.`
-                      : `Покупатель просит отменить заказ №${outcome.orderNumber}, но его не удалось однозначно найти в заказах этого покупателя.`,
+                  summary: `${handoffSummary(
+                    await sellerLocaleSafe(ctx),
+                    outcome.kind === "not_cancellable" ? "cancel_blocked" : "cancel_not_found",
+                    incoming,
+                  )} (№${outcome.orderNumber}${outcome.kind === "not_cancellable" ? `, ${outcome.status}` : ""})`,
                 };
                 reply =
                   text.trim() ||
@@ -1674,7 +1675,7 @@ async function answerConsultant(
               handoff = {
                 kind: "handoff",
                 reason: "unknown_question",
-                summary: `Покупатель просит отменить заказ №${orderNumber}; система не смогла проверить статус. Заказ не считается отменённым.`,
+                summary: `${handoffSummary(await sellerLocaleSafe(ctx), "cancel_unverified", incoming)} (№${orderNumber})`,
               };
               reply =
                 text.trim() ||

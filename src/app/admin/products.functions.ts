@@ -306,7 +306,12 @@ export const saveProductFn = createServerFn({ method: "POST" })
     // на витрину (core/courses/course.server syncCourseMarker).
     const course = isCourse && ctx.tenant.modules.courses;
     const hasVariantFiles = variants.some((v) => Boolean(v.filePath));
-    if (fields.fulfillmentKind === "digital" && materials.length === 0 && !hasVariantFiles && !course)
+    if (
+      fields.fulfillmentKind === "digital" &&
+      materials.length === 0 &&
+      !hasVariantFiles &&
+      !course
+    )
       throw new UserError(
         "err.admin.digitalNeedsFile",
         "Цифровому товару нужен хотя бы один файл — иначе покупатель заплатит и ничего не получит.",

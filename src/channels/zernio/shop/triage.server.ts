@@ -88,7 +88,8 @@ export async function triageQuestion(
     // чтобы не обрывать диалог на согласии клиента («да», «оплачу», «вечером» и т.п.)
     const consultant = await import("@/core/consultant/engine.server");
     if (await consultant.consultantEnabled(s.ctx)) {
-      const recent = (s.customer.state as { consultant?: { recent?: unknown[] } })?.consultant?.recent;
+      const recent = (s.customer.state as { consultant?: { recent?: unknown[] } })?.consultant
+        ?.recent;
       if (Array.isArray(recent) && recent.length > 0) {
         return null;
       }

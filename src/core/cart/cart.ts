@@ -90,7 +90,7 @@ export async function addToCart(
       sellable = Boolean(
         (variantId && vm[variantId]?.filePath) ||
         (vName && vm[vName]?.filePath) ||
-        Object.values(vm).some((entry) => Boolean(entry?.filePath))
+        Object.values(vm).some((entry) => Boolean(entry?.filePath)),
       );
     }
     if (!sellable) return "unavailable";
