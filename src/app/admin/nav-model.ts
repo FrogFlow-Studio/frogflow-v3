@@ -312,7 +312,10 @@ export function buildAdminNav(shop: NavShop): AdminNav {
       workspace,
       ...[sales, catalog, learning, marketing, analytics, help, settings].map(without),
     ].filter((g) => g.items.length > 0);
-    const primary = compact<NavItem>([overview, tasks, dialogs, price, media, knowledge]).slice(0, 4);
+    const primary = compact<NavItem>([overview, tasks, dialogs, price, media, knowledge]).slice(
+      0,
+      4,
+    );
     return { overview, groups, primary, pinned: workspace.items.map((i) => i.to) };
   }
 

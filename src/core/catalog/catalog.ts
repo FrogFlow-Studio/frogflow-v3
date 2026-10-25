@@ -114,9 +114,7 @@ export async function getProduct(ctx: TenantContext, id: string): Promise<Produc
     if (Object.keys(vm).length > 0) {
       product.product_variants = product.product_variants.map((v) => {
         const file = vm[v.id] || (v.name ? vm[v.name] : null);
-        return file?.filePath
-          ? { ...v, filePath: file.filePath, fileName: file.fileName }
-          : v;
+        return file?.filePath ? { ...v, filePath: file.filePath, fileName: file.fileName } : v;
       });
     }
   }

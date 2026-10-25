@@ -213,8 +213,7 @@ describe("служебное: кухня перевода тенге в рубл
 });
 
 describe("BOVI 19.10: требование размера перед отправкой фото", () => {
-  const stall = (text: string) =>
-    draftProblems(text, []).filter((p) => p.kind === "photo_stall");
+  const stall = (text: string) => draftProblems(text, []).filter((p) => p.kind === "photo_stall");
 
   it.each([
     "Подскажите, пожалуйста, размер и цвет - тогда пришлю фото нужного варианта.",
@@ -233,4 +232,3 @@ describe("BOVI 19.10: требование размера перед отпра�
     expect(stall(text)).toEqual([]);
   });
 });
-

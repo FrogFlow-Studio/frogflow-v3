@@ -103,7 +103,7 @@ const ALLOWED: Record<string, string[]> = {
 };
 
 describe("длинные .in кусками (Б29)", () => {
-  const files = execSync("git ls-files src/*.ts src/*.tsx", { encoding: "utf8" })
+  const files = execSync('git ls-files "src/*.ts" "src/*.tsx"', { encoding: "utf8" })
     .trim()
     .split("\n")
     .map((f) => f.trim())

@@ -48,7 +48,10 @@ export type Note =
   | "slow"
   | "price"
   | "injection"
-  | "busy";
+  | "busy"
+  | "cancel_blocked"
+  | "cancel_not_found"
+  | "cancel_unverified";
 const NOTES: Record<Note, Record<Locale, string>> = {
   accounting: {
     ru: "Сбой учёта расхода консультанта.",
@@ -110,6 +113,24 @@ const NOTES: Record<Note, Record<Locale, string>> = {
     kk: "ЖИ-кеңесші жауап беріп үлгермеді: осы диалогтағы алдыңғы жауап тоқтап қалды.",
     en: "The AI consultant could not answer in time: the previous reply in this conversation got stuck.",
     uz: "SI maslahatchi javob berishga ulgurmadi: bu suhbatdagi oldingi javob osilib qoldi.",
+  },
+  cancel_blocked: {
+    ru: "Покупатель просит отменить заказ; по его статусу отмена автоматически невозможна, заказ не изменён.",
+    kk: "Сатып алушы тапсырыстың күшін жоюды сұрайды; мәртебесі бойынша автоматты түрде жою мүмкін емес, тапсырыс өзгерген жоқ.",
+    en: "The customer asks to cancel an order; its status does not allow automatic cancellation, the order is unchanged.",
+    uz: "Xaridor buyurtmani bekor qilishni so‘rayapti; holati bo‘yicha avtomatik bekor qilib bo‘lmaydi, buyurtma o‘zgarmadi.",
+  },
+  cancel_not_found: {
+    ru: "Покупатель просит отменить заказ, но его не удалось однозначно найти в заказах покупателя.",
+    kk: "Сатып алушы тапсырыстың күшін жоюды сұрайды, бірақ оны сатып алушының тапсырыстарынан нақты табу мүмкін болмады.",
+    en: "The customer asks to cancel an order, but it could not be matched unambiguously among the customer's orders.",
+    uz: "Xaridor buyurtmani bekor qilishni so‘rayapti, lekin uni xaridor buyurtmalari orasidan aniq topib bo‘lmadi.",
+  },
+  cancel_unverified: {
+    ru: "Покупатель просит отменить заказ; система не смогла проверить статус. Заказ не считается отменённым.",
+    kk: "Сатып алушы тапсырыстың күшін жоюды сұрайды; жүйе мәртебені тексере алмады. Тапсырыс жойылған болып саналмайды.",
+    en: "The customer asks to cancel an order; the system could not check its status. The order is not considered cancelled.",
+    uz: "Xaridor buyurtmani bekor qilishni so‘rayapti; tizim holatni tekshira olmadi. Buyurtma bekor qilingan hisoblanmaydi.",
   },
   failure: {
     ru: "Сбой консультанта.",

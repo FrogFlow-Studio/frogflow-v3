@@ -10,6 +10,7 @@ import { notifyAdminsHtml } from "@/channels/telegram/notify";
 import { liveTransport, type ZernioTransport } from "./api.server";
 import { findManagerMessage } from "./manager-guard";
 import { pauseHours, pauseNoticeRu } from "@/core/consultant/pause";
+import { serverFailure } from "@/lib/server-failure";
 import {
   messageAsText,
   parseZernioMessage,
@@ -916,12 +917,14 @@ async function resolveConsultantLine(
   let product: import("@/core/catalog/catalog").Product | null = null;
   if (action.productId) product = await getProduct(ctx, action.productId);
   if (!product && action.productName) {
-    const { data: rows } = await ctx.db
+    const { data: rows, error } = await ctx.db
       .from("products")
       .select(PRODUCT_SELECT)
       .eq("bot_id", ctx.tenant.id)
       .eq("is_active", true)
       .order("sort_order");
+    // Каталог не прочитался ≠ «товара нет»: чекаут падает, вызывающий пишет сбой в журнал.
+    if (error) throw serverFailure(`[consultant-order] каталог не прочитан: ${error.message}`);
     const found = (rows as import("@/core/catalog/catalog").Product[] | null) ?? [];
     const clean = (str: string) =>
       (str ?? "")

@@ -175,9 +175,7 @@ export async function productCard(
             {
               text: `${v.name} — ${formatMoney(money.amount, money.currency)}`,
               callback_data:
-                `add:${p.id}:${v.id}`.length <= 64
-                  ? `add:${p.id}:${v.id}`
-                  : `add::${v.id}`,
+                `add:${p.id}:${v.id}`.length <= 64 ? `add:${p.id}:${v.id}` : `add::${v.id}`,
             },
           ]),
     };

@@ -165,7 +165,8 @@ export function isAttachmentRejected(err: unknown): boolean {
         : null;
   if (!f) return false;
   if (f.status === 400 && f.code === "PLATFORM_LIMITATION") return true;
-  if (typeof f.platformCode === "number" && ATTACHMENT_META_CODES.includes(f.platformCode)) return true;
+  if (typeof f.platformCode === "number" && ATTACHMENT_META_CODES.includes(f.platformCode))
+    return true;
   return false;
 }
 

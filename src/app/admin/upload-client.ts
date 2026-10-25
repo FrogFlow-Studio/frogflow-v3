@@ -61,7 +61,11 @@ function put(
       headers,
       signal: AbortSignal.timeout(PUT_TIMEOUT_MS),
     })
-      .then(async (r) => ({ ok: r.ok, status: r.status, text: r.ok ? undefined : await r.text().catch(() => "") }))
+      .then(async (r) => ({
+        ok: r.ok,
+        status: r.status,
+        text: r.ok ? undefined : await r.text().catch(() => ""),
+      }))
       .catch(() => ({ ok: false, status: 0 }));
   return new Promise((resolve) => {
     const xhr = new XMLHttpRequest();

@@ -260,7 +260,7 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
   const readiness = productReadiness({
     name: live.name,
     description: live.description,
-    price: live.price ?? (variants.length > 0 ? variants[0]?.price ?? null : null),
+    price: live.price ?? (variants.length > 0 ? (variants[0]?.price ?? null) : null),
     categories: live.categories,
     variants: variants.length,
     photos: images.length,
@@ -564,7 +564,9 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
               >
                 {materials.length === 0 && variants.some((v) => Boolean(v.filePath)) && (
                   <div className="mb-3 rounded-md border border-ok/30 bg-ok/10 p-2.5 text-xs text-ok">
-                    📎 Файлы привязаны к вариантам ниже ({variants.filter((v) => Boolean(v.filePath)).length} шт.). Покупатель получит только файл выбранного им варианта (например, конкретного класса).
+                    📎 Файлы привязаны к вариантам ниже (
+                    {variants.filter((v) => Boolean(v.filePath)).length} шт.). Покупатель получит
+                    только файл выбранного им варианта (например, конкретного класса).
                   </div>
                 )}
                 <ul className="space-y-2 text-sm">

@@ -134,11 +134,7 @@ export async function cancelFreshOrder(s: Shop): Promise<boolean> {
   if (!id) return false;
   if (mode && !PAY_MODES.includes(mode) && mode !== "idle") return false;
   const order = await getOrder(s.ctx, id);
-  if (
-    !order ||
-    order.telegram_id !== s.customer.telegramId ||
-    order.status !== "awaiting_payment"
-  )
+  if (!order || order.telegram_id !== s.customer.telegramId || order.status !== "awaiting_payment")
     return false;
   const done = await rejectOrder(s.ctx, id, "buyer", {
     from: ["awaiting_payment"],

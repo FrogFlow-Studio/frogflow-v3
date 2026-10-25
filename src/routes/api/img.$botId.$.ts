@@ -50,24 +50,26 @@ export const Route = createFileRoute("/api/img/$botId/$")({
           if (ownedError) throw serverFailure(`Картинки: ${ownedError.message}`);
           let isOwned = Boolean(owned);
           if (!isOwned) {
-            const { data: ownedSetting } = await serviceDb()
+            const { data: ownedSetting, error: settingError } = await serviceDb()
               .from("app_settings")
-              .select("id")
+              .select("key")
               .eq("bot_id", botId)
               .eq("key", "vip_payment_qr_path")
               .eq("value", rel)
               .limit(1)
               .maybeSingle();
+            if (settingError) throw serverFailure(`Картинки: ${settingError.message}`);
             isOwned = Boolean(ownedSetting);
           }
           if (!isOwned) {
-            const { data: ownedPayment } = await serviceDb()
+            const { data: ownedPayment, error: paymentError } = await serviceDb()
               .from("payment_methods")
               .select("id")
               .eq("bot_id", botId)
               .eq("qr_code_path", rel)
               .limit(1)
               .maybeSingle();
+            if (paymentError) throw serverFailure(`Картинки: ${paymentError.message}`);
             isOwned = Boolean(ownedPayment);
           }
           if (isOwned) file = (await storage.download(rel)).data;

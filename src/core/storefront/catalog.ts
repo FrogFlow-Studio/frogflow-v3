@@ -383,14 +383,17 @@ export async function storeCatalogPage(
     async (rows) => {
       const pidsWithVariants = rows.filter((p) => p.product_variants?.length).map((p) => p.id);
       if (pidsWithVariants.length) {
-        const { loadVariantMaterialsForProducts } = await import("@/core/catalog/variant-materials");
+        const { loadVariantMaterialsForProducts } =
+          await import("@/core/catalog/variant-materials");
         const vmMap = await loadVariantMaterialsForProducts(ctx, pidsWithVariants);
         for (const p of rows) {
           const vm = vmMap.get(p.id);
           if (vm && p.product_variants) {
             p.product_variants = p.product_variants.map((v) => {
               const file = vm[v.id] || (v.name ? vm[v.name] : null);
-              return file?.filePath ? { ...v, filePath: file.filePath, fileName: file.fileName } : v;
+              return file?.filePath
+                ? { ...v, filePath: file.filePath, fileName: file.fileName }
+                : v;
             });
           }
         }

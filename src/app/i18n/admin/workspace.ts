@@ -135,7 +135,8 @@ export const ru = {
   "ws.media.noMatch": "Ни одной позиции в прайсе — проверьте написание.",
 
   "ws.mediaCatalog.title": "Фото и видео каталога",
-  "ws.mediaCatalog.subtitle": "Товары каталога, требующие фото и видео. Консультант отправляет их покупателям в Direct.",
+  "ws.mediaCatalog.subtitle":
+    "Товары каталога, требующие фото и видео. Консультант отправляет их покупателям в Direct.",
   "ws.mediaCatalog.stat.total": "Всего моделей",
   "ws.mediaCatalog.stat.withMedia": "С фото или видео",
   "ws.mediaCatalog.stat.withoutMedia": "Без медиа",
@@ -335,7 +336,8 @@ export const kk: SectionDict<typeof ru> = {
   "ws.media.noMatch": "Прайста бірде-бір позиция жоқ — жазылуын тексеріңіз.",
 
   "ws.mediaCatalog.title": "Каталогтың фото және видеосы",
-  "ws.mediaCatalog.subtitle": "Фото мен видеоны қажет ететін каталог тауарлары. Кеңесші оларды Direct-те сатып алушыларға жібереді.",
+  "ws.mediaCatalog.subtitle":
+    "Фото мен видеоны қажет ететін каталог тауарлары. Кеңесші оларды Direct-те сатып алушыларға жібереді.",
   "ws.mediaCatalog.stat.total": "Барлық модельдер",
   "ws.mediaCatalog.stat.withMedia": "Фото немесе видеомен",
   "ws.mediaCatalog.stat.withoutMedia": "Медиасыз",
@@ -534,7 +536,8 @@ export const en: SectionDict<typeof ru> = {
   "ws.media.noMatch": "No item in the price list — check the spelling.",
 
   "ws.mediaCatalog.title": "Catalog media",
-  "ws.mediaCatalog.subtitle": "Catalog products that require photos and videos. The consultant sends them to customers in Direct.",
+  "ws.mediaCatalog.subtitle":
+    "Catalog products that require photos and videos. The consultant sends them to customers in Direct.",
   "ws.mediaCatalog.stat.total": "Total models",
   "ws.mediaCatalog.stat.withMedia": "With media",
   "ws.mediaCatalog.stat.withoutMedia": "Without media",
@@ -735,7 +738,8 @@ export const uz: SectionDict<typeof ru> = {
   "ws.media.noMatch": "Narxnomada birorta ham pozitsiya yo‘q — yozilishini tekshiring.",
 
   "ws.mediaCatalog.title": "Katalog foto va videolari",
-  "ws.mediaCatalog.subtitle": "Foto va video talab qiladigan katalog mahsulotlari. Maslahatchi ularni Direct-da xaridorlarga yuboradi.",
+  "ws.mediaCatalog.subtitle":
+    "Foto va video talab qiladigan katalog mahsulotlari. Maslahatchi ularni Direct-da xaridorlarga yuboradi.",
   "ws.mediaCatalog.stat.total": "Barcha modellar",
   "ws.mediaCatalog.stat.withMedia": "Foto yoki video bilan",
   "ws.mediaCatalog.stat.withoutMedia": "Mediasiz",

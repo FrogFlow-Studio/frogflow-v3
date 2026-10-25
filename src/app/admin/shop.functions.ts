@@ -112,7 +112,9 @@ export const adminShopFn = createServerFn({ method: "GET" }).handler(async () =>
           : null,
       consultantMediaDemands:
         !accountant && roleAllows(role, "manager") && consultantWorkspace({ sells, pricelist })
-          ? await (await import("@/core/consultant/pricelist/media-catalog.server"))
+          ? await (
+              await import("@/core/consultant/pricelist/media-catalog.server")
+            )
               .openMediaDemandsCount(ctx)
               .catch((e) => {
                 console.error(
