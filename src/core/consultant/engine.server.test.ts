@@ -40,6 +40,12 @@ const create = vi.fn(async (_args: Record<string, unknown>) => ({
   content,
   usage,
 }));
+// Лимит частоты платформы (600 вызовов в минуту на экземпляр) живёт в памяти
+// модуля: на весь файл тестов он бы копился и обрывал последние тесты.
+vi.mock("./rate.server", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./rate.server")>()),
+  takeAiCall: async () => true,
+}));
 vi.mock("@anthropic-ai/sdk", () => {
   class APIError extends Error {
     status?: number;
@@ -58,7 +64,6 @@ const {
   runConsultant,
   isPaused,
   buildConsultantMessages,
-  confirmedOrderIntent,
   guardShopOrderReply,
   KEYS,
   replaceLastConsultantReply,
@@ -450,25 +455,45 @@ describe("консультант: передача менеджеру", () => {
     expect(st.paused_until).toBeTruthy();
   });
 
-  it("явное намерение: наличие и оплата не согласие; «да» работает после вопроса об оформлении", () => {
-    expect(confirmedOrderIntent("Здравствуйте. У вас есть папка?", [])).toBe(false);
-    expect(confirmedOrderIntent("Оплата картой", [])).toBe(false);
-    const selectionContext = [
-      {
-        role: "assistant" as const,
-        text: "Также есть отдельная Папка МО классных руководителей для Казахстана. Какая вам сейчас нужна?",
-      },
+  it("«Хотела купить папку» — заказ оформляет модель, регулярка её не останавливает (Копилка 25.10)", async () => {
+    content = [
+      tool("order_product", { product_name: "Папка классного руководителя" }),
+      text("Оформляю папку классного руководителя."),
     ];
-    expect(confirmedOrderIntent("Можно мне МО для Казахстана", selectionContext)).toBe(true);
-    expect(confirmedOrderIntent("Можно мне подробнее о МО", selectionContext)).toBe(false);
-    expect(confirmedOrderIntent("Можно мне МО для Казахстана", [])).toBe(false);
-    expect(
-      confirmedOrderIntent("Да", [{ role: "assistant", text: "Какая папка вам нужна?" }]),
-    ).toBe(false);
-    expect(confirmedOrderIntent("Да", [{ role: "assistant", text: "Оформляем заказ?" }])).toBe(
-      true,
+    const c = customer({
+      consultant: {
+        recent: [
+          { role: "customer", text: "Здравствуйте. Интересует папка классного руководителя." },
+          { role: "assistant", text: "Папка классного руководителя — 3500 KZT." },
+        ],
+      },
+    } as never);
+    const r = await runConsultant(ctxOf(), c, "Хотела купить папку", {
+      platform: "whatsapp",
+      shopInChat: true,
+    });
+    expect(args().tools).toEqual(
+      expect.arrayContaining([expect.objectContaining({ name: "order_product" })]),
     );
-    expect(confirmedOrderIntent("Да, давайте оформим", [])).toBe(true);
+    expect(r?.orderAction).toMatchObject({ productName: "Папка классного руководителя" });
+    expect(r?.reply).toBe("Оформляю папку классного руководителя.");
+  });
+
+  it("обещание заказа без заказа — модель переписывает ответ сама, заготовки нет", async () => {
+    create.mockImplementationOnce(async () => ({
+      stop_reason: "end_turn",
+      content: [text("Оформляю заказ — детали и оплата сейчас появятся в этом чате.")],
+      usage,
+    }));
+    content = [text("В папке планы, протоколы и шаблоны документов. Оформить её для вас?")];
+    const r = await runConsultant(ctxOf(), customer(), "Что туда входит?", {
+      platform: "whatsapp",
+      shopInChat: true,
+    });
+    expect(r?.orderAction).toBeFalsy();
+    expect(r?.reply).toBe("В папке планы, протоколы и шаблоны документов. Оформить её для вас?");
+    const note = JSON.stringify(create.mock.calls.at(-1)![0]);
+    expect(note).toContain("Служебное сообщение");
   });
 
   it("кнопка «Купить»: инструмент есть только при настройке канала, товар уходит в ответ и в состояние", async () => {
@@ -505,33 +530,6 @@ describe("консультант: передача менеджеру", () => {
     });
 
     expect(r?.orderAction).toBeFalsy();
-    expect(r?.reply).toBe("Пока заказ не оформлен. Что именно вы хотели узнать о товаре?");
-  });
-
-  it("не создаёт orderAction, даже если модель нарушила запрет и вызвала инструмент без согласия", async () => {
-    content = [
-      tool("order_product", { product_name: "Папка МО классных руководителей" }),
-      text("Оформляю заказ — детали и оплата сейчас появятся в этом чате."),
-    ];
-    const c = customer({
-      consultant: {
-        recent: [
-          { role: "customer", text: "Мо для Казахстана" },
-          { role: "assistant", text: "Вам нужна папка для России или Казахстана?" },
-        ],
-      },
-    } as never);
-    const r = await runConsultant(
-      ctxOf(),
-      c,
-      "Здравствуйте. У вас есть папка классного руководителя?",
-      { platform: "whatsapp", shopInChat: true },
-    );
-
-    expect(r?.orderAction).toBeFalsy();
-    expect(args().tools).not.toEqual(
-      expect.arrayContaining([expect.objectContaining({ name: "order_product" })]),
-    );
     expect(r?.reply).toBe("Пока заказ не оформлен. Что именно вы хотели узнать о товаре?");
   });
 

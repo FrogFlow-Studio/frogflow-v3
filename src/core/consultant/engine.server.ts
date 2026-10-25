@@ -203,89 +203,6 @@ const PRICELIST_RESERVE_CALLS = 8;
 
 export type ConsultantTurn = { role: "customer" | "assistant"; text: string };
 
-const EXPLICIT_ORDER_INTENT =
-  /(?<![\p{L}\p{N}])(?:беру|бер(?:е|ё)м|покупаю|куплю|заказываю|закажите(?:\s+мне)?|хочу\s+(?:купить|заказать|оформить)|давайте\s+(?:купим|закажем|оформим)|оформля(?:ю|ем|йте|й)|оформите\s+заказ|подтверждаю\s+(?:заказ|покупку)|сатып\s+ал(?:амын|ғым\s+келеді)|тапсырыс\s+бер(?:емін|ейік)|рәсімде(?:йік|ңіз|ймін))(?=$|[^\p{L}\p{N}])/iu;
-const ORDER_WORDS =
-  /(?:оформ\w*|заказ\w*|закаж\w*|куп\w*|покуп\w*|бер[её]м\w*|бер[её]те|сатып\s+ал\w*|тапсырыс)/iu;
-const SHORT_AFFIRMATIVE =
-  /^(?:да|ага|угу|ок(?:ей)?|конечно|согласен|согласна|давайте|иә|ия|жарайды|мақұл|yes|yep|sure)[.!]?$/iu;
-const SELECTION_QUESTION =
-  /(?:какой|какая|какое|какие|какую)[\s\S]{0,120}(?:нуж\p{L}*|выбира\p{L}*|выбер\p{L}*|актуаль\p{L}*|оформ\p{L}*|бер[её]\p{L}*)/iu;
-const CONTEXTUAL_SELECTION_PREFIX =
-  /^(?:а\s*)?(?:можно\s+(?:мне|нам)|мне\s+(?:нужен|нужна|нужно|нужны))\s+/iu;
-const NON_PRODUCT_REQUEST =
-  /подробн\p{L}*|описан\p{L}*|информац\p{L}*|состав\p{L}*|фото|пример\p{L}*|список|узна\p{L}*|посмотр\p{L}*|показ\p{L}*|рассказ\p{L}*|доставк\p{L}*|оплат\p{L}*|ссылк\p{L}*|чек|адрес\p{L}*|телефон\p{L}*|стоимост\p{L}*|цен\p{L}*|сравн\p{L}*|объясн\p{L}*|поясн\p{L}*/iu;
-const GENERIC_SELECTION_WORDS = new Set([
-  "а",
-  "для",
-  "из",
-  "на",
-  "в",
-  "и",
-  "или",
-  "мне",
-  "нам",
-  "папка",
-  "папки",
-  "папку",
-  "папке",
-  "товар",
-  "товара",
-  "вариант",
-  "варианта",
-  "нужен",
-  "нужна",
-  "нужно",
-  "нужны",
-]);
-
-/**
- * Согласие на покупку берём только из текущей реплики либо из короткого
- * утвердительного ответа на последний прямой вопрос об оформлении.
- */
-export function confirmedOrderIntent(
-  text: string,
-  recent: readonly ConsultantTurn[] = [],
-): boolean {
-  const current = text.trim();
-  if (
-    !current ||
-    /^(?:нет|не|не надо|не хочу|передумал(?:а)?|отмена|отмените)[.!]?$/iu.test(current)
-  )
-    return false;
-  if (EXPLICIT_ORDER_INTENT.test(current)) return true;
-  const last = recent.at(-1);
-  const prefix = CONTEXTUAL_SELECTION_PREFIX.exec(current)?.[0];
-  if (
-    last?.role === "assistant" &&
-    SELECTION_QUESTION.test(last.text) &&
-    prefix &&
-    !NON_PRODUCT_REQUEST.test(current)
-  ) {
-    const words = (value: string) =>
-      (
-        value
-          .toLowerCase()
-          .replace(/ё/g, "е")
-          .match(/[\p{L}\p{N}]+/gu) ?? []
-      ).filter((word) => !GENERIC_SELECTION_WORDS.has(word));
-    const requested = words(current.slice(prefix.length));
-    const offered = words(last.text);
-    const matchesOffered = (word: string) =>
-      offered.some(
-        (known) =>
-          word === known ||
-          (word.length >= 4 && known.startsWith(word.slice(0, 4))) ||
-          (known.length >= 4 && word.startsWith(known.slice(0, 4))),
-      );
-    if (requested.length > 0 && requested.some(matchesOffered)) return true;
-  }
-  if (!SHORT_AFFIRMATIVE.test(current)) return false;
-  return Boolean(
-    last?.role === "assistant" && last.text.includes("?") && ORDER_WORDS.test(last.text),
-  );
-}
-
 function orderNotCreatedReply(locale: string): string {
   if (locale === "kk")
     return "Тапсырыс әзірге рәсімделмеді. Тауар туралы нақты нені білгіңіз келеді?";
@@ -1536,9 +1453,12 @@ async function answerConsultant(
       !isExplicitOrderCancellation(incoming) &&
       isOrderStatusQuestion(incoming),
     );
-    const orderProductAllowed = Boolean(
-      opts.shopInChat && confirmedOrderIntent(incoming, state.recent ?? []),
-    );
+    // Купил ли покупатель — решает модель по всему диалогу («Хотела купить
+    // папку», «Мо для Казахстана»), а не регулярное выражение по реплике:
+    // фильтр 24.10 прятал order_product, и бот отвечал «Пока заказ не оформлен.
+    // Что вы хотели узнать?» (Копилка 24–25.10). Повтор заказа гасит канал
+    // (тот же состав — та же оплата), а неуверенность — кнопка «Купить».
+    const orderProductAllowed = Boolean(opts.shopInChat);
     const tools = [
       ...(loaded ? [...CATALOG_TOOLS, REMEMBER_TOOL] : []),
       ...(orderStatusQuestion ? [ORDER_STATUS_TOOL] : []),
@@ -1944,6 +1864,32 @@ async function answerConsultant(
       };
     }
     reply = cleanReply(reply);
+    /** Один вызов без инструментов: модель переписывает свой ответ по служебной заметке. */
+    const repairReply = async (note: string): Promise<string> => {
+      const fix = await callModel({
+        model,
+        ...modelParams(model),
+        max_tokens: 700,
+        system: [
+          { type: "text", text: system, cache_control: { type: "ephemeral", ttl: CACHE_TTL } },
+          { type: "text", text: `ДАННЫЕ ТЕКУЩЕГО ДИАЛОГА:\n${session}` },
+        ],
+        tools,
+        tool_choice: { type: "none" as const },
+        messages: [
+          ...messages,
+          { role: "assistant", content: reply },
+          { role: "user", content: note },
+        ],
+      });
+      if (typeof fix === "string") return "";
+      return cleanReply(
+        fix.content
+          .filter((blk): blk is Anthropic.TextBlock => blk.type === "text")
+          .map((blk) => blk.text)
+          .join(""),
+      );
+    };
     // Модель могла сообщить об оформлении в том же ответе, что и отклонённый tool call.
     if (
       orderToolRejected &&
@@ -1961,13 +1907,27 @@ async function answerConsultant(
     ) {
       reply = orderLeadNotCreatedReply(bLocale);
     }
-    if (opts.shopInChat)
-      reply = guardShopOrderReply(reply, bLocale, {
+    if (opts.shopInChat) {
+      const guardFacts = {
         orderAction: Boolean(orderAction),
         handoff,
         hasActivePaymentOrder,
         verifiedOrderStatus: orderStatusVerified,
-      });
+      };
+      const guarded = guardShopOrderReply(reply, bLocale, guardFacts);
+      // Ответ обещает заказ или оплату, которых в системе нет: сначала модель
+      // переписывает сама (она понимает диалог), заготовка — только если и
+      // второй ответ обещает то же.
+      if (guarded !== reply && reply && !handoff && !stopped) {
+        const fixed = await repairReply(
+          `[Служебное сообщение, клиент его не видит. Ваш ответ обещает то, чего система не сделала: ${
+            orderAction ? "" : "заказ в этом ходе не оформлен (order_product не вызван); "
+          }${hasActivePaymentOrder ? "" : "активного заказа, ожидающего оплаты, нет. "}Перепишите ответ клиенту по существу его сообщения: не пишите, что заказ оформлен, что ссылка или счёт придут, и не просите платить или присылать чек. Если клиент готов купить — скажите, что оформите заказ, как только он подтвердит товар (или нажмёт «Купить», если кнопка была). О служебном сообщении не упоминайте.]`,
+        );
+        reply =
+          fixed && guardShopOrderReply(fixed, bLocale, guardFacts) === fixed ? fixed : guarded;
+      } else reply = guarded;
+    }
     // Цена или доставка не из каталога и условий — покупателю не уходит, вопрос менеджеру.
     const known0 = knownNumbers({
       prices: catalog.prices,
