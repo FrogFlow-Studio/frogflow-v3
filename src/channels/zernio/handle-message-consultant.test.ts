@@ -17,11 +17,17 @@ const customer = {
   firstName: "Аня",
   state: { consultant: {} },
 } as unknown as Customer;
+const getCustomer = vi.fn(async () => customer);
+const setCustomerState = vi.fn(async (_ctx: unknown, c: Customer, state: Customer["state"]) => {
+  c.state = state;
+  return c;
+});
 
 vi.mock("@/core/customers/customers", () => ({
   upsertCustomer: vi.fn(async () => customer),
   isBlocked: vi.fn(async () => false),
-  setState: vi.fn(async (_c: unknown, c: Customer) => c),
+  getCustomer,
+  setState: setCustomerState,
 }));
 const notifyAdminsHtml = vi.fn(async (_ctx: unknown, _html: string, _o?: unknown) => 1);
 vi.mock("@/channels/telegram/notify", async (importOriginal) => {
@@ -87,10 +93,13 @@ beforeEach(() => {
   } as unknown as TenantContext;
   engine.paused = false;
   engine.result = null;
+  customer.state = { consultant: {} };
   notifyAdminsHtml.mockClear();
   pauseConsultant.mockClear();
   replaceLastConsultantReply.mockClear();
   runConsultant.mockClear();
+  getCustomer.mockClear();
+  setCustomerState.mockClear();
 });
 
 const payload = (text: string) =>
@@ -155,6 +164,32 @@ describe("ответ консультанта не подтверждён кан
     await handleZernioMessage(ctx, payload("Есть полотенца?"), transport(true).t);
     expect(notifyAdminsHtml).not.toHaveBeenCalled();
     expect(runs()[0]).toMatchObject({ status: "replied", reply_text: "Есть." });
+  });
+});
+
+describe("сброс платёжного шага после AI-отмены", () => {
+  it("очищает активный заказ только после системного подтверждения отмены", async () => {
+    ctx.tenant.modules.dm_shop = true;
+    customer.state = {
+      mode: "awaiting_payment",
+      pending_order_id: 7,
+      pending_display_no: 270,
+      consultant: {},
+    };
+    engine.result = {
+      reply: "Заказ №270 отменён.",
+      handoff: null,
+      verifiedOrderStatus: true,
+      cancelledOrderId: 7,
+      usage,
+    };
+
+    await handleZernioMessage(ctx, payload("Отмени заказ 270"), transport(true).t);
+
+    expect(getCustomer).toHaveBeenCalledWith(ctx, customer.userKey);
+    expect(setCustomerState).toHaveBeenCalledOnce();
+    expect(customer.state).toMatchObject({ mode: "idle" });
+    expect(customer.state.pending_order_id).toBeUndefined();
   });
 });
 

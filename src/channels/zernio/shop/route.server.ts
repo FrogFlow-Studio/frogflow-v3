@@ -1,5 +1,6 @@
 import { allPriceCountries } from "@/core/pricing/all-prices";
 import { isOrderStatusQuestion } from "@/core/consultant/order-status-intent";
+import { isCancellationOrderNumberReply } from "@/core/consultant/order-cancel-intent";
 import { nonceFromMessage } from "@/core/storefront/code-login";
 import { explainIncoming } from "../reason";
 import { lastPaidOrder, shortLabels } from "@/core/orders/reorder";
@@ -281,6 +282,18 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
   // оплаты, а не шаг оплаты (Копилка 12.10, _marina_lyalina_ #149).
   if (await dropPaidStep(s)) mode = s.customer.state.mode;
 
+  // Число в ответ на «какой номер отменить?» — продолжение хода AI,
+  // не выбор checkout, даже если у покупателя активен шаг оплаты.
+  if (text && isCancellationOrderNumberReply(s.customer.state.consultant?.recent ?? [], text)) {
+    const consultant = await import("@/core/consultant/engine.server");
+    if (await consultant.consultantEnabled(s.ctx)) {
+      if (consultant.isPaused(s.customer)) {
+        s.customer = await consultant.resumeConsultant(s.ctx, s.customer);
+      }
+      return "question";
+    }
+  }
+
   // Проверку существующего заказа должен выполнить AI-консультант с read-only tool,
   // а не общий shop triage или обработчик шага оплаты.
   if (text && isOrderStatusQuestion(text)) return "question";
@@ -409,19 +422,26 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
   const startCall = idleNow && !inDialog(s) && text.trim().toLowerCase() === "/start";
   if (isCancel(text) && !startCall) {
     if (idleNow && !inDialog(s) && !s.customer.state.pending_order_id) return "question";
+    // В магазине с ИИ именно консультант выбирает действие и вызывает инструмент
+    // отмены; код остаётся только безопасным исполнителем. Без ИИ — старый fallback.
+    const consultant = await import("@/core/consultant/engine.server");
+    if (await consultant.consultantEnabled(s.ctx)) {
+      if (consultant.isPaused(s.customer)) {
+        s.customer = await consultant.resumeConsultant(s.ctx, s.customer);
+      }
+      return "question";
+    }
     // Сразу после оформления «отмена» — про заказ, а не про шаг (AATeach 11.10, #1396).
     if (await cancelFreshOrder(s)) return "handled";
     // Если заказ есть, но его нельзя отменить автоматом (уже оплачен/не найден/неожиданный статус),
     // не сбрасываем контекст и не обещаем отмену: пусть запрос проверит менеджер.
     if (s.customer.state.pending_order_id) {
-      const consultant = await import("@/core/consultant/engine.server");
       if (consultant.isPaused(s.customer)) {
         s.customer = await consultant.resumeConsultant(s.ctx, s.customer);
       }
       return "question";
     }
     await setMode(s, { mode: "idle" });
-    const consultant = await import("@/core/consultant/engine.server");
     if (consultant.isPaused(s.customer)) {
       s.customer = await consultant.resumeConsultant(s.ctx, s.customer);
     }

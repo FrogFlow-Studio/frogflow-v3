@@ -256,6 +256,91 @@ describe("проверка статуса заказа", () => {
   });
 });
 
+describe("отмена заказа по решению AI-консультанта", () => {
+  const buyerAfterClarification = () =>
+    ({
+      ...customer({
+        consultant: {
+          recent: [
+            { role: "customer", text: "Отмени" },
+            { role: "assistant", text: "Какой заказ отменить?" },
+          ],
+        },
+      }),
+      userKey: "wa_1",
+      platform: "whatsapp" as const,
+    }) as Customer;
+
+  function addOrder(ctx: TenantContext, status = "awaiting_payment", paidAmount = 0) {
+    const db = ctx.db as unknown as { tables: Record<string, Record<string, unknown>[]> };
+    db.tables.orders = [
+      {
+        id: 19,
+        bot_id: BOT,
+        telegram_id: -1,
+        order_no: 18,
+        display_no: 270,
+        status,
+        paid_amount: paidAmount,
+        platform: "whatsapp",
+        points_used: 0,
+        points_earned: 0,
+        promo_code: null,
+      },
+    ];
+    db.tables.order_items = [];
+    return db;
+  }
+
+  it("после уточнения номера ИИ вызывает инструмент и получает подтверждённую отмену", async () => {
+    const ctx = ctxOf();
+    const db = addOrder(ctx);
+    content = [text("Заказ №270 отменён.")];
+    create.mockImplementationOnce(async () => ({
+      stop_reason: "tool_use",
+      content: [tool("cancel_my_order", { order_number: 270 })],
+      usage,
+    }));
+
+    const result = await runConsultant(ctx, buyerAfterClarification(), "270", {
+      platform: "whatsapp",
+      shopInChat: true,
+    });
+
+    expect(args().tools).toEqual(
+      expect.arrayContaining([expect.objectContaining({ name: "cancel_my_order" })]),
+    );
+    expect(result?.tools).toContain("cancel_my_order");
+    expect(result?.reply).toContain("Заказ №270 отменён");
+    expect(result?.verifiedOrderStatus).toBe(true);
+    expect(result?.cancelledOrderId).toBe(19);
+    expect(result?.handoff).toBeNull();
+    expect(db.tables.orders![0]!.status).toBe("cancelled");
+  });
+
+  it("не отменяет заказ с внесённой оплатой и не пропускает неподтверждённое обещание", async () => {
+    const ctx = ctxOf();
+    const db = addOrder(ctx, "awaiting_payment", 100);
+    content = [text("Заказ №270 отменён.")];
+    create.mockImplementationOnce(async () => ({
+      stop_reason: "tool_use",
+      content: [tool("cancel_my_order", { order_number: 270 })],
+      usage,
+    }));
+
+    const result = await runConsultant(ctx, buyerAfterClarification(), "270", {
+      platform: "whatsapp",
+      shopInChat: true,
+    });
+
+    expect(result?.verifiedOrderStatus).toBeUndefined();
+    expect(result?.handoff).not.toBeNull();
+    expect(result?.reply).toMatch(/менеджер|manager/iu);
+    expect(result?.reply).toMatch(/статус заказа не изменён|order status hasn't changed/iu);
+    expect(db.tables.orders![0]!.status).toBe("awaiting_payment");
+  });
+});
+
 describe("консультант: ответ и состояние", () => {
   it("пустой ответ модели покупателю не уходит — вместо него уточняющий вопрос", async () => {
     content = [text("   ")];

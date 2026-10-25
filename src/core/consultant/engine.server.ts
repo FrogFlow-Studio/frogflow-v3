@@ -31,6 +31,8 @@ import { getSettings, trySetSetting, updateSettingAtomic } from "@/core/settings
 import { resolvePrice } from "@/core/pricing/pricing";
 import { PRODUCT_SELECT, sortedVariants, type Product } from "@/core/catalog/catalog";
 import { listCustomerOrderStatuses, type CustomerOrderStatus } from "@/core/orders/order-queries";
+import { cancelCustomerOrder } from "@/core/orders/customer-cancel.server";
+import { cancellationIntentMatchesOrder, isExplicitOrderCancellation } from "./order-cancel-intent";
 import { isOrderStatusQuestion } from "./order-status-intent";
 import { isConsultantVertical } from "@/core/verticals/registry";
 import { parseKnowledge, retrieveKnowledge, type KnowledgeDoc } from "./knowledge";
@@ -425,6 +427,8 @@ export type ConsultantResult = {
   orderAction?: ConsultantOrderAction | null;
   /** Статусный ответ сформирован сервером по read-only записи заказа. */
   verifiedOrderStatus?: boolean;
+  /** Внутренний id заказа, который инструмент отмены подтвердил или отменил. */
+  cancelledOrderId?: number;
   usage: {
     inputTokens: number;
     outputTokens: number;
@@ -581,6 +585,23 @@ const ORDER_STATUS_TOOL: Anthropic.Tool = {
   description:
     "Проверить текущий статус последних заказов только покупателя из этого диалога. Вызывайте перед ответом на вопрос, отменён ли, оплачен ли, где или в каком статусе заказ. Ничего не меняет.",
   input_schema: { type: "object", properties: {} },
+};
+
+const ORDER_CANCEL_TOOL: Anthropic.Tool = {
+  name: "cancel_my_order",
+  description:
+    "Отменить конкретный заказ покупателя. Вызывайте только после явной просьбы покупателя отменить заказ и когда он назвал номер; не используйте для вопроса «как отменить?» или проверки статуса. Если номера ещё нет — сначала спросите. Сервер отменяет только неоплаченный заказ этого покупателя в статусе awaiting_payment; при любом другом статусе ничего не меняется.",
+  input_schema: {
+    type: "object",
+    properties: {
+      order_number: {
+        type: "integer",
+        minimum: 1,
+        description: "Номер заказа, видимый покупателю",
+      },
+    },
+    required: ["order_number"],
+  },
 };
 
 const ORDER_STATUS_LABELS: Record<string, Partial<Record<Locale, string>>> = {
@@ -1402,6 +1423,7 @@ async function answerConsultant(
     attachments?: ConsultantResult["attachments"];
     rate?: ConsultantResult["rate"];
     verifiedOrderStatus?: boolean;
+    cancelledOrderId?: number;
   }): Promise<ConsultantResult> => {
     const { reply, handoff } = out;
     const usd = costUsd();
@@ -1462,6 +1484,7 @@ async function answerConsultant(
       handoff,
       ...(out.orderAction ? { orderAction: out.orderAction } : {}),
       ...(out.verifiedOrderStatus ? { verifiedOrderStatus: true } : {}),
+      ...(out.cancelledOrderId ? { cancelledOrderId: out.cancelledOrderId } : {}),
       // Тест-чат: что консультант запомнил за ход (рубли, товары) — следующему вопросу.
       ...(!customer && opts.dryRun && opts.testState
         ? { testState: withPatch(state, out.patch) as ConsultantState }
@@ -1505,7 +1528,10 @@ async function answerConsultant(
       return await finish(out);
     }
     const orderStatusQuestion = Boolean(
-      opts.shopInChat && customer && isOrderStatusQuestion(incoming),
+      opts.shopInChat &&
+      customer &&
+      !isExplicitOrderCancellation(incoming) &&
+      isOrderStatusQuestion(incoming),
     );
     const orderProductAllowed = Boolean(
       opts.shopInChat && confirmedOrderIntent(incoming, state.recent ?? []),
@@ -1513,6 +1539,7 @@ async function answerConsultant(
     const tools = [
       ...(loaded ? [...CATALOG_TOOLS, REMEMBER_TOOL] : []),
       ...(orderStatusQuestion ? [ORDER_STATUS_TOOL] : []),
+      ...(opts.shopInChat ? [ORDER_CANCEL_TOOL] : []),
       ...(orderProductAllowed ? [ORDER_PRODUCT_TOOL] : []),
       ...TOOLS.filter((tool) => !(opts.shopInChat && tool.name === "record_order_lead")),
     ];
@@ -1564,6 +1591,7 @@ async function answerConsultant(
     let orderStatusRows: CustomerOrderStatus[] | null = null;
     let orderStatusLookupFailed = false;
     let orderStatusVerified = false;
+    let cancelledOrderId: number | undefined;
     let orderAction: ConsultantOrderAction | null = null;
     let orderToolRejected = false;
     let orderLeadRejected = false;
@@ -1602,6 +1630,68 @@ async function answerConsultant(
         else if (block.type === "tool_use") {
           toolsUsed.push(block.name);
           const input = (block.input ?? {}) as Record<string, unknown>;
+          if (opts.shopInChat && block.name === ORDER_CANCEL_TOOL.name) {
+            const orderNumber =
+              typeof input.order_number === "number" ? Math.floor(input.order_number) : NaN;
+            if (
+              !customer ||
+              !cancellationIntentMatchesOrder(state.recent ?? [], incoming, orderNumber)
+            ) {
+              const resultText =
+                "Заказ НЕ изменён: система не подтвердила одновременно явную просьбу покупателя об отмене и именно этот номер. Уточните запрос; не говорите, что заказ отменён.";
+              toolTexts.push(resultText);
+              results.push({ type: "tool_result", tool_use_id: block.id, content: resultText });
+              continue;
+            }
+            try {
+              const outcome = await cancelCustomerOrder(ctx, customer, orderNumber);
+              if (outcome.kind === "cancelled" || outcome.kind === "already_cancelled") {
+                cancelledOrderId = outcome.orderId;
+                orderStatusVerified = true;
+              } else {
+                handoff = {
+                  kind: "handoff",
+                  reason: "unknown_question",
+                  summary:
+                    outcome.kind === "not_cancellable"
+                      ? `Покупатель просит отменить заказ №${outcome.orderNumber}; текущий статус: ${outcome.status}. Заказ автоматически не изменён.`
+                      : `Покупатель просит отменить заказ №${outcome.orderNumber}, но его не удалось однозначно найти в заказах этого покупателя.`,
+                };
+                reply =
+                  text.trim() ||
+                  (bLocale === "kk"
+                    ? "Тапсырыстың күшін жоя алмадым және мәртебесі өзгерген жоқ. Тексеру үшін менеджерге жіберемін."
+                    : bLocale === "en"
+                      ? "I couldn't cancel the order; its status has not changed. I'm passing this to a manager to check."
+                      : bLocale === "uz"
+                        ? "Buyurtmani bekor qila olmadim, holati o‘zgarmadi. Tekshirish uchun menejerga yuboraman."
+                        : "Не могу подтвердить отмену: статус заказа не изменён. Передаю вопрос менеджеру для проверки.");
+              }
+              const resultText = JSON.stringify(outcome);
+              toolTexts.push(resultText);
+              results.push({ type: "tool_result", tool_use_id: block.id, content: resultText });
+            } catch {
+              handoff = {
+                kind: "handoff",
+                reason: "unknown_question",
+                summary: `Покупатель просит отменить заказ №${orderNumber}; система не смогла проверить статус. Заказ не считается отменённым.`,
+              };
+              reply =
+                text.trim() ||
+                (bLocale === "kk"
+                  ? "Жүйеде тексеру өтпеді, тапсырыстың мәртебесі өзгерген жоқ. Менеджерге жіберемін."
+                  : bLocale === "en"
+                    ? "I couldn't verify the order, so its status has not changed. I'm passing this to a manager."
+                    : bLocale === "uz"
+                      ? "Buyurtmani tekshirish imkoni bo‘lmadi, holati o‘zgarmadi. Menejerga yuboraman."
+                      : "Не удалось проверить заказ, его статус не изменён. Передаю вопрос менеджеру.");
+              const resultText =
+                "Не удалось проверить или изменить заказ. Ничего не отменяйте словами; сообщите, что проверка не прошла, и передайте менеджеру.";
+              toolTexts.push(resultText);
+              results.push({ type: "tool_result", tool_use_id: block.id, content: resultText });
+            }
+            continue;
+          }
           if (opts.shopInChat && block.name === ORDER_STATUS_TOOL.name) {
             try {
               if (!customer) throw new Error("Покупатель не привязан к диалогу");
@@ -1769,7 +1859,9 @@ async function answerConsultant(
       const needsData = response.content.some(
         (b) =>
           b.type === "tool_use" &&
-          (CATALOG_TOOL_NAMES.has(b.name) || b.name === ORDER_STATUS_TOOL.name),
+          (CATALOG_TOOL_NAMES.has(b.name) ||
+            b.name === ORDER_STATUS_TOOL.name ||
+            b.name === ORDER_CANCEL_TOOL.name),
       );
       if (text.trim() && !needsData && !askContact) reply = text;
       // Ещё раунд и тогда, когда нужно спросить контакт или модель только
@@ -1777,7 +1869,11 @@ async function answerConsultant(
       const more = needsData || askContact || !text.trim() || purchaseHandoffRejectedThisRound;
       if (
         last ||
-        (!loaded && !purchaseHandoffRejectedThisRound) ||
+        (!loaded &&
+          !purchaseHandoffRejectedThisRound &&
+          !response.content.some(
+            (b) => b.type === "tool_use" && b.name === ORDER_CANCEL_TOOL.name,
+          )) ||
         !more ||
         response.stop_reason !== "tool_use" ||
         handoff
@@ -1848,6 +1944,7 @@ async function answerConsultant(
         orderAction: Boolean(orderAction),
         handoff,
         hasActivePaymentOrder,
+        verifiedOrderStatus: orderStatusVerified,
       });
     // Цена или доставка не из каталога и условий — покупателю не уходит, вопрос менеджеру.
     const known0 = knownNumbers({
@@ -1932,6 +2029,7 @@ async function answerConsultant(
       reply,
       handoff,
       orderAction,
+      ...(cancelledOrderId ? { cancelledOrderId } : {}),
       clearError: facts.ok,
       patch: loaded ? { profile: known, contact_asked: contactAsked || undefined } : {},
       verifiedOrderStatus: orderStatusVerified,

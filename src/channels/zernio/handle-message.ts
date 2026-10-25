@@ -676,6 +676,26 @@ export async function handleZernioMessage(
     await recordSilentRun(ctx, customer, m, text, r.skipped);
     return processed(SKIPPED_NOTE[r.skipped]);
   }
+  if (r.cancelledOrderId && shopOn) {
+    try {
+      const { getCustomer, setState } = await import("@/core/customers/customers");
+      const fresh = await getCustomer(ctx, customer.userKey);
+      if (fresh && Number(fresh.state.pending_order_id) === r.cancelledOrderId) {
+        await setState(ctx, fresh, {
+          ...fresh.state,
+          mode: "idle",
+          pending_order_id: undefined,
+          pending_display_no: undefined,
+          pay_link: undefined,
+          placing_order: undefined,
+          pay_choice_pending: undefined,
+        });
+      }
+    } catch (e) {
+      // Отмена уже подтверждена: сбой очистки шага не должен скрывать результат.
+      console.error(`[consultant:${ctx.tenant.id}] шаг отменённого заказа не сброшен`, e);
+    }
+  }
 
   const responseLocale = isLocale(customer.state.locale)
     ? customer.state.locale

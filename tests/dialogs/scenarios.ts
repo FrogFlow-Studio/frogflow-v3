@@ -5661,4 +5661,91 @@ export const SCENARIOS: Scenario[] = [
       },
     ],
   },
+  {
+    id: "consultant-controls-order-cancellation-wa-ru",
+    title: "активную отмену решает AI-консультант, а не автоматический роутер магазина",
+    origin:
+      "Регрессия 25.10: при просьбе отменить заказ магазин отменял неоплаченный заказ до того, как консультант мог уточнить номер и выбрать действие",
+    channel: "whatsapp",
+    locale: "ru",
+    full: true,
+    vertical: "consultant",
+    modules: { whatsapp: true, wa_shop: true },
+    state: { mode: "awaiting_payment", pending_order_id: 7, pending_display_no: 270 },
+    arrange: (r) => {
+      r.db.tables.orders!.push({
+        id: 7,
+        bot_id: "00000000-0000-4000-8000-0000000000aa",
+        order_no: 7,
+        display_no: 270,
+        telegram_id: -1,
+        status: "awaiting_payment",
+        paid_amount: 0,
+        fulfillment_kind: "digital",
+        order_items: [],
+      });
+    },
+    consultant: "Уточните, пожалуйста, номер заказа, который хотите отменить.",
+    steps: [
+      {
+        say: { text: "Отмени, пожалуйста" },
+        expect: {
+          says: ["номер заказа"],
+          notSays: ["Заказ #270 отменён"],
+          orderCount: 1,
+          orders: { 7: { status: "awaiting_payment" } },
+          state: { mode: "awaiting_payment", pending_order_id: 7 },
+          tasks: [],
+        },
+      },
+    ],
+  },
+  {
+    id: "consultant-cancel-number-reply-bypasses-checkout-wa-ru",
+    title: "номер отменяемого заказа после уточнения ИИ не перехватывается checkout",
+    origin:
+      "Регрессия 25.10: после вопроса ИИ «какой заказ отменить?» ответ 270 при awaiting_payment мог попасть в обработчик оплаты вместо консультанта",
+    channel: "whatsapp",
+    locale: "ru",
+    full: true,
+    vertical: "consultant",
+    modules: { whatsapp: true, wa_shop: true },
+    state: {
+      mode: "awaiting_payment",
+      pending_order_id: 7,
+      pending_display_no: 270,
+      consultant: {
+        recent: [
+          { role: "customer", text: "Отмени, пожалуйста" },
+          { role: "assistant", text: "Уточните номер заказа, который хотите отменить." },
+        ],
+      },
+    },
+    arrange: (r) => {
+      r.db.tables.orders!.push({
+        id: 7,
+        bot_id: "00000000-0000-4000-8000-0000000000aa",
+        order_no: 7,
+        display_no: 270,
+        telegram_id: -1,
+        status: "awaiting_payment",
+        paid_amount: 0,
+        fulfillment_kind: "digital",
+        order_items: [],
+      });
+    },
+    consultant: "Спасибо, уточняю.",
+    steps: [
+      {
+        say: { text: "270" },
+        expect: {
+          says: ["Спасибо, уточняю"],
+          orderCount: 1,
+          orders: { 7: { status: "awaiting_payment" } },
+          state: { mode: "awaiting_payment", pending_order_id: 7 },
+          tasks: [],
+        },
+      },
+    ],
+  },
 ];

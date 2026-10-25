@@ -1042,7 +1042,7 @@ export async function sendManualInstructions(
   return reply(s, text, {
     force: true,
     attachmentUrl: await photoFor(s, [p.qr]),
-    ...(link
+    ...(link && s.platform !== "whatsapp"
       ? {
           buttons: [
             { type: "url" as const, title: plain(s.m.payLinkBtn(/kaspi/i.test(link))), url: link },
@@ -1064,13 +1064,25 @@ export function payLinkOf(instructions: string | null): string | null {
  * знаков текста, а подписанная ссылка Продамуса длиннее (~700). Текст со
  * ссылкой и кнопкой не уходил вовсе: заказ #15 Копилки Русоведа, 09.10.
  */
-async function sendPayLink(s: Shop, text: string, title: string, url: string, asText = false) {
+export async function sendPayLink(
+  s: Shop,
+  text: string,
+  title: string,
+  url: string,
+  asText = false,
+) {
   // «А ссылка где?»: та же ссылка текстом, без кнопки (заказ #98 Копилки, 10.10).
   if (asText) {
     await reply(s, plain(s.m.payLinkAsText(url)), { force: true });
     return;
   }
   const fullText = `${text}\n\n${url}`;
+  // В WhatsApp Direct URL-кнопка может отображаться, но не открывать браузер.
+  // Обычная ссылка в тексте надёжно распознаётся клиентом и остаётся доступной.
+  if (s.platform === "whatsapp") {
+    await reply(s, fullText, { force: true });
+    return;
+  }
   // В Instagram сообщение с кнопками не принимает больше 640 знаков текста.
   // Если текст со ссылкой помещается в 640 знаков (как у Робокассы ~315 знаков) — отправляем
   // ссылку прямо в тексте сообщения вместе с кнопкой, чтобы у клиента ВСЕГДА была ссылка.

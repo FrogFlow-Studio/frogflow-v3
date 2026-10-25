@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { askCountry, payLinkOf, sendManualInstructions } from "./shop/checkout.server";
+import { askCountry, payLinkOf, sendManualInstructions, sendPayLink } from "./shop/checkout.server";
 import type { Shop } from "./shop/context.server";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Customer } from "@/core/customers/customers";
@@ -145,8 +145,8 @@ describe("WhatsApp Zero-Friction: авто-определение страны �
     expect(sent[0]).toMatch(/страну|Казахстан|Россия/i);
   });
 
-  it("sendManualInstructions в WhatsApp создаёт URL-кнопку для прямой ссылки Kaspi", async () => {
-    const { s, sentOpts } = createShop({
+  it("sendManualInstructions в WhatsApp оставляет ссылку Kaspi в тексте без неработающей кнопки", async () => {
+    const { s, sent, sentOpts } = createShop({
       userKey: "wa_77011234567",
       contactPhone: "+77011234567",
       platform: "whatsapp",
@@ -166,12 +166,22 @@ describe("WhatsApp Zero-Friction: авто-определение страны �
     });
 
     expect(sentOpts.length).toBe(1);
-    const buttons = sentOpts[0]?.buttons as Array<{ type: string; title: string; url: string }>;
-    expect(buttons).toBeDefined();
-    expect(buttons[0]).toEqual({
+    expect(sent[0]).toContain(kaspiUrl);
+    expect(sentOpts[0]?.buttons).toBeUndefined();
+  });
+
+  it("для онлайн-оплаты WhatsApp получает кликабельную ссылку текстом, Instagram — URL-кнопку", async () => {
+    const url = "https://pay.example/checkout/270";
+    const wa = createShop({ userKey: "wa_77011234567", platform: "whatsapp" });
+    await sendPayLink(wa.s, "Заказ №270. Оплатите по ссылке:", "Оплатить", url);
+    expect(wa.sent[0]).toContain(url);
+    expect(wa.sentOpts[0]?.buttons).toBeUndefined();
+
+    const ig = createShop({ userKey: "ig_123", platform: "instagram" });
+    await sendPayLink(ig.s, "Заказ №270. Оплатите по ссылке:", "Оплатить", url);
+    expect((ig.sentOpts[0]?.buttons as Array<{ type: string; url: string }>)[0]).toMatchObject({
       type: "url",
-      title: "💳 Оплатить в Kaspi",
-      url: kaspiUrl,
+      url,
     });
   });
 });
