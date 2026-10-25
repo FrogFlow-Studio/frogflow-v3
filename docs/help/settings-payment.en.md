@@ -90,7 +90,7 @@ Available with the "Telegram Stars payments" module. In the Telegram bot the buy
 
 ## Robokassa: card payment {#robokassa}
 
-Card payment through your Robokassa account: in the Telegram bot, in Instagram/WhatsApp and on the website. The order is confirmed automatically when Robokassa reports the payment.
+Card payment through your Robokassa account: in the Telegram bot, in Instagram/WhatsApp and on the website. The order is confirmed automatically when Robokassa reports the payment. In Instagram and WhatsApp your Kaspi transfer stays next to “Pay by card” if the payment method has it: the buyer chooses — card (Kaspi Gold works too) with instant confirmation, or Kaspi transfer with a receipt.
 
 1. In your Robokassa account, enter the Result URL, Success URL and Fail URL from the card, the POST method and the MD5 algorithm.
 2. Choose "Merchant country": "Kazakhstan (robokassa.kz, tenge)" or "Russia (robokassa.ru, rubles)".
