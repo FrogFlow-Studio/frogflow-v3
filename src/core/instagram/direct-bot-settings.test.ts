@@ -20,7 +20,14 @@ describe("настройки автоответчика Direct/WhatsApp", () => 
       scope: "purchases",
       triggers: [],
       script: "",
-      features: { catalog: true, search: true, cart: true, checkout: true, express: true },
+      features: {
+        catalog: true,
+        search: true,
+        cart: true,
+        checkout: true,
+        express: true,
+        buy_button: true,
+      },
       sellerPause: "30",
       ignoreExcluded: false,
       notifyTemplate: "",
@@ -54,6 +61,7 @@ describe("настройки автоответчика Direct/WhatsApp", () => 
       cart: true,
       checkout: false,
       express: true,
+      buy_button: true,
     });
     expect(s.script).toBe("Напишите «каталог».");
     expect(s.ignoreExcluded).toBe(true);

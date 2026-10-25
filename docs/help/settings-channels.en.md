@@ -73,6 +73,10 @@ The "catalog", "search by number", "cart", "checkout" checkboxes are which parts
 
 Instagram only. On (the default): a "+" or a code word under a reel places an order for the rule's product right away: the buyer gets one message with the amount and payment buttons, without "Buy", the cart and "Checkout". Quick purchase works only when both "cart" and "checkout" are on. Off: the buyer goes the usual way through the "Buy" button and the cart. Rules under posts are set up in the [Instagram](/admin/instagram) section.
 
+## «Buy» button in the AI consultant’s reply {#dbot-buy-button}
+
+On by default. When a buyer asks about a specific product or has already named the variant (for example, a grade), the AI consultant replies with a short description and the price and adds a «🛒 Buy» button under the reply. Tapping it places the order for that product and sends payment right away, without asking «Shall I place the order?». If the product has variants and the buyer has not chosen one yet, there is no button: the consultant asks about the variant first. Works only when the consultant, «cart» and «checkout» are on. Off — the consultant asks about the purchase in words, as before.
+
 ## Instagram quick questions {#ice-breakers}
 
 Prompts the buyer sees when writing to you in Direct for the first time: "Catalog", "My orders", "How to pay", "Contact the seller". Tapping opens the matching part of the shop or a request to describe the question. The texts can be changed, up to 80 characters; the checkbox next to a line turns the prompt on.

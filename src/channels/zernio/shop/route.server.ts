@@ -25,7 +25,7 @@ import {
   setEmail,
   type Customer,
 } from "@/core/customers/customers";
-import { getProduct, type Product } from "@/core/catalog/catalog";
+import { getProduct, sortedVariants, type Product } from "@/core/catalog/catalog";
 import { addToCart, clearCart, inCart, listCart } from "@/core/cart/cart";
 import {
   getOrder,
@@ -53,6 +53,7 @@ import { directCopy } from "./copy";
 import { notifyAdminsHtml } from "@/channels/telegram/notify";
 import { liveTransport, type ZernioTransport } from "../api.server";
 import type { NativeOrder, ParsedZernioMessage } from "../message";
+import { buyButtonPayload, isBuyButtonTitle } from "./buy-button";
 import { describeNativeCart, matchNativeItems } from "@/core/whatsapp/native-cart";
 import { PLATFORM_LABEL } from "../platform";
 import {
@@ -277,6 +278,10 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
   const ib = iceBreakerKind(msg.postbackPayload);
   if (ib) return handleIceBreaker(s, ib);
   if (msg.postbackPayload) return handlePostback(s, msg.postbackPayload);
+  // «🛒 Купить» консультанта пришло без нашего payload («0» у WhatsApp):
+  // товар — из последней кнопки, которую консультант поставил этому покупателю.
+  const opaqueBuy = opaqueBuyTap(s, msg);
+  if (opaqueBuy) return handlePostback(s, opaqueBuy);
 
   // Заказ шага оплаты уже оплачен — шаг снят, реплику разбирает ИИ после
   // оплаты, а не шаг оплаты (Копилка 12.10, _marina_lyalina_ #149).
@@ -1251,6 +1256,40 @@ async function expressBuy(s: Shop, p: Product, card = true): Promise<boolean> {
   return true;
 }
 
+function opaqueBuyTap(s: Shop, msg: ParsedZernioMessage): string | null {
+  if (msg.metadata?.zernioOpaqueButtonTap !== true || !isBuyButtonTitle(msg.text)) return null;
+  const offer = (s.customer.state.consultant as { buy_offer?: unknown } | undefined)?.buy_offer;
+  if (!offer || typeof offer !== "object") return null;
+  const { productId, variantId } = offer as { productId?: unknown; variantId?: unknown };
+  if (typeof productId !== "string" || !productId) return null;
+  return buyButtonPayload(productId, typeof variantId === "string" ? variantId : null);
+}
+
+/**
+ * Нажатие «Купить» под ответом консультанта (shop/buy-button): товар — или
+ * выбранный вариант — сразу становится заказом с кнопками оплаты, как
+ * быстрая покупка. Повторное нажатие на неоплаченный заказ того же товара
+ * возвращает к его оплате (resumeExpressOrder), второго заказа нет. Вариант
+ * пропал из каталога или товар не в продаже — обычная карточка с выбором.
+ */
+async function consultantBuy(s: Shop, p: Product, variantId: string | null): Promise<void> {
+  const variants = sortedVariants(p);
+  if (variants.length && !variants.some((v) => v.id === variantId)) {
+    await sendProductCard(s, p, true);
+    return;
+  }
+  if (await resumeExpressOrder(s, p.id)) return;
+  const mode = s.customer.state.mode;
+  if (mode && mode !== "idle") await setMode(s, { mode: "idle" });
+  await clearCart(s.ctx, s.customer);
+  const r = await addToCart(s.ctx, s.customer, p.id, variants.length ? variantId : null);
+  if (r !== "ok") {
+    await sendProductCard(s, p, true);
+    return;
+  }
+  await continueCheckout(s);
+}
+
 /**
  * «+» или кодовое слово по правилу автоматизации с кнопкой «Купить»: вместо
  * второго сообщения правила — сразу заказ (expressBuy). false — быстрая
@@ -1318,6 +1357,8 @@ function featureAllows(s: Shop, command: DirectCommand | string): boolean {
     case "PCAT":
     case "PROD":
       return f.catalog;
+    case "CBUY":
+      return f.cart && f.checkout && f.buy_button;
     case "cart":
     case "CART":
     case "BUY":
@@ -1447,6 +1488,13 @@ async function handlePostback(s: Shop, payload: string): Promise<ShopOutcome> {
       else if (s.platform === "instagram" && expressOn(s)) await expressBuy(s, p);
       else if (s.platform === "instagram" && s.bot.features.cart) await buyFromPost(s, p);
       else await sendProductCard(s, p, true);
+      return "handled";
+    }
+    case "CBUY": {
+      // Кнопка «Купить» под ответом консультанта: нажатие — согласие, сразу заказ и оплата.
+      const p = a ? await getProduct(s.ctx, a) : null;
+      if (!p) await reply(s, s.m.productNotFound);
+      else await consultantBuy(s, p, b || null);
       return "handled";
     }
     case "BUY":

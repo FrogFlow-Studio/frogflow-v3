@@ -538,6 +538,13 @@ export function DirectBotCard({ platform }: { platform: "instagram" | "whatsapp"
                   </p>
                 </div>
               )}
+              <div className="mt-1">
+                {feature("buy_button", t("settings.dbot.feature.buyButton"))}
+                <p className="text-xs text-muted">
+                  {t("settings.dbot.feature.buyButtonHint")}{" "}
+                  <HelpTip article="settings-channels" anchor="dbot-buy-button" />
+                </p>
+              </div>
             </Field>
           )}
           {platform === "whatsapp" && (
