@@ -275,6 +275,11 @@ export async function reply(
     });
   s.sendError = undefined;
   let r = await send(opts.attachmentUrl);
+  // Текст ушёл отдельным сообщением, не прошло только фото: второй раз текст не шлём.
+  if (!r.ok && r.textSent) {
+    console.warn(`[zernio-shop] фото не дошло для ${s.customer.userKey}: ${r.error}`);
+    r = { ok: true };
+  }
   // Фото не приняли (формат, размер, ссылка) — карточка важнее картинки: текстом.
   // Иной отказ (окно 24 часа, доступ, лимит) без фото тоже не пройдёт — не повторяем.
   if (!r.ok && opts.attachmentUrl && isAttachmentRejected(r.failure)) {

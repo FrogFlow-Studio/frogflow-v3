@@ -145,4 +145,43 @@ describe("sendInboxMessage — тело ответа в Direct", () => {
     expect(bodies[0]!.attachmentUrl).toContain("first-temporary-token");
     expect(bodies[1]!.attachmentUrl).toContain("second-temporary-token");
   });
+  it("Instagram: карточка с кнопкой — одно сообщение с фото, как до 19.10", async () => {
+    setEnvForTests({ ZERNIO_API_KEY: "sk_test" });
+    const fetchMock = vi.fn(async () => new Response("{}", { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const r = await sendInboxMessage("conv-1", "acc-1", "Прописи", {
+      platform: "instagram",
+      attachmentUrl: "https://cdn.example.com/item.jpg",
+      attachmentType: "image",
+      buttons: [{ type: "postback", title: "В корзину", payload: "BUY:1" }],
+    });
+    expect(r.ok).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    const body = JSON.parse(String(init.body));
+    expect(body.message).toBe("Прописи");
+    expect(body.attachmentUrl).toBe("https://cdn.example.com/item.jpg");
+    expect(body.buttons).toHaveLength(1);
+  });
+
+  it("Instagram: текст дошёл, фото отклонено — отказ помечен textSent, текст не повторять", async () => {
+    setEnvForTests({ ZERNIO_API_KEY: "sk_test" });
+    let n = 0;
+    const fetchMock = vi.fn(async () =>
+      ++n === 1
+        ? new Response("{}", { status: 200 })
+        : new Response(JSON.stringify({ error: "bad media", code: "PLATFORM_LIMITATION" }), {
+            status: 400,
+          }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const r = await sendInboxMessage("conv-1", "acc-1", "Посмотрите фото", {
+      platform: "instagram",
+      attachmentUrl: "https://cdn.example.com/item.jpg",
+      attachmentType: "image",
+    });
+    expect(r.ok).toBe(false);
+    expect(r.textSent).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
 });

@@ -51,8 +51,13 @@ export async function replyAsManager(
       media.attachmentType === "file" &&
       media.attachmentUrl
     )
+      // Текст уже ушёл отдельным сообщением — досылаем только ссылку.
       r = await send(
-        att.withFileLink(text, media.attachmentName ?? "file", media.attachmentUrl),
+        att.withFileLink(
+          r.textSent ? "" : text,
+          media.attachmentName ?? "file",
+          media.attachmentUrl,
+        ),
         {},
       );
     // Окно 24 часа закрыто (errors.ts): WhatsApp — одобренным шаблоном,
