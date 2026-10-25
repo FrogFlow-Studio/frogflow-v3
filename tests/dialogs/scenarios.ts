@@ -5693,6 +5693,31 @@ export const SCENARIOS: Scenario[] = [
     ],
   },
   {
+    id: "consultant-want-to-buy-places-order-wa-ru",
+    title:
+      "«Хотела купить …» — заказ оформляет модель, бот не переспрашивает «что вы хотели узнать»",
+    origin:
+      "Копилка Русоведа, WhatsApp 25.10 11:50: на «Хотела купить папку» и «Что туда входит?» бот дважды ответил «Пока заказ не оформлен. Что именно вы хотели узнать о товаре?» — фильтр по словам прятал от модели оформление заказа",
+    channel: "whatsapp",
+    locale: "ru",
+    full: true,
+    vertical: "consultant",
+    modules: { whatsapp: true, wa_shop: true },
+    consultant: "Оформляю прописи.",
+    consultantOrder: { productName: "018. Прописи" },
+    products: PRODUCTS,
+    steps: [
+      {
+        say: { text: "Хотела купить прописи" },
+        expect: {
+          says: ["Оформляю прописи"],
+          notSays: ["Что именно вы хотели узнать"],
+          orderCount: 1,
+        },
+      },
+    ],
+  },
+  {
     id: "consultant-controls-order-cancellation-wa-ru",
     title: "активную отмену решает AI-консультант, а не автоматический роутер магазина",
     origin:
