@@ -40,6 +40,30 @@ export type HandleResult = {
 const ignored = (note: string): HandleResult => ({ status: "ignored", note });
 const processed = (note?: string): HandleResult => ({ status: "processed", note });
 
+function mediaDeliveryFailureReply(
+  locale: string,
+  platform: string,
+  kinds: ("image" | "video")[],
+): string {
+  const photo = kinds.includes("image");
+  const video = kinds.includes("video");
+  const channel = platform === "instagram" ? "Instagram" : "WhatsApp";
+  if (locale === "en") {
+    const media = photo && video ? "photo or video" : video ? "video" : "photo";
+    return `I couldn't confirm that the ${media} was sent via ${channel}. I've asked the manager to help with the file.`;
+  }
+  if (locale === "kk") {
+    const media = photo && video ? "фото мен видео" : video ? "видеоны" : "фотоны";
+    return `${channel} арқылы ${media} жіберілгенін растай алмадым. Менеджерге хабарладым — ол көмектеседі.`;
+  }
+  if (locale === "uz") {
+    const media = photo && video ? "foto yoki video" : video ? "video" : "foto";
+    return `${channel} orqali ${media} yuborilganini tasdiqlay olmadim. Menejerga xabar berdim — u faylni yuborishga yordam beradi.`;
+  }
+  const media = photo && video ? "фото и видео" : video ? "видео" : "фото";
+  return `Не удалось подтвердить отправку ${media} через ${channel}. Передал запрос менеджеру — он поможет с файлом.`;
+}
+
 type ConsultantMemory = {
   recent?: Array<{ role: string; text: string }>;
   last_reply_at?: string;
@@ -653,29 +677,74 @@ export async function handleZernioMessage(
     return processed(SKIPPED_NOTE[r.skipped]);
   }
 
-  const outboundReply = shopOn
-    ? consultant.guardShopOrderReply(
-        r.reply,
-        isLocale(customer.state.locale)
-          ? customer.state.locale
-          : isLocale(ctx.tenant.settings.default_locale)
-            ? ctx.tenant.settings.default_locale
-            : "ru",
-        {
-          orderAction: Boolean(r.orderAction),
-          handoff: r.handoff,
-          hasActivePaymentOrder: Boolean(
-            customer.state.pending_order_id &&
-            ["choose_pay", "awaiting_payment", "awaiting_proof"].includes(
-              customer.state.mode ?? "",
-            ),
-          ),
-          verifiedOrderStatus: r.verifiedOrderStatus,
-        },
-      )
+  const responseLocale = isLocale(customer.state.locale)
+    ? customer.state.locale
+    : isLocale(ctx.tenant.settings.default_locale)
+      ? ctx.tenant.settings.default_locale
+      : "ru";
+  let outboundReply = shopOn
+    ? consultant.guardShopOrderReply(r.reply, responseLocale, {
+        orderAction: Boolean(r.orderAction),
+        handoff: r.handoff,
+        hasActivePaymentOrder: Boolean(
+          customer.state.pending_order_id &&
+          ["choose_pay", "awaiting_payment", "awaiting_proof"].includes(customer.state.mode ?? ""),
+        ),
+        verifiedOrderStatus: r.verifiedOrderStatus,
+      })
     : r.reply;
-  // Текст ответа консультанта — всегда первым, гарантированно текстом.
-  // В Instagram Direct подпись к медиа не поддерживается Meta: текст и фото идут отдельными сообщениями.
+  const plannedReply = outboundReply;
+  const mediaFailures: { kind: "image" | "video"; error: string }[] = [];
+  // Сначала отправляем вложения: если Instagram отклонит файл, нельзя заранее
+  // отправить текст модели «Вот фото» и оставить клиента с ложным подтверждением.
+  for (const a of r.attachments ?? []) {
+    const media = await transport
+      .send(m.conversationId, m.accountId, "", {
+        platform: m.platform,
+        attachmentUrl: a.url,
+        attachmentType: a.kind,
+      })
+      .catch((e: unknown) => ({ ok: false, error: e instanceof Error ? e.message : String(e) }));
+    if (!media.ok) {
+      const error = media.error ?? "канал не подтвердил отправку";
+      mediaFailures.push({ kind: a.kind, error });
+      console.warn(`[zernio] ${a.kind} товара не ушло ${customer.userKey}: ${error}`);
+    }
+  }
+
+  let handoff = r.handoff;
+  if (mediaFailures.length) {
+    const kinds = [...new Set(mediaFailures.map((f) => f.kind))];
+    const mediaLabel = kinds.map((kind) => (kind === "video" ? "видео" : "фото")).join(" и ");
+    const detail = mediaFailures
+      .map((f) => f.error.trim())
+      .filter(Boolean)
+      .join("; ")
+      .slice(0, 240);
+    const mediaNote = `Не удалось подтвердить отправку ${mediaLabel} через ${m.platform}${detail ? `: ${detail}` : ""}.`;
+    handoff = handoff
+      ? {
+          ...handoff,
+          summary: [handoff.summary, mediaNote].filter(Boolean).join(" ").slice(0, 1000),
+        }
+      : { kind: "handoff", reason: "photo", summary: mediaNote };
+    outboundReply = mediaDeliveryFailureReply(responseLocale, m.platform, kinds);
+    await consultant
+      .replaceLastConsultantReply(ctx, customer, [r.reply, plannedReply], outboundReply)
+      .catch((e: unknown) => {
+        console.error(
+          `[consultant:${ctx.tenant.id}] не удалось исправить историю после сбоя медиа: ${String(e)}`,
+        );
+      });
+    await consultant.pauseConsultant(ctx, customer).catch((e: unknown) => {
+      console.error(
+        `[consultant:${ctx.tenant.id}] не удалось поставить паузу после сбоя медиа: ${String(e)}`,
+      );
+    });
+  }
+
+  // В Instagram Direct подпись к медиа не поддерживается Meta: текст и файл
+  // идут отдельными сообщениями; текст отправляем после результата доставки файла.
   const sent = await transport.send(m.conversationId, m.accountId, outboundReply, {
     platform: m.platform,
   });
@@ -689,31 +758,31 @@ export async function handleZernioMessage(
     source: isPollEvent(currentZernioEventId()) ? "poll" : "webhook",
     incomingText: text,
     replyText: outboundReply,
-    replyKind: r.handoff ? `handoff:${r.handoff.reason}` : "reply",
+    replyKind: handoff ? `handoff:${handoff.reason}` : "reply",
     model: r.model ?? null,
     usage: r.usage,
     rate: r.rate ?? null,
     tools: r.tools,
-    ...(sent.ok ? {} : { status: "terminal_failed" as const, errorCode: "send_failed" }),
+    ...(sent.ok && !mediaFailures.length
+      ? {}
+      : {
+          status: "terminal_failed" as const,
+          errorCode: [
+            !sent.ok ? "send_failed" : "",
+            mediaFailures.length ? "media_send_failed" : "",
+          ]
+            .filter(Boolean)
+            .join("+"),
+        }),
   });
   if (!sent.ok) {
     // Ответ мог и дойти (обрыв, тайм-аут, 5xx): не повторяем и не шлём иначе.
     // Продавцу — карточка передачи с пометкой (пауза этого хода — из-за передачи,
     // и о ней продавец теперь знает) или короткое «ответ не ушёл»: без передачи
     // пауза не ставится, следующий вопрос бот примет как обычно.
-    if (r.handoff) await notifyHandoff(ctx, customer, m, r.handoff, { replyNotSent: true });
+    if (handoff) await notifyHandoff(ctx, customer, m, handoff, { replyNotSent: true });
     else await notifyReplyNotSent(ctx, customer, m, text, outboundReply);
     return { status: "failed", note: sent.error };
-  }
-  // Фото и видео товара из фотобазы — следом за ответом, каждое отдельно.
-  // Не принял Instagram файл — ответ уже ушёл, остальное не держим.
-  for (const a of r.attachments ?? []) {
-    const media = await transport.send(m.conversationId, m.accountId, "", {
-      platform: m.platform,
-      attachmentUrl: a.url,
-      attachmentType: a.kind,
-    });
-    if (!media.ok) console.warn(`[zernio] фото товара не ушло ${customer.userKey}: ${media.error}`);
   }
 
   if (ctx.tenant.modules.manager_chat) {
@@ -723,12 +792,12 @@ export async function handleZernioMessage(
       direction: "out",
       sender: "bot",
       text: outboundReply,
-      reason: makeReason({ source: "consultant", handoff: r.handoff ? true : undefined }),
+      reason: makeReason({ source: "consultant", handoff: handoff ? true : undefined }),
     });
   }
 
-  if (r.handoff) {
-    await notifyHandoff(ctx, customer, m, r.handoff);
+  if (handoff) {
+    await notifyHandoff(ctx, customer, m, handoff);
     // Передача из-за долгого сбоя ИИ (деньги, ключ) — продавцу отдельно, раз в три часа.
     const { alertSellerModelFailure } = await import("@/core/consultant/model-alert.server");
     await alertSellerModelFailure(ctx, (html) =>
@@ -745,8 +814,8 @@ export async function handleZernioMessage(
   }
 
   return processed(
-    r.handoff
-      ? `ответ + передача менеджеру (${r.handoff.reason})`
+    handoff
+      ? `ответ + передача менеджеру (${handoff.reason})`
       : r.orderAction
         ? "ответ консультанта + заказ"
         : undefined,

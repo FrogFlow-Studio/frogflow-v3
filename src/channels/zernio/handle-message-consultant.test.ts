@@ -55,12 +55,14 @@ const engine = {
   result: null as unknown,
 };
 const pauseConsultant = vi.fn(async () => {});
+const replaceLastConsultantReply = vi.fn(async () => {});
 const runConsultant = vi.fn(async () => engine.result);
 vi.mock("@/core/consultant/engine.server", () => ({
   consultantEnabled: async () => true,
   guardShopOrderReply: (reply: string) => reply,
   isPaused: () => engine.paused,
   pauseConsultant,
+  replaceLastConsultantReply,
   runConsultant,
 }));
 
@@ -86,6 +88,8 @@ beforeEach(() => {
   engine.paused = false;
   engine.result = null;
   notifyAdminsHtml.mockClear();
+  pauseConsultant.mockClear();
+  replaceLastConsultantReply.mockClear();
   runConsultant.mockClear();
 });
 
@@ -220,7 +224,7 @@ describe("сообщение без своего ответа (core/consultant/b
 });
 
 describe("фото и видео товара консультанта", () => {
-  it("текст ответа уходит первым, а фото отправляется следом", async () => {
+  it("сначала подтверждает отправку фото и только потом отправляет ответ модели", async () => {
     engine.result = {
       reply: "Вот фото комплекта.",
       handoff: null,
@@ -239,12 +243,6 @@ describe("фото и видео товара консультанта", () => {
     expect(r.status).toBe("processed");
     expect(calls).toHaveLength(2);
     expect(calls[0]).toEqual({
-      text: "Вот фото комплекта.",
-      opts: {
-        platform: "instagram",
-      },
-    });
-    expect(calls[1]).toEqual({
       text: "",
       opts: {
         platform: "instagram",
@@ -252,9 +250,16 @@ describe("фото и видео товара консультанта", () => {
         attachmentType: "image",
       },
     });
+    expect(calls[1]).toEqual({
+      text: "Вот фото комплекта.",
+      opts: {
+        platform: "instagram",
+      },
+    });
+    expect(runs()[0]).toMatchObject({ status: "replied", reply_text: "Вот фото комплекта." });
   });
 
-  it("если канал отклонил фото — ответ текстом уже ушёл, статус успешен", async () => {
+  it("если Instagram отклонил фото — не утверждает доставку и передаёт запрос менеджеру", async () => {
     engine.result = {
       reply: "Вот фото комплекта.",
       handoff: null,
@@ -279,11 +284,47 @@ describe("фото и видео товара консультанта", () => {
     const r = await handleZernioMessage(ctx, payload("А фото есть?"), t);
     expect(r.status).toBe("processed");
     expect(calls).toHaveLength(2);
-    expect(calls[0]!.text).toBe("Вот фото комплекта.");
-    expect(calls[0]!.opts?.attachmentUrl).toBeUndefined();
-    expect(calls[1]!.opts?.attachmentUrl).toBe("https://app.test/img/1.jpg");
-    expect(runs()[0]).toMatchObject({ reply_text: "Вот фото комплекта." });
-    expect(runs()[0]!.error_code).toBeNull();
+    expect(calls[0]!.opts?.attachmentUrl).toBe("https://app.test/img/1.jpg");
+    expect(calls[1]!.text).toContain("Не удалось подтвердить отправку фото");
+    expect(calls[1]!.text).not.toContain("Вот фото комплекта");
+    expect(pauseConsultant).toHaveBeenCalled();
+    expect(replaceLastConsultantReply).toHaveBeenCalledWith(
+      ctx,
+      customer,
+      ["Вот фото комплекта.", "Вот фото комплекта."],
+      expect.stringContaining("Не удалось подтвердить отправку фото"),
+    );
+    expect(notifyAdminsHtml).toHaveBeenCalledOnce();
+    expect(runs()[0]).toMatchObject({
+      status: "terminal_failed",
+      error_code: "media_send_failed",
+      reply_kind: "handoff:photo",
+    });
+    expect(runs()[0]!.reply_text).toContain("Не удалось подтвердить отправку фото");
+  });
+
+  it("видео передаётся Instagram как video attachment", async () => {
+    engine.result = {
+      reply: "Вот видео.",
+      handoff: null,
+      usage,
+      attachments: [{ url: "https://app.test/api/img/b/video.mp4", kind: "video" }],
+    };
+    const calls: Array<{ text: string; opts?: Record<string, unknown> }> = [];
+    const t = {
+      send: vi.fn(async (_c: string, _a: string, text: string, opts?: Record<string, unknown>) => {
+        calls.push({ text, opts });
+        return { ok: true };
+      }),
+      tail: async () => [],
+    } as unknown as ZernioTransport;
+    await handleZernioMessage(ctx, payload("Покажите видео"), t);
+    expect(calls[0]!.opts).toMatchObject({
+      platform: "instagram",
+      attachmentUrl: "https://app.test/api/img/b/video.mp4",
+      attachmentType: "video",
+    });
+    expect(calls[1]!.text).toBe("Вот видео.");
   });
 
   it("orderAction от консультанта — товар оформляется и присылает сообщение с оплатой", async () => {

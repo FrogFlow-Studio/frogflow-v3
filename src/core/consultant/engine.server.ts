@@ -862,6 +862,26 @@ export async function pauseConsultant(ctx: TenantContext, customer: Customer) {
   return saveState(ctx, customer, { paused_until: pausedUntilIso(pauseHours(ctx.tenant)) });
 }
 
+/** Заменить сохранённый ответ модели на фактический текст, если его вложение не доставлено. */
+export async function replaceLastConsultantReply(
+  ctx: TenantContext,
+  customer: Customer,
+  expectedReplies: string[],
+  actualReply: string,
+) {
+  const expected = new Set(expectedReplies.map((reply) => reply.slice(0, 700)));
+  if (!expected.size || !actualReply.trim()) return customer;
+  return updateStateSection(ctx, customer, "consultant", (current) => {
+    const recent = Array.isArray(current.recent) ? (current.recent as ConsultantTurn[]) : [];
+    const last = recent.at(-1);
+    if (!last || last.role !== "assistant" || !expected.has(last.text)) return current;
+    return {
+      ...current,
+      recent: [...recent.slice(0, -1), { role: "assistant", text: actualReply.slice(0, 700) }],
+    };
+  });
+}
+
 /**
  * Менеджер ответил из Telegram на уведомление о передаче: пауза продлевается,
  * текст запоминается — проверка «менеджер в чате» не примет его за чужого.

@@ -101,5 +101,22 @@ describe("sendInboxMessage — тело ответа в Direct", () => {
     });
     expect(body).not.toHaveProperty("message");
   });
-});
 
+  it("Instagram: видео уходит как attachmentType video", async () => {
+    setEnvForTests({ ZERNIO_API_KEY: "sk_test" });
+    const fetchMock = vi.fn(async () => new Response("{}", { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const r = await sendInboxMessage("conv-1", "acc-1", "", {
+      platform: "instagram",
+      attachmentUrl: "https://cdn.example.com/product.mp4",
+      attachmentType: "video",
+    });
+    expect(r.ok).toBe(true);
+    const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect(JSON.parse(String(init.body))).toEqual({
+      accountId: "acc-1",
+      attachmentUrl: "https://cdn.example.com/product.mp4",
+      attachmentType: "video",
+    });
+  });
+});

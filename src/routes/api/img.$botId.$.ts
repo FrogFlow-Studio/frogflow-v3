@@ -1,4 +1,5 @@
 import { serverFailure } from "@/lib/server-failure";
+import { publicMediaContentType } from "@/core/storage/media-content-type";
 import { createFileRoute } from "@tanstack/react-router";
 
 /**
@@ -72,11 +73,9 @@ export const Route = createFileRoute("/api/img/$botId/$")({
           if (isOwned) file = (await storage.download(rel)).data;
         }
         if (!file) return new Response("not found", { status: 404 });
-        // Файл браузер кладёт в бакет сам, тип задаёт тоже он. Картинку отдаём
-        // с её типом, всё прочее (HTML, SVG) — как скачиваемый файл, чтобы он
-        // не стал страницей нашего домена. Пустой тип, как и раньше, — JPEG.
-        const raw = file.type || "image/jpeg";
-        const type = /^image\/(?!svg)[\w.+-]+$/i.test(raw) ? raw : null;
+        // Фото и поддерживаемые видео нужны Instagram как inline media с верным
+        // MIME; прочее (в т.ч. HTML/SVG) отдаём только скачиваемым файлом.
+        const type = publicMediaContentType(file.type, rel);
         return new Response(file, {
           headers: {
             "content-type": type ?? "application/octet-stream",

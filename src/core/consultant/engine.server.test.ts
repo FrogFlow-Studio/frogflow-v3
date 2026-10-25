@@ -61,6 +61,7 @@ const {
   confirmedOrderIntent,
   guardShopOrderReply,
   KEYS,
+  replaceLastConsultantReply,
 } = await import("./engine.server");
 const { getSetting } = await import("@/core/settings/settings");
 
@@ -970,6 +971,27 @@ describe("консультант: запасные ответы на языке 
     expect(e.en).not.toMatch(CYR);
     expect(e.kk).toMatch(/қызықтыр/);
     expect(e.uz).toMatch(/Iltimos/);
+  });
+});
+
+describe("история консультанта после сбоя доставки медиа", () => {
+  it("заменяет последний сохранённый ответ на фактический текст об ошибке", async () => {
+    saved.length = 0;
+    const c = customer({
+      consultant: {
+        recent: [
+          { role: "customer", text: "А фото есть?" },
+          { role: "assistant", text: "Вот фото комплекта." },
+        ],
+      },
+    } as unknown as DialogState);
+    const actual = "Не удалось подтвердить отправку фото через Instagram.";
+    await replaceLastConsultantReply(ctxOf(), c, ["Вот фото комплекта."], actual);
+    const state = saved.at(-1) as { consultant: { recent: { role: string; text: string }[] } };
+    expect(state.consultant.recent).toEqual([
+      { role: "customer", text: "А фото есть?" },
+      { role: "assistant", text: actual },
+    ]);
   });
 });
 
