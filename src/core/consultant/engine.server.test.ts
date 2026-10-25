@@ -62,6 +62,7 @@ const {
   guardShopOrderReply,
   KEYS,
   replaceLastConsultantReply,
+  loadConsultant,
 } = await import("./engine.server");
 const { getSetting } = await import("@/core/settings/settings");
 
@@ -1090,5 +1091,24 @@ describe("консультант: счётчик ИИ-диалогов меся�
     ]);
     const raw = await getSetting(ctx, "consultant_dialogs_month");
     expect(JSON.parse(raw!).count).toBe(2);
+  });
+});
+
+describe("анкета консультанта", () => {
+  it("пустые условия оплаты и доставки не заполняются чужими (Копилки) даже при Робокассе", async () => {
+    const ctx = ctxOf();
+    (ctx.tenant as { modules: Record<string, boolean> }).modules = {
+      robokassa: true,
+      prodamus: true,
+    };
+    (ctx.db as unknown as { tables: Record<string, unknown[]> }).tables.app_settings = [
+      { bot_id: BOT, key: "robokassa_enabled", value: "true" },
+      { bot_id: BOT, key: "prodamus_enabled", value: "true" },
+      { bot_id: BOT, key: KEYS.profile, value: JSON.stringify({ countries: ["KZ"] }) },
+    ];
+    const { profile } = await loadConsultant(ctx);
+    expect(profile.payment_info ?? "").toBe("");
+    expect(profile.delivery_info ?? "").toBe("");
+    expect(profile.countries).toEqual(["KZ"]);
   });
 });
