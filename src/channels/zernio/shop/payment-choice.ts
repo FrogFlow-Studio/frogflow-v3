@@ -1,25 +1,19 @@
-export const HIDE_MANUAL_KASPI_WITH_ROBOKASSA_SETTING = "hide_manual_kaspi_with_robokassa";
-
 export type CheckoutPaymentButton = {
   type: "postback";
   title: string;
   payload: string;
 };
 
-/** Скрывает ручной Kaspi только для арендаторов, включивших эту настройку. */
-export function shouldHideManualKaspiChoice(
-  instructions: string | null | undefined,
-  robokassaReady: boolean,
-  settingValue: string | null,
-): boolean {
-  return robokassaReady && settingValue === "true" && /kaspi|каспи/i.test(instructions ?? "");
-}
-
-/** Instagram показывает не больше трёх кнопок; без ручного Kaspi можно показать все онлайн-методы. */
+/**
+ * Кнопки оплаты: до двух онлайн-способов и ручной перевод. Instagram и
+ * WhatsApp показывают не больше трёх кнопок. Ручной Kaspi не прячем рядом
+ * с Робокассой (решение Якова 25.10): казахстанский покупатель выбирает сам —
+ * перевод Kaspi с чеком или картой (Kaspi Gold тоже) с мгновенной выдачей.
+ * Скрытие 24.10 оставило Копилке только карту и Продамус (карты РФ).
+ */
 export function checkoutPaymentButtons(
   online: readonly CheckoutPaymentButton[],
   manual: CheckoutPaymentButton,
-  hideManualKaspi: boolean,
 ): CheckoutPaymentButton[] {
-  return [...online.slice(0, hideManualKaspi ? 3 : 2), ...(hideManualKaspi ? [] : [manual])];
+  return [...online.slice(0, 2), manual];
 }

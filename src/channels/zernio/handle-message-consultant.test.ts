@@ -516,6 +516,129 @@ describe("фото и видео товара консультанта", () => {
     expect(sentTexts.some((txt) => txt.includes("Заказ") && txt.includes("100 ₸"))).toBe(true);
   });
 
+  it("Робокасса и Kaspi рядом (Копилка 25.10): две кнопки и пояснение, что сразу, а что по чеку", async () => {
+    ctx.tenant.modules = {
+      ...ctx.tenant.modules,
+      whatsapp: true,
+      wa_shop: true,
+      robokassa: true,
+    } as never;
+    db.tables.app_settings = [
+      ["robokassa_enabled", "true"],
+      ["robokassa_login", "shop"],
+      ["robokassa_pass1", "p1"],
+      ["robokassa_pass2", "p2"],
+      ["robokassa_region", "kz"],
+      // Скрытие Kaspi 24.10 больше не действует, даже если флаг остался в базе.
+      ["hide_manual_kaspi_with_robokassa", "true"],
+    ].map(([key, value]) => ({ bot_id: "b", key, value }));
+    db.tables.products = [
+      {
+        id: "p-ladder",
+        bot_id: "b",
+        name: 'Лестницы "Части речи и члены предложения"',
+        price: 100,
+        currency: "KZT",
+        is_active: true,
+        sort_order: 1,
+        fulfillment_kind: "digital",
+        file_path: "materials/ladder.pdf",
+        product_variants: [],
+      },
+    ];
+    db.tables.payment_methods = [
+      {
+        bot_id: "b",
+        country_code: "KZ",
+        country_name: "Казахстан",
+        currency: "KZT",
+        is_active: true,
+        sort_order: 1,
+        instructions: "Kaspi Pay: https://pay.kaspi.kz/pay/test",
+      },
+    ];
+    db.tables.orders = [];
+    db.tables.order_items = [];
+    db.tables.cart_items = [];
+    let cart = db.tables.cart_items;
+    Object.defineProperty(db.tables, "cart_items", {
+      configurable: true,
+      enumerable: true,
+      get() {
+        for (const c of cart ?? []) {
+          if (c.products) continue;
+          c.products = db.tables.products?.find((p) => p.id === c.product_id) ?? null;
+          c.product_variants = null;
+        }
+        return cart;
+      },
+      set(v) {
+        cart = v;
+      },
+    });
+    let orders = db.tables.orders;
+    Object.defineProperty(db.tables, "orders", {
+      configurable: true,
+      enumerable: true,
+      get() {
+        for (const o of orders ?? []) {
+          const items = (db.tables.order_items ?? []).filter((i) => i.order_id === o.id);
+          if (items.length) o.order_items = items;
+        }
+        return orders;
+      },
+      set(v) {
+        orders = v;
+      },
+    });
+    const origRpc = db.rpc.bind(db);
+    db.rpc = ((name: string, args: Record<string, unknown>) =>
+      name === "claim_order_placement"
+        ? { data: true, error: null }
+        : origRpc(name, args)) as never;
+
+    engine.result = {
+      reply: "Отлично, оформляю «Лестницы»! Счёт на оплату формируется...",
+      handoff: null,
+      orderAction: { productName: "Лестницы Части речи и члены предложения" },
+      usage,
+    };
+
+    const sentTexts: string[] = [];
+    const sentButtons: { payload?: string }[][] = [];
+    const t = {
+      send: vi.fn(async (_c: string, _a: string, text: string, o?: { buttons?: never[] }) => {
+        sentTexts.push(text);
+        sentButtons.push(o?.buttons ?? []);
+        return { ok: true };
+      }),
+      tail: async () => [],
+    } as unknown as ZernioTransport;
+
+    const waPayload = {
+      account: { platform: "whatsapp", accountId: "acc-1" },
+      conversation: { id: "conv-1" },
+      message: {
+        text: "Да. Давайте оформим",
+        platformMessageId: "mid-wa-rk",
+        sender: { id: "77772928100", phone: "+77772928100", name: "Турки" },
+      },
+    } as never;
+
+    setEnvForTests({});
+    const r = await handleZernioMessage(ctx, waPayload, t);
+    expect(r.status).toBe("processed");
+    expect(r.note).toBe("ответ консультанта + заказ");
+
+    const i = sentTexts.findIndex((txt) => txt.includes("100 ₸"));
+    expect(i).toBeGreaterThan(-1);
+    expect(sentButtons[i]!.map((x) => x.payload)).toEqual(["PAY:rk", "PAY:manual"]);
+    expect(sentTexts[i]).toContain("Kaspi Gold");
+    expect(sentTexts[i]).toContain("после проверки чека");
+    // С кнопками Instagram берёт не больше 640 знаков — сообщение не режется.
+    expect(sentTexts[i]!.length).toBeLessThanOrEqual(640);
+  });
+
   it("orderAction с вариантом (например, «5 класс») — оформляет конкретный вариант товара", async () => {
     ctx.tenant.modules = { ...ctx.tenant.modules, whatsapp: true, wa_shop: true } as never;
     db.tables.products = [

@@ -90,7 +90,7 @@ Instagram va WhatsApp uchun kartochka. Xaridor nima yozganini so‘zlar ro‘yxa
 
 ## Robokassa: karta orqali to‘lov {#robokassa}
 
-Robokassa kassangiz orqali karta bilan to‘lov: Telegram-botda, Instagram/WhatsApp’da va saytda. Kassa to‘lov haqida xabar berganda buyurtma o‘zi tasdiqlanadi.
+Robokassa kassangiz orqali karta bilan to‘lov: Telegram-botda, Instagram/WhatsApp’da va saytda. Kassa to‘lov haqida xabar berganda buyurtma o‘zi tasdiqlanadi. Instagram va WhatsApp’da «Kartadan to‘lov» yonida, to‘lov usulida bo‘lsa, Kaspi o‘tkazma ham qoladi: xaridor o‘zi tanlaydi — karta (Kaspi Gold ham mos) bilan darhol tasdiq yoki chek bilan Kaspi o‘tkazma.
 
 1. Robokassa shaxsiy kabinetida kartadagi Result URL, Success URL va Fail URL manzillarini, POST usulini, MD5 algoritmini ko‘rsating.
 2. «Kassa mamlakati»ni tanlang: «Qozog‘iston (robokassa.kz, tenge)» yoki «Rossiya (robokassa.ru, rubl)».
