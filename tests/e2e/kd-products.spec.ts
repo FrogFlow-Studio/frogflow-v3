@@ -4,7 +4,8 @@ import { watch } from "./helpers.ts";
 
 /** Пожелания Кристины Дидактика: «сначала новые», «нет на KZ» и поиск по коду в ключевых словах. */
 const names = (page: Page) =>
-  page.locator("table tbody tr td a[href*='/admin/products/']").allTextContents();
+  // Ссылка на цену (#price) ведёт туда же — названия только у ссылок без якоря.
+  page.locator("table tbody tr td a[href*='/admin/products/']:not([href*='#'])").allTextContents();
 
 test("товары: сначала новые, фильтр «нет на KZ», поиск по ключевым словам", async ({
   page,
