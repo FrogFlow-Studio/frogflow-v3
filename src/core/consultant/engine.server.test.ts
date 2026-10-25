@@ -511,6 +511,9 @@ describe("консультант: передача менеджеру", () => {
     );
     expect(r?.buyOffer).toEqual({ productId: "p-1", variantId: "v-5" });
     expect(r?.reply).toBe("Сборник для 5 класса в PDF, приходит сюда сразу.");
+    // Кнопка помечена временем этого ответа: напоминание шлёт её, только пока он последний.
+    const st = (saved.at(-1) as { consultant: Record<string, unknown> }).consultant;
+    expect(st.buy_offer).toEqual({ productId: "p-1", variantId: "v-5", at: st.last_reply_at });
     const system = args().system as { text: string }[];
     expect(system.map((b) => b.text).join("\n")).toContain("КНОПКА «КУПИТЬ»");
 

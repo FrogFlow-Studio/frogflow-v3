@@ -42,3 +42,18 @@ export function isBuyButtonTitle(text: string | null | undefined): boolean {
   const t = (text ?? "").trim();
   return Object.values(BUY_BUTTON_TITLE).some((title) => title === t);
 }
+
+/**
+ * Одно напоминание с кнопкой «Купить» (настройка «напоминание с кнопкой
+ * «Купить»»): человек получил кнопку и замолчал. Без вопроса и без нажима —
+ * кнопка ещё раз, чтобы не искать её в переписке.
+ */
+export const BUY_REMINDER_TEXT: Record<Locale, (name: string) => string> = {
+  ru: (n) => `Если ещё актуально, оставлю кнопку для «${n}»: одно нажатие — и пришлю оплату 👇`,
+  kk: (n) =>
+    `Әлі өзекті болса, «${n}» үшін батырманы осында қалдырамын: бір басыңыз, төлемді жіберемін 👇`,
+  en: (n) =>
+    `In case it's still relevant, here's the button for «${n}»: one tap and I'll send the payment 👇`,
+  uz: (n) =>
+    `Hali dolzarb bo‘lsa, «${n}» uchun tugmani shu yerda qoldiraman: bir marta bosing — to‘lovni yuboraman 👇`,
+};

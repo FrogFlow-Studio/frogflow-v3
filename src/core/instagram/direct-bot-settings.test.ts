@@ -27,6 +27,7 @@ describe("настройки автоответчика Direct/WhatsApp", () => 
         checkout: true,
         express: true,
         buy_button: true,
+        buy_reminder: false,
       },
       sellerPause: "30",
       ignoreExcluded: false,
@@ -62,6 +63,7 @@ describe("настройки автоответчика Direct/WhatsApp", () => 
       checkout: false,
       express: true,
       buy_button: true,
+      buy_reminder: false,
     });
     expect(s.script).toBe("Напишите «каталог».");
     expect(s.ignoreExcluded).toBe(true);
@@ -94,5 +96,9 @@ describe("настройки автоответчика Direct/WhatsApp", () => 
   });
   it("битый JSON функций не ломает разбор", () => {
     expect(parseFeatures("{oops").catalog).toBe(true);
+  });
+  it("напоминание с кнопкой «Купить» выключено, пока продавец не включит", () => {
+    expect(parseFeatures("").buy_reminder).toBe(false);
+    expect(parseFeatures('{"buy_reminder":true}').buy_reminder).toBe(true);
   });
 });

@@ -123,6 +123,9 @@ vi.mock("@/channels/zernio/inbox-poll.server", () => ({
 vi.mock("@/channels/zernio/consultant-jobs.server", () => ({
   runPricelistJobs: hitList("pricelist"),
 }));
+vi.mock("@/channels/zernio/buy-reminder.server", () => ({
+  runBuyReminders: hitList("buyReminder"),
+}));
 vi.mock("@/channels/telegram/digest.server", () => ({ sendDueDigests: hitList("digest") }));
 vi.mock("@/channels/telegram/weekly.server", () => ({
   sendDueWeeklyReports: hitList("weekly"),
@@ -179,7 +182,16 @@ const JOBS: Record<string, string[]> = {
   "comment-dm-fallback": ["commentDm"],
   "inbox-poll": ["inboxPoll"],
   observer: ["observer"],
-  health: ["zernioSync", "channelGuard", "zernioRetry", "pricelist", "digest", "weekly", "morning"],
+  health: [
+    "zernioSync",
+    "channelGuard",
+    "zernioRetry",
+    "pricelist",
+    "buyReminder",
+    "digest",
+    "weekly",
+    "morning",
+  ],
   subscriptions: ["catalogSheet", "sheetNotify", "renewals"],
 };
 

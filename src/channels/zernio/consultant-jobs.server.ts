@@ -252,7 +252,7 @@ export async function sendPricelistFollowUps(
 }
 
 /** Хвост переписки в Zernio; не прочитался — null. */
-async function readTail(
+export async function readTail(
   customer: ReturnType<typeof customerFromRow>,
   transport: ZernioTransport,
 ): Promise<ZernioInboxMessage[] | null> {
@@ -276,7 +276,7 @@ export function lastIncomingAt(tail: ZernioInboxMessage[]): number | null {
 }
 
 /** В хвосте переписки есть ответ человека новее последнего ответа бота. */
-function managerInChat(
+export function managerInChat(
   customer: ReturnType<typeof customerFromRow>,
   memory: FollowUpState,
   tail: ZernioInboxMessage[],

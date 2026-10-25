@@ -77,6 +77,10 @@ Faqat Instagram uchun. Yoqilgan (standart) — rils ostidagi «+» yoki kod so�
 
 Standart holatda yoqilgan. Xaridor aniq mahsulot haqida so‘raganda yoki variantni (masalan, sinfni) aytganda, AI maslahatchi qisqa tavsif va narx bilan javob beradi va ostiga «🛒 Sotib olish» tugmasini qo‘yadi. Bosilganda shu mahsulotga buyurtma darhol rasmiylashtiriladi va to‘lov yuboriladi, «Buyurtma beramizmi?» degan savolsiz. Mahsulotning variantlari bo‘lsa va xaridor hali tanlamagan bo‘lsa, tugma bo‘lmaydi: maslahatchi avval variantni aniqlaydi. Maslahatchi, «savat» va «buyurtma rasmiylashtirish» yoqilganda ishlaydi. O‘chirilgan bo‘lsa, maslahatchi avvalgidek xarid haqida so‘z bilan so‘raydi.
 
+## «Sotib olish» tugmasi bilan eslatma {#dbot-buy-reminder}
+
+Standart holatda o‘chirilgan. Yoqilgan bo‘lsa — xaridor maslahatchidan «🛒 Sotib olish» tugmasini oldi, bosmadi va 3 soat javob bermadi: bot bir marta «Hali dolzarb bo‘lsa, «…» uchun tugmani shu yerda qoldiraman: bir marta bosing — to‘lovni yuboraman 👇» deb yozadi va tugmani yana yuboradi. Eslatma do‘kon vaqti bilan 9:00 dan 21:00 gacha va faqat xaridorning oxirgi xabaridan keyin 23 soat ichida ketadi (keyin Instagram va WhatsApp xabarni o‘tkazmaydi). Xaridor allaqachon yozgan yoki buyurtma bergan bo‘lsa, siz unga ilovada o‘zingiz javob bergan bo‘lsangiz, dialog sizga topshirilgan bo‘lsa, u bo‘yicha ochiq vazifa bo‘lsa, maslahatchi o‘chirilgan bo‘lsa yoki mahsulot endi sotuvda bo‘lmasa, ketmaydi. Maslahatchining bitta javobiga — bitta eslatma, ikki kron bir vaqtda ishlasa ham. «AI maslahatchi javobidagi «Sotib olish» tugmasi» bilan birga ishlaydi.
+
 ## Instagram’dagi tezkor savollar {#ice-breakers}
 
 Xaridor Direct’da sizga birinchi marta yozganda ko‘radigan maslahatlar: «Katalog», «Buyurtmalarim», «Qanday to‘lash», «Sotuvchi bilan bog‘lanish». Bosish do‘konning tegishli qismini yoki savolni tasvirlash so‘rovini ochadi. Matnlarni 80 belgigacha o‘zgartirish mumkin; qatordagi belgi maslahatni yoqadi.

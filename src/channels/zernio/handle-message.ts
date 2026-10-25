@@ -897,31 +897,18 @@ function buyButtonOn(
   return Boolean(shopOn && f.buy_button && f.cart && f.checkout);
 }
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
 /**
- * Кнопка для товара из offer_buy_button: товар в продаже, у товара с
- * вариантами — выбранный действующий вариант. Иначе кнопки нет, ответ уходит
- * как обычно (сбой чтения каталога — тоже без кнопки, не без ответа).
+ * Кнопка для товара из offer_buy_button (shop/buy-offer.server). Сбой чтения
+ * каталога — ответ без кнопки, не без ответа.
  */
 async function buyButtonFor(
   ctx: TenantContext,
   offer: { productId: string; variantId?: string },
   locale: import("@/core/i18n/locale").Locale,
 ): Promise<{ type: "postback"; title: string; payload: string } | null> {
-  if (!UUID.test(offer.productId) || (offer.variantId && !UUID.test(offer.variantId))) return null;
   try {
-    const { getProduct, sortedVariants } = await import("@/core/catalog/catalog");
-    const product = await getProduct(ctx, offer.productId);
-    if (!product) return null;
-    const variants = sortedVariants(product);
-    if (variants.length && !variants.some((v) => v.id === offer.variantId)) return null;
-    const { BUY_BUTTON_TITLE, buyButtonPayload } = await import("./shop/buy-button");
-    return {
-      type: "postback",
-      title: BUY_BUTTON_TITLE[locale],
-      payload: buyButtonPayload(product.id, variants.length ? offer.variantId : null),
-    };
+    const { buyOfferButton } = await import("./shop/buy-offer.server");
+    return (await buyOfferButton(ctx, offer, locale))?.button ?? null;
   } catch (e) {
     console.warn(`[consultant:${ctx.tenant.id}] кнопка «Купить» без товара: ${String(e)}`);
     return null;

@@ -316,7 +316,7 @@ export type ConsultantState = {
    * Товар последней кнопки «Купить» (offer_buy_button): WhatsApp иногда
    * присылает нажатие без нашего payload («0») — тогда заказ по этой записи.
    */
-  buy_offer?: { productId: string; variantId?: string };
+  buy_offer?: { productId: string; variantId?: string; at?: string };
   /** Имена v1 у диалогов BOVI, начатых до переезда (читаются, не пишутся). */
   v2_profile?: CustomerProfile;
   v2_rub?: boolean;
@@ -1372,10 +1372,14 @@ async function answerConsultant(
       // История дописывается к свежей (не к снимку начала хода): соседний
       // ход или напоминание, записанные за это время, не затираются.
       try {
+        const replyAt = new Date().toISOString();
         const patch: Partial<ConsultantState> = {
-          last_reply_at: new Date().toISOString(),
+          last_reply_at: replyAt,
           ...(handoff?.customerContact ? { contact: handoff.customerContact } : {}),
           ...out.patch,
+          // Кнопка именно этого ответа: напоминание (buy-reminder) шлёт её, только
+          // если последний ответ бота был с ней.
+          ...(out.patch?.buy_offer ? { buy_offer: { ...out.patch.buy_offer, at: replyAt } } : {}),
           ...(handoff ? { paused_until: pausedUntilIso(pauseHours(ctx.tenant)) } : {}),
         };
         await commitTurn(ctx, customer, {
