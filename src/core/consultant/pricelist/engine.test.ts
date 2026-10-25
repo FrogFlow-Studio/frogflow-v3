@@ -1062,6 +1062,22 @@ describe("надёжность ответа по прайсу (BOVI 07.10)", () 
     expect(turn.error).toContain("цена не по прайсу");
   });
 
+  it("цена не по прайсу и после переписывания — модель отвечает без неё, ответ уходит (BOVI 25.10)", async () => {
+    responses.push(
+      reply([{ type: "text", text: "Uchino полотенце банное 50х100 - 5 000 ₸." }]),
+      reply([{ type: "text", text: "Uchino полотенце банное 50х100 - 5 000 ₸." }]),
+      reply([
+        { type: "text", text: "Uchino полотенце банное 50х100 - 9 000 ₸. Какой цвет нужен?" },
+      ]),
+    );
+    const { d, turn } = await decide("50х100");
+    expect(d.tools).toContain("fix:price_last_try");
+    expect(lastMessage(2)).toContain("Суммы не совпадают с выдачей поиска");
+    expect(d.priceBlocked).toBe(false);
+    expect(turn.handoff).toBeNull();
+    expect(turn.reply).toBe("Uchino полотенце банное 50х100 - 9 000 ₸. Какой цвет нужен?");
+  });
+
   it("после переписывания осталась только не ценовая мелочь — ответ уходит, как раньше", async () => {
     responses.push(
       reply([{ type: "text", text: "Uchino 50х100 - 5 000 ₸. Какой цвет? И размер?" }]),

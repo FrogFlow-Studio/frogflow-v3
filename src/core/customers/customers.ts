@@ -253,6 +253,7 @@ export async function upsertCustomer(
   platform: Platform,
   externalId: string | number,
   profile: Profile,
+  raced = false,
 ): Promise<Customer> {
   const key = userKey(platform, externalId);
   const { data: existing, error: existingError } = await ctx.db
@@ -321,6 +322,10 @@ export async function upsertCustomer(
     })
     .select("*")
     .single();
+  // Два первых сообщения разом: строку уже создал соседний запрос — берём её
+  // (AATeach 24.10: второе сообщение падало «duplicate key» и пропадало).
+  if (error?.code === "23505" && !raced)
+    return upsertCustomer(ctx, platform, externalId, profile, true);
   if (error || !inserted)
     throw serverFailure(`Не удалось создать покупателя ${key}: ${error?.message}`);
   return fromRow(inserted);

@@ -95,6 +95,10 @@ export { modelParams } from "@/core/ai/pure";
 const FINAL_ANSWER_NOTE =
   "[Поиск окончен, инструменты больше недоступны. Напишите покупателю ответ обычными словами по тому, что нашли; если отправили фото — коротко скажите, что на нём и сколько стоит.]";
 
+/** Пометка модели: цена всё ещё не по прайсу — ответ без этих сумм. */
+const priceLastTryNote = (details: string[]): string =>
+  `[Суммы не совпадают с выдачей поиска: ${details.join("; ")}. Инструменты больше недоступны. Перепишите ответ покупателю: оставьте только цены, которые есть в выдаче поиска, а в чём не уверены — без суммы. Продолжите подбор одним вопросом по делу. Менеджера не обещайте.]`;
+
 const TOOL_MARKUP_RETRY_NOTE =
   "[Вызов инструмента написан текстом, а не вызван. Если нужен поиск — вызовите инструмент. Если нет — напишите покупателю ответ обычными словами, без тегов.]";
 
@@ -751,12 +755,20 @@ async function decide(data: PricelistData, input: PricelistInput): Promise<Price
     const left = draftProblems(lastText, catalog, turnDraftCtx());
     if (left.length)
       toolsUsed.push(`fix:draft_again:${[...new Set(left.map((p) => p.kind))].join("+")}`);
-    // Цена не по прайсу и после переписывания — покупателю не уходит (как
+    // Цена не по прайсу и после переписывания: последнее слово — модели
+    // (BOVI 19–25.10: на «200/220», «Белый» покупатель получал «передам
+    // менеджеру», хотя модель нашла товар). Ещё один ответ без инструментов:
+    // без сомнительных сумм. Не помогло — покупателю не уходит (как
     // checkReplyFacts у общего консультанта): вопрос менеджеру.
-    if (left.some((p) => p.kind === "price")) {
-      priceBlocked = true;
-      handoff = { reason: "no_answer", summary: "" };
-      lastText = "";
+    const prices = left.filter((p) => p.kind === "price");
+    if (prices.length) {
+      const fixed = await priceLastTry(prices);
+      if (fixed) lastText = fixed;
+      else {
+        priceBlocked = true;
+        handoff = { reason: "no_answer", summary: "" };
+        lastText = "";
+      }
     }
   }
   const tengeText = finalizePricelistText(lastText, catalog, { greeted });
@@ -796,6 +808,21 @@ async function decide(data: PricelistData, input: PricelistInput): Promise<Price
     priceBlocked,
     ...(missingMedia.length ? { missingMedia } : {}),
   };
+
+  async function priceLastTry(prices: { detail: string }[]): Promise<string> {
+    if (stopped) return "";
+    toolsUsed.push("fix:price_last_try");
+    if (messages.at(-1)?.role !== "assistant")
+      messages.push({ role: "assistant", content: lastText });
+    messages.push({ role: "user", content: priceLastTryNote(prices.map((p) => p.detail)) });
+    const res = await call({ tool_choice: { type: "none" } });
+    // Сбой или лимит на этом запросе — не повод держать ход: ответ решён ниже.
+    stopped = null;
+    const text = res ? textOf(res.content ?? []) : "";
+    if (!text || hasToolMarkup(text)) return "";
+    if (draftProblems(text, catalog, turnDraftCtx()).some((p) => p.kind === "price")) return "";
+    return text;
+  }
 
   async function sendPhoto(args: Record<string, unknown>): Promise<unknown> {
     // Фото товара из фотобазы магазина (панель → «Фото товаров»).

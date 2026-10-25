@@ -2892,6 +2892,37 @@ export const SCENARIOS: Scenario[] = [
     ],
   })),
   {
+    id: "pricelist-short-answer-price-last-try-ig-ru",
+    title:
+      "короткий ответ «200/220»: цена дважды не по прайсу — модель отвечает без неё, не передача",
+    origin:
+      "BOVI 19–25.10, срез 25.10: на «200/220», «Белый», «Не темные» — «Передам ваш вопрос менеджеру» (fix:draft_again:price), хотя товар найден",
+    channel: "instagram",
+    locale: "ru",
+    full: true,
+    vertical: "consultant",
+    modules: { shop: true },
+    pricelist: {
+      catalog: PL_CATALOG,
+      rounds: [
+        said("Uchino полотенце банное 50х100 - 5 000 ₸."),
+        said("Uchino полотенце банное 50х100 - 5 000 ₸."),
+        said("Uchino полотенце банное 50х100 - 9 000 ₸. Какой цвет нужен?"),
+      ],
+    },
+    steps: [
+      {
+        say: { text: "50х100" },
+        expect: {
+          says: ["9 000 ₸"],
+          notSays: ["5 000", "менеджер"],
+          sellerNotices: 0,
+          paused: false,
+        },
+      },
+    ],
+  },
+  {
     id: "pricelist-rubles-no-rate-ig-ru",
     title: "рубли без свежего курса — цены в тенге, продавцу одно предупреждение в сутки",
     origin: "BOVI 07.10, разбор: подсказка обещала замену на рубли, а курса не было",
