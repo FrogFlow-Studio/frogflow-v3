@@ -670,6 +670,7 @@ export async function handleZernioMessage(
               customer.state.mode ?? "",
             ),
           ),
+          verifiedOrderStatus: r.verifiedOrderStatus,
         },
       )
     : r.reply;

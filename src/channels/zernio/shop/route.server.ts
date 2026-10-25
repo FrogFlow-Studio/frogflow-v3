@@ -1,4 +1,5 @@
 import { allPriceCountries } from "@/core/pricing/all-prices";
+import { isOrderStatusQuestion } from "@/core/consultant/order-status-intent";
 import { nonceFromMessage } from "@/core/storefront/code-login";
 import { explainIncoming } from "../reason";
 import { lastPaidOrder, shortLabels } from "@/core/orders/reorder";
@@ -279,6 +280,10 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
   // Заказ шага оплаты уже оплачен — шаг снят, реплику разбирает ИИ после
   // оплаты, а не шаг оплаты (Копилка 12.10, _marina_lyalina_ #149).
   if (await dropPaidStep(s)) mode = s.customer.state.mode;
+
+  // Проверку существующего заказа должен выполнить AI-консультант с read-only tool,
+  // а не общий shop triage или обработчик шага оплаты.
+  if (text && isOrderStatusQuestion(text)) return "question";
 
   // Старая кнопка оплаты не должна выглядеть как новый вопрос консультанту.
   // Если state сбросился, восстанавливаем только существующий неоплаченный

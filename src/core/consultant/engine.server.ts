@@ -30,6 +30,8 @@ import {
 import { getSettings, trySetSetting, updateSettingAtomic } from "@/core/settings/settings";
 import { resolvePrice } from "@/core/pricing/pricing";
 import { PRODUCT_SELECT, sortedVariants, type Product } from "@/core/catalog/catalog";
+import { listCustomerOrderStatuses, type CustomerOrderStatus } from "@/core/orders/order-queries";
+import { isOrderStatusQuestion } from "./order-status-intent";
 import { isConsultantVertical } from "@/core/verticals/registry";
 import { parseKnowledge, retrieveKnowledge, type KnowledgeDoc } from "./knowledge";
 import { parseProfile, type ConsultantProfile } from "./profile";
@@ -354,9 +356,10 @@ export function guardShopOrderReply(
     orderAction?: boolean;
     handoff?: Handoff | null;
     hasActivePaymentOrder?: boolean;
+    verifiedOrderStatus?: boolean;
   },
 ): string {
-  if (SHOP_CANCELLATION_PROMISE.test(reply))
+  if (SHOP_CANCELLATION_PROMISE.test(reply) && !result.verifiedOrderStatus)
     return cancellationNotConfirmedReply(locale, Boolean(result.handoff));
   const orderPromise = SHOP_ORDER_PROMISE.test(reply);
   const paymentPromise =
@@ -420,6 +423,8 @@ export type ConsultantResult = {
   handoff: Handoff | null;
   /** Действие по заказу товара прямо из чата (order_product). */
   orderAction?: ConsultantOrderAction | null;
+  /** Статусный ответ сформирован сервером по read-only записи заказа. */
+  verifiedOrderStatus?: boolean;
   usage: {
     inputTokens: number;
     outputTokens: number;
@@ -569,6 +574,125 @@ async function catalogSnippet(ctx: TenantContext): Promise<{ text: string; price
     }),
   );
   return { text: lines.join("\n"), prices };
+}
+
+const ORDER_STATUS_TOOL: Anthropic.Tool = {
+  name: "get_my_order_status",
+  description:
+    "Проверить текущий статус последних заказов только покупателя из этого диалога. Вызывайте перед ответом на вопрос, отменён ли, оплачен ли, где или в каком статусе заказ. Ничего не меняет.",
+  input_schema: { type: "object", properties: {} },
+};
+
+const ORDER_STATUS_LABELS: Record<string, Partial<Record<Locale, string>>> = {
+  awaiting_payment: {
+    ru: "не отменён и ожидает оплаты",
+    kk: "күші жойылмаған, төлемді күтуде",
+    en: "hasn't been cancelled and is awaiting payment",
+    uz: "bekor qilinmagan, to‘lov kutilmoqda",
+  },
+  awaiting_confirmation: {
+    ru: "ожидает подтверждения оплаты",
+    kk: "төлемнің расталуын күтуде",
+    en: "is awaiting payment confirmation",
+    uz: "to‘lov tasdiqlanishini kutmoqda",
+  },
+  paid: { ru: "оплачен", kk: "төленген", en: "is paid", uz: "to‘langan" },
+  accepted: {
+    ru: "принят в обработку",
+    kk: "өңдеуге қабылданған",
+    en: "has been accepted for processing",
+    uz: "ishlovga qabul qilingan",
+  },
+  in_production: {
+    ru: "готовится",
+    kk: "дайындалып жатыр",
+    en: "is being prepared",
+    uz: "tayyorlanmoqda",
+  },
+  ready: {
+    ru: "готов к выдаче",
+    kk: "беруге дайын",
+    en: "is ready for handoff",
+    uz: "topshirishga tayyor",
+  },
+  delivering: {
+    ru: "передан в доставку",
+    kk: "жеткізуге берілген",
+    en: "is out for delivery",
+    uz: "yetkazib berishga topshirilgan",
+  },
+  delivered: { ru: "выдан", kk: "берілген", en: "has been delivered", uz: "topshirilgan" },
+  cancelled: { ru: "отменён", kk: "күші жойылған", en: "has been cancelled", uz: "bekor qilingan" },
+  rejected: { ru: "отклонён", kk: "қабылданбаған", en: "was rejected", uz: "rad etilgan" },
+};
+
+function verifiedOrderStatusReply(
+  rows: CustomerOrderStatus[] | null,
+  locale: Locale,
+  lookupFailed = false,
+): { reply: string; handoff?: Handoff } {
+  const handoff = (summary: string): Handoff => ({
+    kind: "handoff",
+    reason: "unknown_question",
+    summary,
+  });
+  if (lookupFailed || !rows || rows.length === 0) {
+    const noData = lookupFailed
+      ? {
+          ru: "Не удалось проверить статус в системе. Передаю вопрос менеджеру.",
+          kk: "Жүйеде мәртебені тексеру мүмкін болмады. Сұрағыңызды менеджерге жіберемін.",
+          en: "I couldn't verify the status in the system. I'll pass this to a manager.",
+          uz: "Tizimda holatni tekshira olmadim. Savolingizni menejerga yuboraman.",
+        }
+      : {
+          ru: "Не нашёл заказа, привязанного к этому чату. Передаю вопрос менеджеру для проверки.",
+          kk: "Бұл чатқа байланыстырылған тапсырысты таппадым. Тексеру үшін менеджерге жіберемін.",
+          en: "I couldn't find an order linked to this chat. I'll pass this to a manager to check.",
+          uz: "Bu chatga bog‘langan buyurtmani topmadim. Tekshirish uchun menejerga yuboraman.",
+        };
+    return {
+      reply: noData[locale],
+      handoff: handoff("Проверить статус заказа покупателя; в системе нет доступной записи."),
+    };
+  }
+
+  const labeled = rows.map((row) => ({
+    row,
+    label: ORDER_STATUS_LABELS[row.status]?.[locale],
+    number: row.display_no ?? row.order_no ?? row.id,
+  }));
+  if (labeled.some(({ label }) => !label)) {
+    const texts = {
+      ru: "Нашёл заказ, но не могу безопасно расшифровать его статус. Передаю вопрос менеджеру.",
+      kk: "Тапсырыс табылды, бірақ мәртебесін нақты түсіндіру үшін менеджерге жіберемін.",
+      en: "I found the order, but its status needs a manager's review. I'll pass this along.",
+      uz: "Buyurtma topildi, ammo holatini aniqlashtirish uchun menejerga yuboraman.",
+    };
+    return { reply: texts[locale], handoff: handoff("Проверить неизвестный статус заказа.") };
+  }
+
+  if (labeled.length === 1) {
+    const { number, label } = labeled[0]!;
+    const texts = {
+      ru: `По данным магазина, заказ №${number} ${label}.`,
+      kk: `Дүкен дерегі бойынша, №${number} тапсырыс ${label}.`,
+      en: `According to the store, order #${number} ${label}.`,
+      uz: `Do‘kon ma’lumotiga ko‘ra, №${number} buyurtma ${label}.`,
+    };
+    return { reply: texts[locale] };
+  }
+
+  const items = labeled
+    .slice(0, 5)
+    .map(({ number, label }) => `№${number} — ${label}`)
+    .join("; ");
+  const multiple = {
+    ru: `Нашёл несколько заказов: ${items}. Уточните, о каком заказе вы спрашиваете.`,
+    kk: `Бірнеше тапсырыс бар: ${items}. Қайсысын сұрап тұрғаныңызды нақтылаңыз.`,
+    en: `I found several orders: ${items}. Which one do you mean?`,
+    uz: `Bir nechta buyurtma topildi: ${items}. Qaysi birini nazarda tutyapsiz?`,
+  };
+  return { reply: multiple[locale] };
 }
 
 const TOOLS: Anthropic.Tool[] = [
@@ -1257,6 +1381,7 @@ async function answerConsultant(
     error?: string;
     attachments?: ConsultantResult["attachments"];
     rate?: ConsultantResult["rate"];
+    verifiedOrderStatus?: boolean;
   }): Promise<ConsultantResult> => {
     const { reply, handoff } = out;
     const usd = costUsd();
@@ -1316,6 +1441,7 @@ async function answerConsultant(
       reply,
       handoff,
       ...(out.orderAction ? { orderAction: out.orderAction } : {}),
+      ...(out.verifiedOrderStatus ? { verifiedOrderStatus: true } : {}),
       // Тест-чат: что консультант запомнил за ход (рубли, товары) — следующему вопросу.
       ...(!customer && opts.dryRun && opts.testState
         ? { testState: withPatch(state, out.patch) as ConsultantState }
@@ -1358,11 +1484,15 @@ async function answerConsultant(
       toolsUsed.push(...out.tools);
       return await finish(out);
     }
+    const orderStatusQuestion = Boolean(
+      opts.shopInChat && customer && isOrderStatusQuestion(incoming),
+    );
     const orderProductAllowed = Boolean(
       opts.shopInChat && confirmedOrderIntent(incoming, state.recent ?? []),
     );
     const tools = [
       ...(loaded ? [...CATALOG_TOOLS, REMEMBER_TOOL] : []),
+      ...(orderStatusQuestion ? [ORDER_STATUS_TOOL] : []),
       ...(orderProductAllowed ? [ORDER_PRODUCT_TOOL] : []),
       ...TOOLS.filter((tool) => !(opts.shopInChat && tool.name === "record_order_lead")),
     ];
@@ -1411,6 +1541,9 @@ async function answerConsultant(
     let stopped: "limited" | "late" | null = null;
     let reply = "";
     let handoff: Handoff | null = null;
+    let orderStatusRows: CustomerOrderStatus[] | null = null;
+    let orderStatusLookupFailed = false;
+    let orderStatusVerified = false;
     let orderAction: ConsultantOrderAction | null = null;
     let orderToolRejected = false;
     let orderLeadRejected = false;
@@ -1428,7 +1561,11 @@ async function answerConsultant(
         ],
         tools,
         // Последний раунд — без инструментов: модель отвечает тем, что уже нашла.
-        ...(last && loaded ? { tool_choice: { type: "none" as const } } : {}),
+        ...(orderStatusQuestion && round === 0
+          ? { tool_choice: { type: "tool" as const, name: ORDER_STATUS_TOOL.name } }
+          : last && loaded
+            ? { tool_choice: { type: "none" as const } }
+            : {}),
         messages,
       });
       if (typeof got === "string") {
@@ -1445,6 +1582,26 @@ async function answerConsultant(
         else if (block.type === "tool_use") {
           toolsUsed.push(block.name);
           const input = (block.input ?? {}) as Record<string, unknown>;
+          if (opts.shopInChat && block.name === ORDER_STATUS_TOOL.name) {
+            try {
+              if (!customer) throw new Error("Покупатель не привязан к диалогу");
+              orderStatusRows = await listCustomerOrderStatuses(
+                ctx,
+                customer,
+                5,
+                customer.state.pending_order_id,
+              );
+              const resultText = JSON.stringify({ orders: orderStatusRows });
+              toolTexts.push(resultText);
+              results.push({ type: "tool_result", tool_use_id: block.id, content: resultText });
+            } catch {
+              orderStatusLookupFailed = true;
+              const resultText = "Не удалось проверить статус заказа в системе.";
+              toolTexts.push(resultText);
+              results.push({ type: "tool_result", tool_use_id: block.id, content: resultText });
+            }
+            continue;
+          }
           if (loaded && CATALOG_TOOL_NAMES.has(block.name)) {
             const run = runCatalogTool(loaded, block.name, input);
             toolTexts.push(run.result);
@@ -1590,7 +1747,9 @@ async function answerConsultant(
       // Текст раунда, который ушёл за данными («секунду, посмотрю») или за
       // контактом («передаю менеджеру»), покупателю не уходит.
       const needsData = response.content.some(
-        (b) => b.type === "tool_use" && CATALOG_TOOL_NAMES.has(b.name),
+        (b) =>
+          b.type === "tool_use" &&
+          (CATALOG_TOOL_NAMES.has(b.name) || b.name === ORDER_STATUS_TOOL.name),
       );
       if (text.trim() && !needsData && !askContact) reply = text;
       // Ещё раунд и тогда, когда нужно спросить контакт или модель только
@@ -1606,6 +1765,22 @@ async function answerConsultant(
         break;
       messages.push({ role: "assistant", content: response.content });
       messages.push({ role: "user", content: results });
+    }
+
+    // Если принудительный tool call не вернул результат, всё равно проверяем
+    // заказ на сервере, а не позволяем модели угадывать статус.
+    if (orderStatusQuestion && orderStatusRows === null && !orderStatusLookupFailed && customer) {
+      try {
+        orderStatusRows = await listCustomerOrderStatuses(
+          ctx,
+          customer,
+          5,
+          customer.state.pending_order_id,
+        );
+        toolTexts.push(JSON.stringify({ orders: orderStatusRows }));
+      } catch {
+        orderStatusLookupFailed = true;
+      }
     }
 
     // Лимит частоты или потолок времени до готового ответа — вопрос менеджеру, молча.
@@ -1714,6 +1889,15 @@ async function answerConsultant(
         summary: handoffSummary(await sellerLocaleSafe(ctx), "price", incoming),
       };
     }
+    if (orderStatusRows !== null || orderStatusLookupFailed) {
+      const verified = verifiedOrderStatusReply(orderStatusRows, bLocale, orderStatusLookupFailed);
+      reply = verified.reply;
+      orderStatusVerified = Boolean(orderStatusRows?.length) && !verified.handoff;
+      const explicitHandoff =
+        handoff?.kind === "handoff" &&
+        (handoff.reason === "human_requested" || handoff.reason === "complaint");
+      handoff = verified.handoff ?? (explicitHandoff ? handoff : null);
+    }
     if (!reply && handoff)
       reply = handoff.kind === "lead" ? leadDoneReply(bLocale) : dialogHandoffReply(bLocale);
     if (!reply && orderAction) {
@@ -1730,6 +1914,7 @@ async function answerConsultant(
       orderAction,
       clearError: facts.ok,
       patch: loaded ? { profile: known, contact_asked: contactAsked || undefined } : {},
+      verifiedOrderStatus: orderStatusVerified,
     });
   } catch (e) {
     // Бронь ИИ-баланса закрываем всегда: прошедшие раунды — по их цене, упавший

@@ -349,6 +349,8 @@ describe("classifyIncoming", () => {
     expect(classifyIncoming("Да").kind).toBe("affirmative");
     expect(isAffirmative("+")).toBe(true);
     expect(classifyIncoming("Здравствуйте, а скидка есть?").kind).toBe("question");
+    expect(isCancel("Вы отменили заказ?")).toBe(false);
+    expect(classifyIncoming("Вы отменили заказ?").kind).toBe("question");
     for (const input of ["не нужно", "Нет", "нет.", "Спасибо!", "понятно", "всё"])
       expect(classifyIncoming(input).kind, input).toBe("dismissal");
     expect(classifyIncoming("Спасибо, а когда будет новый набор?").kind).toBe("question");

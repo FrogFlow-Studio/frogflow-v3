@@ -31,6 +31,66 @@ export async function listCustomerOrders(
   return (data ?? []) as OrderWithItems[];
 }
 
+export type CustomerOrderStatus = Pick<
+  OrderWithItems,
+  "id" | "order_no" | "display_no" | "status" | "created_at"
+>;
+
+/** Только безопасные поля последних заказов именно этого покупателя и бота. */
+export async function listCustomerOrderStatuses(
+  ctx: TenantContext,
+  customer: Customer,
+  limit = 5,
+  preferredOrderId?: number,
+): Promise<CustomerOrderStatus[]> {
+  const selectStatus = "id, order_no, display_no, status, created_at";
+  if (
+    typeof preferredOrderId === "number" &&
+    Number.isSafeInteger(preferredOrderId) &&
+    preferredOrderId > 0
+  ) {
+    const { data, error } = await ctx.db
+      .from("orders")
+      .select(selectStatus)
+      .eq("bot_id", ctx.tenant.id)
+      .eq("telegram_id", customer.telegramId)
+      .eq("id", preferredOrderId)
+      .maybeSingle();
+    if (error) throw serverFailure(`Статус заказа покупателя не прочитан: ${error.message}`);
+    if (data) {
+      const row = data as unknown as CustomerOrderStatus;
+      return [
+        {
+          id: row.id,
+          order_no: row.order_no,
+          display_no: row.display_no,
+          status: row.status,
+          created_at: row.created_at,
+        },
+      ];
+    }
+  }
+  const safeLimit = Math.max(1, Math.min(Math.floor(limit) || 5, 10));
+  const { data, error } = await ctx.db
+    .from("orders")
+    .select(selectStatus)
+    .eq("bot_id", ctx.tenant.id)
+    .eq("telegram_id", customer.telegramId)
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
+    .limit(safeLimit);
+  if (error) throw serverFailure(`Статусы заказов покупателя не прочитаны: ${error.message}`);
+  return ((data ?? []) as CustomerOrderStatus[]).map(
+    ({ id, order_no, display_no, status, created_at }) => ({
+      id,
+      order_no,
+      display_no,
+      status,
+      created_at,
+    }),
+  );
+}
+
 /**
  * Все выданные заказы покупателя, новые первыми, — для библиотеки «Мои
  * материалы». Без ограничения по числу: в v1 выборка из последних 80 заказов

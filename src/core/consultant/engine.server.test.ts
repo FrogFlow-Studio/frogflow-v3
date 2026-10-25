@@ -194,6 +194,65 @@ describe("guardShopOrderReply: честность оплаты и выдачи",
     expect(reply).toMatch(/не могу подтвердить изменение статуса/iu);
     expect(reply).not.toMatch(/заказ отменён/iu);
   });
+
+  it("пропускает отмену, подтверждённую read-only проверкой заказа", () => {
+    const reply = "По данным магазина, заказ №123 отменён.";
+    expect(
+      guardShopOrderReply(reply, "ru", {
+        orderAction: false,
+        handoff: null,
+        hasActivePaymentOrder: false,
+        verifiedOrderStatus: true,
+      }),
+    ).toBe(reply);
+    expect(
+      guardShopOrderReply(reply, "ru", {
+        orderAction: false,
+        handoff: null,
+        hasActivePaymentOrder: false,
+      }),
+    ).not.toBe(reply);
+  });
+});
+
+describe("проверка статуса заказа", () => {
+  it("вопрос об отмене принудительно читает заказ и отвечает по данным системы", async () => {
+    const ctx = ctxOf();
+    const db = ctx.db as unknown as { tables: Record<string, Record<string, unknown>[]> };
+    db.tables.orders = [
+      {
+        id: 123,
+        bot_id: BOT,
+        telegram_id: -1,
+        order_no: 123,
+        display_no: 123,
+        status: "cancelled",
+        created_at: "2026-10-25T08:00:00.000Z",
+      },
+    ];
+    content = [text("Заказ не отменён.")];
+    create.mockImplementationOnce(async () => ({
+      stop_reason: "tool_use",
+      content: [tool("get_my_order_status", {})],
+      usage,
+    }));
+    const buyer = { ...customer(), userKey: "wa_1", platform: "whatsapp" as const };
+
+    const result = await runConsultant(ctx, buyer, "Вы отменили заказ?", {
+      platform: "whatsapp",
+      shopInChat: true,
+    });
+
+    expect(args().tool_choice).toEqual({ type: "tool", name: "get_my_order_status" });
+    expect(args().tools).toEqual(
+      expect.arrayContaining([expect.objectContaining({ name: "get_my_order_status" })]),
+    );
+    expect(result?.tools).toContain("get_my_order_status");
+    expect(result?.reply).toContain("заказ №123 отменён");
+    expect(result?.reply).not.toContain("не отменён");
+    expect(result?.verifiedOrderStatus).toBe(true);
+    expect(result?.handoff).toBeNull();
+  });
 });
 
 describe("консультант: ответ и состояние", () => {
