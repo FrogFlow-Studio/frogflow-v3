@@ -470,6 +470,32 @@ describe("консультант: передача менеджеру", () => {
     expect(confirmedOrderIntent("Да, давайте оформим", [])).toBe(true);
   });
 
+  it("кнопка «Купить»: инструмент есть только при настройке канала, товар уходит в ответ и в состояние", async () => {
+    content = [
+      tool("offer_buy_button", { product_id: "p-1", variant_id: "v-5" }),
+      text("Сборник для 5 класса в PDF, приходит сюда сразу."),
+    ];
+    const r = await runConsultant(ctxOf(), customer(), "У меня 5 класс", {
+      platform: "whatsapp",
+      shopInChat: true,
+      buyButton: true,
+    });
+    expect(args().tools).toEqual(
+      expect.arrayContaining([expect.objectContaining({ name: "offer_buy_button" })]),
+    );
+    expect(r?.buyOffer).toEqual({ productId: "p-1", variantId: "v-5" });
+    expect(r?.reply).toBe("Сборник для 5 класса в PDF, приходит сюда сразу.");
+    const system = args().system as { text: string }[];
+    expect(system.map((b) => b.text).join("\n")).toContain("КНОПКА «КУПИТЬ»");
+
+    content = [text("Есть.")];
+    create.mockClear();
+    await runConsultant(ctxOf(), customer(), "Цена?", { platform: "whatsapp", shopInChat: true });
+    expect(args().tools).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ name: "offer_buy_button" })]),
+    );
+  });
+
   it("не обещает заказ и оплату, если модель не вызвала order_product", async () => {
     content = [text("Оформляю заказ — детали и оплата сейчас появятся в этом чате.")];
     const r = await runConsultant(ctxOf(), customer(), "Здравствуйте. У вас есть папка?", {

@@ -44,6 +44,12 @@ export type DirectBotFeatures = {
    * «Оформить заказ» (Копилка русоведа, 09.10: ~80 обращений, 0 оплат).
    */
   express: boolean;
+  /**
+   * Кнопка «Купить» под ответом ИИ-консультанта, когда покупатель интересуется
+   * конкретным товаром: нажатие сразу оформляет заказ и присылает оплату
+   * (Копилка 21–25.10: 18 из 25 молчали после вопроса «Оформляем заказ?»).
+   */
+  buy_button: boolean;
 };
 
 /** Сколько бот молчит после реплики продавца руками: минуты или «до конца дня» (Б3). */
@@ -68,7 +74,14 @@ export const DEFAULT_DIRECT_BOT: DirectBotSettings = {
   scope: "purchases",
   triggers: [],
   script: "",
-  features: { catalog: true, search: true, cart: true, checkout: true, express: true },
+  features: {
+    catalog: true,
+    search: true,
+    cart: true,
+    checkout: true,
+    express: true,
+    buy_button: true,
+  },
   sellerPause: "30",
   ignoreExcluded: false,
   notifyTemplate: "",
