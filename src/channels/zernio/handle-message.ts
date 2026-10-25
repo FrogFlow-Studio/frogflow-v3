@@ -23,6 +23,7 @@ import { isLocale } from "@/core/i18n/locale";
 import { currentZernioEventId } from "./event-context.server";
 import { isPollEvent, zernioMessageKeys } from "./inbox-poll";
 import type { TwoStepBuyer } from "./automations.server";
+import { classifyZernioFailure, zernioFailureOf } from "./errors";
 
 /**
  * Входящее из Instagram Direct или WhatsApp. Адаптер разбирает событие,
@@ -44,10 +45,20 @@ function mediaDeliveryFailureReply(
   locale: string,
   platform: string,
   kinds: ("image" | "video")[],
+  ambiguous = false,
 ): string {
   const photo = kinds.includes("image");
   const video = kinds.includes("video");
   const channel = platform === "instagram" ? "Instagram" : "WhatsApp";
+  if (ambiguous) {
+    if (locale === "en")
+      return `${channel} couldn't confirm whether the media was delivered. It may already be above—please check the chat before asking for another copy. I've asked the manager to verify.`;
+    if (locale === "kk")
+      return `${channel} медиа-файлдың жеткізілгенін растамады. Ол чатта жоғарыда болуы мүмкін — қайта жіберуді сұрамас бұрын тексеріңіз. Менеджерге тексеру үшін хабарладым.`;
+    if (locale === "uz")
+      return `${channel} media fayl yetkazilganini tasdiqlamadi. U chatda yuqorida bo‘lishi mumkin — qayta yuborishni so‘rashdan oldin tekshiring. Tekshirish uchun menejerga xabar berdim.`;
+    return `${channel} не подтвердил доставку медиа. Оно могло уже появиться выше — проверьте чат, прежде чем просить повторную отправку. Передал менеджеру проверить статус.`;
+  }
   if (locale === "en") {
     const media = photo && video ? "photo or video" : video ? "video" : "photo";
     return `I couldn't confirm that the ${media} was sent via ${channel}. I've asked the manager to help with the file.`;
@@ -714,7 +725,7 @@ export async function handleZernioMessage(
       })
     : r.reply;
   const plannedReply = outboundReply;
-  const mediaFailures: { kind: "image" | "video"; error: string }[] = [];
+  const mediaFailures: { kind: "image" | "video"; error: string; ambiguous: boolean }[] = [];
   // Сначала отправляем вложения: если Instagram отклонит файл, нельзя заранее
   // отправить текст модели «Вот фото» и оставить клиента с ложным подтверждением.
   for (const a of r.attachments ?? []) {
@@ -724,16 +735,22 @@ export async function handleZernioMessage(
         attachmentUrl: a.url,
         attachmentType: a.kind,
       })
-      .catch((e: unknown) => ({ ok: false, error: e instanceof Error ? e.message : String(e) }));
+      .catch((e: unknown) => ({
+        ok: false,
+        error: e instanceof Error ? e.message : String(e),
+        failure: zernioFailureOf(e),
+      }));
     if (!media.ok) {
       const error = media.error ?? "канал не подтвердил отправку";
-      mediaFailures.push({ kind: a.kind, error });
-      console.warn(`[zernio] ${a.kind} товара не ушло ${customer.userKey}: ${error}`);
+      const ambiguous = classifyZernioFailure(media.failure) === "ambiguous";
+      mediaFailures.push({ kind: a.kind, error, ambiguous });
+      console.warn(`[zernio] ${a.kind} товара не подтверждена ${customer.userKey}: ${error}`);
     }
   }
 
   let handoff = r.handoff;
   if (mediaFailures.length) {
+    const ambiguous = mediaFailures.some((failure) => failure.ambiguous);
     const kinds = [...new Set(mediaFailures.map((f) => f.kind))];
     const mediaLabel = kinds.map((kind) => (kind === "video" ? "видео" : "фото")).join(" и ");
     const detail = mediaFailures
@@ -741,14 +758,16 @@ export async function handleZernioMessage(
       .filter(Boolean)
       .join("; ")
       .slice(0, 240);
-    const mediaNote = `Не удалось подтвердить отправку ${mediaLabel} через ${m.platform}${detail ? `: ${detail}` : ""}.`;
+    const mediaNote = ambiguous
+      ? `Zernio не подтвердил доставку ${mediaLabel} через ${m.platform}: вложение могло уже появиться в чате; проверить переписку перед повторной отправкой${detail ? `. Ответ: ${detail}` : "."}`
+      : `Не удалось подтвердить отправку ${mediaLabel} через ${m.platform}${detail ? `: ${detail}` : ""}.`;
     handoff = handoff
       ? {
           ...handoff,
           summary: [handoff.summary, mediaNote].filter(Boolean).join(" ").slice(0, 1000),
         }
       : { kind: "handoff", reason: "photo", summary: mediaNote };
-    outboundReply = mediaDeliveryFailureReply(responseLocale, m.platform, kinds);
+    outboundReply = mediaDeliveryFailureReply(responseLocale, m.platform, kinds, ambiguous);
     await consultant
       .replaceLastConsultantReply(ctx, customer, [r.reply, plannedReply], outboundReply)
       .catch((e: unknown) => {
@@ -789,7 +808,11 @@ export async function handleZernioMessage(
           status: "terminal_failed" as const,
           errorCode: [
             !sent.ok ? "send_failed" : "",
-            mediaFailures.length ? "media_send_failed" : "",
+            mediaFailures.length
+              ? mediaFailures.some((failure) => failure.ambiguous)
+                ? "media_send_ambiguous"
+                : "media_send_failed"
+              : "",
           ]
             .filter(Boolean)
             .join("+"),

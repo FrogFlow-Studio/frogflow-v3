@@ -362,6 +362,41 @@ describe("фото и видео товара консультанта", () => {
     expect(calls[1]!.text).toBe("Вот видео.");
   });
 
+  it("после неоднозначного 500 не объявляет фото потерянными и не повторяет отправку автоматически", async () => {
+    engine.result = {
+      reply: "Отправила оба фото.",
+      handoff: null,
+      usage,
+      attachments: [
+        { url: "https://app.test/img/1.jpg", kind: "image" },
+        { url: "https://app.test/img/2.jpg", kind: "image" },
+      ],
+    };
+    const calls: Array<{ text: string; opts?: Record<string, unknown> }> = [];
+    let attachmentNo = 0;
+    const t = {
+      send: vi.fn(async (_c: string, _a: string, text: string, opts?: Record<string, unknown>) => {
+        calls.push({ text, opts });
+        if (opts?.attachmentUrl && ++attachmentNo === 2)
+          return { ok: false, error: "Zernio API 500", failure: { status: 500 } };
+        return { ok: true };
+      }),
+      tail: async () => [],
+    } as unknown as ZernioTransport;
+
+    await handleZernioMessage(ctx, payload("А фото есть?"), t);
+
+    expect(calls).toHaveLength(3);
+    expect(calls[2]!.text).toContain("могло уже появиться выше");
+    expect(calls[2]!.text).toContain("проверьте чат");
+    expect(notifyAdminsHtml).toHaveBeenCalledOnce();
+    expect(runs()[0]).toMatchObject({
+      status: "terminal_failed",
+      error_code: "media_send_ambiguous",
+      reply_kind: "handoff:photo",
+    });
+  });
+
   it("orderAction от консультанта — товар оформляется и присылает сообщение с оплатой", async () => {
     ctx.tenant.modules = { ...ctx.tenant.modules, whatsapp: true, wa_shop: true } as never;
     db.tables.products = [
