@@ -36,11 +36,7 @@ import {
   robokassaReceipt,
 } from "@/core/payments/payment";
 import { buildPaymentUrl } from "@/core/payments/robokassa";
-import {
-  checkoutPaymentButtons,
-  HIDE_MANUAL_KASPI_WITH_ROBOKASSA_SETTING,
-  shouldHideManualKaspiChoice,
-} from "./payment-choice";
+import { checkoutPaymentButtons } from "./payment-choice";
 import { loadQuiz, quizResult, type Quiz } from "@/core/quiz/quiz";
 import { isDeliveryLangChoice } from "@/core/catalog/materials";
 import { askDeliveryLangBeforeOrder, cartLanguageChoices } from "@/core/cart/languages";
@@ -839,20 +835,11 @@ async function sendPayChoice(
         ]
       : []),
   ];
-  const manualKaspiCandidate = rk.ready && /kaspi|каспи/i.test(p.instructions ?? "");
-  const manualKaspiSetting = manualKaspiCandidate
-    ? await getSetting(s.ctx, HIDE_MANUAL_KASPI_WITH_ROBOKASSA_SETTING)
-    : null;
-  const hideManualKaspi = shouldHideManualKaspiChoice(p.instructions, rk.ready, manualKaspiSetting);
-  const buttons = checkoutPaymentButtons(
-    online,
-    {
-      type: "postback",
-      title: plain(manualPayBtn(s.m, p.instructions)),
-      payload: "PAY:manual",
-    },
-    hideManualKaspi,
-  );
+  const buttons = checkoutPaymentButtons(online, {
+    type: "postback",
+    title: plain(manualPayBtn(s.m, p.instructions)),
+    payload: "PAY:manual",
+  });
   // Форма Продамуса *.kz принимает только карты РФ (скрин формы Копилки, 10.10): говорим это прямо.
   const notes: string[] = [];
   if (rk.ready && buttons.some((b) => b.payload === "PAY:rk")) {

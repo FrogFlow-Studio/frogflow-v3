@@ -679,6 +679,7 @@ export async function handleZernioMessage(
     story: pre.story,
     ...(imageUrls.length ? { imageUrls } : {}),
     shopInChat: shopOn,
+    buyButton: buyButtonOn(shopOn, bot),
     messageId: m.platformMessageId ?? currentZernioEventId() ?? null,
     sentAt: m.sentAt ?? payload.timestamp ?? null,
   });
@@ -783,11 +784,30 @@ export async function handleZernioMessage(
     });
   }
 
+  // Кнопка «Купить» под ответом: товар и вариант проверены по каталогу.
+  const buyButton =
+    buyButtonOn(shopOn, bot) && r.buyOffer && !r.orderAction && !handoff
+      ? await buyButtonFor(ctx, r.buyOffer, responseLocale)
+      : null;
+  const { buyButtonTextMax, BUY_BUTTON_LEAD } = await import("./shop/buy-button");
+  const buttonWithText = Boolean(buyButton) && outboundReply.length <= buyButtonTextMax(m.platform);
   // В Instagram Direct подпись к медиа не поддерживается Meta: текст и файл
   // идут отдельными сообщениями; текст отправляем после результата доставки файла.
   const sent = await transport.send(m.conversationId, m.accountId, outboundReply, {
     platform: m.platform,
+    ...(buyButton && buttonWithText ? { buttons: [buyButton] } : {}),
   });
+  // Длинный ответ: кнопка — следующим коротким сообщением, только если ответ подтверждён.
+  if (sent.ok && buyButton && !buttonWithText) {
+    const lead = await transport
+      .send(m.conversationId, m.accountId, BUY_BUTTON_LEAD[responseLocale], {
+        platform: m.platform,
+        buttons: [buyButton],
+      })
+      .catch((e: unknown) => ({ ok: false, error: e instanceof Error ? e.message : String(e) }));
+    if (!lead.ok)
+      console.warn(`[zernio] кнопка «Купить» не подтверждена ${customer.userKey}: ${lead.error}`);
+  }
   // Журнал ответов: цена ответа, кеш, инструменты — и что ответ не ушёл.
   const { recordConsultantRun } = await import("@/core/consultant/runs");
   await recordConsultantRun(ctx, {
@@ -867,6 +887,46 @@ export async function handleZernioMessage(
 }
 
 type ParsedMessage = ReturnType<typeof parseZernioMessage>;
+
+/** Кнопка «Купить» под ответом консультанта: магазин в переписке, корзина, оформление и настройка канала. */
+function buyButtonOn(
+  shopOn: boolean,
+  bot: import("@/core/instagram/direct-bot-settings").DirectBotSettings,
+): boolean {
+  const f = bot.features;
+  return Boolean(shopOn && f.buy_button && f.cart && f.checkout);
+}
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Кнопка для товара из offer_buy_button: товар в продаже, у товара с
+ * вариантами — выбранный действующий вариант. Иначе кнопки нет, ответ уходит
+ * как обычно (сбой чтения каталога — тоже без кнопки, не без ответа).
+ */
+async function buyButtonFor(
+  ctx: TenantContext,
+  offer: { productId: string; variantId?: string },
+  locale: import("@/core/i18n/locale").Locale,
+): Promise<{ type: "postback"; title: string; payload: string } | null> {
+  if (!UUID.test(offer.productId) || (offer.variantId && !UUID.test(offer.variantId))) return null;
+  try {
+    const { getProduct, sortedVariants } = await import("@/core/catalog/catalog");
+    const product = await getProduct(ctx, offer.productId);
+    if (!product) return null;
+    const variants = sortedVariants(product);
+    if (variants.length && !variants.some((v) => v.id === offer.variantId)) return null;
+    const { BUY_BUTTON_TITLE, buyButtonPayload } = await import("./shop/buy-button");
+    return {
+      type: "postback",
+      title: BUY_BUTTON_TITLE[locale],
+      payload: buyButtonPayload(product.id, variants.length ? offer.variantId : null),
+    };
+  } catch (e) {
+    console.warn(`[consultant:${ctx.tenant.id}] кнопка «Купить» без товара: ${String(e)}`);
+    return null;
+  }
+}
 
 const SKIPPED_NOTE: Record<NonNullable<ConsultantSkip>, string> = {
   folded: "сообщение вошло в соседний ход консультанта — ответ там",

@@ -62,6 +62,7 @@ const {
   guardShopOrderReply,
   KEYS,
   replaceLastConsultantReply,
+  loadConsultant,
 } = await import("./engine.server");
 const { getSetting } = await import("@/core/settings/settings");
 
@@ -468,6 +469,32 @@ describe("консультант: передача менеджеру", () => {
       true,
     );
     expect(confirmedOrderIntent("Да, давайте оформим", [])).toBe(true);
+  });
+
+  it("кнопка «Купить»: инструмент есть только при настройке канала, товар уходит в ответ и в состояние", async () => {
+    content = [
+      tool("offer_buy_button", { product_id: "p-1", variant_id: "v-5" }),
+      text("Сборник для 5 класса в PDF, приходит сюда сразу."),
+    ];
+    const r = await runConsultant(ctxOf(), customer(), "У меня 5 класс", {
+      platform: "whatsapp",
+      shopInChat: true,
+      buyButton: true,
+    });
+    expect(args().tools).toEqual(
+      expect.arrayContaining([expect.objectContaining({ name: "offer_buy_button" })]),
+    );
+    expect(r?.buyOffer).toEqual({ productId: "p-1", variantId: "v-5" });
+    expect(r?.reply).toBe("Сборник для 5 класса в PDF, приходит сюда сразу.");
+    const system = args().system as { text: string }[];
+    expect(system.map((b) => b.text).join("\n")).toContain("КНОПКА «КУПИТЬ»");
+
+    content = [text("Есть.")];
+    create.mockClear();
+    await runConsultant(ctxOf(), customer(), "Цена?", { platform: "whatsapp", shopInChat: true });
+    expect(args().tools).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ name: "offer_buy_button" })]),
+    );
   });
 
   it("не обещает заказ и оплату, если модель не вызвала order_product", async () => {
@@ -1090,5 +1117,24 @@ describe("консультант: счётчик ИИ-диалогов меся�
     ]);
     const raw = await getSetting(ctx, "consultant_dialogs_month");
     expect(JSON.parse(raw!).count).toBe(2);
+  });
+});
+
+describe("анкета консультанта", () => {
+  it("пустые условия оплаты и доставки не заполняются чужими (Копилки) даже при Робокассе", async () => {
+    const ctx = ctxOf();
+    (ctx.tenant as { modules: Record<string, boolean> }).modules = {
+      robokassa: true,
+      prodamus: true,
+    };
+    (ctx.db as unknown as { tables: Record<string, unknown[]> }).tables.app_settings = [
+      { bot_id: BOT, key: "robokassa_enabled", value: "true" },
+      { bot_id: BOT, key: "prodamus_enabled", value: "true" },
+      { bot_id: BOT, key: KEYS.profile, value: JSON.stringify({ countries: ["KZ"] }) },
+    ];
+    const { profile } = await loadConsultant(ctx);
+    expect(profile.payment_info ?? "").toBe("");
+    expect(profile.delivery_info ?? "").toBe("");
+    expect(profile.countries).toEqual(["KZ"]);
   });
 });

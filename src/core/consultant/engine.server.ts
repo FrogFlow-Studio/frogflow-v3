@@ -395,6 +395,11 @@ export type ConsultantState = {
   last_product_ids?: string[];
   /** Напоминание замолчавшему покупателю уже ушло после ответа с этим временем. */
   followup_for?: string;
+  /**
+   * Товар последней кнопки «Купить» (offer_buy_button): WhatsApp иногда
+   * присылает нажатие без нашего payload («0») — тогда заказ по этой записи.
+   */
+  buy_offer?: { productId: string; variantId?: string };
   /** Имена v1 у диалогов BOVI, начатых до переезда (читаются, не пишутся). */
   v2_profile?: CustomerProfile;
   v2_rub?: boolean;
@@ -425,6 +430,11 @@ export type ConsultantResult = {
   handoff: Handoff | null;
   /** Действие по заказу товара прямо из чата (order_product). */
   orderAction?: ConsultantOrderAction | null;
+  /**
+   * Кнопка «Купить» под ответом (offer_buy_button): товар, на который
+   * покупатель смотрит. Канал проверяет товар и вариант по каталогу сам.
+   */
+  buyOffer?: { productId: string; variantId?: string } | null;
   /** Статусный ответ сформирован сервером по read-only записи заказа. */
   verifiedOrderStatus?: boolean;
   /** Внутренний id заказа, который инструмент отмены подтвердил или отменил. */
@@ -477,41 +487,12 @@ export async function consultantEnabled(ctx: TenantContext): Promise<boolean> {
 export async function loadConsultant(
   ctx: TenantContext,
 ): Promise<{ profile: ConsultantProfile; docs: KnowledgeDoc[]; enabled: boolean }> {
-  const s = await getSettings(ctx, [
-    KEYS.profile,
-    KEYS.knowledge,
-    KEYS.enabled,
-    "shop_name",
-    "prodamus_enabled",
-    "robokassa_enabled",
-  ]);
+  const s = await getSettings(ctx, [KEYS.profile, KEYS.knowledge, KEYS.enabled, "shop_name"]);
   const v = s[KEYS.enabled];
+  // Условия оплаты и доставки — только из анкеты продавца: подставленные по
+  // умолчанию («материалы электронные», «Kaspi») были условиями одной Копилки и
+  // врали бы магазину с доставкой (решение Якова 25.10). Пусто — модель не знает.
   const profile = parseProfile(s[KEYS.profile], s.shop_name ?? ctx.tenant.name);
-  if (!profile.payment_info) {
-    const methods: string[] = [];
-    if (ctx.tenant.modules.prodamus && s.prodamus_enabled === "true") {
-      methods.push(
-        "Россия: картой любого банка РФ (МИР, Visa, Mastercard) онлайн в рублях через Продамус (сумма списывается в рублях по курсу банка).",
-      );
-      if (!profile.countries.includes("RU")) profile.countries.push("RU");
-    }
-    if (ctx.tenant.modules.robokassa && s.robokassa_enabled === "true") {
-      methods.push(
-        "Казахстан, СНГ (Кыргызстан, Узбекистан, Беларусь и др.) и зарубежные страны: картой онлайн через Робокассу.",
-      );
-      for (const c of ["BY", "KG", "UZ"]) {
-        if (!profile.countries.includes(c)) profile.countries.push(c);
-      }
-    }
-    methods.push(
-      "Казахстан: перевод Kaspi или картой онлайн. Все материалы электронные — отправляются сразу после оплаты сюда в чат.",
-    );
-    profile.payment_info = methods.join(" ");
-  }
-  if (!profile.delivery_info) {
-    profile.delivery_info =
-      "Все материалы электронные — отправляются файлами или ссылками прямо в этот чат сразу после оплаты. Доставка не требуется.";
-  }
   return {
     profile,
     docs: parseKnowledge(s[KEYS.knowledge]),
@@ -765,6 +746,23 @@ const TOOLS: Anthropic.Tool[] = [
   },
 ];
 
+export const OFFER_BUY_TOOL: Anthropic.Tool = {
+  name: "offer_buy_button",
+  description:
+    "Поставить под вашим ответом кнопку «Купить» для одного товара из каталога. Вызывайте, когда покупатель интересуется конкретным товаром (спросил о нём, о цене, выбрал вариант), но покупку ещё не подтвердил. Нажатие кнопки сразу оформит заказ и пришлёт оплату. Если у товара есть варианты, передайте variant_id выбранного варианта; пока вариант не выбран — не вызывайте, сначала уточните его.",
+  input_schema: {
+    type: "object",
+    properties: {
+      product_id: { type: "string", description: "ID товара из [id:...] каталога" },
+      variant_id: {
+        type: "string",
+        description: "ID выбранного варианта, если у товара есть варианты",
+      },
+    },
+    required: ["product_id"],
+  },
+};
+
 export const ORDER_PRODUCT_TOOL: Anthropic.Tool = {
   name: "order_product",
   description:
@@ -976,6 +974,8 @@ export async function runConsultant(
     images?: import("./pricelist/images").V2Image[];
     /** В этом канале включён магазин в переписке: покупку оформляет бот, не менеджер. */
     shopInChat?: boolean;
+    /** Канал умеет ставить кнопку «Купить» под ответом (настройка канала buy_button). */
+    buyButton?: boolean;
     /** Id входящего (Meta, Telegram) — повтор доставки не встаёт в очередь диалога второй раз. */
     messageId?: string | null;
     /** Когда покупатель написал (часы канала, ISO): старое сообщение не отвечается. */
@@ -1272,6 +1272,7 @@ async function answerConsultant(
   const system = buildSystemPrompt(profile, retrieveKnowledge(incoming, docs, 6), catalog.text, {
     catalogTools: Boolean(loaded),
     shopInChat: opts.shopInChat,
+    buyButton: opts.buyButton,
     platform: opts.platform,
   });
   let known = loaded ? parseMemory(state.profile) : {};
@@ -1414,6 +1415,7 @@ async function answerConsultant(
     reply: string;
     handoff: Handoff | null;
     orderAction?: ConsultantOrderAction | null;
+    buyOffer?: ConsultantResult["buyOffer"];
     clearError: boolean;
     patch: Partial<ConsultantState>;
     /** В историю, если покупателю ушло другое (рубли вместо тенге). */
@@ -1483,6 +1485,7 @@ async function answerConsultant(
       reply,
       handoff,
       ...(out.orderAction ? { orderAction: out.orderAction } : {}),
+      ...(out.buyOffer && !out.orderAction && !handoff ? { buyOffer: out.buyOffer } : {}),
       ...(out.verifiedOrderStatus ? { verifiedOrderStatus: true } : {}),
       ...(out.cancelledOrderId ? { cancelledOrderId: out.cancelledOrderId } : {}),
       // Тест-чат: что консультант запомнил за ход (рубли, товары) — следующему вопросу.
@@ -1541,6 +1544,7 @@ async function answerConsultant(
       ...(orderStatusQuestion ? [ORDER_STATUS_TOOL] : []),
       ...(opts.shopInChat ? [ORDER_CANCEL_TOOL] : []),
       ...(orderProductAllowed ? [ORDER_PRODUCT_TOOL] : []),
+      ...(opts.shopInChat && opts.buyButton ? [OFFER_BUY_TOOL] : []),
       ...TOOLS.filter((tool) => !(opts.shopInChat && tool.name === "record_order_lead")),
     ];
     let contactAsked = Boolean(state.contact_asked);
@@ -1593,6 +1597,7 @@ async function answerConsultant(
     let orderStatusVerified = false;
     let cancelledOrderId: number | undefined;
     let orderAction: ConsultantOrderAction | null = null;
+    let buyOffer: ConsultantResult["buyOffer"] = null;
     let orderToolRejected = false;
     let orderLeadRejected = false;
     let response: Anthropic.Message | null = null;
@@ -1781,6 +1786,22 @@ async function answerConsultant(
             ]
               .filter(Boolean)
               .join("\n");
+          if (block.name === OFFER_BUY_TOOL.name) {
+            const pid = str("product_id");
+            if (pid)
+              buyOffer = {
+                productId: pid,
+                ...(str("variant_id") ? { variantId: str("variant_id")! } : {}),
+              };
+            results.push({
+              type: "tool_result",
+              tool_use_id: block.id,
+              content: pid
+                ? "Кнопка «Купить» будет под вашим ответом. Не спрашивайте «Оформляем заказ?» и не пишите, что заказ оформлен: заказ появится, когда покупатель нажмёт кнопку. Ответьте по существу коротко."
+                : "Кнопка не поставлена: нужен product_id из каталога.",
+            });
+            continue;
+          }
           if (block.name === "order_product") {
             if (!orderProductAllowed) {
               orderToolRejected = true;
@@ -2030,9 +2051,13 @@ async function answerConsultant(
       reply,
       handoff,
       orderAction,
+      buyOffer,
       ...(cancelledOrderId ? { cancelledOrderId } : {}),
       clearError: facts.ok,
-      patch: loaded ? { profile: known, contact_asked: contactAsked || undefined } : {},
+      patch: {
+        ...(loaded ? { profile: known, contact_asked: contactAsked || undefined } : {}),
+        ...(buyOffer && !orderAction && !handoff ? { buy_offer: buyOffer } : {}),
+      },
       verifiedOrderStatus: orderStatusVerified,
     });
   } catch (e) {

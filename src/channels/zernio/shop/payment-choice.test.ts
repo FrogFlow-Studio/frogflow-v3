@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  checkoutPaymentButtons,
-  shouldHideManualKaspiChoice,
-  type CheckoutPaymentButton,
-} from "./payment-choice";
+import { checkoutPaymentButtons, type CheckoutPaymentButton } from "./payment-choice";
 
 const online: CheckoutPaymentButton[] = [
   { type: "postback", title: "Оплата картой", payload: "PAY:rk" },
@@ -17,29 +13,18 @@ const manual: CheckoutPaymentButton = {
 };
 
 describe("checkoutPaymentButtons", () => {
-  it("скрывает ручной Kaspi только при включённой настройке и доступной Robokassa", () => {
-    expect(shouldHideManualKaspiChoice("Kaspi перевод", true, "true")).toBe(true);
-    expect(shouldHideManualKaspiChoice("Kaspi перевод", true, null)).toBe(false);
-    expect(shouldHideManualKaspiChoice("Kaspi перевод", false, "true")).toBe(false);
-    expect(shouldHideManualKaspiChoice("Перевод на счёт", true, "true")).toBe(false);
+  it("рядом с Робокассой остаётся перевод Kaspi (Копилка 25.10): не больше трёх кнопок", () => {
+    expect(checkoutPaymentButtons(online, manual).map((b) => b.payload)).toEqual([
+      "PAY:rk",
+      "PAY:pdm",
+      "PAY:manual",
+    ]);
   });
 
-  it("убирает ручную кнопку и не больше трёх онлайн-методов", () => {
-    const hideManual = shouldHideManualKaspiChoice("Kaspi перевод", true, "true");
-    const buttons = checkoutPaymentButtons(online, manual, hideManual);
-    expect(buttons.map((button) => button.payload)).toEqual(["PAY:rk", "PAY:pdm", "PAY:kaspi"]);
-  });
-
-  it("сохраняет ручной Kaspi как fallback, если tenant flag выключен", () => {
-    const hideManual = shouldHideManualKaspiChoice("Перевод Kaspi", false, null);
-    const pdmOnly = [online[1]!];
-    const buttons = checkoutPaymentButtons(pdmOnly, manual, hideManual);
-    expect(buttons.map((button) => button.payload)).toEqual(["PAY:pdm", "PAY:manual"]);
-  });
-
-  it("не скрывает обычный перевод по реквизитам только из-за Robokassa", () => {
-    const hideManual = shouldHideManualKaspiChoice("Перевод на счёт", true, "true");
-    const buttons = checkoutPaymentButtons(online, manual, hideManual);
-    expect(buttons.map((button) => button.payload)).toEqual(["PAY:rk", "PAY:pdm", "PAY:manual"]);
+  it("один онлайн-способ — он и перевод", () => {
+    expect(checkoutPaymentButtons([online[0]!], manual).map((b) => b.payload)).toEqual([
+      "PAY:rk",
+      "PAY:manual",
+    ]);
   });
 });
