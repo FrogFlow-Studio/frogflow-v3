@@ -158,6 +158,20 @@ export type SendOptions = {
 /** failure — поля отказа Zernio: по ним очередь решает, повторять ли. */
 export type SendResult = { ok: boolean; error?: string; failure?: ZernioFailure };
 
+/** Временный Supabase token не должен превращать повтор одного файла в новую отправку. */
+function idempotencyBody(body: Record<string, unknown>): Record<string, unknown> {
+  if (typeof body.attachmentUrl !== "string") return body;
+  try {
+    const url = new URL(body.attachmentUrl);
+    if (!url.pathname.includes("/storage/v1/object/sign/") || !url.searchParams.has("token"))
+      return body;
+    url.searchParams.delete("token");
+    return { ...body, attachmentUrl: url.toString() };
+  } catch {
+    return body;
+  }
+}
+
 /**
  * Ошибка отправки словами продавца — по коду отказа, не по тексту. Окно 24
  * часа у WhatsApp — только 131047; 131026 — получатель недостижим.
@@ -243,7 +257,7 @@ export async function sendInboxMessage(
       method: "POST",
       body,
       // Повтор доставки вебхука не должен обернуться вторым сообщением у покупателя.
-      idempotencyKey: idempotencyKeyFor(body, opts.idempotencyScope),
+      idempotencyKey: idempotencyKeyFor(idempotencyBody(body), opts.idempotencyScope),
     });
     return { ok: true };
   } catch (e) {

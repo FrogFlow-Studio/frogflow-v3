@@ -46,7 +46,7 @@ export const UPLOAD_KINDS: Record<UploadKind, UploadSpec> = {
   },
   /**
    * Фотобаза консультанта по прайсу: фото и короткие видео товара, которые
-   * консультант шлёт покупателю в директ. Instagram берёт вложение до 25 МБ.
+   * консультант шлёт покупателю в директ. Instagram DM: фото до 8 МБ, видео до 25 МБ.
    */
   consultantMedia: {
     bucket: "product-images",
@@ -58,6 +58,15 @@ export const UPLOAD_KINDS: Record<UploadKind, UploadSpec> = {
 
 export function isUploadKind(v: unknown): v is UploadKind {
   return typeof v === "string" && Object.hasOwn(UPLOAD_KINDS, v);
+}
+
+/** Эффективный лимит файла; для фотобазы консультанта Instagram ограничивает изображения 8 МБ. */
+export function uploadLimitBytes(kind: UploadKind, type: string, name = ""): number {
+  const spec = UPLOAD_KINDS[kind];
+  const mime = type.split(";", 1)[0]?.trim().toLowerCase() ?? "";
+  const image =
+    mime.startsWith("image/") || ["jpg", "jpeg", "png", "webp"].includes(uploadExt(name));
+  return kind === "consultantMedia" && image ? 8 * 1024 * 1024 : spec.max;
 }
 
 export type UploadProblem = "too_big" | "bad_type" | "empty";
@@ -74,7 +83,7 @@ export function uploadProblem(
 ): UploadProblem | null {
   const spec = UPLOAD_KINDS[kind];
   if (!Number.isFinite(size) || size <= 0) return "empty";
-  if (size > spec.max) return "too_big";
+  if (size > uploadLimitBytes(kind, type, name)) return "too_big";
   if (!spec.types.test(type)) return "bad_type";
   if (spec.exts && !spec.exts.includes(uploadExt(name))) return "bad_type";
   return null;

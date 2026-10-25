@@ -2,7 +2,11 @@ import type { TenantContext } from "@/core/tenant/resolve.server";
 import { getSettings, getSettingStrict, updateSettingStamped } from "@/core/settings/settings";
 import { serverFailure } from "@/lib/server-failure";
 import { imagePath } from "@/core/catalog/image-url";
+import { isTenantStorageKey } from "@/core/storage/keys";
 import { parseProductMedia, PRODUCT_MEDIA_KEY, type ProductMedia } from "./media";
+import { serviceDb } from "@/core/db/client.server";
+
+const ZERNIO_MEDIA_URL_TTL_SEC = 15 * 60;
 
 /**
  * Фотобаза консультанта по прайсу — та же строка app_settings, что пишет v1.
@@ -44,4 +48,29 @@ export async function updateProductMedia(
  */
 export function productMediaUrl(ctx: TenantContext, path: string): string {
   return `${ctx.appUrl.replace(/\/+$/, "")}${imagePath(ctx.tenant.id, path)}`;
+}
+
+/**
+ * Zernio скачивает attachmentUrl своими серверами. Даём ему прямую короткую
+ * Storage-ссылку на байты, чтобы отправка не зависела от домена магазина,
+ * редиректов или HTML от промежуточной страницы.
+ */
+export async function productMediaAttachmentUrl(ctx: TenantContext, path: string): Promise<string> {
+  const key = path.startsWith(`${ctx.tenant.id}/`) ? path : `${ctx.tenant.id}/${path}`;
+  if (isTenantStorageKey(ctx.tenant.id, key)) {
+    try {
+      const { data, error } = await serviceDb()
+        .storage.from("product-images")
+        .createSignedUrl(key, ZERNIO_MEDIA_URL_TTL_SEC);
+      if (!error && data?.signedUrl) return data.signedUrl;
+      console.warn(
+        `[consultant-media:${ctx.tenant.id}] signed URL unavailable; using public proxy`,
+      );
+    } catch (error) {
+      console.warn(
+        `[consultant-media:${ctx.tenant.id}] signed URL unavailable; using public proxy: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
+  return productMediaUrl(ctx, path);
 }

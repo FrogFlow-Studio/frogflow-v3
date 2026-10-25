@@ -119,4 +119,30 @@ describe("sendInboxMessage — тело ответа в Direct", () => {
       attachmentType: "video",
     });
   });
+
+  it("Supabase signed media URL: rotating token keeps the same idempotency key", async () => {
+    setEnvForTests({ ZERNIO_API_KEY: "sk_test" });
+    const fetchMock = vi.fn(async () => new Response("{}", { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const send = (token: string) =>
+      sendInboxMessage("conv-1", "acc-1", "", {
+        platform: "instagram",
+        attachmentUrl: `https://project.supabase.co/storage/v1/object/sign/product-images/item.jpg?token=${token}`,
+        attachmentType: "image",
+        idempotencyScope: "consultant-media:mid-1:0",
+      });
+
+    await send("first-temporary-token");
+    await send("second-temporary-token");
+
+    const calls = fetchMock.mock.calls as unknown as Array<[string, RequestInit]>;
+    const headers = calls.map(([, init]) => init.headers as Record<string, string>);
+    expect(headers[0]!["Idempotency-Key"]).toMatch(/^[0-9a-f]{64}$/);
+    expect(headers[1]!["Idempotency-Key"]).toBe(headers[0]!["Idempotency-Key"]);
+    const bodies = calls.map(
+      ([, init]) => JSON.parse(String(init.body)) as Record<string, unknown>,
+    );
+    expect(bodies[0]!.attachmentUrl).toContain("first-temporary-token");
+    expect(bodies[1]!.attachmentUrl).toContain("second-temporary-token");
+  });
 });

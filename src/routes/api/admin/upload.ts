@@ -6,6 +6,7 @@ import {
   isUploadKind,
   mb,
   newUploadKey,
+  uploadLimitBytes,
   uploadProblem,
   type UploadProblem,
 } from "@/core/storage/upload";
@@ -13,7 +14,10 @@ import {
 const STATUS: Record<UploadProblem, number> = { too_big: 413, bad_type: 415, empty: 400 };
 
 function problem(p: UploadProblem, max: number, message?: string) {
-  return Response.json({ problem: p, mb: mb(max), ...(message ? { message } : {}) }, { status: STATUS[p] });
+  return Response.json(
+    { problem: p, mb: mb(max), ...(message ? { message } : {}) },
+    { status: STATUS[p] },
+  );
 }
 
 let productFilesLimitEnsured = false;
@@ -46,13 +50,12 @@ export const Route = createFileRoute("/api/admin/upload")({
 
         if (body.action === "sign") {
           const fileSize = Number(body.size);
-          const p = uploadProblem(
-            kind,
-            fileSize,
-            String(body.type ?? ""),
-            String(body.name ?? ""),
-          );
-          if (p) return problem(p, spec.max);
+          const p = uploadProblem(kind, fileSize, String(body.type ?? ""), String(body.name ?? ""));
+          if (p)
+            return problem(
+              p,
+              uploadLimitBytes(kind, String(body.type ?? ""), String(body.name ?? "")),
+            );
 
           if (kind === "file" && !productFilesLimitEnsured) {
             try {
@@ -102,10 +105,11 @@ export const Route = createFileRoute("/api/admin/upload")({
             return new Response("bad request", { status: 400 });
           const { data, error } = await bucket.info(key);
           if (error || !data) return Response.json({ problem: "not_stored" }, { status: 404 });
-          const p = uploadProblem(kind, Number(data.size), String(data.contentType ?? ""), key);
+          const contentType = String(data.contentType ?? "");
+          const p = uploadProblem(kind, Number(data.size), contentType, key);
           if (p) {
             await bucket.remove([key]);
-            return problem(p, spec.max);
+            return problem(p, uploadLimitBytes(kind, contentType, key));
           }
           return Response.json({ key, size: data.size });
         }

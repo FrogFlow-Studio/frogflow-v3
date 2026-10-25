@@ -42,9 +42,12 @@ describe("uploadProblem", () => {
     expect(uploadProblem("chatFile", MB, "video/mp4", "a.mp4")).toBe("bad_type");
   });
 
-  it("фотобаза консультанта: фото и видео товара до 25 МБ, без GIF и страниц", () => {
+  it("фотобаза консультанта: фото до 8 МБ, видео до 25 МБ, без GIF и страниц", () => {
     expect(uploadProblem("consultantMedia", 3 * MB, "image/jpeg", "uchino.jpg")).toBeNull();
+    expect(uploadProblem("consultantMedia", 8 * MB, "image/jpeg", "uchino.jpg")).toBeNull();
+    expect(uploadProblem("consultantMedia", 9 * MB, "image/jpeg", "uchino.jpg")).toBe("too_big");
     expect(uploadProblem("consultantMedia", 20 * MB, "video/mp4", "обзор.mp4")).toBeNull();
+    expect(uploadProblem("consultantMedia", 25 * MB, "video/mp4", "обзор.mp4")).toBeNull();
     expect(uploadProblem("consultantMedia", 10 * MB, "video/quicktime", "iphone.mov")).toBeNull();
     expect(uploadProblem("consultantMedia", 26 * MB, "video/mp4", "a.mp4")).toBe("too_big");
     expect(uploadProblem("consultantMedia", MB, "image/gif", "a.gif")).toBe("bad_type");

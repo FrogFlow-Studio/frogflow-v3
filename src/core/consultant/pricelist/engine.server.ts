@@ -33,7 +33,7 @@ import {
 } from "./knowledge";
 import { loadKnowledge } from "./knowledge.server";
 import { mediaForProduct, type ProductMedia } from "./media";
-import { loadProductMedia, productMediaUrl } from "./media.server";
+import { loadProductMedia, productMediaAttachmentUrl } from "./media.server";
 import { isOffHours, offHoursNote, pricelistHours, type ShopHours } from "./mode";
 import { knowledgeAboutModels } from "./model-knowledge";
 import { buildV2SystemPrompt, formatAssortmentMapForV2 } from "./prompt";
@@ -205,7 +205,7 @@ export type PricelistData = {
   virtualIntro?: ShopHours;
   storyTags: StoryTag[];
   loadMedia: () => Promise<ProductMedia[]>;
-  mediaUrl: (path: string) => string;
+  mediaUrl: (path: string) => string | Promise<string>;
   /** База знаний не прочиталась: отвечаем без неё, но сбой виден в журнале и последней ошибке. */
   knowledgeError?: string;
 };
@@ -241,7 +241,7 @@ export async function loadPricelistData(
       : {}),
     storyTags,
     loadMedia: () => loadProductMedia(ctx),
-    mediaUrl: (path) => productMediaUrl(ctx, path),
+    mediaUrl: (path) => productMediaAttachmentUrl(ctx, path),
   };
 }
 
@@ -839,7 +839,11 @@ async function decide(data: PricelistData, input: PricelistInput): Promise<Price
     const alreadySent = new Set([...mediaSentBefore, ...mediaSent]);
     const fresh = found.filter((m) => !alreadySent.has(m.path));
     if (fresh.length) {
-      attachments.push(...fresh.map((m) => ({ url: data.mediaUrl(m.path), kind: m.kind })));
+      attachments.push(
+        ...(await Promise.all(
+          fresh.map(async (m) => ({ url: await data.mediaUrl(m.path), kind: m.kind })),
+        )),
+      );
       mediaSent.push(...fresh.map((m) => m.path));
       products.push(product);
       return { found: true, sent: fresh.length, kinds: fresh.map((m) => m.kind) };
