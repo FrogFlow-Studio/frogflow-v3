@@ -116,7 +116,6 @@ export async function sendBuyReminders(
         .from("bot_users")
         .select("*")
         .gte("updated_at", since)
-        .in("platform", platforms)
         .not("zernio_conversation_id", "is", null)
         .order("updated_at", { ascending: false })
         .order("user_key")
@@ -125,6 +124,7 @@ export async function sendBuyReminders(
   );
   const candidates = rows
     .map(customerFromRow)
+    .filter((c) => platforms.includes(c.platform as ZernioPlatform))
     .filter((c) => c.zernioConversationId && c.zernioAccountId)
     .filter((c) => isBuyReminderCandidate(memoryOf(c.state), now))
     .slice(0, MAX_PER_RUN);
