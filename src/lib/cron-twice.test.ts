@@ -54,6 +54,7 @@ const TWICE: Record<string, Evidence> = {
   channelGuard: { test: ["src/channels/zernio/guard.server.test.ts"] },
   zernioRetry: { test: ["src/channels/zernio/retry.test.ts"] },
   pricelist: { test: ["src/channels/zernio/consultant-jobs.test.ts"] },
+  buyReminder: { test: ["src/channels/zernio/buy-reminder.test.ts"] },
   digest: { test: ["src/channels/telegram/digest-twice.test.ts"] },
   weekly: { test: ["src/core/analytics/weekly.test.ts"] },
   morning: { test: ["src/app/operator/morning-brief.server.test.ts"] },

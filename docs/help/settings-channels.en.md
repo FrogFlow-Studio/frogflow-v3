@@ -77,6 +77,10 @@ Instagram only. On (the default): a "+" or a code word under a reel places an or
 
 On by default. When a buyer asks about a specific product or has already named the variant (for example, a grade), the AI consultant replies with a short description and the price and adds a «🛒 Buy» button under the reply. Tapping it places the order for that product and sends payment right away, without asking «Shall I place the order?». If the product has variants and the buyer has not chosen one yet, there is no button: the consultant asks about the variant first. Works only when the consultant, «cart» and «checkout» are on. Off — the consultant asks about the purchase in words, as before.
 
+## Reminder with the «Buy» button {#dbot-buy-reminder}
+
+Off by default. On — the buyer got the «🛒 Buy» button from the consultant, did not tap it and did not reply for 3 hours: the bot writes once «In case it's still relevant, here's the button for «…»: one tap and I'll send the payment 👇» and sends the button again. The reminder goes out between 9:00 and 21:00 shop time and only within 23 hours of the buyer's last message (later Instagram and WhatsApp will not deliver it). It is not sent if the buyer has already written or placed an order, if you replied to them yourself in the app, the dialog was handed to you, there is an open task for it, the consultant is off or the product is no longer on sale. One reminder per consultant reply, even if two cron runs fire at once. Works together with the «Buy» button in the AI consultant's reply.
+
 ## Instagram quick questions {#ice-breakers}
 
 Prompts the buyer sees when writing to you in Direct for the first time: "Catalog", "My orders", "How to pay", "Contact the seller". Tapping opens the matching part of the shop or a request to describe the question. The texts can be changed, up to 80 characters; the checkbox next to a line turns the prompt on.

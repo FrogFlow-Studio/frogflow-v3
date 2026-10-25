@@ -163,6 +163,9 @@ export const ru = {
   "settings.dbot.feature.buyButton": "кнопка «Купить» в ответе ИИ-консультанта",
   "settings.dbot.feature.buyButtonHint":
     "Когда покупатель спрашивает о конкретном товаре, консультант отвечает с кнопкой «Купить»: нажатие сразу оформляет заказ и присылает оплату.",
+  "settings.dbot.feature.buyReminder": "напоминание с кнопкой «Купить»",
+  "settings.dbot.feature.buyReminderHint":
+    "Получил кнопку «Купить» и молчит 3 часа — бот один раз, днём и в пределах суток после его сообщения, присылает кнопку ещё раз. По умолчанию выключено.",
   "settings.dbot.ignoreExcluded": "Не отвечать номерам из списка исключений (раздел «Рассылки»)",
   "settings.dbot.notifyTemplate": "Шаблон для сообщений вне 24-часового окна",
   "settings.dbot.sellerPause": "Пауза бота после вашего ответа руками",
@@ -738,6 +741,9 @@ export const kk: SectionDict<typeof ru> = {
   "settings.dbot.feature.buyButton": "ЖИ-кеңесші жауабындағы «Сатып алу» батырмасы",
   "settings.dbot.feature.buyButtonHint":
     "Сатып алушы нақты тауар туралы сұрағанда, кеңесші «Сатып алу» батырмасымен жауап береді: басқанда тапсырыс бірден ресімделіп, төлем жіберіледі.",
+  "settings.dbot.feature.buyReminder": "«Сатып алу» батырмасымен еске салу",
+  "settings.dbot.feature.buyReminderHint":
+    "«Сатып алу» батырмасын алып, 3 сағат үндемесе — бот бір рет, күндіз және оның хабарынан кейінгі бір тәулік ішінде батырманы қайта жібереді. Әдепкіде өшірулі.",
   "settings.dbot.ignoreExcluded":
     "Ерекшелік тізіміндегі нөмірлерге жауап бермеу («Хабарламалар» бөлімі)",
   "settings.dbot.notifyTemplate": "24 сағаттық терезеден тыс хабарламалар шаблоны",
@@ -1306,6 +1312,9 @@ export const en: SectionDict<typeof ru> = {
   "settings.dbot.feature.buyButton": "«Buy» button in the AI consultant’s reply",
   "settings.dbot.feature.buyButtonHint":
     "When a buyer asks about a specific product, the consultant replies with a «Buy» button: tapping it places the order and sends payment right away.",
+  "settings.dbot.feature.buyReminder": "reminder with the «Buy» button",
+  "settings.dbot.feature.buyReminderHint":
+    "Got the «Buy» button and silent for 3 hours — the bot sends the button once more, in the daytime and within a day of the buyer’s last message. Off by default.",
   "settings.dbot.ignoreExcluded":
     "Do not reply to numbers on the exclusion list (Broadcasts section)",
   "settings.dbot.notifyTemplate": "Template for messages outside the 24-hour window",
@@ -1876,6 +1885,9 @@ export const uz: SectionDict<typeof ru> = {
   "settings.dbot.feature.buyButton": "AI maslahatchi javobidagi «Sotib olish» tugmasi",
   "settings.dbot.feature.buyButtonHint":
     "Xaridor aniq mahsulot haqida so‘raganda, maslahatchi «Sotib olish» tugmasi bilan javob beradi: bosilganda buyurtma darhol rasmiylashtiriladi va to‘lov yuboriladi.",
+  "settings.dbot.feature.buyReminder": "«Sotib olish» tugmasi bilan eslatma",
+  "settings.dbot.feature.buyReminderHint":
+    "«Sotib olish» tugmasini olib, 3 soat jim tursa — bot bir marta, kunduzi va xaridorning oxirgi xabaridan keyin bir sutka ichida tugmani yana yuboradi. Odatda o‘chirilgan.",
   "settings.dbot.ignoreExcluded":
     "Istisno ro‘yxatidagi raqamlarga javob bermaslik («Xabarlar» bo‘limi)",
   "settings.dbot.notifyTemplate": "24 soatlik oynadan tashqari xabarlar uchun shablon",

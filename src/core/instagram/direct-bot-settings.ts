@@ -50,6 +50,12 @@ export type DirectBotFeatures = {
    * (Копилка 21–25.10: 18 из 25 молчали после вопроса «Оформляем заказ?»).
    */
   buy_button: boolean;
+  /**
+   * Одно напоминание с кнопкой «Купить» покупателю, который получил её и
+   * замолчал (3–23 ч, в окне 24 часа). Выключено по умолчанию: сообщение без
+   * вопроса покупателя продавец включает сам.
+   */
+  buy_reminder: boolean;
 };
 
 /** Сколько бот молчит после реплики продавца руками: минуты или «до конца дня» (Б3). */
@@ -81,6 +87,7 @@ export const DEFAULT_DIRECT_BOT: DirectBotSettings = {
     checkout: true,
     express: true,
     buy_button: true,
+    buy_reminder: false,
   },
   sellerPause: "30",
   ignoreExcluded: false,

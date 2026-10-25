@@ -399,6 +399,15 @@ export const Route = createFileRoute("/api/cron/$job")({
                   },
                 },
                 {
+                  // Одно напоминание с кнопкой «Купить» замолчавшему покупателю (настройка канала).
+                  id: "buyReminder",
+                  run: async () => {
+                    const { runBuyReminders } =
+                      await import("@/channels/zernio/buy-reminder.server");
+                    results.buyReminder = await runBuyReminders(tenants);
+                  },
+                },
+                {
                   // Утренний дайджест продавцу — у кого настал его час.
                   id: "digest",
                   run: async () => {
