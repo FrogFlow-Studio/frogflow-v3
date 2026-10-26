@@ -1813,9 +1813,16 @@ async function answerConsultant(
       // Ещё раунд и тогда, когда нужно спросить контакт или модель только
       // запомнила сказанное и ничего не ответила.
       const more = needsData || askContact || !text.trim() || purchaseHandoffRejectedThisRound;
+      // Без поиска по каталогу хватает одного раунда, но не тогда, когда модель
+      // ответила только вызовом инструмента (кнопка «Купить» без слов): иначе
+      // покупатель получал заготовку «Уточните, пожалуйста, что именно вас
+      // интересует» (Копилка 23.10, набор продаж #164). Ещё раунд — модель
+      // пишет сам ответ; после оформленного заказа ответ уже есть.
+      const silentTool = !text.trim() && !orderAction;
       if (
         last ||
         (!loaded &&
+          !silentTool &&
           !purchaseHandoffRejectedThisRound &&
           !response.content.some(
             (b) => b.type === "tool_use" && b.name === ORDER_CANCEL_TOOL.name,
