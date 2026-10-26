@@ -29,6 +29,7 @@ export async function consultantBudget(botId: string) {
     max: CONSULTANT_LIMIT_MAX,
     today: parseDaily(data?.value, today()),
     search: t.settings.consultant_search === true,
+    playbook: t.settings.consultant_playbook === "v2",
     pricelist: t.settings.consultant_pricelist?.enabled === true,
     pricelistOptions: {
       hours: t.settings.consultant_pricelist?.hours ?? null,
@@ -80,6 +81,12 @@ export async function setMarketplaceApproved(
 export async function setConsultantSearch(botId: string, on: boolean, actor = "operator") {
   await patchTenantSettings(botId, { consultant_search: on });
   await logEvent(botId, "meta", { consultant_search: on }, actor);
+}
+
+/** «Сценарий продавца v2» консультанта (core/consultant/prompt). */
+export async function setConsultantPlaybook(botId: string, on: boolean, actor = "operator") {
+  await patchTenantSettings(botId, { consultant_playbook: on ? "v2" : null });
+  await logEvent(botId, "meta", { consultant_playbook: on ? "v2" : null }, actor);
 }
 
 /** Консультант «по прайсу» BOVI (core/consultant/pricelist) — включает оператор. */

@@ -84,6 +84,27 @@ describe("profile / prompt", () => {
     });
     expect(instagram).not.toContain("WHATSAPP: ПРАВИЛА БЕЗ НАВЯЗЧИВЫХ ПРОДАЖ");
   });
+  it("сценарий продавца v2: один блок продажи вместо трёх, только с кнопкой «Купить»", () => {
+    const profile = parseProfile(null, "Bloom");
+    const opts = { shopInChat: true, buyButton: true, platform: "whatsapp" } as const;
+    const v2 = buildSystemPrompt(profile, docs, "- Роза, 5000 KZT", { ...opts, playbook: "v2" });
+    expect(v2).toContain("ГЛАВНАЯ ЦЕЛЬ — ПРОДАЖА В ПЕРЕПИСКЕ");
+    expect(v2).toContain("offer_buy_button");
+    expect(v2).toContain("get_my_order_status");
+    expect(v2).not.toContain("WHATSAPP: ПРАВИЛА БЕЗ НАВЯЗЧИВЫХ ПРОДАЖ");
+    expect(v2).not.toContain("КНОПКА «КУПИТЬ»\n");
+    expect(v2).not.toContain("РАБОТА С ВОЗРАЖЕНИЯМИ");
+    // Без кнопки «Купить» сценарий v2 не включается: он на неё опирается.
+    const noButton = buildSystemPrompt(profile, docs, "- Роза, 5000 KZT", {
+      ...opts,
+      buyButton: false,
+      playbook: "v2",
+    });
+    expect(noButton).not.toContain("ПРОДАЖА В ПЕРЕПИСКЕ");
+    expect(noButton).toContain("Заказ в этом чате оформляет бот магазина");
+    const old = buildSystemPrompt(profile, docs, "- Роза, 5000 KZT", opts);
+    expect(old).not.toContain("ПРОДАЖА В ПЕРЕПИСКЕ");
+  });
   it("чистит markdown и сценарии", () => {
     expect(cleanReply("**Да**, есть.\nКлиент: беру\nАссистент: ок\n\n\n\n_итого_ 5")).toBe(
       "Да, есть.\n\nитого 5",

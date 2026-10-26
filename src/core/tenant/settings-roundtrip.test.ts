@@ -237,6 +237,7 @@ const ALL = {
   consultant_limits: { daily_usd: 2, daily_calls: null, daily_tests: 5 },
   consultant_pause_hours: 3,
   consultant_search: true,
+  consultant_playbook: "v2",
   consultant_pricelist: { enabled: true, hours: { open: 9, close: 18 }, rate_source: "vtb" },
   bot_texts: { welcome: { telegram: { ru: "Привет!" } } },
   work_hours: { open: 9, close: 18 },

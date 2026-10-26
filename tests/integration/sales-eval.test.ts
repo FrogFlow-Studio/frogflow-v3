@@ -27,6 +27,7 @@ import { SALES_SCENARIOS } from "../sales-eval/scenarios";
  *     ANTHROPIC_API_KEY=… npx vitest run tests/integration/sales-eval.test.ts
  *
  * SALES_EVAL_MODEL — модель консультанта (по умолчанию модель платформы),
+ * SALES_EVAL_PLAYBOOK=v2 — «Сценарий продавца v2» (bots.settings.consultant_playbook),
  * SALES_EVAL_ONLY — id сценариев через запятую, SALES_EVAL_OUT — папка отчёта.
  *
  * Снимок — один select в SQL-редакторе Supabase (только чтение), результат
@@ -97,6 +98,9 @@ function shopRoom(snap: Snapshot, locale: SalesScenario["locale"]): Room {
     full: true,
     vertical: snap.vertical ?? "digital",
     modules: { ...(snap.modules ?? {}), whatsapp: true, wa_shop: true },
+    ...(process.env.SALES_EVAL_PLAYBOOK === "v2"
+      ? { tenantSettings: { consultant_playbook: "v2" } }
+      : {}),
     products: products.map((p) => ({
       id: p.id,
       name: p.name,
@@ -228,7 +232,11 @@ describe.skipIf(!on)("набор продаж консультанта в WhatsA
       );
       writeFileSync(
         join(dir, `${stamp}.md`),
-        salesReport(results, { model, usd, snapshot: path.split("/").at(-1) ?? path }),
+        salesReport(results, {
+          model,
+          usd,
+          snapshot: `${path.split("/").at(-1) ?? path}${process.env.SALES_EVAL_PLAYBOOK === "v2" ? ", сценарий v2" : ""}`,
+        }),
       );
       console.log(`[sales-eval] отчёт: ${join(dir, `${stamp}.md`)}`);
       setEnvForTests(undefined);

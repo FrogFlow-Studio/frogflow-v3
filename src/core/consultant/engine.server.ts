@@ -1215,6 +1215,7 @@ async function answerConsultant(
     shopInChat: opts.shopInChat,
     buyButton: opts.buyButton,
     platform: opts.platform,
+    ...(ctx.tenant.settings.consultant_playbook === "v2" ? { playbook: "v2" as const } : {}),
   });
   let known = loaded ? parseMemory(state.profile) : {};
   const profile0 = known;
