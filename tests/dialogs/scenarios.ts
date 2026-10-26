@@ -405,6 +405,11 @@ export interface Scenario {
       | "other";
     country?: string;
   }>;
+  /**
+   * Обычный консультант (не по прайсу) на настоящем runConsultant: ответы API
+   * модели по вызовам, после раундов triage. Консультант включён.
+   */
+  consultantRounds?: Array<Array<Record<string, unknown>>>;
   /** Instagram/WhatsApp: ник покупателя во входящем. */
   username?: string;
   /** Instagram (только `full`): правила комментариев Zernio клиента (список /comment-automations). */
@@ -5688,6 +5693,46 @@ export const SCENARIOS: Scenario[] = [
           says: ["Пока заказ не оформлен"],
           notSays: ["Оформляю заказ", "детали и оплата сейчас появятся"],
           orderCount: 0,
+        },
+      },
+    ],
+  },
+  {
+    id: "consultant-buy-button-without-text-wa-ru",
+    title:
+      "модель поставила кнопку «Купить» без текста — бот дописывает ответ, а не шлёт «Уточните, что вас интересует»",
+    origin:
+      "Копилка Русоведа, WhatsApp 23.10 12:29: на «Да, оформляем» бот четыре раза ответил «Уточните, пожалуйста, что именно вас интересует»; набор продаж #164 26.10 нашёл ту же заготовку под кнопкой «Купить», когда модель вызвала инструмент без текста",
+    channel: "whatsapp",
+    locale: "ru",
+    full: true,
+    modules: { whatsapp: true, wa_shop: true },
+    products: [
+      {
+        id: "13f5415b-d628-433e-b9ec-03d15b801ea0",
+        name: "Лестницы «Части речи и члены предложения»",
+        price: 2000,
+      },
+    ],
+    triage: [{ kind: "product_request" }],
+    consultantRounds: [
+      [
+        {
+          type: "tool_use",
+          id: "t1",
+          name: "offer_buy_button",
+          input: { product_id: "13f5415b-d628-433e-b9ec-03d15b801ea0" },
+        },
+      ],
+      [{ type: "text", text: "Лестницы для кабинета на А4, 2 000 ₸." }],
+    ],
+    steps: [
+      {
+        say: { text: "Здравствуйте. Интересуют лестницы «Части речи и члены предложения»." },
+        expect: {
+          says: ["Лестницы для кабинета"],
+          notSays: ["что именно вас интересует"],
+          buttons: ["🛒 Купить"],
         },
       },
     ],

@@ -99,9 +99,11 @@ vi.mock("@anthropic-ai/sdk", () => {
     // Модель думает (в жизни — секунды): соседние вебхуки успевают встать в очередь
     // диалога. В пачке — ровно до того, как встали все (harness.modelHold).
     await (modelHold.wait ?? new Promise((r) => setTimeout(r, 15)));
+    const content = modelRounds.list.shift() ?? [{ type: "text", text: "" }];
     return {
-      stop_reason: "end_turn",
-      content: modelRounds.list.shift() ?? [{ type: "text", text: "" }],
+      // Как у API: раунд с вызовом инструмента кончается tool_use.
+      stop_reason: content.some((b) => b.type === "tool_use") ? "tool_use" : "end_turn",
+      content,
       usage: { input_tokens: 100, output_tokens: 20 },
     };
   };
@@ -201,6 +203,11 @@ describe("золотые диалоги", () => {
           { type: "tool_use", id: "t1", name: "triage", input: { country: "", ...d } },
         ]);
       }
+      if (s.consultantRounds) {
+        // Обычный консультант: настоящий runConsultant, раунды модели — после раундов triage.
+        setEnvForTests({ ANTHROPIC_API_KEY: "sk-test" });
+        modelRounds.list.push(...s.consultantRounds.map((round) => [...round]));
+      }
       if (s.receiptAi) {
         // Чек читает модель: настоящий вызов через SDK, ответ инструмента receipt — из сценария.
         setEnvForTests({ ANTHROPIC_API_KEY: "sk-test" });
@@ -225,6 +232,8 @@ describe("золотые диалоги", () => {
               }
             : s,
       );
+      if (s.consultantRounds)
+        r.db.tables.app_settings!.push({ key: "consultant_enabled", value: "true" });
       if (s.pricelist)
         r.db.tables.app_settings!.push(
           { key: "consultant_enabled", value: "true" },
