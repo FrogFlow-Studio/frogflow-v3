@@ -986,6 +986,125 @@ describe("кнопка «Купить» под ответом консульта
     expect(db.tables.orders).toHaveLength(1);
   });
 
+  describe("фото товара над кнопкой (buy_button_photo)", () => {
+    const JPEG = new Uint8Array([0xff, 0xd8, 0xff, 0xe0]);
+    async function photoOn(on: boolean) {
+      const settings = await import("@/core/instagram/direct-bot-settings");
+      vi.mocked(settings.loadDirectBotSettings).mockResolvedValueOnce({
+        enabled: true,
+        ignoreExcluded: false,
+        triggers: [],
+        features: {
+          express: true,
+          cart: true,
+          checkout: true,
+          catalog: true,
+          search: true,
+          buy_button: true,
+          buy_button_photo: on,
+        },
+      } as never);
+    }
+    function photoTransport(fail?: (o: { attachmentUrl?: string }) => unknown) {
+      const sent: Array<{ text: string; buttons?: unknown[]; attachmentUrl?: string }> = [];
+      const t = {
+        send: vi.fn(
+          async (
+            _c: string,
+            _a: string,
+            text: string,
+            o: { buttons?: unknown[]; attachmentUrl?: string } = {},
+          ) => {
+            sent.push({ text, buttons: o.buttons, attachmentUrl: o.attachmentUrl });
+            return fail?.(o) ?? { ok: true };
+          },
+        ),
+        tail: async () => [],
+        imageInfo: async () => ({ size: 1024, contentType: "image/jpeg", head: JPEG }),
+      } as unknown as ZernioTransport;
+      return { sent, t };
+    }
+    function withPhoto() {
+      shop(false);
+      (ctx as { appUrl?: string }).appUrl = "https://shop.test";
+      db.tables.products![0]!.product_images = [
+        { id: "i1", image_path: "b/products/ladder.jpg", sort_order: 0 },
+      ];
+      engine.result = {
+        reply: "Лестницы — 2 000 ₸, А4.",
+        handoff: null,
+        buyOffer: { productId: PID },
+        usage,
+      };
+    }
+
+    it("первое предложение товара — фото, текст и кнопка одним сообщением", async () => {
+      withPhoto();
+      await photoOn(true);
+      const { sent, t } = photoTransport();
+      setEnvForTests({});
+      await handleZernioMessage(ctx, wa("Интересуют лестницы", "mid-p1"), t);
+      expect(sent).toHaveLength(1);
+      expect(sent[0]!.text).toBe("Лестницы — 2 000 ₸, А4.");
+      expect(sent[0]!.attachmentUrl).toMatch(/^https:\/\/shop\.test\/api\/img\/b\//);
+      expect(sent[0]!.buttons).toEqual([
+        { type: "postback", title: "🛒 Купить", payload: `CBUY:${PID}` },
+      ]);
+    });
+
+    it("тот же товар уже предлагали — без повторного фото", async () => {
+      withPhoto();
+      customer.state = { consultant: { buy_offer: { productId: PID } } };
+      await photoOn(true);
+      const { sent, t } = photoTransport();
+      setEnvForTests({});
+      await handleZernioMessage(ctx, wa("А на какой бумаге?", "mid-p2"), t);
+      expect(sent).toHaveLength(1);
+      expect(sent[0]!.attachmentUrl).toBeUndefined();
+      expect(sent[0]!.buttons).toHaveLength(1);
+    });
+
+    it("настройка выключена — без фото", async () => {
+      withPhoto();
+      await photoOn(false);
+      const { sent, t } = photoTransport();
+      setEnvForTests({});
+      await handleZernioMessage(ctx, wa("Интересуют лестницы", "mid-p3"), t);
+      expect(sent).toHaveLength(1);
+      expect(sent[0]!.attachmentUrl).toBeUndefined();
+    });
+
+    it("канал не принял фото — тот же ответ с кнопкой без фото, один раз", async () => {
+      withPhoto();
+      await photoOn(true);
+      const { sent, t } = photoTransport((o) =>
+        o.attachmentUrl
+          ? {
+              ok: false,
+              error: "фото не принято",
+              failure: { status: 400, code: "PLATFORM_LIMITATION" },
+            }
+          : undefined,
+      );
+      setEnvForTests({});
+      const r = await handleZernioMessage(ctx, wa("Интересуют лестницы", "mid-p4"), t);
+      expect(r.status).toBe("processed");
+      expect(sent).toHaveLength(2);
+      expect(sent[1]!.attachmentUrl).toBeUndefined();
+      expect(sent[1]!.text).toBe("Лестницы — 2 000 ₸, А4.");
+      expect(sent[1]!.buttons).toHaveLength(1);
+    });
+
+    it("обрыв при отправке с фото — не повторяем (ответ мог дойти)", async () => {
+      withPhoto();
+      await photoOn(true);
+      const { sent, t } = photoTransport(() => ({ ok: false, error: "timeout" }));
+      setEnvForTests({});
+      await handleZernioMessage(ctx, wa("Интересуют лестницы", "mid-p5"), t);
+      expect(sent).toHaveLength(1);
+    });
+  });
+
   it("настройка выключена — консультант без кнопки, нажатие старой кнопки уходит вопросом", async () => {
     shop(false);
     const settings = await import("@/core/instagram/direct-bot-settings");

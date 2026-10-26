@@ -56,6 +56,12 @@ export type DirectBotFeatures = {
    * вопроса покупателя продавец включает сам.
    */
   buy_reminder: boolean;
+  /**
+   * Фото товара над ответом консультанта с кнопкой «Купить» — одним сообщением,
+   * как карточка товара, при первом предложении этого товара в диалоге.
+   * Выключено по умолчанию.
+   */
+  buy_button_photo: boolean;
 };
 
 /** Сколько бот молчит после реплики продавца руками: минуты или «до конца дня» (Б3). */
@@ -88,6 +94,7 @@ export const DEFAULT_DIRECT_BOT: DirectBotSettings = {
     express: true,
     buy_button: true,
     buy_reminder: false,
+    buy_button_photo: false,
   },
   sellerPause: "30",
   ignoreExcluded: false,

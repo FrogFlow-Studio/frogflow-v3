@@ -546,6 +546,13 @@ export function DirectBotCard({ platform }: { platform: "instagram" | "whatsapp"
                 </p>
               </div>
               <div className="mt-1">
+                {feature("buy_button_photo", t("settings.dbot.feature.buyButtonPhoto"))}
+                <p className="text-xs text-muted">
+                  {t("settings.dbot.feature.buyButtonPhotoHint")}{" "}
+                  <HelpTip article="settings-channels" anchor="dbot-buy-button-photo" />
+                </p>
+              </div>
+              <div className="mt-1">
                 {feature("buy_reminder", t("settings.dbot.feature.buyReminder"))}
                 <p className="text-xs text-muted">
                   {t("settings.dbot.feature.buyReminderHint")}{" "}

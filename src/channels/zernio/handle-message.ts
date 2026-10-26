@@ -24,7 +24,7 @@ import { isLocale } from "@/core/i18n/locale";
 import { currentZernioEventId } from "./event-context.server";
 import { isPollEvent, zernioMessageKeys } from "./inbox-poll";
 import type { TwoStepBuyer } from "./automations.server";
-import { classifyZernioFailure, zernioFailureOf } from "./errors";
+import { classifyZernioFailure, isAttachmentRejected, zernioFailureOf } from "./errors";
 
 /**
  * Входящее из Instagram Direct или WhatsApp. Адаптер разбирает событие,
@@ -674,6 +674,9 @@ export async function handleZernioMessage(
   });
   if (pre.done) return processed(pre.note);
   customer = pre.customer;
+  // Товар прошлой кнопки «Купить»: фото карточки — только при первом предложении товара.
+  const offeredBefore = (customer.state.consultant as { buy_offer?: { productId?: string } })
+    ?.buy_offer?.productId;
   const r = await consultant.runConsultant(ctx, customer, imageUrls.length ? m.text : text, {
     platform: m.platform,
     story: pre.story,
@@ -793,15 +796,42 @@ export async function handleZernioMessage(
   }
 
   // Сбой медиа передал диалог менеджеру — кнопки нет.
-  const buyButton = handoff ? null : offeredButton;
+  const buyButton = handoff ? null : (offeredButton?.button ?? null);
   const { buyButtonTextMax, BUY_BUTTON_LEAD } = await import("./shop/buy-button");
   const buttonWithText = Boolean(buyButton) && outboundReply.length <= buyButtonTextMax(m.platform);
-  // В Instagram Direct подпись к медиа не поддерживается Meta: текст и файл
-  // идут отдельными сообщениями; текст отправляем после результата доставки файла.
-  const sent = await transport.send(m.conversationId, m.accountId, outboundReply, {
-    platform: m.platform,
-    ...(buyButton && buttonWithText ? { buttons: [buyButton] } : {}),
-  });
+  // Карточка товара (настройка buy_button_photo): фото над ответом и кнопкой одним
+  // сообщением — когда товар предложен в диалоге впервые и модель фото не прислала.
+  const cardPhoto =
+    offeredButton &&
+    buyButton &&
+    buttonWithText &&
+    bot.features.buy_button_photo &&
+    !r.attachments?.length &&
+    r.buyOffer?.productId !== offeredBefore &&
+    transport.imageInfo
+      ? await import("./media.server").then(({ zernioImageUrl }) =>
+          zernioImageUrl(
+            ctx,
+            m.platform === "whatsapp" ? "whatsapp" : "instagram",
+            offeredButton.imagePaths,
+            transport.imageInfo,
+          ).catch(() => null),
+        )
+      : null;
+  const { conversationId, accountId } = m;
+  const sendReply = (photo: string | null) =>
+    transport.send(conversationId, accountId, outboundReply, {
+      platform: m.platform,
+      ...(buyButton && buttonWithText ? { buttons: [buyButton] } : {}),
+      ...(photo ? { attachmentUrl: photo, attachmentType: "image" as const } : {}),
+    });
+  let sent = await sendReply(cardPhoto);
+  // Фото не приняли (формат, размер, ссылка) — ответ важнее картинки: без фото.
+  // Иной отказ или обрыв не повторяем: ответ мог дойти.
+  if (!sent.ok && cardPhoto && isAttachmentRejected(sent.failure)) {
+    console.warn(`[zernio] фото карточки не принято ${customer.userKey}: ${sent.error}`);
+    sent = await sendReply(null);
+  }
   // Длинный ответ: кнопка — следующим коротким сообщением, только если ответ подтверждён.
   if (sent.ok && buyButton && !buttonWithText) {
     const lead = await transport
@@ -910,10 +940,10 @@ async function buyButtonFor(
   ctx: TenantContext,
   offer: { productId: string; variantId?: string },
   locale: import("@/core/i18n/locale").Locale,
-): Promise<{ type: "postback"; title: string; payload: string } | null> {
+): Promise<import("./shop/buy-offer.server").BuyOfferButton | null> {
   try {
     const { buyOfferButton } = await import("./shop/buy-offer.server");
-    return (await buyOfferButton(ctx, offer, locale))?.button ?? null;
+    return await buyOfferButton(ctx, offer, locale);
   } catch (e) {
     console.warn(`[consultant:${ctx.tenant.id}] кнопка «Купить» без товара: ${String(e)}`);
     return null;
