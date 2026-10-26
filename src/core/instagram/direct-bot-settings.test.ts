@@ -28,6 +28,7 @@ describe("настройки автоответчика Direct/WhatsApp", () => 
         express: true,
         buy_button: true,
         buy_reminder: false,
+        buy_button_photo: false,
       },
       sellerPause: "30",
       ignoreExcluded: false,
@@ -64,6 +65,7 @@ describe("настройки автоответчика Direct/WhatsApp", () => 
       express: true,
       buy_button: true,
       buy_reminder: false,
+      buy_button_photo: false,
     });
     expect(s.script).toBe("Напишите «каталог».");
     expect(s.ignoreExcluded).toBe(true);
