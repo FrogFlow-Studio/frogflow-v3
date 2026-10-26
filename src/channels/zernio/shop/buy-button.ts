@@ -21,6 +21,23 @@ export function buyButtonPayload(productId: string, variantId?: string | null): 
 }
 
 /**
+ * Вариант из offer_buy_button: каталог консультанта показывает варианты по
+ * названию, без id, поэтому модель часто передаёт название («Папка МО ЕМН
+ * для Казахстана»). Принимаем и id, и название без учёта регистра и пробелов.
+ */
+export function findOfferVariant<V extends { id: string; name?: string | null }>(
+  variants: V[],
+  idOrName: string | null | undefined,
+): V | undefined {
+  const key = (idOrName ?? "").trim();
+  if (!key) return undefined;
+  const norm = (x: string) => x.replace(/\s+/g, " ").trim().toLowerCase();
+  return (
+    variants.find((v) => v.id === key) ?? variants.find((v) => norm(v.name ?? "") === norm(key))
+  );
+}
+
+/**
  * Сколько знаков текста отправляем вместе с кнопкой: Instagram берёт не
  * больше 640 (длиннее режется), у WhatsApp тело кнопочного сообщения —
  * до 1024. Длиннее — текст отдельно, кнопка следующим коротким сообщением.

@@ -1,6 +1,6 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Locale } from "@/core/i18n/locale";
-import { BUY_BUTTON_TITLE, buyButtonPayload } from "./buy-button";
+import { BUY_BUTTON_TITLE, buyButtonPayload, findOfferVariant } from "./buy-button";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 /** Сколько знаков названия берёт текст напоминания: Instagram режет длиннее 640. */
@@ -14,7 +14,7 @@ export type BuyOfferButton = {
 
 /**
  * Кнопка для товара из offer_buy_button: товар в продаже, у товара с
- * вариантами — выбранный действующий вариант. Иначе null: ответ уходит без
+ * вариантами — выбранный действующий вариант (по id или названию). Иначе null: ответ уходит без
  * кнопки, напоминание не уходит. Сбой чтения каталога бросает — вызывающий
  * решает, что делать (ответ без кнопки, напоминание в следующий прогон).
  */
@@ -23,12 +23,12 @@ export async function buyOfferButton(
   offer: { productId: string; variantId?: string },
   locale: Locale,
 ): Promise<BuyOfferButton | null> {
-  if (!UUID.test(offer.productId) || (offer.variantId && !UUID.test(offer.variantId))) return null;
+  if (!UUID.test(offer.productId)) return null;
   const { getProduct, sortedVariants } = await import("@/core/catalog/catalog");
   const product = await getProduct(ctx, offer.productId);
   if (!product) return null;
   const variants = sortedVariants(product);
-  const variant = variants.find((v) => v.id === offer.variantId);
+  const variant = findOfferVariant(variants, offer.variantId);
   if (variants.length && !variant) return null;
   const name = (variant?.name ? `${product.name} — ${variant.name}` : product.name).trim();
   return {

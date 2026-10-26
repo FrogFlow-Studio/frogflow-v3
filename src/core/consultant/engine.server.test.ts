@@ -129,6 +129,17 @@ describe("guardShopOrderReply: честность оплаты и выдачи",
     expect(reply).not.toContain("я прослежу");
   });
 
+  it("с кнопкой «Купить» «нажмите, чтобы оформить заказ» уходит, «заказ оформлен» — нет", () => {
+    const hint =
+      "Папка — 3 500 ₸. Нажмите «Купить», чтобы оформить заказ и получить ссылку на оплату.";
+    const facts = { orderAction: false, handoff: null, hasActivePaymentOrder: false };
+    expect(guardShopOrderReply(hint, "ru", { ...facts, buyOffer: true })).toBe(hint);
+    expect(guardShopOrderReply(hint, "ru", facts)).not.toBe(hint);
+    expect(guardShopOrderReply("Ваш заказ оформлен!", "ru", { ...facts, buyOffer: true })).not.toBe(
+      "Ваш заказ оформлен!",
+    );
+  });
+
   it("при активном платёжном шаге не стирает корректное объяснение процесса", () => {
     expect(
       guardShopOrderReply(unsupported, "ru", {

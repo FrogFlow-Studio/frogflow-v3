@@ -5738,6 +5738,48 @@ export const SCENARIOS: Scenario[] = [
     ],
   },
   {
+    id: "consultant-buy-button-press-hint-wa-ru",
+    title:
+      "под кнопкой «Купить» модель пишет «нажмите, чтобы оформить заказ» — ответ уходит как есть, без «Пока заказ не оформлен»",
+    origin:
+      "Набор продаж 26.10 (Копилка, «Папка МО ЕМН → для Казахстана»): ответ «Нажмите кнопку «Купить» ниже, чтобы оформить заказ и получить ссылку на оплату» фильтр принял за обещание заказа и заменил на «Пока заказ не оформлен. Что именно вы хотели узнать о товаре?»",
+    channel: "whatsapp",
+    locale: "ru",
+    full: true,
+    modules: { whatsapp: true, wa_shop: true },
+    products: [
+      {
+        id: "13f5415b-d628-433e-b9ec-03d15b801ea0",
+        name: "Папка МО ЕМН",
+        price: 3500,
+      },
+    ],
+    triage: [{ kind: "product_request" }],
+    consultantRounds: [
+      [
+        { type: "text", text: "Папка МО ЕМН — 3 500 ₸. Нажмите «Купить», чтобы оформить заказ." },
+        {
+          type: "tool_use",
+          id: "t1",
+          name: "offer_buy_button",
+          input: { product_id: "13f5415b-d628-433e-b9ec-03d15b801ea0" },
+        },
+      ],
+      [{ type: "text", text: "" }],
+    ],
+    steps: [
+      {
+        say: { text: "Документация (папка) МО ЕМН интересует. Что стоит?" },
+        expect: {
+          says: ["Нажмите «Купить», чтобы оформить заказ"],
+          notSays: ["Пока заказ не оформлен"],
+          buttons: ["🛒 Купить"],
+          orderCount: 0,
+        },
+      },
+    ],
+  },
+  {
     id: "consultant-want-to-buy-places-order-wa-ru",
     title:
       "«Хотела купить …» — заказ оформляет модель, бот не переспрашивает «что вы хотели узнать»",
