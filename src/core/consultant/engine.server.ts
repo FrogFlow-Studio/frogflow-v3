@@ -1488,9 +1488,15 @@ async function answerConsultant(
     // Что вы хотели узнать?» (Копилка 24–25.10). Повтор заказа гасит канал
     // (тот же состав — та же оплата), а неуверенность — кнопка «Купить».
     const orderProductAllowed = Boolean(opts.shopInChat);
+    // Просьба отменить без номера: модель находит неоплаченный заказ сама и
+    // спрашивает «Отменить №…?», а не отвечает «не вижу заказа» (Копилка #270).
+    // Выбор инструмента не навязываем — номер может быть уже в реплике.
+    const cancelLookup = Boolean(
+      opts.shopInChat && customer && !orderStatusQuestion && isExplicitOrderCancellation(incoming),
+    );
     const tools = [
       ...(loaded ? [...CATALOG_TOOLS, REMEMBER_TOOL] : []),
-      ...(orderStatusQuestion ? [ORDER_STATUS_TOOL] : []),
+      ...(orderStatusQuestion || cancelLookup ? [ORDER_STATUS_TOOL] : []),
       ...(opts.shopInChat ? [ORDER_CANCEL_TOOL] : []),
       ...(orderProductAllowed ? [ORDER_PRODUCT_TOOL] : []),
       ...(opts.shopInChat && opts.buyButton ? [OFFER_BUY_TOOL] : []),
@@ -2025,7 +2031,9 @@ async function answerConsultant(
         summary: handoffSummary(await sellerLocaleSafe(ctx), "price", incoming),
       };
     }
-    if (orderStatusRows !== null || orderStatusLookupFailed) {
+    // Готовый текст статуса — только на вопрос о статусе. При отмене без номера
+    // модель сама называет найденный заказ и спрашивает «Отменить №…?».
+    if (orderStatusQuestion && (orderStatusRows !== null || orderStatusLookupFailed)) {
       const verified = verifiedOrderStatusReply(orderStatusRows, bLocale, orderStatusLookupFailed);
       reply = verified.reply;
       orderStatusVerified = Boolean(orderStatusRows?.length) && !verified.handoff;

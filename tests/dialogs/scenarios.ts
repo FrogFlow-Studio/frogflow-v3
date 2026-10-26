@@ -5891,4 +5891,99 @@ export const SCENARIOS: Scenario[] = [
       },
     ],
   },
+  {
+    id: "consultant-cancel-confirmation-yes-wa-ru",
+    title:
+      "«Да» на вопрос ИИ «Отменить заказ №270?» отменяет неоплаченный заказ, а не уходит в оплату",
+    origin:
+      "Копилка Русоведа, WhatsApp 24–25.10 (заказ #270): покупательница трижды просила отменить заказ, бот отвечал «Статус заказа не изменён» и «не вижу активного заказа», и она оформила второй (#272)",
+    channel: "whatsapp",
+    locale: "ru",
+    full: true,
+    vertical: "consultant",
+    modules: { whatsapp: true, wa_shop: true },
+    state: {
+      mode: "awaiting_payment",
+      pending_order_id: 7,
+      pending_display_no: 270,
+      consultant: {
+        recent: [
+          { role: "customer", text: "Давайте отменим заказ" },
+          {
+            role: "assistant",
+            text: "У вас неоплаченный заказ №270 — Папка МО. Отменить его?",
+          },
+        ],
+      },
+    },
+    arrange: (r) => {
+      r.db.tables.orders!.push({
+        id: 7,
+        bot_id: "00000000-0000-4000-8000-0000000000aa",
+        order_no: 7,
+        display_no: 270,
+        telegram_id: -1,
+        status: "awaiting_payment",
+        paid_amount: 0,
+        fulfillment_kind: "digital",
+        order_items: [],
+      });
+    },
+    consultantRounds: [
+      [{ type: "tool_use", id: "t1", name: "cancel_my_order", input: { order_number: 270 } }],
+      [{ type: "text", text: "Заказ №270 отменён." }],
+    ],
+    steps: [
+      {
+        say: { text: "Да" },
+        expect: {
+          says: ["Заказ №270 отменён"],
+          notSays: ["не изменён"],
+          orderCount: 1,
+          orders: { 7: { status: "cancelled" } },
+        },
+      },
+    ],
+  },
+  {
+    id: "consultant-cancel-without-number-finds-order-wa-ru",
+    title:
+      "«Давайте отменим заказ» без номера — ИИ сам находит неоплаченный заказ и спрашивает «Отменить №270?»",
+    origin:
+      "Копилка Русоведа, WhatsApp 24.10 17:07 (заказ #270): на «Давайте отменим заказ» бот не нашёл заказ, а на следующий день ответил «не вижу привязанного активного заказа»",
+    channel: "whatsapp",
+    locale: "ru",
+    full: true,
+    vertical: "consultant",
+    modules: { whatsapp: true, wa_shop: true },
+    state: { mode: "awaiting_payment", pending_order_id: 7, pending_display_no: 270 },
+    arrange: (r) => {
+      r.db.tables.orders!.push({
+        id: 7,
+        bot_id: "00000000-0000-4000-8000-0000000000aa",
+        order_no: 7,
+        display_no: 270,
+        telegram_id: -1,
+        status: "awaiting_payment",
+        paid_amount: 0,
+        fulfillment_kind: "digital",
+        order_items: [],
+      });
+    },
+    consultantRounds: [
+      [{ type: "tool_use", id: "t1", name: "get_my_order_status", input: {} }],
+      [{ type: "text", text: "У вас неоплаченный заказ №270 — Папка МО. Отменить его?" }],
+    ],
+    steps: [
+      {
+        say: { text: "Давайте отменим заказ" },
+        expect: {
+          says: ["Отменить его?"],
+          notSays: ["Не нашёл заказа", "не изменён"],
+          orderCount: 1,
+          orders: { 7: { status: "awaiting_payment" } },
+        },
+      },
+    ],
+  },
 ];

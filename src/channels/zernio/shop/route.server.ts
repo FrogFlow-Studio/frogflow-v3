@@ -1,6 +1,9 @@
 import { allPriceCountries } from "@/core/pricing/all-prices";
 import { isOrderStatusQuestion } from "@/core/consultant/order-status-intent";
-import { isCancellationOrderNumberReply } from "@/core/consultant/order-cancel-intent";
+import {
+  isCancellationConfirmation,
+  isCancellationOrderNumberReply,
+} from "@/core/consultant/order-cancel-intent";
 import { nonceFromMessage } from "@/core/storefront/code-login";
 import { explainIncoming } from "../reason";
 import { lastPaidOrder, shortLabels } from "@/core/orders/reorder";
@@ -287,9 +290,14 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
   // оплаты, а не шаг оплаты (Копилка 12.10, _marina_lyalina_ #149).
   if (await dropPaidStep(s)) mode = s.customer.state.mode;
 
-  // Число в ответ на «какой номер отменить?» — продолжение хода AI,
-  // не выбор checkout, даже если у покупателя активен шаг оплаты.
-  if (text && isCancellationOrderNumberReply(s.customer.state.consultant?.recent ?? [], text)) {
+  // Число в ответ на «какой номер отменить?» или «да» на «Отменить заказ №…?» —
+  // продолжение хода AI, не выбор checkout, даже если у покупателя активен шаг оплаты.
+  const cancelRecent = s.customer.state.consultant?.recent ?? [];
+  if (
+    text &&
+    (isCancellationOrderNumberReply(cancelRecent, text) ||
+      isCancellationConfirmation(cancelRecent, text))
+  ) {
     const consultant = await import("@/core/consultant/engine.server");
     if (await consultant.consultantEnabled(s.ctx)) {
       if (consultant.isPaused(s.customer)) {
