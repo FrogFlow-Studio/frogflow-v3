@@ -962,6 +962,18 @@ describe("консультант: каталог знает предзаказ �
     expect(sys).toContain("отправка с 2099-01-15");
     expect(sys).not.toContain("нет в наличии");
   });
+  it("описание товара в маленьком каталоге видно целиком, в большом — по бюджету", async () => {
+    const { descriptionLimit } = await import("./engine.server");
+    expect(descriptionLimit(22)).toBe(727);
+    expect(descriptionLimit(1)).toBe(900);
+    expect(descriptionLimit(120)).toBe(160);
+    const ctx = withProduct({}, 5);
+    const row = (ctx.db as unknown as { tables: Record<string, Array<Record<string, unknown>>> })
+      .tables.products![0]!;
+    // Копилка 23.10: «на какой бумаге печатать?» — ответ был в конце описания.
+    row.description = `${"Яркая наглядность для кабинета. ".repeat(12)}Материал готов к печати на А4 и на А3.`;
+    expect(await catalogOf(ctx)).toContain("на А4 и на А3");
+  });
   it("нулевой остаток без предзаказа — по-прежнему «нет в наличии»", async () => {
     expect(await catalogOf(withProduct({ stock: true }, 0))).toContain("нет в наличии");
   });
