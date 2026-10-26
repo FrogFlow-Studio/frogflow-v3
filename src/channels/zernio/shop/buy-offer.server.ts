@@ -10,6 +10,8 @@ export type BuyOfferButton = {
   button: { type: "postback"; title: string; payload: string };
   /** Товар и выбранный вариант — для текста напоминания. */
   name: string;
+  /** Фото товара по порядку — для карточки над кнопкой (настройка buy_button_photo). */
+  imagePaths: string[];
 };
 
 /**
@@ -24,7 +26,7 @@ export async function buyOfferButton(
   locale: Locale,
 ): Promise<BuyOfferButton | null> {
   if (!UUID.test(offer.productId)) return null;
-  const { getProduct, sortedVariants } = await import("@/core/catalog/catalog");
+  const { getProduct, sortedImages, sortedVariants } = await import("@/core/catalog/catalog");
   const product = await getProduct(ctx, offer.productId);
   if (!product) return null;
   const variants = sortedVariants(product);
@@ -38,5 +40,6 @@ export async function buyOfferButton(
       payload: buyButtonPayload(product.id, variant ? variant.id : null),
     },
     name: name.length > NAME_MAX ? `${name.slice(0, NAME_MAX - 1).trimEnd()}…` : name,
+    imagePaths: sortedImages(product).map((i) => i.image_path),
   };
 }

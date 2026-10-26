@@ -163,6 +163,9 @@ export const ru = {
   "settings.dbot.feature.buyButton": "кнопка «Купить» в ответе ИИ-консультанта",
   "settings.dbot.feature.buyButtonHint":
     "Когда покупатель спрашивает о конкретном товаре, консультант отвечает с кнопкой «Купить»: нажатие сразу оформляет заказ и присылает оплату.",
+  "settings.dbot.feature.buyButtonPhoto": "фото товара над кнопкой «Купить»",
+  "settings.dbot.feature.buyButtonPhotoHint":
+    "Первый ответ консультанта о товаре приходит одним сообщением: фото товара, текст и кнопка «Купить». Нет подходящего фото — без фото. По умолчанию выключено.",
   "settings.dbot.feature.buyReminder": "напоминание с кнопкой «Купить»",
   "settings.dbot.feature.buyReminderHint":
     "Получил кнопку «Купить» и молчит 3 часа — бот один раз, днём и в пределах суток после его сообщения, присылает кнопку ещё раз. По умолчанию выключено.",
@@ -741,6 +744,9 @@ export const kk: SectionDict<typeof ru> = {
   "settings.dbot.feature.buyButton": "ЖИ-кеңесші жауабындағы «Сатып алу» батырмасы",
   "settings.dbot.feature.buyButtonHint":
     "Сатып алушы нақты тауар туралы сұрағанда, кеңесші «Сатып алу» батырмасымен жауап береді: басқанда тапсырыс бірден ресімделіп, төлем жіберіледі.",
+  "settings.dbot.feature.buyButtonPhoto": "«Сатып алу» батырмасының үстінде тауар суреті",
+  "settings.dbot.feature.buyButtonPhotoHint":
+    "Кеңесшінің тауар туралы алғашқы жауабы бір хабарламамен келеді: тауар суреті, мәтін және «Сатып алу» батырмасы. Жарамды сурет болмаса — суретсіз. Әдепкіде өшірулі.",
   "settings.dbot.feature.buyReminder": "«Сатып алу» батырмасымен еске салу",
   "settings.dbot.feature.buyReminderHint":
     "«Сатып алу» батырмасын алып, 3 сағат үндемесе — бот бір рет, күндіз және оның хабарынан кейінгі бір тәулік ішінде батырманы қайта жібереді. Әдепкіде өшірулі.",
@@ -1312,6 +1318,9 @@ export const en: SectionDict<typeof ru> = {
   "settings.dbot.feature.buyButton": "«Buy» button in the AI consultant’s reply",
   "settings.dbot.feature.buyButtonHint":
     "When a buyer asks about a specific product, the consultant replies with a «Buy» button: tapping it places the order and sends payment right away.",
+  "settings.dbot.feature.buyButtonPhoto": "product photo above the «Buy» button",
+  "settings.dbot.feature.buyButtonPhotoHint":
+    "The consultant’s first reply about a product arrives as one message: product photo, text and the «Buy» button. No suitable photo — no photo. Off by default.",
   "settings.dbot.feature.buyReminder": "reminder with the «Buy» button",
   "settings.dbot.feature.buyReminderHint":
     "Got the «Buy» button and silent for 3 hours — the bot sends the button once more, in the daytime and within a day of the buyer’s last message. Off by default.",
@@ -1885,6 +1894,9 @@ export const uz: SectionDict<typeof ru> = {
   "settings.dbot.feature.buyButton": "AI maslahatchi javobidagi «Sotib olish» tugmasi",
   "settings.dbot.feature.buyButtonHint":
     "Xaridor aniq mahsulot haqida so‘raganda, maslahatchi «Sotib olish» tugmasi bilan javob beradi: bosilganda buyurtma darhol rasmiylashtiriladi va to‘lov yuboriladi.",
+  "settings.dbot.feature.buyButtonPhoto": "«Sotib olish» tugmasi ustida mahsulot rasmi",
+  "settings.dbot.feature.buyButtonPhotoHint":
+    "Maslahatchining mahsulot haqidagi birinchi javobi bitta xabarda keladi: mahsulot rasmi, matn va «Sotib olish» tugmasi. Mos rasm bo‘lmasa — rasmsiz. Odatda o‘chirilgan.",
   "settings.dbot.feature.buyReminder": "«Sotib olish» tugmasi bilan eslatma",
   "settings.dbot.feature.buyReminderHint":
     "«Sotib olish» tugmasini olib, 3 soat jim tursa — bot bir marta, kunduzi va xaridorning oxirgi xabaridan keyin bir sutka ichida tugmani yana yuboradi. Odatda o‘chirilgan.",
