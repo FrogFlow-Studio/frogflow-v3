@@ -429,6 +429,19 @@ function untilText(iso: string, timeZone: string | undefined): string {
   });
 }
 
+/**
+ * Сколько знаков описания товара видит модель. Раньше — 160 на любой каталог:
+ * у Копилки (22 товара, описания ~470 знаков) модель не видела ни состава
+ * папки, ни «готов к печати на А4 и А3» и отдавала такие вопросы менеджеру
+ * («Нақты тізім керек» → передача → покупательница ушла, 23.10). Теперь общий
+ * бюджет на каталог делится поровну: маленький каталог виден почти целиком,
+ * большой — как раньше.
+ */
+export const CATALOG_DESC_BUDGET = 16_000;
+export function descriptionLimit(products: number): number {
+  return Math.max(160, Math.min(900, Math.floor(CATALOG_DESC_BUDGET / Math.max(1, products))));
+}
+
 /** Каталог одной строкой на товар — наличие и цены только отсюда. */
 /** Каталог для подсказки и цены из него — для сверки ответа (price-check). */
 async function catalogSnippet(ctx: TenantContext): Promise<{ text: string; prices: number[] }> {
@@ -444,6 +457,7 @@ async function catalogSnippet(ctx: TenantContext): Promise<{ text: string; price
     rows.map((p) => p.id),
   );
   const prices: number[] = [];
+  const descLimit = descriptionLimit(rows.length);
   const lines = await Promise.all(
     rows.map(async (p) => {
       const variants = sortedVariants(p);
@@ -471,7 +485,7 @@ async function catalogSnippet(ctx: TenantContext): Promise<{ text: string; price
       const promo = offer
         ? `, по акции −${offer.percent}% до ${untilText(offer.ends_at, ctx.timezone)}${offer.left != null ? `, осталось ${offer.left} шт.` : ""}`
         : "";
-      const desc = (p.description ?? "").replace(/\s+/g, " ").slice(0, 160);
+      const desc = (p.description ?? "").replace(/\s+/g, " ").slice(0, descLimit);
       return `- [id:${p.id}] ${p.name}: ${price}${promo}${stock}${desc ? `. ${desc}` : ""}`;
     }),
   );
