@@ -108,6 +108,8 @@ export interface Room {
   replies(): string[];
   /** Заголовки кнопок последнего ответа. */
   buttons(): string[];
+  /** Instagram/WhatsApp: кнопки последнего ответа с payload — чтобы нажать их по-настоящему. */
+  buttonPayloads?(): Array<{ title: string; payload: string }>;
   /** id товаров в корзине. */
   cart(): string[];
   /** Состояние покупателя (bot_users.state). */
@@ -341,7 +343,11 @@ function directRoom(o: RoomOptions): Room {
   let eventNo = 0;
   const key = platform === "whatsapp" ? "wa_1" : "ig_1";
   const { db, ctx } = baseDb(o, key, platform, -1);
-  const sent: Array<{ text: string; buttons: string[] }> = [];
+  const sent: Array<{
+    text: string;
+    buttons: string[];
+    payloads?: Array<{ title: string; payload: string }>;
+  }> = [];
   let sellerLines: string[] = [];
   let mark = 0;
   let tail: unknown[] = [];
@@ -354,7 +360,7 @@ function directRoom(o: RoomOptions): Room {
         _c: string,
         _a: string,
         text: string,
-        opts: { buttons?: Array<{ title?: string }> } = {},
+        opts: { buttons?: Array<{ title?: string; payload?: string }> } = {},
       ) => {
         // Обрыв: покупатель (насколько известно) ничего не получил.
         if (o.sendFails) return { ok: false, error: "timeout" };
@@ -362,7 +368,14 @@ function directRoom(o: RoomOptions): Room {
         // (заказ #10 Дидактики 07.10, заказ #15 Копилки 09.10).
         if (opts.buttons?.length && (o.rejectButtons || text.length > 640))
           return { ok: false, error: "buttons rejected", failure: { status: 400 } };
-        sent.push({ text: plain(text), buttons: (opts.buttons ?? []).map((b) => b.title ?? "") });
+        sent.push({
+          text: plain(text),
+          buttons: (opts.buttons ?? []).map((b) => b.title ?? ""),
+          payloads: (opts.buttons ?? []).map((b) => ({
+            title: b.title ?? "",
+            payload: b.payload ?? "",
+          })),
+        });
         if (o.echoes && text)
           tail.push({ direction: "outgoing", message: text, createdAt: new Date().toISOString() });
         return { ok: true };
@@ -614,6 +627,7 @@ function directRoom(o: RoomOptions): Room {
     sellerQueued: () => queuedOf(db),
     replies: () => sent.slice(mark).map((s) => s.text),
     buttons: () => sent.slice(mark).flatMap((s) => s.buttons),
+    buttonPayloads: () => sent.slice(mark).flatMap((s) => s.payloads ?? []),
     cart: () => (db.tables.cart_items ?? []).map((c) => String(c.product_id)),
     state: () => db.tables.bot_users![0]!.state as Record<string, unknown>,
     sellerNotices: () => notices.count,
