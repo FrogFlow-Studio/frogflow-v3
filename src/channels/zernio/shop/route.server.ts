@@ -53,7 +53,7 @@ import { directCopy } from "./copy";
 import { notifyAdminsHtml } from "@/channels/telegram/notify";
 import { liveTransport, type ZernioTransport } from "../api.server";
 import type { NativeOrder, ParsedZernioMessage } from "../message";
-import { buyButtonPayload, isBuyButtonTitle } from "./buy-button";
+import { buyButtonPayload, findOfferVariant, isBuyButtonTitle } from "./buy-button";
 import { describeNativeCart, matchNativeItems } from "@/core/whatsapp/native-cart";
 import { PLATFORM_LABEL } from "../platform";
 import {
@@ -1274,7 +1274,9 @@ function opaqueBuyTap(s: Shop, msg: ParsedZernioMessage): string | null {
  */
 async function consultantBuy(s: Shop, p: Product, variantId: string | null): Promise<void> {
   const variants = sortedVariants(p);
-  if (variants.length && !variants.some((v) => v.id === variantId)) {
+  // Нажатие без payload берёт вариант из state.buy_offer — там может быть название.
+  const variant = findOfferVariant(variants, variantId);
+  if (variants.length && !variant) {
     await sendProductCard(s, p, true);
     return;
   }
@@ -1282,7 +1284,7 @@ async function consultantBuy(s: Shop, p: Product, variantId: string | null): Pro
   const mode = s.customer.state.mode;
   if (mode && mode !== "idle") await setMode(s, { mode: "idle" });
   await clearCart(s.ctx, s.customer);
-  const r = await addToCart(s.ctx, s.customer, p.id, variants.length ? variantId : null);
+  const r = await addToCart(s.ctx, s.customer, p.id, variant ? variant.id : null);
   if (r !== "ok") {
     await sendProductCard(s, p, true);
     return;

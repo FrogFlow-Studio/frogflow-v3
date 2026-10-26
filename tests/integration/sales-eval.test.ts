@@ -131,6 +131,11 @@ function spentUsd(r: Room): number {
   }
 }
 
+function pausedUntil(r: Room): string | null {
+  const c = (r.state().consultant ?? {}) as { paused_until?: string | null };
+  return c.paused_until ?? null;
+}
+
 type Played = TurnResult & {
   outcome: TurnOutcome;
   payloads: Array<{ title: string; payload: string }>;
@@ -141,7 +146,7 @@ async function runScenario(snap: Snapshot, s: SalesScenario) {
   const turns: Played[] = [];
   for (const t of s.turns) {
     const ordersBefore = r.db.tables.orders?.length ?? 0;
-    const reasonsBefore = r.reasons().length;
+    const pausedBefore = pausedUntil(r);
     let say: string;
     if ("click" in t) {
       // Нажимаем кнопку «Купить» из прошлого хода: нет её — нажимать нечего.
@@ -168,7 +173,8 @@ async function runScenario(snap: Snapshot, s: SalesScenario) {
       replies: r.replies(),
       buttons: r.buttons(),
       newOrders: (r.db.tables.orders?.length ?? 0) - ordersBefore,
-      handedOff: r.reasons().length > reasonsBefore,
+      // Передача менеджеру ставит консультанта на паузу (state.consultant.paused_until).
+      handedOff: pausedUntil(r) !== pausedBefore && Date.parse(pausedUntil(r) ?? "") > Date.now(),
     };
     turns.push({
       say,

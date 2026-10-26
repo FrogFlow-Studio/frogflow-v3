@@ -715,8 +715,16 @@ export async function handleZernioMessage(
     : isLocale(ctx.tenant.settings.default_locale)
       ? ctx.tenant.settings.default_locale
       : "ru";
+  // Кнопка «Купить» под ответом: товар и вариант проверены по каталогу. Считаем
+  // до проверки ответа: «нажмите «Купить», чтобы оформить заказ» верно, только
+  // если кнопка действительно будет.
+  const offeredButton =
+    buyButtonOn(shopOn, bot) && r.buyOffer && !r.orderAction && !r.handoff
+      ? await buyButtonFor(ctx, r.buyOffer, responseLocale)
+      : null;
   let outboundReply = shopOn
     ? consultant.guardShopOrderReply(r.reply, responseLocale, {
+        buyOffer: Boolean(offeredButton),
         orderAction: Boolean(r.orderAction),
         handoff: r.handoff,
         hasActivePaymentOrder: Boolean(
@@ -784,11 +792,8 @@ export async function handleZernioMessage(
     });
   }
 
-  // Кнопка «Купить» под ответом: товар и вариант проверены по каталогу.
-  const buyButton =
-    buyButtonOn(shopOn, bot) && r.buyOffer && !r.orderAction && !handoff
-      ? await buyButtonFor(ctx, r.buyOffer, responseLocale)
-      : null;
+  // Сбой медиа передал диалог менеджеру — кнопки нет.
+  const buyButton = handoff ? null : offeredButton;
   const { buyButtonTextMax, BUY_BUTTON_LEAD } = await import("./shop/buy-button");
   const buttonWithText = Boolean(buyButton) && outboundReply.length <= buyButtonTextMax(m.platform);
   // В Instagram Direct подпись к медиа не поддерживается Meta: текст и файл

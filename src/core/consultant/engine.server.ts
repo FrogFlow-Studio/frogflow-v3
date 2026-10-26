@@ -258,6 +258,10 @@ function cancellationNotConfirmedReply(locale: string, handedOff: boolean): stri
   return "Не могу подтвердить изменение статуса заказа. Свяжитесь с продавцом, прежде чем считать заказ закрытым.";
 }
 
+/** «Заказ оформлен/создан» — неправда, пока order_product не вызван, даже с кнопкой. */
+const SHOP_ORDER_DONE =
+  /(?<![\p{L}\p{N}])(?:заказ\p{L}*|покупк\p{L}*)\s+(?:уже\s+)?(?:оформлен\p{L}*|создан\p{L}*)/iu;
+
 const SHOP_ORDER_PROMISE =
   /(?:(?<![\p{L}\p{N}])(?:оформ|созда|запис)\p{L}*\s+(?:вам\s+)?(?:к\s+)?(?:заказ\p{L}*|покупк\p{L}*)|(?<![\p{L}\p{N}])(?:заказ\p{L}*|покупк\p{L}*)\s+(?:уже\s+)?(?:оформлен\p{L}*|создан\p{L}*)|(?<![\p{L}\p{N}])(?:детал\p{L}*(?:\s+и\s+оплат\p{L}*)?|сч[её]т\p{L}*|ссылк\p{L}*)\s+(?:сейчас\s+)?(?:появ\p{L}*|отправ\p{L}*|пришл\p{L}*|сформир\p{L}*)|(?<![\p{L}\p{N}])оплат\p{L}*\s+(?:сейчас\s+)?(?:появ\p{L}*|сформир\p{L}*))/iu;
 
@@ -276,11 +280,17 @@ export function guardShopOrderReply(
     handoff?: Handoff | null;
     hasActivePaymentOrder?: boolean;
     verifiedOrderStatus?: boolean;
+    /**
+     * Под ответом стоит кнопка «Купить»: «нажмите, чтобы оформить заказ и
+     * получить ссылку на оплату» — правда, нажатие оформляет заказ. Неправда
+     * только «заказ уже оформлен».
+     */
+    buyOffer?: boolean;
   },
 ): string {
   if (SHOP_CANCELLATION_PROMISE.test(reply) && !result.verifiedOrderStatus)
     return cancellationNotConfirmedReply(locale, Boolean(result.handoff));
-  const orderPromise = SHOP_ORDER_PROMISE.test(reply);
+  const orderPromise = (result.buyOffer ? SHOP_ORDER_DONE : SHOP_ORDER_PROMISE).test(reply);
   const paymentPromise =
     !result.hasActivePaymentOrder && SHOP_UNTRACKED_PAYMENT_PROMISE.test(reply);
   if ((!orderPromise || result.orderAction) && !paymentPromise) return reply;
@@ -680,14 +690,14 @@ const TOOLS: Anthropic.Tool[] = [
 export const OFFER_BUY_TOOL: Anthropic.Tool = {
   name: "offer_buy_button",
   description:
-    "Поставить под вашим ответом кнопку «Купить» для одного товара из каталога. Вызывайте, когда покупатель интересуется конкретным товаром (спросил о нём, о цене, выбрал вариант), но покупку ещё не подтвердил. Нажатие кнопки сразу оформит заказ и пришлёт оплату. Если у товара есть варианты, передайте variant_id выбранного варианта; пока вариант не выбран — не вызывайте, сначала уточните его.",
+    "Поставить под вашим ответом кнопку «Купить» для одного товара из каталога. Вызывайте, когда покупатель интересуется конкретным товаром (спросил о нём, о цене, выбрал вариант), но покупку ещё не подтвердил. Нажатие кнопки сразу оформит заказ и пришлёт оплату. Если у товара есть варианты, передайте в variant_id название выбранного варианта из каталога; пока вариант не выбран — не вызывайте, сначала уточните его.",
   input_schema: {
     type: "object",
     properties: {
       product_id: { type: "string", description: "ID товара из [id:...] каталога" },
       variant_id: {
         type: "string",
-        description: "ID выбранного варианта, если у товара есть варианты",
+        description: "Название выбранного варианта из каталога, если у товара есть варианты",
       },
     },
     required: ["product_id"],
@@ -1938,6 +1948,7 @@ async function answerConsultant(
         handoff,
         hasActivePaymentOrder,
         verifiedOrderStatus: orderStatusVerified,
+        buyOffer: Boolean(buyOffer && !orderAction && !handoff),
       };
       const guarded = guardShopOrderReply(reply, bLocale, guardFacts);
       // Ответ обещает заказ или оплату, которых в системе нет: сначала модель
