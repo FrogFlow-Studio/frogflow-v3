@@ -258,6 +258,8 @@ export function settingsFromJson(json: unknown): TenantSettings {
     consultant_pause_hours: validPauseHours(s.consultant_pause_hours),
     // Флаг оператора «Расширенный консультант» (core/consultant/catalog-tool.server).
     consultant_search: s.consultant_search === true ? true : undefined,
+    // Флаг оператора «Сценарий продавца v2» (core/consultant/prompt).
+    consultant_playbook: s.consultant_playbook === "v2" ? "v2" : undefined,
     consultant_pricelist: (() => {
       const p = obj(s.consultant_pricelist);
       if (!Object.keys(p).length) return undefined;

@@ -3,6 +3,7 @@ import { type FormEvent } from "react";
 import { type getClientFn } from "@/app/operator/clients.functions";
 import {
   setConsultantLimitsFn,
+  setConsultantPlaybookFn,
   setConsultantPricelistFn,
   setConsultantPricelistOptionsFn,
   setConsultantSearchFn,
@@ -30,6 +31,10 @@ export function ConsultantLimitsCard({
   });
   const toggleSearch = useAction(async (on: boolean) => {
     await setConsultantSearchFn({ data: { botId: c.id, on } });
+    await onDone();
+  });
+  const togglePlaybook = useAction(async (on: boolean) => {
+    await setConsultantPlaybookFn({ data: { botId: c.id, on } });
     await onDone();
   });
   const togglePricelist = useAction(async (on: boolean) => {
@@ -139,6 +144,23 @@ export function ConsultantLimitsCard({
         </span>
       </label>
       <ErrorBox error={toggleSearch.error} />
+      <label className="mt-4 flex items-start gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={budget.playbook}
+          disabled={togglePlaybook.busy}
+          onChange={(e) => void togglePlaybook.run(e.currentTarget.checked).catch(() => {})}
+        />
+        <span>
+          Сценарий продавца v2
+          <span className="block text-xs text-muted">
+            Магазин в переписке с кнопкой «Купить»: короткий ответ (что это, цена, польза) и кнопка
+            вместо прайса и вопроса «Оформляем заказ?», понятный вариант — сразу на кнопку.
+            Выключено — прежний сценарий.
+          </span>
+        </span>
+      </label>
+      <ErrorBox error={togglePlaybook.error} />
       <label className="mt-4 flex items-start gap-2 text-sm">
         <input
           type="checkbox"

@@ -52,6 +52,15 @@ export const setConsultantSearchFn = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+/** «Сценарий продавца v2»: короткий ответ и кнопка «Купить» вместо прайса и вопроса. */
+export const setConsultantPlaybookFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ botId, on: z.boolean() }).parse(d))
+  .handler(async ({ data }) => {
+    await guard();
+    await (await impl()).setConsultantPlaybook(data.botId, data.on, await actor());
+    return { ok: true };
+  });
+
 /** Консультант «по прайсу» (BOVI): прайс 1С, рубли по курсу банка, нерабочие часы. */
 export const setConsultantPricelistFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ botId, on: z.boolean() }).parse(d))
