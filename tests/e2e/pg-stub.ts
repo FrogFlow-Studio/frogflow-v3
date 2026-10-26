@@ -974,6 +974,9 @@ export function startPgStub(port: number, db: StubDb) {
       }
     })();
   });
+  // Клиент теста держит соединение открытым между запросами. При стандартных 5 с сервер
+  // закрывал его ровно тогда, когда тест слал следующий запрос, и тот падал с ECONNRESET.
+  server.keepAliveTimeout = 120_000;
   return new Promise<() => Promise<void>>((resolve) =>
     server.listen(port, "127.0.0.1", () =>
       resolve(() => new Promise<void>((r) => server.close(() => r()))),
