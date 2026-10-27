@@ -431,6 +431,35 @@ function withTailCache(
   return [...messages.slice(0, -1), { ...last, content: blocks }];
 }
 
+/**
+ * Начало запроса, одинаковое у всех ходов магазина: инструменты и подсказка с
+ * картой прайса и оглавлением базы знаний, обе в кеше на `ttl`. Прогрев кеша
+ * (cache-warm.server) шлёт ровно его — иначе кеш не совпадёт.
+ */
+export function pricelistPromptPrefix(
+  data: PricelistData,
+  ttl: "5m" | "1h" = "1h",
+): { system: Anthropic.TextBlockParam[]; tools: Anthropic.Tool[] } {
+  const system = buildV2SystemPrompt({
+    catalogSection: formatAssortmentMapForV2(data.catalog),
+    knowledgeSection: formatKnowledgeIndexForPrompt(data.articles),
+    brandsSection: formatSynonymsForPrompt(data.synonyms),
+    shopUrl: data.shopUrl,
+    store: data.store,
+    persona: data.persona,
+    virtualIntro: data.virtualIntro,
+  });
+  const tools = V2_TOOLS.map((tool, i) =>
+    i === V2_TOOLS.length - 1
+      ? { ...tool, cache_control: { type: "ephemeral" as const, ttl } }
+      : tool,
+  ) as unknown as Anthropic.Tool[];
+  return {
+    system: [{ type: "text", text: system, cache_control: { type: "ephemeral", ttl } }],
+    tools,
+  };
+}
+
 export async function decidePricelistReply(
   data: PricelistData,
   input: PricelistInput,
@@ -462,15 +491,6 @@ async function decide(data: PricelistData, input: PricelistInput): Promise<Price
     ].join("\n"),
     askedBefore: replyAskedBefore(state.recent ?? []),
   };
-  const system = buildV2SystemPrompt({
-    catalogSection: formatAssortmentMapForV2(catalog),
-    knowledgeSection: formatKnowledgeIndexForPrompt(articles),
-    brandsSection: formatSynonymsForPrompt(data.synonyms),
-    shopUrl: data.shopUrl,
-    store: data.store,
-    persona: data.persona,
-    virtualIntro: data.virtualIntro,
-  });
 
   // Покупатель сам назвал Россию или российский город — страна и город в
   // профиль кодом: 27.09 модель их не запомнила, и цены ушли в тенге.
@@ -550,14 +570,7 @@ async function decide(data: PricelistData, input: PricelistInput): Promise<Price
     ];
   }
 
-  const tools = V2_TOOLS.map((tool, i) =>
-    i === V2_TOOLS.length - 1
-      ? { ...tool, cache_control: { type: "ephemeral" as const, ttl } }
-      : tool,
-  ) as unknown as Anthropic.Tool[];
-  const systemBlocks: Anthropic.TextBlockParam[] = [
-    { type: "text", text: system, cache_control: { type: "ephemeral", ttl } },
-  ];
+  const { tools, system: systemBlocks } = pricelistPromptPrefix(data, ttl);
 
   let profile: V2Profile | undefined = knownProfile;
   let handoff: PricelistHandoff | null = null;

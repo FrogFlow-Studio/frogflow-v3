@@ -2,6 +2,7 @@
 import { type FormEvent } from "react";
 import { type getClientFn } from "@/app/operator/clients.functions";
 import {
+  setConsultantCacheWarmFn,
   setConsultantLimitsFn,
   setConsultantPlaybookFn,
   setConsultantPricelistFn,
@@ -35,6 +36,10 @@ export function ConsultantLimitsCard({
   });
   const togglePlaybook = useAction(async (on: boolean) => {
     await setConsultantPlaybookFn({ data: { botId: c.id, on } });
+    await onDone();
+  });
+  const toggleCacheWarm = useAction(async (on: boolean) => {
+    await setConsultantCacheWarmFn({ data: { botId: c.id, on } });
     await onDone();
   });
   const togglePricelist = useAction(async (on: boolean) => {
@@ -179,6 +184,28 @@ export function ConsultantLimitsCard({
       </label>
       <ErrorBox error={togglePricelist.error} />
       {budget.pricelist && <PricelistOptions c={c} budget={budget} onDone={onDone} />}
+      {budget.pricelist && (
+        <>
+          <label className="mt-4 flex items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={budget.cacheWarm}
+              disabled={toggleCacheWarm.busy}
+              onChange={(e) => void toggleCacheWarm.run(e.currentTarget.checked).catch(() => {})}
+            />
+            <span>
+              Прогрев кеша консультанта
+              <span className="block text-xs text-muted">
+                Если консультант 54 минуты не отвечал, короткий вызов модели продлевает кеш
+                подсказки с прайсом ещё на час: следующий ответ читает прайс из кеша, а не
+                записывает заново. Платит платформа, с ИИ-баланса клиента не списывается, расход
+                пишется отдельно от ответов. Выключено — без прогрева.
+              </span>
+            </span>
+          </label>
+          <ErrorBox error={toggleCacheWarm.error} />
+        </>
+      )}
     </Card>
   );
 }

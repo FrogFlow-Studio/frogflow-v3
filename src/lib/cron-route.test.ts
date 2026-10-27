@@ -17,6 +17,7 @@ const V2 = {
     served_by: "v2",
     vip: { token_enc: "x", username: "vipbot" },
     zernio: { profile_id: "p", account_ids: ["a"] },
+    consultant_cache_warm: true,
   },
 };
 const V1 = {
@@ -26,6 +27,7 @@ const V1 = {
     served_by: "v1",
     vip: { token_enc: "x", username: "vipbot" },
     zernio: { profile_id: "p", account_ids: ["a"] },
+    consultant_cache_warm: true,
   },
 };
 const NONE = {
@@ -34,6 +36,7 @@ const NONE = {
   settings: {
     vip: { token_enc: "x", username: "vipbot" },
     zernio: { profile_id: "p", account_ids: ["a"] },
+    consultant_cache_warm: true,
   },
 };
 
@@ -120,6 +123,9 @@ vi.mock("@/channels/zernio/dispatch.server", () => ({
 vi.mock("@/channels/zernio/inbox-poll.server", () => ({
   runInboxPollFor: hitList("inboxPoll"),
 }));
+vi.mock("@/core/consultant/pricelist/cache-warm.server", () => ({
+  warmPricelistCache: hit("cacheWarm"),
+}));
 vi.mock("@/channels/zernio/consultant-jobs.server", () => ({
   runPricelistJobs: hitList("pricelist"),
 }));
@@ -180,7 +186,7 @@ const JOBS: Record<string, string[]> = {
   giveaways: ["giveaways"],
   "course-lives": ["courseLives"],
   "comment-dm-fallback": ["commentDm"],
-  "inbox-poll": ["inboxPoll"],
+  "inbox-poll": ["inboxPoll", "cacheWarm"],
   observer: ["observer"],
   health: [
     "zernioSync",

@@ -61,6 +61,15 @@ export const setConsultantPlaybookFn = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+/** Прогрев кеша консультанта по прайсу: после 54 минут тишины — короткий вызов за счёт платформы. */
+export const setConsultantCacheWarmFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ botId, on: z.boolean() }).parse(d))
+  .handler(async ({ data }) => {
+    await guard();
+    await (await impl()).setConsultantCacheWarm(data.botId, data.on, await actor());
+    return { ok: true };
+  });
+
 /** Консультант «по прайсу» (BOVI): прайс 1С, рубли по курсу банка, нерабочие часы. */
 export const setConsultantPricelistFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ botId, on: z.boolean() }).parse(d))

@@ -58,6 +58,7 @@ export {
   setMarketplaceApproved,
   setConsultantSearch,
   setConsultantPlaybook,
+  setConsultantCacheWarm,
   setConsultantPricelist,
   setConsultantPricelistOptions,
   smartSearchBudget,

@@ -238,6 +238,7 @@ const ALL = {
   consultant_pause_hours: 3,
   consultant_search: true,
   consultant_playbook: "v2",
+  consultant_cache_warm: true,
   consultant_pricelist: { enabled: true, hours: { open: 9, close: 18 }, rate_source: "vtb" },
   bot_texts: { welcome: { telegram: { ru: "Привет!" } } },
   work_hours: { open: 9, close: 18 },

@@ -30,6 +30,7 @@ export async function consultantBudget(botId: string) {
     today: parseDaily(data?.value, today()),
     search: t.settings.consultant_search === true,
     playbook: t.settings.consultant_playbook === "v2",
+    cacheWarm: t.settings.consultant_cache_warm === true,
     pricelist: t.settings.consultant_pricelist?.enabled === true,
     pricelistOptions: {
       hours: t.settings.consultant_pricelist?.hours ?? null,
@@ -87,6 +88,12 @@ export async function setConsultantSearch(botId: string, on: boolean, actor = "o
 export async function setConsultantPlaybook(botId: string, on: boolean, actor = "operator") {
   await patchTenantSettings(botId, { consultant_playbook: on ? "v2" : null });
   await logEvent(botId, "meta", { consultant_playbook: on ? "v2" : null }, actor);
+}
+
+/** Прогрев кеша консультанта по прайсу (core/consultant/pricelist/cache-warm). */
+export async function setConsultantCacheWarm(botId: string, on: boolean, actor = "operator") {
+  await patchTenantSettings(botId, { consultant_cache_warm: on ? true : null });
+  await logEvent(botId, "meta", { consultant_cache_warm: on }, actor);
 }
 
 /** Консультант «по прайсу» BOVI (core/consultant/pricelist) — включает оператор. */
