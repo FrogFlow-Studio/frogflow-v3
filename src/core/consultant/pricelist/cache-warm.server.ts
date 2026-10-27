@@ -1,13 +1,11 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { env } from "@/config/env";
 import { modelParams } from "@/core/ai/pure";
-import { todayInZone } from "@/core/preorder/preorder";
-import { updateSettingAtomic, updateSettingStamped } from "@/core/settings/settings";
+import { updateSettingStamped } from "@/core/settings/settings";
 import { servedByV2 } from "@/core/tenant/directory";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { previewReadonly } from "@/lib/preview";
 import { serverFailure } from "@/lib/server-failure";
-import { parseSpend } from "@/core/postpay/postpay";
 import { pricelistMode } from "./mode";
 
 /**
@@ -18,16 +16,18 @@ import { pricelistMode } from "./mode";
  * же началом, пока кеш не остыл, продлевает его ещё на час.
  *
  * Галочка оператора `consultant_cache_warm`, по умолчанию выключено. Вызов не
- * создаёт диалога и не списывается с ИИ-баланса клиента: платит платформа,
- * расход — отдельно в `consultant_cache_warm_spend:<дата>`.
+ * создаёт диалога. Платит клиент (решение Якова 27.10): бронь и расчёт с
+ * ИИ-баланса по цене API с наценкой оператора, в журнале баланса — отдельная
+ * строка «Прогрев кеша консультанта» (`ai_charges`, use `cache_warm`).
  */
 
 /** Кеш живёт час; крон опроса ящика идёт раз в минуту — греем после 54 минут тишины. */
 export const CACHE_WARM_IDLE_MS = 54 * 60_000;
 /** Последний прогрев магазина: условная отметка, только выигравший шлёт вызов. */
 export const CACHE_WARM_KEY = "consultant_cache_warm";
-export const cacheWarmSpendKey = (date: string) => `consultant_cache_warm_spend:${date}`;
 const WARM_TIMEOUT_MS = 20_000;
+/** Бронь с ИИ-баланса: запись кеша заново ≈0,048 $ (12 тыс. токенов по 4 $ за миллион) с запасом. */
+export const CACHE_WARM_RESERVE_USD = 0.06;
 
 export type CacheWarmResult = { warmed: true; usd: number; idleMin: number } | { skipped: string };
 
@@ -86,7 +86,7 @@ export async function warmPricelistCache(
   const { consultantEnabled, callUsd, DEFAULT_MODEL } = await import("../engine.server");
   if (!(await consultantEnabled(ctx))) return { skipped: "консультант выключен" };
   // Ответов не будет — греть нечего.
-  const { aiBalancePeek } = await import("@/core/ai/balance");
+  const { aiBalancePeek, aiReserve, aiSettle, aiRelease } = await import("@/core/ai/balance");
   if ((await aiBalancePeek(ctx))?.empty) return { skipped: "ИИ-баланс клиента пуст" };
 
   const now = (deps.now ?? new Date()).getTime();
@@ -110,20 +110,27 @@ export async function warmPricelistCache(
   if (!data.catalog.length) return { skipped: "прайс пуст" };
   const model = await pricelistModel(ctx, env().CONSULTANT_MODEL?.trim() || DEFAULT_MODEL);
   const { system, tools } = pricelistPromptPrefix(data);
-  const res = await (deps.call ?? liveCall)({
-    model,
-    max_tokens: 1,
-    system,
-    tools,
-    messages: [{ role: "user", content: "." }],
-    ...modelParams(model),
-  } as Anthropic.MessageCreateParamsNonStreaming);
+
+  const hold = await aiReserve(ctx, "cache_warm", CACHE_WARM_RESERVE_USD);
+  if (hold === "short") return { skipped: "ИИ-баланс клиента пуст" };
+  if (hold === "failed") return { skipped: "бронь ИИ-баланса не записана" };
+  let res: Pick<Anthropic.Message, "usage">;
+  try {
+    res = await (deps.call ?? liveCall)({
+      model,
+      max_tokens: 1,
+      system,
+      tools,
+      messages: [{ role: "user", content: "." }],
+      ...modelParams(model),
+    } as Anthropic.MessageCreateParamsNonStreaming);
+  } catch (e) {
+    // Прогрев не удался — клиенту не в счёт, бронь целиком назад.
+    await aiRelease(ctx, hold);
+    throw e;
+  }
   const usd = callUsd(model, res.usage);
-  const date = todayInZone(ctx.timezone, new Date(now));
-  await updateSettingAtomic(ctx, cacheWarmSpendKey(date), (raw) => {
-    const s = parseSpend(raw);
-    return JSON.stringify({ usd: Math.round((s.usd + usd) * 1e6) / 1e6, calls: s.calls + 1 });
-  }).catch((e: unknown) => console.warn(`[cache-warm:${ctx.tenant.id}] расход: ${String(e)}`));
+  await aiSettle(ctx, hold, usd);
   return {
     warmed: true,
     usd,

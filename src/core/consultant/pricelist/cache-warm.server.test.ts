@@ -3,7 +3,9 @@ import type Anthropic from "@anthropic-ai/sdk";
 import { setEnvForTests } from "@/config/env";
 import { fakeDb } from "../../../../tests/fake-db";
 import type { TenantContext } from "@/core/tenant/resolve.server";
-import { CACHE_WARM_KEY, cacheWarmSpendKey, warmPricelistCache } from "./cache-warm.server";
+import { setAiMarkupSource } from "@/core/ai/markup";
+import { aiJournal } from "@/core/ai/balance";
+import { CACHE_WARM_KEY, warmPricelistCache } from "./cache-warm.server";
 import { decidePricelistReply, loadPricelistData } from "./engine.server";
 
 const BOT = "bb3ffba7-edf0-4cce-8742-ff10c9495c44";
@@ -23,7 +25,10 @@ const CATALOG = [
 ];
 
 beforeEach(() => setEnvForTests({ ANTHROPIC_API_KEY: "test-key" }));
-afterEach(() => setEnvForTests(undefined));
+afterEach(() => {
+  setEnvForTests(undefined);
+  setAiMarkupSource(null);
+});
 
 function setup(
   opts: {
@@ -109,16 +114,54 @@ describe("прогрев кеша консультанта по прайсу", (
     expect(calls[0]!.model).toBe("claude-sonnet-5");
     expect(calls[0]!.max_tokens).toBe(1);
 
-    // Расход — отдельно, за счёт платформы: баланс клиента и диалоги не тронуты.
-    const spend = JSON.parse(setting(cacheWarmSpendKey("2026-10-27"))!) as {
-      usd: number;
-      calls: number;
-    };
-    expect(spend.calls).toBe(1);
-    expect(spend.usd).toBeCloseTo((3 * 2 + 12_000 * 0.2 + 1 * 10) / 1e6, 6);
-    expect(JSON.parse(setting("ai_balance")!)).toEqual({ usd: 4.3, low: false, empty: false });
+    // Платит клиент: с ИИ-баланса списана цена вызова, в журнале — своя строка.
+    const usd = (3 * 2 + 12_000 * 0.2 + 1 * 10) / 1e6;
+    const bal = JSON.parse(setting("ai_balance")!) as { usd: number };
+    expect(bal.usd).toBeCloseTo(4.3 - usd, 6);
+    const journal = await aiJournal(ctx);
+    expect(journal).toEqual([
+      expect.objectContaining({
+        type: "charges",
+        use: "cache_warm",
+        label: "Прогрев кеша консультанта",
+        calls: 1,
+      }),
+    ]);
+    expect((journal[0] as { usd: number }).usd).toBeCloseTo(usd, 6);
     expect(db.tables.consultant_message_runs).toHaveLength(2);
     expect(JSON.parse(setting(CACHE_WARM_KEY)!)).toEqual({ at: NOW.toISOString() });
+  });
+
+  it("наценка оператора 10 % ложится и на прогрев", async () => {
+    setAiMarkupSource(async () => 10);
+    const { ctx, call, setting } = setup({ runs: [minAgo(70)] });
+    expect(await warmPricelistCache(ctx, { call, now: NOW })).toMatchObject({ warmed: true });
+    const usd = ((3 * 2 + 12_000 * 0.2 + 1 * 10) / 1e6) * 1.1;
+    expect((JSON.parse(setting("ai_balance")!) as { usd: number }).usd).toBeCloseTo(4.3 - usd, 6);
+    const [row] = await aiJournal(ctx);
+    expect((row as { usd: number }).usd).toBeCloseTo(usd, 6);
+  });
+
+  it("на балансе меньше брони — не греет и ничего не списывает", async () => {
+    const { ctx, calls, call, setting } = setup({
+      runs: [minAgo(70)],
+      extra: { ai_balance: JSON.stringify({ usd: 0.03, low: true, empty: false }) },
+    });
+    expect(await warmPricelistCache(ctx, { call, now: NOW })).toEqual({
+      skipped: "ИИ-баланс клиента пуст",
+    });
+    expect(calls).toHaveLength(0);
+    expect((JSON.parse(setting("ai_balance")!) as { usd: number }).usd).toBe(0.03);
+  });
+
+  it("вызов модели упал — бронь возвращается, клиенту не в счёт", async () => {
+    const { ctx, setting } = setup({ runs: [minAgo(70)] });
+    const call = async () => {
+      throw new Error("overloaded");
+    };
+    await expect(warmPricelistCache(ctx, { call, now: NOW })).rejects.toThrow("overloaded");
+    expect((JSON.parse(setting("ai_balance")!) as { usd: number }).usd).toBeCloseTo(4.3, 6);
+    expect(await aiJournal(ctx)).toEqual([]);
   });
 
   it("недавно отвечал (10 мин назад) — не греет", async () => {
@@ -157,6 +200,9 @@ describe("прогрев кеша консультанта по прайсу", (
     ]);
     expect([a, b].filter((r) => "warmed" in r)).toHaveLength(1);
     expect(calls).toHaveLength(1);
+    // И списание одно.
+    const [row] = await aiJournal(ctx);
+    expect(row).toMatchObject({ use: "cache_warm", calls: 1 });
   });
 
   it("гонка при уже записанной отметке прогрева — вызов тоже один", async () => {

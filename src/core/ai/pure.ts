@@ -12,7 +12,13 @@ export const AI_MARKUP_MAX = 500;
 export const AI_TOPUP_MIN_USD = 5;
 export const AI_TOPUP_MAX_USD = 500;
 
-export type AiUse = "consultant" | "assistant" | "smart_search" | "receipt_ocr" | "tutor";
+export type AiUse =
+  | "consultant"
+  | "assistant"
+  | "smart_search"
+  | "receipt_ocr"
+  | "tutor"
+  | "cache_warm";
 
 export const AI_USE_LABEL: Record<AiUse, string> = {
   consultant: "ИИ-консультант",
@@ -20,6 +26,7 @@ export const AI_USE_LABEL: Record<AiUse, string> = {
   smart_search: "Умный поиск",
   receipt_ocr: "Распознавание чеков",
   tutor: "ИИ-наставник уроков",
+  cache_warm: "Прогрев кеша консультанта",
 };
 
 /**
