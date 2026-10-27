@@ -32,6 +32,8 @@ export const ru = {
   "aiBalance.use.assistant": "ИИ-помощник (тексты товаров)",
   "aiBalance.use.smart_search": "Умный поиск",
   "aiBalance.use.receipt_ocr": "Распознавание чеков",
+  "aiBalance.use.tutor": "ИИ-наставник уроков",
+  "aiBalance.use.cache_warm": "Прогрев кеша консультанта",
 };
 
 export const kk: SectionDict<typeof ru> = {
@@ -65,6 +67,8 @@ export const kk: SectionDict<typeof ru> = {
   "aiBalance.use.assistant": "ЖИ-көмекші (тауар мәтіндері)",
   "aiBalance.use.smart_search": "Ақылды іздеу",
   "aiBalance.use.receipt_ocr": "Чектерді тану",
+  "aiBalance.use.tutor": "Сабақтардың ЖИ-тәлімгері",
+  "aiBalance.use.cache_warm": "Кеңесші кэшін жылыту",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -98,6 +102,8 @@ export const en: SectionDict<typeof ru> = {
   "aiBalance.use.assistant": "AI assistant (product texts)",
   "aiBalance.use.smart_search": "Smart search",
   "aiBalance.use.receipt_ocr": "Receipt recognition",
+  "aiBalance.use.tutor": "AI lesson tutor",
+  "aiBalance.use.cache_warm": "Consultant cache warm-up",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -131,4 +137,6 @@ export const uz: SectionDict<typeof ru> = {
   "aiBalance.use.assistant": "SI-yordamchi (mahsulot matnlari)",
   "aiBalance.use.smart_search": "Aqlli qidiruv",
   "aiBalance.use.receipt_ocr": "Cheklarni tanish",
+  "aiBalance.use.tutor": "Darslar SI-murabbiysi",
+  "aiBalance.use.cache_warm": "Maslahatchi keshini isitish",
 };
