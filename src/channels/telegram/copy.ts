@@ -238,6 +238,8 @@ export type Msg = {
   payLinkBtn: (kaspi: boolean) => string;
   /** Подсказка под реквизитами со ссылкой. */
   payLinkHint: string;
+  /** То же для WhatsApp: ссылка идёт текстом, кнопки под ней нет. */
+  payLinkTextHint: string;
   /** Покупатель не может оплатить предложенным способом — вопрос ушёл продавцу. */
   payTroubleHandoff: string;
   /** Продамус с кассой не в рублях (форма KZ): карта любого банка, без «РФ / СБП». */
@@ -250,6 +252,8 @@ export type Msg = {
   kaspiTransferLine: string;
   prodamusCardHint: string;
   robokassaHint: string;
+  /** Robokassa в WhatsApp: ссылка текстом, без кнопки (Копилка, заказ #273, 27.10). */
+  robokassaLinkHint: string;
   paymentReceived: (no: number) => string;
   chooseCountry: string;
   /** Шаг оплаты при ценах во всех валютах: у каждой страны сумма корзины. */
@@ -470,6 +474,8 @@ const ru: Msg = {
     "Передал ваш вопрос продавцу: он напишет вам здесь, как удобнее оплатить. Заказ сохранён.",
   payLinkHint:
     "Нажмите кнопку ниже. Если не открывается — скопируйте ссылку и откройте её в браузере или в приложении Kaspi.",
+  payLinkTextHint:
+    "Откройте ссылку ниже. Если не открывается — скопируйте её и откройте в браузере или в приложении Kaspi.",
   payByCardBtn: "💳 Картой РФ",
   cardOnlineLine:
     "💳 «Оплата картой» — любая карта, и Kaspi Gold, и карты СНГ: заказ подтвердится сам сразу после оплаты.",
@@ -808,6 +814,8 @@ const ru: Msg = {
   prodamusFormSum: (sum) => `в форме оплаты — ${sum}`,
   payManualBtn: "🧾 Перевод по реквизитам + чек",
   robokassaHint: "Нажмите кнопку, оплатите картой — после оплаты всё придёт сюда автоматически.",
+  robokassaLinkHint:
+    "Откройте ссылку ниже и оплатите картой — после оплаты всё придёт сюда автоматически.",
   paymentReceived: (no) => `✅ Оплата по заказу #${no} получена.`,
   chooseCountry: "🌍 Выберите страну оплаты:",
   choosePayCountry: "💳 Откуда будете оплачивать? Сумма — в валюте этой страны:",
@@ -930,8 +938,14 @@ const kk: Msg = {
     "Сұрағыңызды сатушыға жібердім: ол осында қалай төлеген ыңғайлы екенін жазады. Тапсырыс сақталды.",
   payLinkHint:
     "Төмендегі батырманы басыңыз. Ашылмаса — сілтемені көшіріп, браузерде немесе Kaspi қосымшасында ашыңыз.",
+  payLinkTextHint:
+    "Төмендегі сілтемені ашыңыз. Ашылмаса — оны көшіріп, браузерде немесе Kaspi қосымшасында ашыңыз.",
   payByCardBtn: "💳 РФ картасымен",
   payViaRobokassaBtn: "💳 Картамен төлеу",
+  robokassaHint:
+    "Батырманы басып, картамен төлеңіз — төлемнен кейін бәрі осында автоматты түрде келеді.",
+  robokassaLinkHint:
+    "Төмендегі сілтемені ашып, картамен төлеңіз — төлемнен кейін бәрі осында автоматты түрде келеді.",
   cardOnlineLine:
     "💳 «Картамен төлеу» — кез келген карта, Kaspi Gold пен ТМД карталары да: тапсырыс төлемнен кейін бірден расталады.",
   kaspiTransferLine:
@@ -1278,8 +1292,14 @@ const en: Msg = {
     "I passed your question to the seller: they will write here about the best way to pay. Your order is saved.",
   payLinkHint:
     "Tap the button below. If it does not open, copy the link and open it in your browser or the Kaspi app.",
+  payLinkTextHint:
+    "Open the link below. If it does not open, copy it and open it in your browser or the Kaspi app.",
   payByCardBtn: "💳 Russian card",
   payViaRobokassaBtn: "💳 Pay by card",
+  robokassaHint:
+    "Tap the button and pay by card — everything will arrive here automatically after payment.",
+  robokassaLinkHint:
+    "Open the link below and pay by card — everything will arrive here automatically after payment.",
   cardOnlineLine:
     "💳 “Pay by card” — any card, Kaspi Gold and CIS cards too: the order is confirmed right after payment.",
   kaspiTransferLine:
@@ -1656,8 +1676,14 @@ const uz: Msg = {
     "Chekni qanday yuborish: Kaspi yoki bank ilovasida shu to‘lovni oching va skrinshot oling. Keyin shu chatda xabar maydoni yonidagi rasm 🖼 yoki qisqich 📎 belgisini bosing va skrinshotni galereyadan tanlang.",
   payLinkHint:
     "Quyidagi tugmani bosing. Ochilmasa — havolani nusxalab, brauzerda yoki Kaspi ilovasida oching.",
+  payLinkTextHint:
+    "Quyidagi havolani oching. Ochilmasa — uni nusxalab, brauzerda yoki Kaspi ilovasida oching.",
   payByCardBtn: "💳 RF kartasi",
   payViaRobokassaBtn: "💳 Kartadan to‘lov",
+  robokassaHint:
+    "Tugmani bosing va karta bilan to‘lang — to‘lovdan so‘ng hammasi shu yerga avtomatik keladi.",
+  robokassaLinkHint:
+    "Quyidagi havolani oching va karta bilan to‘lang — to‘lovdan so‘ng hammasi shu yerga avtomatik keladi.",
   cardOnlineLine:
     "💳 «Kartadan to‘lov» — istalgan karta, Kaspi Gold va MDH kartalari ham: buyurtma to‘lovdan so‘ng darhol tasdiqlanadi.",
   kaspiTransferLine:
