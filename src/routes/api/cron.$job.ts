@@ -9,6 +9,8 @@ import { cronBudget, eachWithin, inTurn, mapWithin, resumeOf } from "@/lib/cron-
 
 /** Опрос ящика Zernio идёт раз в минуту — укладываемся в 45 с, с запасом до следующего. */
 const INBOX_POLL_BUDGET_MS = 45_000;
+/** Прогрев кеша после опроса — только если до срока остаётся больше тайм-аута вызова. */
+const CACHE_WARM_RESERVE_MS = 22_000;
 
 /**
  * Кроны одного деплоя обходят всех арендаторов. Каждая задача — функция
@@ -310,6 +312,26 @@ export const Route = createFileRoute("/api/cron/$job")({
               for (const [id, r] of Object.entries(polled))
                 if (r && typeof r === "object" && "skipped" in r && r.skipped === "budget")
                   skipped.add(id);
+              // Прогрев кеша консультанта по прайсу (галочка оператора): раз в минуту
+              // проверяем, не остывает ли кеш, — если на вызов хватает времени до срока.
+              const warmable = ordered.filter((t) => t.settings.consultant_cache_warm === true);
+              if (warmable.length) {
+                const { warmPricelistCache } =
+                  await import("@/core/consultant/pricelist/cache-warm.server");
+                const warmed: Record<string, unknown> = {};
+                for (const t of warmable) {
+                  if (Date.now() > startedAt + INBOX_POLL_BUDGET_MS - CACHE_WARM_RESERVE_MS) {
+                    warmed[t.id] = { skipped: "budget" };
+                    continue;
+                  }
+                  try {
+                    warmed[t.id] = await warmPricelistCache(tenantContext(t));
+                  } catch (e) {
+                    warmed[t.id] = await tenantFailure(t.id, e);
+                  }
+                }
+                results.cacheWarm = warmed;
+              }
               resume = resumeOf(ordered, skipped);
               break;
             }

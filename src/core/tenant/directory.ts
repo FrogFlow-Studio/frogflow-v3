@@ -260,6 +260,8 @@ export function settingsFromJson(json: unknown): TenantSettings {
     consultant_search: s.consultant_search === true ? true : undefined,
     // Флаг оператора «Сценарий продавца v2» (core/consultant/prompt).
     consultant_playbook: s.consultant_playbook === "v2" ? "v2" : undefined,
+    // Флаг оператора «Прогрев кеша консультанта» (core/consultant/pricelist/cache-warm).
+    consultant_cache_warm: s.consultant_cache_warm === true ? true : undefined,
     consultant_pricelist: (() => {
       const p = obj(s.consultant_pricelist);
       if (!Object.keys(p).length) return undefined;

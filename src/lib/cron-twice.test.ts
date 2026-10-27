@@ -49,6 +49,7 @@ const TWICE: Record<string, Evidence> = {
   commentDm: { test: ["src/channels/zernio/comment-dm-fallback.test.ts"] },
   // inbox-poll
   inboxPoll: { test: ["src/channels/zernio/inbox-poll.test.ts"] },
+  cacheWarm: { test: ["src/core/consultant/pricelist/cache-warm.server.test.ts"] },
   // health
   zernioSync: { idempotent: "сверка аккаунтов Zernio пишет снимок состояния, сообщений не шлёт" },
   channelGuard: { test: ["src/channels/zernio/guard.server.test.ts"] },
