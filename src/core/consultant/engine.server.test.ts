@@ -277,7 +277,10 @@ describe("проверка статуса заказа", () => {
     const ctx = ctxOf();
     content = [text("Сейчас проверю.")];
     const buyer = { ...customer(), userKey: "wa_1", platform: "whatsapp" as const };
-    await runConsultant(ctx, buyer, "Вы отменили заказ?", { platform: "whatsapp", shopInChat: true });
+    await runConsultant(ctx, buyer, "Вы отменили заказ?", {
+      platform: "whatsapp",
+      shopInChat: true,
+    });
     expect(args().model).toBe("claude-sonnet-5-5");
     expect(args().tool_choice).toBeUndefined();
     expect(args().thinking).toEqual({ type: "between_tools" });
