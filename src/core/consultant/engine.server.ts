@@ -49,7 +49,7 @@ import {
 } from "./catalog-tool.server";
 import { pauseHours, pausedUntilIso } from "./pause";
 import { takeAiCall } from "./rate.server";
-import { modelParams } from "@/core/ai/pure";
+import { forcedToolChoice, modelParams } from "@/core/ai/pure";
 import { serverFailure } from "@/lib/server-failure";
 import {
   ASK_CONTACT_RESULT,
@@ -1569,7 +1569,7 @@ async function answerConsultant(
         ],
         tools,
         // Последний раунд — без инструментов: модель отвечает тем, что уже нашла.
-        ...(orderStatusQuestion && round === 0
+        ...(orderStatusQuestion && round === 0 && forcedToolChoice(model)
           ? { tool_choice: { type: "tool" as const, name: ORDER_STATUS_TOOL.name } }
           : last && loaded
             ? { tool_choice: { type: "none" as const } }

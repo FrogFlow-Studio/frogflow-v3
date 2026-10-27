@@ -271,6 +271,23 @@ describe("проверка статуса заказа", () => {
     expect(result?.verifiedOrderStatus).toBe(true);
     expect(result?.handoff).toBeNull();
   });
+
+  it("Sonnet 5.5 (принудительный инструмент — 400): tool_choice не шлём, без размышления через between_tools", async () => {
+    setEnvForTests({ ANTHROPIC_API_KEY: "sk-test", CONSULTANT_MODEL: "claude-sonnet-5-5" });
+    const ctx = ctxOf();
+    content = [text("Сейчас проверю.")];
+    const buyer = { ...customer(), userKey: "wa_1", platform: "whatsapp" as const };
+    await runConsultant(ctx, buyer, "Вы отменили заказ?", {
+      platform: "whatsapp",
+      shopInChat: true,
+    });
+    expect(args().model).toBe("claude-sonnet-5-5");
+    expect(args().tool_choice).toBeUndefined();
+    expect(args().thinking).toEqual({ type: "between_tools" });
+    expect(args().tools).toEqual(
+      expect.arrayContaining([expect.objectContaining({ name: "get_my_order_status" })]),
+    );
+  });
 });
 
 describe("отмена заказа по решению AI-консультанта", () => {

@@ -85,6 +85,7 @@ export const PRICELIST_MAX_TOKENS = 800;
 export const PRICELIST_MODELS = [
   "claude-haiku-4-5-20251001",
   "claude-sonnet-5",
+  "claude-sonnet-5-5",
   "claude-haiku-5-5",
 ] as const;
 export const MODEL_KEY = "consultant_model";
