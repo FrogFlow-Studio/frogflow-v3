@@ -1,3 +1,4 @@
+import { forcedToolChoice } from "@/core/ai/pure";
 import { beforeEach, describe, expect, it } from "vitest";
 import type Anthropic from "@anthropic-ai/sdk";
 import type { ConsultantProduct } from "./catalog";
@@ -201,6 +202,16 @@ describe("консультант по прайсу", () => {
     expect(modelParams("claude-sonnet-5")).toEqual({ thinking: { type: "disabled" } });
     expect(modelParams("claude-haiku-4-5-20251001")).toEqual({});
     expect(PRICELIST_MODELS).toContain("claude-haiku-5-5");
+  });
+
+  it("Sonnet 5.5: без размышления через between_tools (disabled у неё — 400), принудительный инструмент не шлём", () => {
+    expect(modelParams("claude-sonnet-5-5")).toEqual({
+      thinking: { type: "between_tools" },
+      output_config: { effort: "high" },
+    });
+    expect(forcedToolChoice("claude-sonnet-5-5")).toBe(false);
+    expect(forcedToolChoice("claude-sonnet-5")).toBe(true);
+    expect(PRICELIST_MODELS).toContain("claude-sonnet-5-5");
   });
 
   it("свои рабочие часы продавца: 11:00 при часах 12–20 — нерабочее время, при 10–21 — нет", async () => {

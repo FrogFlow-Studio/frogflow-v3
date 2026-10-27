@@ -13,12 +13,7 @@ export const AI_TOPUP_MIN_USD = 5;
 export const AI_TOPUP_MAX_USD = 500;
 
 export type AiUse =
-  | "consultant"
-  | "assistant"
-  | "smart_search"
-  | "receipt_ocr"
-  | "tutor"
-  | "cache_warm";
+  "consultant" | "assistant" | "smart_search" | "receipt_ocr" | "tutor" | "cache_warm";
 
 export const AI_USE_LABEL: Record<AiUse, string> = {
   consultant: "ИИ-консультант",
@@ -128,12 +123,23 @@ export type TokenPrice = { in: number; out: number; cacheWrite?: number; cacheRe
 /** Haiku 4.5 — модель консультанта, помощника и умного поиска. */
 export const HAIKU_PRICE: TokenPrice = { in: 1, out: 5, cacheWrite: 2, cacheRead: 0.1 };
 
+/** Sonnet 5.5: `thinking: disabled` и принудительный инструмент — ошибка 400. */
+const SONNET_55 = /^claude-sonnet-5-5/;
+
 /**
  * Sonnet 5 и Haiku 5.5 по умолчанию рассуждают — для чата это задержка, а не
  * качество. У Haiku 5.5 выключение допустимо при effort до high (по
- * умолчанию medium).
+ * умолчанию medium). Sonnet 5.5 не принимает `disabled`: самый низкий режим —
+ * `between_tools` (без размышлений) при effort не выше high.
  */
 export function modelParams(model: string): Record<string, unknown> {
+  if (SONNET_55.test(model))
+    return { thinking: { type: "between_tools" }, output_config: { effort: "high" } };
   if (/^claude-(sonnet-5|haiku-5)/.test(model)) return { thinking: { type: "disabled" } };
   return {};
+}
+
+/** Принимает ли модель `tool_choice` `tool`/`any`; нет — только `auto` и подсказка. */
+export function forcedToolChoice(model: string): boolean {
+  return !SONNET_55.test(model);
 }
