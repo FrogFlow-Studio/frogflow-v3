@@ -25,24 +25,43 @@ export type CommentConsultantResult = CommentAnswer & {
  */
 export async function consultantCommentAnswer(
   ctx: TenantContext,
-  p: { text: string; caption: string | null; postId: string; locale: Locale },
+  p: {
+    text: string;
+    caption: string | null;
+    postId: string;
+    /** Ссылка на публикацию: по ней находится тег, сохранённый по ссылке на рилс. */
+    permalink?: string | null;
+    locale: Locale;
+  },
   run?: (
     text: string,
-    story: { storyId: string; caption: string | null },
+    story: { storyId: string; caption: string | null; permalink?: string | null },
   ) => Promise<ConsultantResult | null>,
 ): Promise<CommentConsultantResult> {
   const call =
     run ??
-    (async (text: string, story: { storyId: string; caption: string | null }) => {
+    (async (
+      text: string,
+      story: { storyId: string; caption: string | null; permalink?: string | null },
+    ) => {
       const { runConsultant } = await import("./engine.server");
       return runConsultant(ctx, null, text, {
         platform: "instagram",
-        story: { storyId: story.storyId, mediaUrl: null, caption: story.caption },
+        story: {
+          storyId: story.storyId,
+          mediaUrl: null,
+          caption: story.caption,
+          permalink: story.permalink ?? null,
+        },
       });
     });
   let r: ConsultantResult | null = null;
   try {
-    r = await call(`${commentNote()}\n\n${p.text}`, { storyId: p.postId, caption: p.caption });
+    r = await call(`${commentNote()}\n\n${p.text}`, {
+      storyId: p.postId,
+      caption: p.caption,
+      permalink: p.permalink ?? null,
+    });
   } catch (e) {
     console.error(`[consultant:${ctx.tenant.id}] ответ на комментарий не составлен`, e);
   }

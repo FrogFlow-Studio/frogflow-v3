@@ -66,6 +66,8 @@ type Opts = {
   images?: V2Image[];
   storyProductIds?: string[];
   storyMediaUrl?: string;
+  storyId?: string;
+  storyPermalink?: string;
   storyCaption?: string;
   storyTags?: PricelistData["storyTags"];
   fetchImage?: (url: string) => Promise<V2Image | null>;
@@ -104,9 +106,15 @@ async function decide(text: string, state: PricelistState = {}, o: Opts = {}) {
     now: o.now ?? DAY,
     images: o.images,
     storyProductIds: o.storyProductIds,
-    story: o.storyMediaUrl
-      ? { storyId: null, mediaUrl: o.storyMediaUrl, caption: o.storyCaption }
-      : undefined,
+    story:
+      o.storyMediaUrl || o.storyId
+        ? {
+            storyId: o.storyId ?? null,
+            mediaUrl: o.storyMediaUrl ?? null,
+            caption: o.storyCaption,
+            permalink: o.storyPermalink ?? null,
+          }
+        : undefined,
     fetchImage: o.fetchImage ?? (async () => null),
     onToolCall: o.onToolCall,
     channel: o.channel,
@@ -806,6 +814,36 @@ describe("консультант по прайсу", () => {
     expect(text).toContain("не спрашивайте «что из публикации»");
     expect(text).toContain("попросите прислать фото (скрин) или название товара");
     expect(text).toMatch(/Uchino полотенце банное, 50x100 — 9\s000 ₸/);
+  });
+
+  it("комментарий под рилсом: тег по ссылке находится по permalink — модель получает товары с ценами", async () => {
+    // BOVI 20–27.10: под рилсом DeeOZq0sWyy с отмеченным товаром консультант
+    // каждый раз искал по прайсу и называл разные цены.
+    responses.push(reply([{ type: "text", text: "Полотенце банное — 9 000 ₸." }]));
+    await decide(
+      "Цена?",
+      {},
+      {
+        storyId: "17877618705565918",
+        storyPermalink: "https://www.instagram.com/reel/DeeOZq0sWyy/",
+        storyTags: [
+          {
+            id: "s1",
+            story_id: "DeeOZq0sWyy",
+            story_url: "https://www.instagram.com/reel/DeeOZq0sWyy/",
+            product_id: "T1",
+            product_name: "Uchino полотенце банное",
+            price: 9000,
+            notes: null,
+            created_at: "2026-10-01T00:00:00Z",
+          },
+        ],
+      },
+    );
+    const text = lastMessage(0);
+    expect(text).toContain("Товары в ней");
+    expect(text).toMatch(/Uchino полотенце банное, 50x100 — 9\s000 ₸/);
+    expect(text).not.toContain("товары к ней не привязаны");
   });
 
   it("сторис без отметки, а отмеченных сторис нет — только просьба о фото или названии", async () => {

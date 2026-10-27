@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   extractInstagramMediaInfo,
   findStoryTag,
+  findStoryTagFor,
   mergeLegacyStoryTags,
   storyContextLine,
   storyProductsOf,
@@ -44,6 +45,23 @@ describe("сторис-теги консультанта", () => {
     expect(findStoryTag(tags, "17841400000_3412345678901234567", null)?.id).toBe("st2");
     expect(findStoryTag(tags, "nope", "https://cdn/x.jpg")).toBeNull();
     expect(findStoryTag([], "ABC123xyz", null)).toBeNull();
+  });
+
+  it("комментарий с числовым id публикации находит тег, сохранённый по ссылке на рилс", () => {
+    const tags = [tag({})];
+    // Без ссылки — не находится (так было до 27.10).
+    expect(findStoryTag(tags, "17877618705565918", null)).toBeNull();
+    const ref = {
+      storyId: "17877618705565918",
+      mediaUrl: null,
+      permalink: "https://www.instagram.com/reel/ABC123xyz/",
+    };
+    expect(findStoryTagFor(tags, ref)?.id).toBe("st1");
+    // Тег по числовому id находится по id, ссылка не мешает.
+    const byId = [tag({ id: "st9", story_id: "17877618705565918", story_url: null })];
+    expect(findStoryTagFor(byId, ref)?.id).toBe("st9");
+    expect(findStoryTagFor(tags, { storyId: "1", mediaUrl: null, permalink: null })).toBeNull();
+    expect(findStoryTagFor(tags, null)).toBeNull();
   });
 
   it("контекст для модели: товар с ценой или просьба уточнить", () => {

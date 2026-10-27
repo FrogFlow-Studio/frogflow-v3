@@ -909,7 +909,7 @@ export async function runConsultant(
     platform: string;
     dryRun?: boolean;
     /** Ответ на сторис/рилс — консультант узнаёт товар по тегу продавца. */
-    story?: { storyId: string | null; mediaUrl: string | null; caption?: string | null };
+    story?: import("./story-tags").StoryRef;
     /** Фото покупателя: ссылки (директ) или уже скачанные (Telegram) — консультант по прайсу. */
     imageUrls?: string[];
     images?: import("./pricelist/images").V2Image[];
@@ -961,8 +961,8 @@ export async function runConsultant(
   }
   // По прайсу товары публикации приходят пометкой (pricelist/engine.server).
   if (!pricelist && opts.story && (opts.story.storyId || opts.story.mediaUrl)) {
-    const { findStoryTag, listStoryTags, storyContextLine } = await import("./story-tags");
-    const tag = findStoryTag(await listStoryTags(ctx), opts.story.storyId, opts.story.mediaUrl);
+    const { findStoryTagFor, listStoryTags, storyContextLine } = await import("./story-tags");
+    const tag = findStoryTagFor(await listStoryTags(ctx), opts.story);
     incoming = `${storyContextLine(tag, opts.story.storyId, opts.story.caption)}\n\n${incoming}`;
   }
 

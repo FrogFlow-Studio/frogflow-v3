@@ -72,6 +72,7 @@ export async function replyToCommentByConsultant(
     return { note: "комментарий самого аккаунта" };
 
   const caption = payload.post?.content?.trim() || null;
+  const permalink = payload.post?.permalink?.trim() || null;
   const covers =
     deps.ruleCovers ??
     ((p) =>
@@ -125,7 +126,7 @@ export async function replyToCommentByConsultant(
     const run =
       deps.answer ??
       (await import("@/core/consultant/comment-reply.server")).consultantCommentAnswer;
-    answer = await run(ctx, { text, caption, postId, locale });
+    answer = await run(ctx, { text, caption, postId, permalink, locale });
   }
 
   const api = deps.api ?? liveAutomationApi;

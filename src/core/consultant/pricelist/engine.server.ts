@@ -5,6 +5,7 @@ import { startsNewDialog } from "../budget";
 import { hasToolMarkup, stripToolMarkup } from "../prompt";
 import {
   findStoryTag,
+  findStoryTagFor,
   listStoryTags,
   storyCaptionText,
   storyProductsOf,
@@ -269,7 +270,7 @@ export type PricelistInput = {
   text: string;
   state: PricelistState;
   call: ModelCall;
-  story?: { storyId: string | null; mediaUrl: string | null; caption?: string | null };
+  story?: import("../story-tags").StoryRef;
   /** Эталонный набор: товары публикации заданы сценарием, а не отметкой. */
   storyProductIds?: string[];
   /** Фото покупателя: ссылки из директа (скачиваются здесь) или уже скачанные (Telegram). */
@@ -348,7 +349,7 @@ async function storyNote(
     const ids = new Set(input.storyProductIds);
     products.push(...data.catalog.filter((p) => ids.has(p.id)));
   } else {
-    const tag = findStoryTag(data.storyTags, story?.storyId, story?.mediaUrl);
+    const tag = findStoryTagFor(data.storyTags, story);
     for (const tagged of tag ? storyProductsOf(tag) : []) {
       const byId = tagged.id ? data.catalog.find((p) => p.id === tagged.id) : undefined;
       const found = byId ?? findProducts({ query: tagged.name }, data.catalog).shown[0];

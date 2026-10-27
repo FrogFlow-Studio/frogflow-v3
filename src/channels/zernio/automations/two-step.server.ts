@@ -163,7 +163,7 @@ export async function sendSecondStep(
 
 export type CommentReceivedPayload = {
   account?: { accountId?: string; id?: string; _id?: string; username?: string };
-  post?: { platformPostId?: string; id?: string; content?: string };
+  post?: { platformPostId?: string; id?: string; content?: string; permalink?: string };
   comment?: {
     id?: string;
     text?: string;
