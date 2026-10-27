@@ -1024,7 +1024,10 @@ export async function sendManualInstructions(
   const text =
     `${plain(s.m.manualTitleNew(p.no))}\n${itemsLine(p.items)}\n${plain(s.m.amountToPay(formatMoney(p.due, p.currency)))}\n${p.depositLine}\n` +
     `${p.instructions || plain(s.m.defaultInstructions)}\n\n` +
-    (link ? `${plain(s.m.payLinkHint)}\n\n` : "") +
+    // В WhatsApp кнопки-ссылки нет (см. ниже) — подсказка про ссылку, не про кнопку.
+    (link
+      ? `${plain(s.platform === "whatsapp" ? s.m.payLinkTextHint : s.m.payLinkHint)}\n\n`
+      : "") +
     plain(p.physical ? s.m.afterProofPhysical : s.m.afterProofManual);
   return reply(s, text, {
     force: true,
@@ -1118,7 +1121,11 @@ export async function choosePayment(
     });
     await sendPayLink(
       s,
-      `${plain(s.m.manualTitleNew(no))}\n\n${plain(s.m.amountToPay(formatMoney(due, order.currency)))}\n\n${plain(s.m.robokassaHint)}`,
+      `${plain(s.m.manualTitleNew(no))}\n\n${plain(s.m.amountToPay(formatMoney(due, order.currency)))}\n\n${plain(
+        // WhatsApp получает ссылку текстом без кнопки (sendPayLink): «Нажмите кнопку»
+        // там врёт (Копилка, заказ #273, 27.10).
+        s.platform === "whatsapp" ? s.m.robokassaLinkHint : s.m.robokassaHint,
+      )}`,
       plain(s.m.payViaRobokassaBtn),
       url,
       opts.asText,

@@ -5986,4 +5986,87 @@ export const SCENARIOS: Scenario[] = [
       },
     ],
   },
+  {
+    id: "robokassa-link-no-button-wording-wa-ru",
+    title:
+      "WhatsApp, «Оплата картой» (Robokassa): ссылка текстом, без «Нажмите кнопку» — кнопки нет",
+    origin:
+      "Копилка Русоведа, WhatsApp 27.10 12:50, заказ #273: «Нажмите кнопку, оплатите картой», а под текстом только ссылка Robokassa (Яков, скриншот)",
+    channel: "whatsapp",
+    locale: "ru",
+    full: true,
+    modules: { whatsapp: true, wa_shop: true, robokassa: true },
+    state: { mode: "choose_pay", pending_order_id: 7, pending_display_no: 273 },
+    arrange: (r) => {
+      r.db.tables.orders!.push({
+        id: 7,
+        bot_id: "00000000-0000-4000-8000-0000000000aa",
+        order_no: 7,
+        display_no: 273,
+        telegram_id: -1,
+        status: "awaiting_payment",
+        total: 3500,
+        currency: "KZT",
+        country_code: "KZ",
+        paid_amount: 0,
+        fulfillment_kind: "digital",
+        order_items: [],
+      });
+      r.db.tables.app_settings!.push(
+        { key: "robokassa_enabled", value: "true" },
+        { key: "robokassa_login", value: "kopilka_rusoveda" },
+        { key: "robokassa_pass1", value: "p1" },
+        { key: "robokassa_pass2", value: "p2" },
+        { key: "robokassa_region", value: "kz" },
+      );
+    },
+    steps: [
+      {
+        say: { button: "PAY:rk", title: "Оплата картой" },
+        expect: {
+          says: ["https://auth.robokassa.kz", "Откройте ссылку"],
+          notSays: ["Нажмите кнопку", "по кнопке"],
+          state: { mode: "awaiting_payment", pay_link: "rk" },
+        },
+      },
+    ],
+  },
+  {
+    id: "kaspi-link-no-button-wording-wa-ru",
+    title:
+      "WhatsApp, реквизиты — ссылка pay.kaspi.kz: «Откройте ссылку», а не «Нажмите кнопку ниже»",
+    origin:
+      "Копилка Русоведа 27.10: в WhatsApp ссылка оплаты идёт текстом без кнопки, а подсказка звала нажать кнопку (тот же текст, что у заказа #273)",
+    channel: "whatsapp",
+    locale: "ru",
+    full: true,
+    modules: { whatsapp: true, wa_shop: true },
+    state: { mode: "choose_pay", pending_order_id: 7, pending_display_no: 273 },
+    arrange: (r) => {
+      r.db.tables.orders!.push({
+        id: 7,
+        bot_id: "00000000-0000-4000-8000-0000000000aa",
+        order_no: 7,
+        display_no: 273,
+        telegram_id: -1,
+        status: "awaiting_payment",
+        total: 3500,
+        currency: "KZT",
+        country_code: "KZ",
+        paid_amount: 0,
+        fulfillment_kind: "digital",
+        order_items: [],
+      });
+      r.db.tables.payment_methods![0]!.instructions = "https://pay.kaspi.kz/pay/fpf1rhkt";
+    },
+    steps: [
+      {
+        say: { button: "PAY:manual", title: "🧾 Перевод Kaspi" },
+        expect: {
+          says: ["https://pay.kaspi.kz/pay/fpf1rhkt", "Откройте ссылку", "чека"],
+          notSays: ["Нажмите кнопку"],
+        },
+      },
+    ],
+  },
 ];
