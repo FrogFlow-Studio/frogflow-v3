@@ -75,6 +75,37 @@ const logs = (db: ReturnType<typeof setup>["db"]) =>
   (db.tables.zernio_logs ?? []).filter((r) => r.event_type === COMMENT_CONSULTANT_EVENT);
 
 describe("консультант отвечает на комментарий одним сообщением в Direct", () => {
+  it("ссылка на рилс доходит до консультанта: по ней находится тег, сохранённый по ссылке", async () => {
+    // BOVI 20–27.10: 83 ответа под рилсом DeeOZq0sWyy с отмеченным LUXOR, а тег
+    // не находился — комментарий знает только числовой id публикации.
+    const { ctx, api } = setup();
+    const seen: Array<string | null | undefined> = [];
+    await replyToCommentByConsultant(
+      ctx,
+      {
+        ...payload("Цена?"),
+        post: {
+          platformPostId: POST,
+          content: CAPTION,
+          permalink: "https://www.instagram.com/reel/DeeOZq0sWyy/",
+        },
+      },
+      {
+        api,
+        answer: (c, p) =>
+          consultantCommentAnswer(c, p, async (_text, story) => {
+            seen.push(story.permalink);
+            return {
+              reply: PRICE_REPLY,
+              handoff: null,
+              usage: { inputTokens: 1, outputTokens: 1, usd: 0 },
+            };
+          }),
+      },
+    );
+    expect(seen).toEqual(["https://www.instagram.com/reel/DeeOZq0sWyy/"]);
+  });
+
   it("BOVI: «Куб» под постом про Cube Fazer — цена из ответа консультанта уходит private reply", async () => {
     const { ctx, db, api, replies } = setup();
     const calls: string[] = [];

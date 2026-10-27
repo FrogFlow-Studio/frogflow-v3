@@ -108,6 +108,33 @@ export function extractInstagramMediaInfo(input: string | null | undefined): Ins
 }
 
 /**
+ * Публикация, из которой пишет покупатель. `permalink` — постоянная ссылка
+ * (instagram.com/reel/…): только для поиска тега, не скачивается.
+ */
+export type StoryRef = {
+  storyId: string | null;
+  mediaUrl: string | null;
+  caption?: string | null;
+  permalink?: string | null;
+};
+
+/**
+ * Тег публикации: по id и медиа, затем по постоянной ссылке. Комментарий
+ * приходит с числовым id публикации, а продавец отмечает товары по ссылке на
+ * рилс (код DeeOZq0sWyy) — без ссылки такой тег не находился.
+ */
+export function findStoryTagFor(
+  tags: readonly StoryTag[],
+  story: StoryRef | null | undefined,
+): StoryTag | null {
+  if (!story) return null;
+  return (
+    findStoryTag(tags, story.storyId, story.mediaUrl) ??
+    (story.permalink ? findStoryTag(tags, null, story.permalink) : null)
+  );
+}
+
+/**
  * Поиск тега по тому, что прислал Zernio: точный id, точная ссылка, код из
  * ссылки, число внутри id, имя файла медиа — в порядке убывания надёжности.
  */
