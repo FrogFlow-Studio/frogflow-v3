@@ -215,8 +215,16 @@ test("покупка в WhatsApp: списки, архив вместо чека
   await page.getByRole("button", { name: "✅ Подтвердить и выдать" }).click();
   await expect(page.getByText(`Заказ #${no} выдан: 1 поз.`)).toBeVisible();
 
-  const delivered = await waitOut(request, buyer, 0, (s) => text(s).includes("propisi.pdf"));
+  // Файл из хранилища уходит в WhatsApp документом с именем (#177), не ссылкой в тексте.
+  const delivered = await waitOut(
+    request,
+    buyer,
+    0,
+    (s) => s.body.attachmentType === "file" && String(s.body.attachmentUrl).includes("propisi.pdf"),
+  );
   expect(delivered.body.accountId).toBe(F.WA_ACCOUNT);
+  expect(String(delivered.body.attachmentName)).toMatch(/\.pdf$/);
+  await waitOut(request, buyer, 0, (s) => text(s).includes("Файлы — выше"));
   await expect
     .poll(async () => (await orderOf(request, id)).status, { timeout: 15_000 })
     .toBe("delivered");
