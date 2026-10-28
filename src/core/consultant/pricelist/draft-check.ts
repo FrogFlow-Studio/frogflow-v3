@@ -293,6 +293,8 @@ export type DraftContext = {
   askedBefore?: boolean;
   /** Покупатель прислал фото в этот ход. */
   photo?: boolean;
+  /** Суммы в тенге из статей базы знаний (ориентир доставки) — не цены позиций. */
+  knowledgeAmounts?: ReadonlySet<number>;
 };
 
 /**
@@ -320,7 +322,7 @@ export function draftProblems(
   ctx: DraftContext = {},
 ): DraftProblem[] {
   const problems: DraftProblem[] = [];
-  for (const flag of checkPrices(text, indexFor(catalog)))
+  for (const flag of checkPrices(text, indexFor(catalog), ctx.knowledgeAmounts))
     problems.push({ kind: "price", detail: flag.detail });
   const service = SERVICE_RE.exec(text);
   if (service) problems.push({ kind: "service", detail: service[0].trim() });

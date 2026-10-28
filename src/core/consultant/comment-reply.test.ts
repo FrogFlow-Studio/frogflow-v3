@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { COMMENT_NEUTRAL, commentReplyOn, pickCommentAnswer } from "./comment-reply";
+import {
+  COMMENT_NEUTRAL,
+  COMMENT_SKIP,
+  commentNote,
+  commentReplyOn,
+  pickCommentAnswer,
+} from "./comment-reply";
 
 const BOVI = "bb3ffba7-edf0-4cce-8742-ff10c9495c44";
 
@@ -39,6 +45,18 @@ describe("ответ на комментарий: что уходит покуп
       pickCommentAnswer({ reply: "Cube Fazer — 98 000 ₸", handoff: false, attachments: 1 }, "ru")
         .kind,
     ).toBe("price");
+  });
+
+  it("модель ответила словом «не отвечать» — не шлём ничего; слово внутри ответа — не оно", () => {
+    for (const reply of [COMMENT_SKIP, `${COMMENT_SKIP}.`, ` ${COMMENT_SKIP.toLowerCase()} `])
+      expect(pickCommentAnswer({ ...base, reply }, "ru")).toMatchObject({ kind: "skip", text: "" });
+    expect(
+      pickCommentAnswer({ ...base, reply: `${COMMENT_SKIP}: Cube Fazer — 98 000 ₸` }, "ru").kind,
+    ).toBe("price");
+    // Правило — в пометке модели: эмодзи и похвала без вопроса, но «BOVI» — интерес.
+    expect(commentNote()).toContain(COMMENT_SKIP);
+    expect(commentNote()).toMatch(/эмодзи/);
+    expect(commentNote()).toMatch(/BOVI/);
   });
 
   it("включено у BOVI по умолчанию, у остальных — по выбору продавца", () => {

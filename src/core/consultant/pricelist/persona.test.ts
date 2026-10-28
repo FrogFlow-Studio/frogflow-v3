@@ -28,20 +28,36 @@ const INPUT: V2PromptInput = {
 const sha = (s: string) => createHash("sha256").update(s).digest("hex");
 
 /**
- * Отпечаток подсказки v2.25 (v2.24 + фото отправляется сразу без требования размера/цвета; тот же INPUT).
+ * Отпечаток подсказки v2.26 (v2.25 + срез BOVI 28.10: другие страны, поставщики,
+ * обещания без передачи, каталог, ориентир доставки из базы знаний; тот же INPUT).
  */
-const BOVI_PROMPT_SHA = "5ee2ae2cd324c1422a0617c4718e7a9fe018ab4b00c141e19ba9e81d6d6b660f";
+const BOVI_PROMPT_SHA = "babdf7eb6829ed291a7f58777db508c142a01c49ccc0e686324874d0e9119695";
 
 describe("образ консультанта по прайсу", () => {
   it("без настройки — подсказка BOVI слово в слово прежняя", () => {
     const prompt = buildV2SystemPrompt(INPUT);
-    expect(prompt.length).toBe(14166);
+    expect(prompt.length).toBe(16255);
     expect(sha(prompt)).toBe(BOVI_PROMPT_SHA);
     expect(prompt).not.toContain(SELLER_TEXT_OPEN);
     // BOVI 10.10 23:49, indirenokars: на «в каком цвете?» — цвета без цены.
     expect(prompt).toContain("ответьте и назовите цену найденного");
     // BOVI 11.10, fokkiuo77: «Оплатить можно картой в рублях» — выдумано.
     expect(prompt).toContain("Не нашли — не придумывайте и не угадывайте ни карту, ни перевод");
+  });
+
+  it("BOVI 28.10: страны вне подсказки, поставщики, обещания, каталог, доставка — правила в подсказке", () => {
+    const prompt = buildV2SystemPrompt(INPUT);
+    // «В Европу не делаем» — вывод модели из пустой базы знаний; покупательница ушла.
+    expect(prompt).toContain("«не нашлось в базе» не значит «не делаем»");
+    // Дана из True Trade: «ваше предложение сейчас не рассматриваем».
+    expect(prompt).toContain("не отказывайте и не соглашайтесь от имени магазина");
+    // «NARCISO (уточню точную цену отдельно)» — без передачи никто не уточнил.
+    expect(prompt).toContain("только вместе с handoff_to_manager в этом же ходе");
+    // «У вас каталог есть??» остался без ответа.
+    expect(prompt).toContain("каталога файлом нет: дайте ссылку на сайт");
+    // Ориентир СДЭК — только из базы знаний, с оговоркой.
+    expect(prompt).toContain("Есть там ориентировочные цены");
+    expect(prompt).not.toContain("сумму доставки не называйте.");
   });
 
   it("BOVI 16.10: слово «евро» о размере не пишется, это 200х220", () => {

@@ -39,6 +39,19 @@ const PL_CATALOG: PricelistItem[] = [
   },
 ];
 const said = (text: string) => [{ type: "text", text }];
+/**
+ * Статья базы знаний BOVI о доставке в Россию: ориентир СДЭК за 3 кг до Москвы
+ * (скриншот калькулятора от Нурдина, 28.10). Полный текст для панели — в отчёте
+ * reports/bovi/kb-delivery-russia-cdek-2026-10-28.md, здесь — его суть.
+ */
+const BOVI_CDEK_ARTICLE = {
+  id: "kb-delivery-russia-cdek",
+  title: "Доставка в Россию (СДЭК): ориентировочные цены",
+  tags: ["доставка", "сдэк", "россия", "москва", "стоимость доставки"],
+  content:
+    "Посылка 3 кг из Алматы в Москву, тариф «Посылка», 9–10 дней: до пункта выдачи или постамата — примерно 7 797 ₸, до двери — примерно 9 202 ₸. Точную сумму считает менеджер по весу заказа и городу.",
+  updatedAt: "2026-10-28T13:50:00.000Z",
+};
 /** Позиция прайса BOVI, которую покупатель называет «полотенце для головы» или «чалма». */
 const PL_HAIR_TOWEL: PricelistItem = {
   id: "H1",
@@ -2763,6 +2776,103 @@ export const SCENARIOS: Scenario[] = [
       {
         say: { text: "155*200" },
         expect: { says: ["45 000 ₸"], notSays: [/марку/], count: 1 },
+      },
+    ],
+  },
+  {
+    id: "pricelist-delivery-price-from-knowledge-ig-ru",
+    title:
+      "сколько стоит доставка в Москву — ориентир СДЭК из базы знаний продавца уходит покупателю, проверка цен его не режет",
+    origin:
+      "BOVI 28.10 17:24, ma_nina_70: «Не подскажете приблизительную стоимость доставки в Москву?» — «точную сумму я не называю»; Нурдин прислал цены СДЭК за 3 кг",
+    channel: "instagram",
+    locale: "ru",
+    full: true,
+    vertical: "consultant",
+    modules: { shop: true },
+    pricelist: {
+      catalog: PL_CATALOG,
+      rounds: [
+        [
+          {
+            type: "tool_use",
+            id: "k1",
+            name: "search_knowledge",
+            input: { query: "доставка в Москву СДЭК" },
+          },
+        ],
+        said(
+          "До Москвы СДЭК посылкой за 9–10 дней — примерно 7 797 ₸ до пункта выдачи (за 3 кг). Точную сумму посчитает менеджер по весу заказа.",
+        ),
+      ],
+    },
+    arrange: (r) => {
+      r.db.tables.app_settings!.push({
+        key: "consultant_knowledge_json",
+        value: JSON.stringify([BOVI_CDEK_ARTICLE]),
+      });
+    },
+    steps: [
+      {
+        say: { text: "Не подскажете приблизительную стоимость доставки в Москву?" },
+        expect: {
+          says: ["7 797 ₸", "примерно"],
+          notSays: [pricelistHandoffReply("ru")],
+          count: 1,
+          paused: false,
+        },
+      },
+    ],
+  },
+  {
+    id: "pricelist-europe-delivery-unknown-handoff-ig-ru",
+    title:
+      "доставка в Европу, в базе знаний пусто — «уточню у менеджера» и задача продавцу, а не «не доставляем»",
+    origin:
+      "BOVI 28.10 12:14, manukyannatalja: бот не нашёл Европу в базе и написал «доставку в Европу не делаем» — покупательница ушла",
+    channel: "instagram",
+    locale: "ru",
+    full: true,
+    vertical: "consultant",
+    modules: { shop: true },
+    pricelist: {
+      catalog: PL_CATALOG,
+      rounds: [
+        [
+          {
+            type: "tool_use",
+            id: "k1",
+            name: "search_knowledge",
+            input: { query: "доставка Европа" },
+          },
+        ],
+        [
+          {
+            type: "text",
+            text: "Про доставку в Европу уточню у менеджера, она напишет вам здесь.",
+          },
+          {
+            type: "tool_use",
+            id: "h1",
+            name: "handoff_to_manager",
+            input: {
+              reason: "no_answer",
+              summary: "Спрашивает доставку в Европу, смотрит 200х200",
+            },
+          },
+        ],
+      ],
+    },
+    steps: [
+      {
+        say: { text: "Доставляете в Европу?" },
+        expect: {
+          says: ["уточню у менеджера"],
+          notSays: [/не делаем|не доставляем/i],
+          count: 1,
+          paused: true,
+          tasks: [{ reason: "unknown_question" }],
+        },
       },
     ],
   },

@@ -92,6 +92,8 @@ describe("цены в ответе против прайса", () => {
 
   it("размер в строке решает: чужой размер — ошибка", () => {
     expect(checkPrices("• Merveille 35х50 — 52 000 ₸", index)).toHaveLength(1);
+    // Сумма из базы знаний (ориентир доставки, BOVI 28.10) не прикрывает чужую цену товара.
+    expect(checkPrices("• Merveille 35х50 — 52 000 ₸", index, new Set([52000]))).toHaveLength(1);
     expect(checkPrices("• Merveille 35х50 — 27 000 ₸, 50х80 — 52 000 ₸", index)).toEqual([]);
   });
 

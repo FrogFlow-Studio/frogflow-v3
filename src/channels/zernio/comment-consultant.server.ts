@@ -129,6 +129,19 @@ export async function replyToCommentByConsultant(
     answer = await run(ctx, { text, caption, postId, permalink, locale });
   }
 
+  if (answer.kind === "skip") {
+    // Эмодзи или похвала без вопроса: личное сообщение было бы навязчивым (BOVI 28.10).
+    await settle(ctx, key, "skipped", answer.why, {
+      kind: answer.kind,
+      usd: answer.usd,
+      model: answer.model,
+      tools: answer.tools,
+    });
+    return {
+      note: `консультант не стал отвечать на комментарий @${username ?? who}: ${answer.why}`,
+    };
+  }
+
   const api = deps.api ?? liveAutomationApi;
   const sent = await api.privateReply(postId, commentId, accountId, answer.text, []);
   const details = {

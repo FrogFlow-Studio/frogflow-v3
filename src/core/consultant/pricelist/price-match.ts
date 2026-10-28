@@ -155,7 +155,16 @@ export function productsForSnippet(index: CatalogIndex, snippet: string): Consul
  * Цены в ответе против прайса. Каждая сумма сопоставляется с товаром по
  * словам своего куска строки и заголовка над списком («ПОДУШКИ мягкие 50х70:»).
  */
-export function checkPrices(text: string, index: CatalogIndex): Flag[] {
+/**
+ * `known` — суммы из базы знаний продавца (ориентир доставки СДЭК, BOVI 28.10):
+ * сумма, не привязанная ни к одной позиции прайса, но написанная продавцом в
+ * статье, — не выдуманная цена.
+ */
+export function checkPrices(
+  text: string,
+  index: CatalogIndex,
+  known: ReadonlySet<number> = new Set(),
+): Flag[] {
   const flags: Flag[] = [];
   const lines = text.split("\n");
   const allAmounts = findKztAmounts(text).map((a) => a.kzt);
@@ -191,7 +200,7 @@ export function checkPrices(text: string, index: CatalogIndex): Flag[] {
         }
         return;
       }
-      if (index.prices.has(kzt)) return;
+      if (index.prices.has(kzt) || known.has(kzt)) return;
       // Итог из названных сумм без слова «итого»: две цены ответа в сумме.
       if (allAmounts.some((a, x) => allAmounts.some((b, y) => x !== y && a + b === kzt))) return;
       flags.push({
