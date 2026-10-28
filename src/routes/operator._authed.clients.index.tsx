@@ -12,7 +12,7 @@ import {
 import { TodayTasks } from "@/app/operator/client/notes";
 import { Badge, Empty, PageTitle, Stat } from "@/app/ui";
 
-export const Route = createFileRoute("/operator/_authed/clients")({
+export const Route = createFileRoute("/operator/_authed/clients/")({
   loader: () => listClientsFn(),
   component: ClientsPage,
 });
@@ -319,3 +319,4 @@ export function HealthBadge({
     </Badge>
   );
 }
+

@@ -101,7 +101,6 @@ import { Route as ApiZernioWebhookRouteImport } from './routes/api/zernio/webhoo
 import { Route as OperatorAuthedIndexRouteImport } from './routes/operator._authed.index'
 import { Route as OperatorAuthedBroadcastRouteImport } from './routes/operator._authed.broadcast'
 import { Route as OperatorAuthedBulkRouteImport } from './routes/operator._authed.bulk'
-import { Route as OperatorAuthedClientsRouteImport } from './routes/operator._authed.clients'
 import { Route as OperatorAuthedCommunityRouteImport } from './routes/operator._authed.community'
 import { Route as OperatorAuthedCronsRouteImport } from './routes/operator._authed.crons'
 import { Route as OperatorAuthedHealthRouteImport } from './routes/operator._authed.health'
@@ -149,6 +148,7 @@ import { Route as ApiAdminReportsKindRouteImport } from './routes/api/admin/repo
 import { Route as ApiImgBotIdSplatRouteImport } from './routes/api/img.$botId.$'
 import { Route as ApiRobokassaBotIdActionRouteImport } from './routes/api/robokassa.$botId.$action'
 import { Route as ApiTelegramBotIdVipRouteImport } from './routes/api/telegram.$botId.vip'
+import { Route as OperatorAuthedClientsIndexRouteImport } from './routes/operator._authed.clients.index'
 import { Route as OperatorAuthedClientsBotIdRouteImport } from './routes/operator._authed.clients.$botId'
 import { Route as OperatorAuthedClientsNewRouteImport } from './routes/operator._authed.clients.new'
 import { Route as SSlugCCategoryRouteImport } from './routes/s.$slug.c.$category'
@@ -622,11 +622,6 @@ const OperatorAuthedBulkRoute = OperatorAuthedBulkRouteImport.update({
   path: '/bulk',
   getParentRoute: () => OperatorAuthedRoute,
 } as any)
-const OperatorAuthedClientsRoute = OperatorAuthedClientsRouteImport.update({
-  id: '/clients',
-  path: '/clients',
-  getParentRoute: () => OperatorAuthedRoute,
-} as any)
 const OperatorAuthedCommunityRoute = OperatorAuthedCommunityRouteImport.update({
   id: '/community',
   path: '/community',
@@ -874,17 +869,23 @@ const ApiTelegramBotIdVipRoute = ApiTelegramBotIdVipRouteImport.update({
   path: '/vip',
   getParentRoute: () => ApiTelegramBotIdRoute,
 } as any)
+const OperatorAuthedClientsIndexRoute =
+  OperatorAuthedClientsIndexRouteImport.update({
+    id: '/clients/',
+    path: '/clients/',
+    getParentRoute: () => OperatorAuthedRoute,
+  } as any)
 const OperatorAuthedClientsBotIdRoute =
   OperatorAuthedClientsBotIdRouteImport.update({
-    id: '/$botId',
-    path: '/$botId',
-    getParentRoute: () => OperatorAuthedClientsRoute,
+    id: '/clients/$botId',
+    path: '/clients/$botId',
+    getParentRoute: () => OperatorAuthedRoute,
   } as any)
 const OperatorAuthedClientsNewRoute =
   OperatorAuthedClientsNewRouteImport.update({
-    id: '/new',
-    path: '/new',
-    getParentRoute: () => OperatorAuthedClientsRoute,
+    id: '/clients/new',
+    path: '/clients/new',
+    getParentRoute: () => OperatorAuthedRoute,
   } as any)
 const SSlugCCategoryRoute = SSlugCCategoryRouteImport.update({
   id: '/c/$category',
@@ -1032,7 +1033,6 @@ export interface FileRoutesByFullPath {
   '/api/zernio/webhook': typeof ApiZernioWebhookRoute
   '/operator/broadcast': typeof OperatorAuthedBroadcastRoute
   '/operator/bulk': typeof OperatorAuthedBulkRoute
-  '/operator/clients': typeof OperatorAuthedClientsRouteWithChildren
   '/operator/community': typeof OperatorAuthedCommunityRoute
   '/operator/crons': typeof OperatorAuthedCronsRoute
   '/operator/health': typeof OperatorAuthedHealthRoute
@@ -1093,6 +1093,7 @@ export interface FileRoutesByFullPath {
   '/s/$slug/p/$id': typeof SSlugPIdRoute
   '/s/$slug/icon/$size': typeof SSlugIconSizeRoute
   '/admin/warehouse/': typeof AdminAuthedWarehouseIndexRoute
+  '/operator/clients/': typeof OperatorAuthedClientsIndexRoute
   '/s/$slug/cert/$code/pdf': typeof SSlugCertCodePdfRoute
   '/api/course-file/$slug/$productId/$no/$idx': typeof ApiCourseFileSlugProductIdNoIdxRoute
 }
@@ -1183,7 +1184,6 @@ export interface FileRoutesByTo {
   '/api/zernio/webhook': typeof ApiZernioWebhookRoute
   '/operator/broadcast': typeof OperatorAuthedBroadcastRoute
   '/operator/bulk': typeof OperatorAuthedBulkRoute
-  '/operator/clients': typeof OperatorAuthedClientsRouteWithChildren
   '/operator/community': typeof OperatorAuthedCommunityRoute
   '/operator/crons': typeof OperatorAuthedCronsRoute
   '/operator/health': typeof OperatorAuthedHealthRoute
@@ -1242,6 +1242,7 @@ export interface FileRoutesByTo {
   '/s/$slug/p/$id': typeof SSlugPIdRoute
   '/s/$slug/icon/$size': typeof SSlugIconSizeRoute
   '/admin/warehouse': typeof AdminAuthedWarehouseIndexRoute
+  '/operator/clients': typeof OperatorAuthedClientsIndexRoute
   '/s/$slug/cert/$code/pdf': typeof SSlugCertCodePdfRoute
   '/api/course-file/$slug/$productId/$no/$idx': typeof ApiCourseFileSlugProductIdNoIdxRoute
 }
@@ -1337,7 +1338,6 @@ export interface FileRoutesById {
   '/api/zernio/webhook': typeof ApiZernioWebhookRoute
   '/operator/_authed/broadcast': typeof OperatorAuthedBroadcastRoute
   '/operator/_authed/bulk': typeof OperatorAuthedBulkRoute
-  '/operator/_authed/clients': typeof OperatorAuthedClientsRouteWithChildren
   '/operator/_authed/community': typeof OperatorAuthedCommunityRoute
   '/operator/_authed/crons': typeof OperatorAuthedCronsRoute
   '/operator/_authed/health': typeof OperatorAuthedHealthRoute
@@ -1398,6 +1398,7 @@ export interface FileRoutesById {
   '/s/$slug/p/$id': typeof SSlugPIdRoute
   '/s/$slug_/icon/$size': typeof SSlugIconSizeRoute
   '/admin/_authed/warehouse/': typeof AdminAuthedWarehouseIndexRoute
+  '/operator/_authed/clients/': typeof OperatorAuthedClientsIndexRoute
   '/s/$slug_/cert/$code/pdf': typeof SSlugCertCodePdfRoute
   '/api/course-file/$slug/$productId/$no/$idx': typeof ApiCourseFileSlugProductIdNoIdxRoute
 }
@@ -1492,7 +1493,6 @@ export interface FileRouteTypes {
     | '/api/zernio/webhook'
     | '/operator/broadcast'
     | '/operator/bulk'
-    | '/operator/clients'
     | '/operator/community'
     | '/operator/crons'
     | '/operator/health'
@@ -1553,6 +1553,7 @@ export interface FileRouteTypes {
     | '/s/$slug/p/$id'
     | '/s/$slug/icon/$size'
     | '/admin/warehouse/'
+    | '/operator/clients/'
     | '/s/$slug/cert/$code/pdf'
     | '/api/course-file/$slug/$productId/$no/$idx'
   fileRoutesByTo: FileRoutesByTo
@@ -1643,7 +1644,6 @@ export interface FileRouteTypes {
     | '/api/zernio/webhook'
     | '/operator/broadcast'
     | '/operator/bulk'
-    | '/operator/clients'
     | '/operator/community'
     | '/operator/crons'
     | '/operator/health'
@@ -1702,6 +1702,7 @@ export interface FileRouteTypes {
     | '/s/$slug/p/$id'
     | '/s/$slug/icon/$size'
     | '/admin/warehouse'
+    | '/operator/clients'
     | '/s/$slug/cert/$code/pdf'
     | '/api/course-file/$slug/$productId/$no/$idx'
   id:
@@ -1796,7 +1797,6 @@ export interface FileRouteTypes {
     | '/api/zernio/webhook'
     | '/operator/_authed/broadcast'
     | '/operator/_authed/bulk'
-    | '/operator/_authed/clients'
     | '/operator/_authed/community'
     | '/operator/_authed/crons'
     | '/operator/_authed/health'
@@ -1857,6 +1857,7 @@ export interface FileRouteTypes {
     | '/s/$slug/p/$id'
     | '/s/$slug_/icon/$size'
     | '/admin/_authed/warehouse/'
+    | '/operator/_authed/clients/'
     | '/s/$slug_/cert/$code/pdf'
     | '/api/course-file/$slug/$productId/$no/$idx'
   fileRoutesById: FileRoutesById
@@ -2553,13 +2554,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OperatorAuthedBulkRouteImport
       parentRoute: typeof OperatorAuthedRoute
     }
-    '/operator/_authed/clients': {
-      id: '/operator/_authed/clients'
-      path: '/clients'
-      fullPath: '/operator/clients'
-      preLoaderRoute: typeof OperatorAuthedClientsRouteImport
-      parentRoute: typeof OperatorAuthedRoute
-    }
     '/operator/_authed/community': {
       id: '/operator/_authed/community'
       path: '/community'
@@ -2889,19 +2883,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiTelegramBotIdVipRouteImport
       parentRoute: typeof ApiTelegramBotIdRoute
     }
+    '/operator/_authed/clients/': {
+      id: '/operator/_authed/clients/'
+      path: '/clients'
+      fullPath: '/operator/clients/'
+      preLoaderRoute: typeof OperatorAuthedClientsIndexRouteImport
+      parentRoute: typeof OperatorAuthedRoute
+    }
     '/operator/_authed/clients/$botId': {
       id: '/operator/_authed/clients/$botId'
-      path: '/$botId'
+      path: '/clients/$botId'
       fullPath: '/operator/clients/$botId'
       preLoaderRoute: typeof OperatorAuthedClientsBotIdRouteImport
-      parentRoute: typeof OperatorAuthedClientsRoute
+      parentRoute: typeof OperatorAuthedRoute
     }
     '/operator/_authed/clients/new': {
       id: '/operator/_authed/clients/new'
-      path: '/new'
+      path: '/clients/new'
       fullPath: '/operator/clients/new'
       preLoaderRoute: typeof OperatorAuthedClientsNewRouteImport
-      parentRoute: typeof OperatorAuthedClientsRoute
+      parentRoute: typeof OperatorAuthedRoute
     }
     '/s/$slug/c/$category': {
       id: '/s/$slug/c/$category'
@@ -3155,25 +3156,9 @@ const MarketRouteChildren: MarketRouteChildren = {
 const MarketRouteWithChildren =
   MarketRoute._addFileChildren(MarketRouteChildren)
 
-interface OperatorAuthedClientsRouteChildren {
-  OperatorAuthedClientsBotIdRoute: typeof OperatorAuthedClientsBotIdRoute
-  OperatorAuthedClientsNewRoute: typeof OperatorAuthedClientsNewRoute
-}
-
-const OperatorAuthedClientsRouteChildren: OperatorAuthedClientsRouteChildren = {
-  OperatorAuthedClientsBotIdRoute: OperatorAuthedClientsBotIdRoute,
-  OperatorAuthedClientsNewRoute: OperatorAuthedClientsNewRoute,
-}
-
-const OperatorAuthedClientsRouteWithChildren =
-  OperatorAuthedClientsRoute._addFileChildren(
-    OperatorAuthedClientsRouteChildren,
-  )
-
 interface OperatorAuthedRouteChildren {
   OperatorAuthedBroadcastRoute: typeof OperatorAuthedBroadcastRoute
   OperatorAuthedBulkRoute: typeof OperatorAuthedBulkRoute
-  OperatorAuthedClientsRoute: typeof OperatorAuthedClientsRouteWithChildren
   OperatorAuthedCommunityRoute: typeof OperatorAuthedCommunityRoute
   OperatorAuthedCronsRoute: typeof OperatorAuthedCronsRoute
   OperatorAuthedHealthRoute: typeof OperatorAuthedHealthRoute
@@ -3192,12 +3177,14 @@ interface OperatorAuthedRouteChildren {
   OperatorAuthedSettingsRoute: typeof OperatorAuthedSettingsRoute
   OperatorAuthedSupportRoute: typeof OperatorAuthedSupportRoute
   OperatorAuthedIndexRoute: typeof OperatorAuthedIndexRoute
+  OperatorAuthedClientsBotIdRoute: typeof OperatorAuthedClientsBotIdRoute
+  OperatorAuthedClientsNewRoute: typeof OperatorAuthedClientsNewRoute
+  OperatorAuthedClientsIndexRoute: typeof OperatorAuthedClientsIndexRoute
 }
 
 const OperatorAuthedRouteChildren: OperatorAuthedRouteChildren = {
   OperatorAuthedBroadcastRoute: OperatorAuthedBroadcastRoute,
   OperatorAuthedBulkRoute: OperatorAuthedBulkRoute,
-  OperatorAuthedClientsRoute: OperatorAuthedClientsRouteWithChildren,
   OperatorAuthedCommunityRoute: OperatorAuthedCommunityRoute,
   OperatorAuthedCronsRoute: OperatorAuthedCronsRoute,
   OperatorAuthedHealthRoute: OperatorAuthedHealthRoute,
@@ -3216,6 +3203,9 @@ const OperatorAuthedRouteChildren: OperatorAuthedRouteChildren = {
   OperatorAuthedSettingsRoute: OperatorAuthedSettingsRoute,
   OperatorAuthedSupportRoute: OperatorAuthedSupportRoute,
   OperatorAuthedIndexRoute: OperatorAuthedIndexRoute,
+  OperatorAuthedClientsBotIdRoute: OperatorAuthedClientsBotIdRoute,
+  OperatorAuthedClientsNewRoute: OperatorAuthedClientsNewRoute,
+  OperatorAuthedClientsIndexRoute: OperatorAuthedClientsIndexRoute,
 }
 
 const OperatorAuthedRouteWithChildren = OperatorAuthedRoute._addFileChildren(

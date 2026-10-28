@@ -26,7 +26,7 @@ import { ApipayCard } from "@/app/operator/client/kaspi";
 import { ProdamusRateCard } from "@/app/operator/client/prodamus-rate";
 import { ConfirmName } from "@/app/operator/client/ConfirmName";
 import { CLIENT_TABS, parseTab, type ClientTab } from "@/app/operator/client/confirm-name";
-import { StatusBadge } from "./operator._authed.clients";
+import { StatusBadge } from "./operator._authed.clients.index";
 
 export const Route = createFileRoute("/operator/_authed/clients/$botId")({
   validateSearch: (s: Record<string, unknown>): { tab?: ClientTab } =>
@@ -248,3 +248,4 @@ function ClientPage() {
     </>
   );
 }
+
