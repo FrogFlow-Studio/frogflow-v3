@@ -1,4 +1,242 @@
 /* Operator control room. Scoped so the seller admin keeps its own visual language. */
+.operator-studio .operator-appbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  padding: 18px 32px;
+  background: var(--op-surface);
+  border-bottom: 1px solid var(--op-line);
+}
+.operator-studio .operator-account {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.operator-studio .operator-primary-nav {
+  display: flex;
+  gap: 4px;
+  padding: 0 32px;
+  overflow-x: auto;
+  background: var(--op-surface);
+  border-bottom: 1px solid var(--op-line);
+}
+.operator-primary-nav a {
+  padding: 15px 18px;
+  white-space: nowrap;
+  color: var(--op-muted);
+  border-bottom: 3px solid transparent;
+  font-size: 14px;
+}
+.operator-primary-nav a[data-active="true"],
+.operator-primary-nav a[aria-current="page"] {
+  color: var(--op-deep);
+  border-bottom-color: var(--op-deep);
+  font-weight: 700;
+}
+.operator-primary-nav a span {
+  margin-left: 8px;
+  font-size: 11px;
+}
+.operator-studio .operator-page-layout {
+  display: grid;
+  grid-template-columns: 210px minmax(0, 1fr);
+  max-width: 1600px;
+  margin: auto;
+}
+.operator-studio .operator-page-full {
+  grid-template-columns: minmax(0, 1fr);
+}
+.operator-context-nav {
+  background: transparent !important;
+  padding: 30px 16px;
+  border: 0 !important;
+}
+.operator-context-nav > p {
+  padding: 0 12px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--op-muted);
+}
+.operator-context-nav nav {
+  display: grid;
+  gap: 4px;
+}
+.operator-context-nav a {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 12px;
+  font-size: 13px;
+}
+.operator-studio .operator-page-content {
+  width: 100%;
+  max-width: none;
+  padding: 24px 32px 48px;
+  min-width: 0;
+}
+.operator-breadcrumb {
+  display: flex;
+  gap: 9px;
+  margin-bottom: 24px;
+  color: var(--op-muted);
+  font-size: 11px;
+}
+.operator-breadcrumb a:hover {
+  text-decoration: underline;
+}
+.operator-directory-views {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.operator-directory-views button {
+  padding: 12px 16px;
+  background: var(--op-surface);
+  border: 1px solid var(--op-line);
+  border-radius: 9px;
+  font-size: 13px;
+}
+.operator-directory-views button[aria-pressed="true"] {
+  background: var(--op-deep);
+  color: var(--op-surface);
+  border-color: var(--op-deep);
+}
+.operator-directory-views button span {
+  margin-left: 12px;
+  opacity: 0.75;
+}
+.operator-directory-tools {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 22px;
+}
+.operator-directory-tools input {
+  flex: 1;
+  min-width: 180px;
+}
+.operator-directory-tools select {
+  width: auto;
+}
+.operator-directory-tools > span {
+  font-size: 12px;
+  color: var(--op-muted);
+}
+.operator-client-columnhead,
+.operator-client-record-main {
+  display: grid;
+  grid-template-columns: 1.2fr 1.4fr 1fr 1fr;
+  gap: 20px;
+}
+.operator-client-columnhead {
+  padding: 0 20px 12px;
+  font-size: 11px;
+  color: var(--op-muted);
+}
+.operator-client-record {
+  background: var(--op-surface);
+  border: 1px solid var(--op-line);
+  border-radius: 12px;
+  margin-bottom: 10px;
+}
+.operator-client-record-main {
+  padding: 20px;
+  align-items: start;
+}
+.operator-client-name {
+  font-size: 16px;
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-color: var(--op-line);
+  text-underline-offset: 4px;
+}
+.operator-client-record p {
+  margin: 5px 0 9px;
+  font-size: 12px;
+  color: var(--op-muted);
+}
+.operator-client-record small {
+  display: block;
+  font-size: 11px;
+  color: var(--op-muted);
+  margin-top: 7px;
+}
+.operator-client-reason .badge {
+  white-space: normal;
+}
+.operator-client-channels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.operator-client-detail {
+  border-top: 1px solid var(--op-line);
+  padding: 10px 20px;
+  font-size: 12px;
+  color: var(--op-muted);
+}
+.operator-client-detail summary {
+  cursor: pointer;
+}
+.operator-client-detail > div {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  padding: 15px 0 5px;
+}
+.operator-client-detail b {
+  display: block;
+  color: var(--op-ink);
+  margin-top: 4px;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 1000px) {
+  .operator-client-columnhead {
+    display: none;
+  }
+  .operator-client-record-main {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+@media (max-width: 767px) {
+  .operator-studio .operator-appbar {
+    padding: 14px 16px;
+  }
+  .operator-studio .operator-primary-nav {
+    padding: 0 8px;
+  }
+  .operator-primary-nav a {
+    padding: 12px;
+  }
+  .operator-studio .operator-page-layout {
+    grid-template-columns: 1fr;
+  }
+  .operator-context-nav {
+    padding: 12px 16px 0;
+  }
+  .operator-context-nav > p {
+    display: none;
+  }
+  .operator-context-nav nav {
+    display: flex;
+    overflow-x: auto;
+  }
+  .operator-context-nav a {
+    white-space: nowrap;
+  }
+  .operator-studio .operator-page-content {
+    padding: 20px 16px;
+  }
+  .operator-directory-tools select {
+    flex: 1;
+  }
+  .operator-client-record-main {
+    gap: 16px;
+    padding: 16px;
+  }
+}
 .operator-workspace {
   --op-ink: #1b302b;
   --op-muted: #61736c;

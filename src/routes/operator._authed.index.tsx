@@ -2,15 +2,23 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { listClientsFn } from "@/app/operator/clients.functions";
 import { isPaymentSoon, isProblem, lastError } from "@/app/operator/client-health";
 import { TodayTasks } from "@/app/operator/client/notes";
+import { supportInboxFn } from "@/app/operator/support.functions";
 import { Badge, Empty } from "@/app/ui";
 
 export const Route = createFileRoute("/operator/_authed/")({
-  loader: () => listClientsFn(),
+  loader: async () => {
+    const [clients, inbox] = await Promise.all([
+      listClientsFn(),
+      supportInboxFn({ data: {} }).catch(() => null),
+    ]);
+    return { clients, inbox };
+  },
   component: OperatorOverview,
 });
 
 function OperatorOverview() {
-  const clients = Route.useLoaderData();
+  const { clients, inbox } = Route.useLoaderData();
+  const { pendingRequests } = Route.useRouteContext();
   const problems = clients.filter(isProblem);
   const paymentSoon = clients.filter(isPaymentSoon);
   const quiet = clients.filter((c) => c.pulse?.quiet && !isProblem(c));
@@ -37,20 +45,26 @@ function OperatorOverview() {
         </Link>
       </div>
       <div className="operator-signal-grid">
-        <Link to="/operator/clients" className="operator-signal operator-signal-danger">
+        <Link
+          to="/operator/clients"
+          search={{ view: "problem" }}
+          className="operator-signal operator-signal-danger"
+        >
           <strong>{problems.length}</strong>
           <span>Проблемы клиентов</span>
           <small>Каналы и просроченные подписки</small>
         </Link>
         <Link to="/operator/requests" className="operator-signal operator-signal-warn">
-          <strong>↗</strong>
+          <strong>{pendingRequests}</strong>
           <span>Заявки на модули</span>
           <small>Запросы владельцев магазинов</small>
         </Link>
         <Link to="/operator/support" className="operator-signal">
-          <strong>✉</strong>
+          <strong>{inbox ? inbox.rows.filter((r) => r.unread > 0).length : "—"}</strong>
           <span>Поддержка</span>
-          <small>Диалоги, ожидающие ответа</small>
+          <small>
+            {inbox ? "Диалоги с непрочитанными сообщениями" : "Данные поддержки недоступны"}
+          </small>
         </Link>
         <Link to="/operator/renewals" className="operator-signal">
           <strong>{paymentSoon.length}</strong>
@@ -69,7 +83,11 @@ function OperatorOverview() {
           ) : (
             <div className="operator-queue">
               {actionClients.slice(0, 8).map((c) => {
-                const reason = lastError(c);
+                const reason =
+                  lastError(c) ??
+                  (c.subscription.state === "overdue" || c.subscription.state === "grace_over"
+                    ? "Подписка просрочена"
+                    : null);
                 const kind = reason ? "danger" : c.pulse?.quiet ? "warn" : "neutral";
                 return (
                   <Link
