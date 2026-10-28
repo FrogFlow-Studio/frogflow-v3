@@ -196,9 +196,96 @@ describe("язык выдачи в Direct/WhatsApp", () => {
     await send({ name_snapshot: "Yozuv" } as typeof item, [
       { path: "p/f.pdf", name: "Dars", url: null },
     ]);
-    expect(texts[0]).toContain("Fayl havolalari 7 kun amal qiladi.");
-    expect(texts[0]).toContain("Buyurtmaning barcha fayllari — sahifada: https://app.test/o/1");
-    expect(texts[0]).not.toMatch(/[а-яё]/i);
+    expect(texts[1]).toContain("Fayllar yuqorida, ular WhatsApp’da darhol ochiladi.");
+    expect(texts[1]).toContain("Buyurtmaning barcha fayllari — sahifada: https://app.test/o/1");
+    expect(texts[1]).not.toMatch(/[а-яё]/i);
+  });
+});
+
+describe("WhatsApp: файлы документами (Копилка 28.10, заказ #274: «по ссылкам ничего не открывается»)", () => {
+  type Call = { text: string; o: Record<string, unknown> };
+  function recorder(
+    reply: (o: Record<string, unknown>) => Record<string, unknown> = () => ({ ok: true }),
+  ) {
+    const calls: Call[] = [];
+    const t = {
+      send: vi.fn(async (_c: string, _a: string, text: string, o: Record<string, unknown>) => {
+        calls.push({ text, o });
+        return reply(o);
+      }),
+    } as unknown as ZernioTransport;
+    return { t, calls };
+  }
+  const mats = [
+    { path: `${BOT}/a.docx`, name: "Папка КЗ.docx", url: null },
+    { path: `${BOT}/b.pptx`, name: "Разделители.pptx", url: null },
+    { path: null, name: "Видео", url: "https://drive.test/v" },
+  ];
+
+  it("каждый файл из хранилища — отдельный документ с именем, внешняя ссылка и страница заказа — текстом", async () => {
+    const { t, calls } = recorder();
+    const send = zernioMaterialSender(t, "c", "a", "whatsapp", { pageUrl: "https://app.test/o/1" });
+    expect(await send({ ...item, id: "i-274" } as typeof item, mats)).toBe("sent");
+    const docs = calls.filter((c) => c.o.attachmentType === "file");
+    expect(docs.map((d) => d.o.attachmentName)).toEqual(["Папка КЗ.docx", "Разделители.pptx"]);
+    expect(String(docs[0]!.o.attachmentUrl)).toContain("https://s.test/product-files/");
+    expect(new Set(docs.map((d) => d.o.idempotencyScope)).size).toBe(2);
+    const text = calls.at(-1)!.text;
+    expect(text).toContain("https://drive.test/v");
+    expect(text).toContain("Файлы — выше");
+    expect(text).toContain("https://app.test/o/1");
+    // Файлы ушли документами — подписанных ссылок и «7 дней» в тексте нет.
+    expect(text).not.toContain("s.test/product-files");
+    expect(text).not.toContain("7 дней");
+  });
+
+  it("WhatsApp не принял документ (размер, тип) — этот файл ссылкой, остальные документами", async () => {
+    const { t, calls } = recorder((o) =>
+      o.attachmentName === "Папка КЗ.docx"
+        ? { ok: false, error: "file too large", failure: { status: 400, platformCode: 131053 } }
+        : { ok: true },
+    );
+    const send = zernioMaterialSender(t, "c", "a", "whatsapp");
+    expect(await send(item, mats.slice(0, 2))).toBe("sent");
+    const text = calls.at(-1)!.text;
+    expect(text).toContain("Папка КЗ.docx: https://s.test/product-files/");
+    expect(text).toContain("действуют 7 дней");
+    expect(text).not.toContain("b.pptx");
+  });
+
+  it("документ мог дойти (обрыв, 500) — ссылкой не дублируем, позиция не выдана", async () => {
+    const { t, calls } = recorder((o) =>
+      o.attachmentType === "file"
+        ? { ok: false, error: "timeout", failure: { status: null } }
+        : { ok: true },
+    );
+    const send = zernioMaterialSender(t, "c", "a", "whatsapp");
+    expect(await send(item, mats.slice(0, 1))).toBe("failed");
+    expect(calls).toHaveLength(1);
+  });
+
+  it("окно 24 часа закрыто на документе — запасной путь, позиция выдана", async () => {
+    const onWindowClosed = vi.fn(async () => {});
+    const { t, calls } = recorder(() => ({
+      ok: false,
+      error: "outside window",
+      failure: { status: 400, platformCode: 131047 },
+    }));
+    const send = zernioMaterialSender(t, "c", "a", "whatsapp", {
+      pageUrl: "https://app.test/o/1",
+      onWindowClosed,
+    });
+    expect(await send(item, mats.slice(0, 2))).toBe("sent");
+    expect(onWindowClosed).toHaveBeenCalledTimes(1);
+    expect(calls).toHaveLength(1);
+  });
+
+  it("Instagram документов не шлёт — ссылки, как раньше", async () => {
+    const { t, calls } = recorder();
+    const send = zernioMaterialSender(t, "c", "a", "instagram");
+    await send(item, mats.slice(0, 1));
+    expect(calls.some((c) => c.o.attachmentType === "file")).toBe(false);
+    expect(calls[0]!.text).toContain("https://s.test/product-files/");
   });
 });
 

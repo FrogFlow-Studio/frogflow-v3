@@ -4,7 +4,7 @@ import { signedFileUrl } from "@/core/orders/orders";
 import { materialDownloadName } from "@/core/orders/pure";
 import type { ZernioTransport } from "./api.server";
 import { COPY } from "@/channels/telegram/copy";
-import { classifyZernioFailure } from "./errors";
+import { classifyZernioFailure, isAttachmentRejected } from "./errors";
 import type { ZernioPlatform } from "./platform";
 
 export type ZernioDeliveryOptions = {
@@ -26,10 +26,14 @@ export type ZernioDeliveryOptions = {
 };
 
 /**
- * Выдача материалов в Instagram Direct / WhatsApp: ссылками. Внешняя ссылка —
- * как есть; файл из хранилища — подписанной ссылкой на 7 дней (Direct не
- * принимает документы с сервера, WhatsApp принимает, но ссылка работает в
- * обоих каналах одинаково и не упирается в размер). Плюс ссылка на страницу
+ * Выдача материалов в Instagram Direct / WhatsApp. WhatsApp: файл из
+ * хранилища уходит документом (имя файла, открывается прямо в чате, как
+ * продавец пересылает его с телефона; Копилка 28.10, заказ #274 —
+ * «по ссылкам ничего не открывается»). Отказ WhatsApp принять документ
+ * (размер, тип) — ссылкой; обрыв или тайм-аут — позиция не выдана, повтор
+ * идёт с тем же ключом идемпотентности. Instagram документов с сервера не
+ * принимает — там ссылки. Внешняя ссылка — всегда как есть; файл из
+ * хранилища ссылкой — подписанной на 7 дней. Плюс ссылка на страницу
  * заказа, где файлы живут дольше 7 дней.
  */
 export function zernioMaterialSender(
@@ -41,25 +45,50 @@ export function zernioMaterialSender(
 ): MaterialSender {
   let windowClosed: Promise<void> | null = null;
   const m = COPY[opts.locale ?? "ru"];
+  const closedWindow = async (): Promise<"sent" | "failed"> => {
+    if (!opts.pageUrl) return "failed";
+    windowClosed ??= (opts.onWindowClosed?.() ?? Promise.resolve()).catch((e) =>
+      console.warn(`[zernio] выдача при закрытом окне: ${String(e)}`),
+    );
+    await windowClosed;
+    return "sent";
+  };
   return async (item, materials) => {
     const lines: string[] = [`📁 ${item.name_snapshot}`];
     const links: Array<{ name: string | null; url: string }> = [];
+    let expiring = false;
+    let documents = 0;
     for (const mat of materials) {
-      const url =
-        mat.url ??
-        (mat.path
-          ? await signedFileUrl(
-              mat.path,
-              undefined,
-              materialDownloadName(mat, item.name_snapshot, materials),
-            )
-          : null);
+      const fileName = materialDownloadName(mat, item.name_snapshot, materials);
+      const url = mat.url ?? (mat.path ? await signedFileUrl(mat.path, undefined, fileName) : null);
       if (!url) return "failed";
+      if (platform === "whatsapp" && !mat.url && mat.path) {
+        const d = await transport.send(conversationId, accountId, "", {
+          platform,
+          attachmentUrl: url,
+          attachmentType: "file",
+          attachmentName: fileName,
+          idempotencyScope: `deliver-doc:${item.id}:${mat.path}`,
+        });
+        if (d.ok) {
+          documents++;
+          continue;
+        }
+        const kind = classifyZernioFailure(d.failure);
+        if (kind === "window_closed") return closedWindow();
+        // Ссылкой — только если WhatsApp отказал именно во вложении (размер,
+        // тип, не скачал файл). Документ мог дойти (обрыв, 500) — не
+        // дублируем: продавец повторит выдачу тем же ключом.
+        if (!isAttachmentRejected(d.failure)) return "failed";
+        console.warn(`[zernio] документ не принят, выдаём ссылкой: ${d.error ?? ""}`);
+      }
+      if (mat.path && !mat.url) expiring = true;
       links.push({ name: mat.name ?? null, url });
       lines.push(`${mat.name ? `${mat.name}: ` : ""}${url}`);
     }
     const tail: string[] = [];
-    if (materials.some((m) => m.path)) tail.push(`\n${m.deliveryLinksExpire}`);
+    if (documents) tail.push(`\n${m.deliveryFilesAbove}`);
+    if (expiring) tail.push(`\n${m.deliveryLinksExpire}`);
     if (opts.pageUrl) tail.push(`\n${m.deliveryOrderPage} ${opts.pageUrl}`);
     // Подписанная ссылка с именем файла — около 450 знаков: два-три файла в
     // одном сообщении не влезают в лимит Instagram, и выдача падала целиком
@@ -98,14 +127,9 @@ export function zernioMaterialSender(
       }
       return "sent";
     }
-    if (opts.pageUrl && classifyZernioFailure(r.failure) === "window_closed") {
-      windowClosed ??= (opts.onWindowClosed?.() ?? Promise.resolve()).catch((e) =>
-        console.warn(`[zernio] выдача при закрытом окне: ${String(e)}`),
-      );
-      await windowClosed;
-      return "sent";
-    }
-    return "failed";
+    if (classifyZernioFailure(r.failure) === "window_closed") return closedWindow();
+    // Документы ушли, а сообщение со страницей заказа нет — файлы у покупателя.
+    return documents ? "sent" : "failed";
   };
 }
 

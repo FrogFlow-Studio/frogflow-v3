@@ -145,8 +145,9 @@ describe("язык покупателя в выдаче после подтве�
       transport: t,
     });
     await d.send(uzItem, [{ path: "p/f.pdf", name: "Dars", url: null }]);
-    expect(texts[0]).toContain("Fayl havolalari 7 kun amal qiladi.");
-    expect(texts[0]).not.toMatch(/[а-яё]/i);
+    // WhatsApp: файл ушёл документом (texts[0] — пустая подпись), следом текст.
+    expect(texts[1]).toContain("Fayllar yuqorida, ular WhatsApp’da darhol ochiladi.");
+    expect(texts[1]).not.toMatch(/[а-яё]/i);
   });
 
   it("zernioSenderFor (витрина) и zernioTargetOf берут язык из state.locale", async () => {
@@ -164,6 +165,6 @@ describe("язык покупателя в выдаче после подтве�
     expect(target?.locale).toBe("uz");
     const { t, texts } = okTransport();
     await zernioSenderFor(target!, t)(uzItem, [{ path: "p/f.pdf", name: "Dars", url: null }]);
-    expect(texts[0]).toContain("Fayl havolalari 7 kun amal qiladi.");
+    expect(texts[1]).toContain("Fayllar yuqorida, ular WhatsApp’da darhol ochiladi.");
   });
 });
