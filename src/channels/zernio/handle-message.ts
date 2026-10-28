@@ -476,8 +476,11 @@ export async function handleZernioMessage(
   }
   // Как в Telegram: при чате с менеджером «/start» и чек на шаге оплаты всё
   // равно идут боту — иначе покупатель, позвавший магазин, молчание получал
-  // навсегда (перехват сам не снимается; Educational Bot, 30.09).
-  if (intercepted) {
+  // навсегда (перехват сам не снимается; Educational Bot, 30.09). Нажатие
+  // кнопки бота — тоже: в Telegram это отдельное событие мимо «Чата», а здесь
+  // «💳 Оплата картой» после передачи вопроса менеджеру оставалась без ссылки
+  // (Копилка, WhatsApp 28.10, заказ #274).
+  if (intercepted && !m.postbackPayload) {
     const { isShopStartWord } = await import("@/core/instagram/comment-rules");
     const proofStep =
       ["awaiting_proof", "awaiting_payment", "choose_pay"].includes(customer.state.mode ?? "") &&

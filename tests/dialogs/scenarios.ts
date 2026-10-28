@@ -6069,4 +6069,122 @@ export const SCENARIOS: Scenario[] = [
       },
     ],
   },
+  {
+    id: "handoff-pay-button-still-works-wa-ru",
+    title:
+      "WhatsApp, после передачи менеджеру: «💳 Оплата картой» по-прежнему даёт ссылку на оплату, а не тишину",
+    origin:
+      "Копилка Русоведа, WhatsApp 28.10 16:24, заказ #274 (Djami): консультант передал «Выставите счёт / Халык» менеджеру, «Чат» перехватил диалог, нажатие «Оплата картой» осталось без ответа, потом «Могу переводом», «???»",
+    channel: "whatsapp",
+    locale: "ru",
+    full: true,
+    modules: { whatsapp: true, wa_shop: true, robokassa: true, manager_chat: true },
+    state: { mode: "choose_pay", pending_order_id: 7, pending_display_no: 274 },
+    arrange: (r) => {
+      r.db.tables.orders!.push({
+        id: 7,
+        bot_id: "00000000-0000-4000-8000-0000000000aa",
+        order_no: 7,
+        display_no: 274,
+        telegram_id: -1,
+        status: "awaiting_payment",
+        total: 3500,
+        currency: "KZT",
+        country_code: "KZ",
+        paid_amount: 0,
+        fulfillment_kind: "digital",
+        order_items: [],
+      });
+      // Консультант передал вопрос менеджеру: «Чат» подключён (notifyHandoff → connect).
+      r.db.tables.manager_chat_state!.push({
+        bot_id: "00000000-0000-4000-8000-0000000000aa",
+        telegram_id: -1,
+        active: true,
+      });
+      r.db.tables.app_settings!.push(
+        { key: "robokassa_enabled", value: "true" },
+        { key: "robokassa_login", value: "kopilka_rusoveda" },
+        { key: "robokassa_pass1", value: "p1" },
+        { key: "robokassa_pass2", value: "p2" },
+        { key: "robokassa_region", value: "kz" },
+      );
+    },
+    steps: [
+      {
+        say: { button: "PAY:rk", title: "💳 Оплата картой" },
+        expect: {
+          says: ["https://auth.robokassa.kz"],
+          state: { mode: "awaiting_payment", pay_link: "rk" },
+        },
+      },
+    ],
+  },
+  {
+    id: "handoff-my-orders-button-still-works-wa-ru",
+    title: "WhatsApp, после передачи менеджеру: «📋 Мои заказы» показывает заказы, а не тишину",
+    origin:
+      "Копилка Русоведа, WhatsApp 28.10 16:35, заказ #274 (Djami): после выдачи файлов нажала «📋 Мои заказы» — тишина, «Чат» держал диалог у менеджера",
+    channel: "whatsapp",
+    locale: "ru",
+    full: true,
+    modules: { whatsapp: true, wa_shop: true, manager_chat: true },
+    arrange: (r) => {
+      r.db.tables.orders!.push({
+        id: 7,
+        bot_id: "00000000-0000-4000-8000-0000000000aa",
+        order_no: 7,
+        display_no: 274,
+        telegram_id: -1,
+        status: "awaiting_payment",
+        total: 3500,
+        currency: "KZT",
+        country_code: "KZ",
+        paid_amount: 0,
+        fulfillment_kind: "digital",
+        order_items: [],
+      });
+      // Консультант передал вопрос менеджеру: «Чат» подключён (notifyHandoff → connect).
+      r.db.tables.manager_chat_state!.push({
+        bot_id: "00000000-0000-4000-8000-0000000000aa",
+        telegram_id: -1,
+        active: true,
+      });
+    },
+    steps: [
+      {
+        say: { button: "ORDERS", title: "📋 Мои заказы" },
+        expect: { says: ["274"] },
+      },
+    ],
+  },
+  {
+    id: "pay-card-remembered-for-consultant-ig-ru",
+    title:
+      "«Купить» → карточка оплаты: её текст запоминается для консультанта (вопрос «Выставите счёт / Халык» он решает по ней)",
+    origin:
+      "Копилка Русоведа, WhatsApp 28.10 16:24, заказ #274 (Djami): «Выставите счет на этот номер», «Халык» → консультант «уточните у менеджера», хотя «🧾 Перевод Kaspi» был в карточке над вопросом",
+    channel: "instagram",
+    locale: "ru",
+    full: true,
+    modules: { helpdesk: true, manager_chat: true },
+    products: [{ id: P1, name: "Папка классного руководителя", price: 3500 }],
+    steps: [
+      {
+        say: { button: `PROD:${P1}`, title: "Купить" },
+        expect: {
+          count: 1,
+          says: ["К оплате: 3500 ₸"],
+          state: {
+            mode: "awaiting_proof",
+            direct: {
+              pay_card: {
+                order: expect.any(Number),
+                text: expect.stringContaining("К оплате: 3500 ₸"),
+              },
+            },
+          },
+        },
+      },
+    ],
+  },
 ];

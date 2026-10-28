@@ -56,7 +56,7 @@ import { SELLER_PAY_CARD_FAILED } from "../phone-notice";
 import { PLATFORM_LABEL } from "../platform";
 import { isMailConfigured } from "@/core/mail/mail.server";
 import { emailStep, languagePickerText, WA_LIST_MAX_ROWS, clipRowTitle, plain } from "../shop-flow";
-import { BTN, type Shop, memory, photoFor, reply, setMode } from "./context.server";
+import { BTN, type Shop, memory, photoFor, remember, reply, setMode } from "./context.server";
 import { showProductList, stepList } from "./catalog.server";
 import { deliverHere } from "./receipt.server";
 
@@ -749,6 +749,7 @@ export async function finishCheckout(s: Shop, countryCode: string) {
       ? `${plain(s.m.depositLine(formatMoney(due, order.currency), formatMoney(order.total, order.currency)))}\n\n`
       : "";
   const sent = await sendManualInstructions(s, {
+    orderId: order.id,
     no,
     due,
     currency: order.currency,
@@ -859,11 +860,10 @@ async function sendPayChoice(
   const rub = anyCard
     ? await rubEquivalent(s.ctx, pdm, { id: p.orderId, due: p.due, currency: p.currency })
     : null;
-  return reply(
-    s,
-    `${plain(s.m.manualTitleNew(p.no))}\n${itemsLine(p.items)}\n${plain(s.m.amountToPay(withRub(formatMoney(p.due, p.currency), rub)))}\n\n${plain(s.m.choosePayMethodNamed(buttons.map((b) => b.title)))}${notesBlock}`,
-    { force: true, buttons },
-  );
+  const text = `${plain(s.m.manualTitleNew(p.no))}\n${itemsLine(p.items)}\n${plain(s.m.amountToPay(withRub(formatMoney(p.due, p.currency), rub)))}\n\n${plain(s.m.choosePayMethodNamed(buttons.map((b) => b.title)))}${notesBlock}`;
+  const sent = await reply(s, text, { force: true, buttons });
+  if (sent) await remember(s, { pay_card: { order: p.orderId, text } });
+  return sent;
 }
 
 /**
@@ -953,6 +953,7 @@ export async function resumeExpressOrder(s: Shop, productId: string): Promise<bo
         fulfillment_kind: order.fulfillment_kind,
       });
       await sendManualInstructions(s, {
+        orderId: order.id,
         no,
         due,
         currency: order.currency,
@@ -1006,6 +1007,7 @@ export async function alreadyBoughtExpress(s: Shop, productId: string): Promise<
 export async function sendManualInstructions(
   s: Shop,
   p: {
+    orderId: number;
     no: number;
     due: number;
     currency: string;
@@ -1029,7 +1031,7 @@ export async function sendManualInstructions(
       ? `${plain(s.platform === "whatsapp" ? s.m.payLinkTextHint : s.m.payLinkHint)}\n\n`
       : "") +
     plain(p.physical ? s.m.afterProofPhysical : s.m.afterProofManual);
-  return reply(s, text, {
+  const sent = await reply(s, text, {
     force: true,
     attachmentUrl: await photoFor(s, [p.qr]),
     ...(link && s.platform !== "whatsapp"
@@ -1041,6 +1043,8 @@ export async function sendManualInstructions(
         }
       : {}),
   });
+  if (sent) await remember(s, { pay_card: { order: p.orderId, text } });
+  return sent;
 }
 
 /** Первая ссылка https из реквизитов продавца — для кнопки оплаты. */
@@ -1209,6 +1213,7 @@ export async function choosePayment(
   const physical = order.fulfillment_kind === "physical";
   await setMode(s, { mode: "awaiting_proof", pending_order_id: order.id, pending_display_no: no });
   await sendManualInstructions(s, {
+    orderId: order.id,
     no,
     due,
     currency: order.currency,
