@@ -232,3 +232,18 @@ describe("BOVI 19.10: требование размера перед отпра�
     expect(stall(text)).toEqual([]);
   });
 });
+
+describe("BOVI 28.10: ориентир доставки из базы знаний — не выдуманная цена", () => {
+  const delivery = "До Москвы СДЭК — примерно 7 797 ₸ до пункта выдачи.";
+  it("сумма из статьи продавца проходит, чужая сумма — нет", () => {
+    expect(draftProblems(delivery, catalog).map((p) => p.kind)).toContain("price");
+    expect(
+      draftProblems(delivery, catalog, { knowledgeAmounts: new Set([7797]) }).map((p) => p.kind),
+    ).not.toContain("price");
+    expect(
+      draftProblems("До Москвы — примерно 5 000 ₸.", catalog, {
+        knowledgeAmounts: new Set([7797]),
+      }).map((p) => p.kind),
+    ).toContain("price");
+  });
+});

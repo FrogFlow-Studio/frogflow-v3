@@ -14,7 +14,7 @@ import {
 import { findProducts, type ConsultantProduct } from "./catalog";
 import { loadPricelist } from "./catalog.server";
 import { storyHits } from "./story-hits";
-import { currencyAsked, tengeToRubles, wantsRubles } from "./currency";
+import { currencyAsked, findKztAmounts, tengeToRubles, wantsRubles } from "./currency";
 import {
   askedBefore as replyAskedBefore,
   brandCountries,
@@ -99,7 +99,7 @@ const FINAL_ANSWER_NOTE =
 
 /** Пометка модели: цена всё ещё не по прайсу — ответ без этих сумм. */
 const priceLastTryNote = (details: string[]): string =>
-  `[Суммы не совпадают с выдачей поиска: ${details.join("; ")}. Инструменты больше недоступны. Перепишите ответ покупателю: оставьте только цены, которые есть в выдаче поиска, а в чём не уверены — без суммы. Продолжите подбор одним вопросом по делу. Менеджера не обещайте.]`;
+  `[Суммы не совпадают с выдачей поиска: ${details.join("; ")}. Инструменты больше недоступны. Перепишите ответ покупателю: оставьте только цены, которые есть в выдаче поиска. Позицию, цену которой выдача не подтверждает, уберите из ответа целиком: не обещайте уточнить, узнать или прислать её цену позже. Продолжите подбор одним вопросом по делу. Менеджера не обещайте.]`;
 
 const TOOL_MARKUP_RETRY_NOTE =
   "[Вызов инструмента написан текстом, а не вызван. Если нужен поиск — вызовите инструмент. Если нет — напишите покупателю ответ обычными словами, без тегов.]";
@@ -491,6 +491,7 @@ async function decide(data: PricelistData, input: PricelistInput): Promise<Price
       text,
     ].join("\n"),
     askedBefore: replyAskedBefore(state.recent ?? []),
+    knowledgeAmounts: new Set(articles.flatMap((a) => findKztAmounts(a.content).map((x) => x.kzt))),
   };
 
   // Покупатель сам назвал Россию или российский город — страна и город в

@@ -136,6 +136,25 @@ describe("консультант отвечает на комментарий о
     ]);
   });
 
+  it("BOVI 28.10: «👏» под рилсом — консультант решил не отвечать, прайс не уходит", async () => {
+    // larapelikh «👏» и tailortextile «🔥🔥🔥» получили прайс LUXOR личным сообщением.
+    const { ctx, db, api, replies } = setup();
+    const calls: string[] = [];
+    const r = await replyToCommentByConsultant(ctx, payload("👏"), {
+      api,
+      answer: answerWith({ reply: "ПРОПУСК", model: "claude-sonnet-5" }, calls),
+    });
+    // Модель видела правило и сам комментарий: решение по смыслу — её.
+    expect(calls[0]).toContain("ПРОПУСК");
+    expect(calls[0]).toMatch(/👏$/);
+    expect(replies).toEqual([]);
+    expect(r.note).toContain("не стал отвечать");
+    expect(logs(db)[0]).toMatchObject({ status: "skipped" });
+    expect(logs(db)[0]!.payload).toMatchObject({ kind: "skip", usd: 0.004 });
+    // Разговора не было — в историю диалога ничего не пишем.
+    expect(db.tables.bot_users?.[0]?.state ?? {}).not.toHaveProperty("consultant.recent");
+  });
+
   it("цены в ответе нет — дежурное приглашение, а не догадка", async () => {
     const { ctx, db, api, replies } = setup();
     await replyToCommentByConsultant(ctx, payload("Можно инфо"), {
