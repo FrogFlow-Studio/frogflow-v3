@@ -15,53 +15,62 @@ export type OperatorMenuItem = {
 };
 
 export type OperatorMenuGroup = {
-  id: "clients" | "money" | "channels" | "system";
+  id: "work" | "clients" | "growth" | "platform" | "content";
   title: string;
   items: OperatorMenuItem[];
 };
 
 export const OPERATOR_MENU: OperatorMenuGroup[] = [
   {
+    id: "work",
+    title: "Работа",
+    items: [
+      { to: "/operator", label: "Обзор", exact: true },
+      { to: "/operator/support", label: "Поддержка" },
+      { to: "/operator/requests", label: "Заявки на модули", badge: "requests" },
+      { to: "/operator/community", label: "Жалобы сообщества" },
+      { to: "/operator/market-reports", label: "Жалобы на магазины" },
+    ],
+  },
+  {
     id: "clients",
     title: "Клиенты",
     items: [
-      { to: "/operator", label: "Клиенты", exact: true },
+      { to: "/operator/clients", label: "Все клиенты", exact: true },
       { to: "/operator/clients/new", label: "Подключить клиента" },
-      { to: "/operator/requests", label: "Заявки на модули", badge: "requests" },
-      { to: "/operator/support", label: "Поддержка" },
-      { to: "/operator/news", label: "Новости платформы" },
-      { to: "/operator/leads", label: "Лиды" },
-      { to: "/operator/partners", label: "Партнёры" },
-      { to: "/operator/broadcast", label: "Сообщение владельцам" },
       { to: "/operator/bulk", label: "Массовые действия" },
-      { to: "/operator/community", label: "Жалобы сообщества" },
-      { to: "/operator/market-reports", label: "Жалобы на магазины" },
-      { to: "/operator/market-collections", label: "Подборки площадки" },
-      { to: "/operator/market-stats", label: "Аналитика площадки" },
       { to: "/operator/migration", label: "Переезд на v2" },
     ],
   },
   {
-    id: "money",
-    title: "Деньги",
+    id: "growth",
+    title: "Продажи и деньги",
     items: [
+      { to: "/operator/leads", label: "Лиды" },
       { to: "/operator/revenue", label: "Выручка" },
       { to: "/operator/renewals", label: "Продления" },
+      { to: "/operator/partners", label: "Партнёры" },
     ],
   },
   {
-    id: "channels",
-    title: "Каналы и вебхуки",
-    items: [{ to: "/operator/settings", label: "Настройки и вебхук Zernio" }],
+    id: "content",
+    title: "Контент",
+    items: [
+      { to: "/operator/news", label: "Новости платформы" },
+      { to: "/operator/broadcast", label: "Сообщение владельцам" },
+      { to: "/operator/market-collections", label: "Подборки площадки" },
+      { to: "/operator/market-stats", label: "Аналитика площадки" },
+    ],
   },
   {
-    id: "system",
-    title: "Система",
+    id: "platform",
+    title: "Платформа",
     items: [
-      { to: "/operator/log", label: "Журнал действий" },
       { to: "/operator/health", label: "Здоровье платформы" },
       { to: "/operator/crons", label: "Кроны" },
       { to: "/operator/observer", label: "Наблюдатель" },
+      { to: "/operator/log", label: "Журнал действий" },
+      { to: "/operator/settings", label: "Настройки и вебхук Zernio" },
     ],
   },
 ];
@@ -69,8 +78,8 @@ export const OPERATOR_MENU: OperatorMenuGroup[] = [
 /** Четыре главных пункта нижней панели на телефоне; остальное — под «Ещё». */
 export const OPERATOR_BOTTOM_BAR: OperatorMenuItem["to"][] = [
   "/operator",
-  "/operator/requests",
-  "/operator/revenue",
+  "/operator/clients",
+  "/operator/support",
 ];
 
 export function operatorMenuItems(): OperatorMenuItem[] {

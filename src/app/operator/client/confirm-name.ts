@@ -11,6 +11,7 @@ export const CLIENT_TABS = [
   { key: "overview", title: "Обзор" },
   { key: "channels", title: "Каналы" },
   { key: "billing", title: "Оплата" },
+  { key: "settings", title: "Настройки" },
   { key: "log", title: "Журнал" },
   { key: "migration", title: "Переезд" },
 ] as const;

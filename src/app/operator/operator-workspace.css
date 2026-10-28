@@ -1,0 +1,260 @@
+/* Operator control room. Scoped so the seller admin keeps its own visual language. */
+.operator-workspace {
+  --op-ink: #1b302b;
+  --op-muted: #61736c;
+  --op-line: #dbe7df;
+  --op-surface: #fff;
+  --op-canvas: #f3f7f3;
+  --op-deep: #204c3b;
+  min-height: 100vh;
+  background: var(--op-canvas);
+  color: var(--op-ink);
+}
+.dark .operator-workspace {
+  --op-ink: #e6f3e9;
+  --op-muted: #adc3b4;
+  --op-line: #355044;
+  --op-surface: #1d3026;
+  --op-canvas: #14221b;
+  --op-deep: #a3dcaf;
+}
+.operator-workspace > div {
+  grid-template-columns: 252px minmax(0, 1fr);
+}
+.operator-workspace aside {
+  background: var(--op-surface);
+  border-color: var(--op-line);
+}
+.operator-workspace aside > nav {
+  padding: 12px;
+}
+.operator-workspace aside [data-menu-group] {
+  padding-bottom: 12px;
+}
+.operator-workspace aside [data-menu-group] > div:first-child {
+  color: var(--op-muted);
+}
+.operator-workspace aside a {
+  border-radius: 9px;
+  color: var(--op-muted);
+}
+.operator-workspace aside a:hover {
+  background: var(--op-canvas);
+  color: var(--op-ink);
+}
+.operator-workspace aside a[aria-current="page"] {
+  background: #e3f0e7;
+  color: #205039;
+  font-weight: 650;
+}
+.dark .operator-workspace aside a[aria-current="page"] {
+  background: #2d4d38;
+  color: #c3efcb;
+}
+.operator-workspace main {
+  max-width: 1440px;
+  padding-top: 32px;
+}
+.operator-workspace .card {
+  background: var(--op-surface);
+  border-color: var(--op-line);
+  box-shadow: none;
+  border-radius: 12px;
+}
+.operator-workspace .card header {
+  border-color: var(--op-line);
+}
+.operator-workspace .table th {
+  color: var(--op-muted);
+}
+.operator-workspace .table td,
+.operator-workspace .table th {
+  border-color: var(--op-line);
+}
+.operator-workspace main > div > .mb-6 h1 {
+  font-size: 1.7rem;
+  letter-spacing: -0.035em;
+}
+.operator-brand {
+  letter-spacing: -0.035em;
+}
+.operator-brand small {
+  display: block;
+  color: var(--op-muted);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+.operator-hero {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 26px;
+}
+.operator-kicker {
+  color: var(--op-deep);
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.operator-hero h1 {
+  font-size: clamp(1.7rem, 3vw, 2.45rem);
+  letter-spacing: -0.05em;
+  line-height: 1.12;
+  font-weight: 750;
+}
+.operator-hero p:not(.operator-kicker) {
+  color: var(--op-muted);
+  font-size: 14px;
+  margin-top: 8px;
+}
+.operator-hero .btn-primary {
+  white-space: nowrap;
+}
+.operator-signal-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 30px;
+}
+.operator-signal {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-height: 125px;
+  padding: 17px;
+  border: 1px solid var(--op-line);
+  border-radius: 12px;
+  background: var(--op-surface);
+}
+.operator-signal:hover {
+  border-color: var(--op-deep);
+}
+.operator-signal strong {
+  font-size: 1.8rem;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+.operator-signal span {
+  font-size: 13px;
+  font-weight: 700;
+}
+.operator-signal small {
+  color: var(--op-muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+.operator-signal-danger {
+  background: #fdf0ed;
+}
+.operator-signal-warn {
+  background: #fff5e8;
+}
+.dark .operator-signal-danger {
+  background: #432d2a;
+}
+.dark .operator-signal-warn {
+  background: #443827;
+}
+.operator-overview-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(270px, 1fr);
+  gap: 24px;
+}
+.operator-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.operator-section-heading h2,
+.operator-health-summary h2 {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+.operator-section-heading a,
+.operator-health-summary a {
+  color: var(--op-deep);
+  font-size: 13px;
+  font-weight: 650;
+}
+.operator-queue {
+  border: 1px solid var(--op-line);
+  background: var(--op-surface);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.operator-queue-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 15px;
+  border-top: 1px solid var(--op-line);
+}
+.operator-queue-row:first-child {
+  border-top: 0;
+}
+.operator-queue-row:hover {
+  background: var(--op-canvas);
+}
+.operator-queue-main {
+  flex: 1;
+  min-width: 0;
+}
+.operator-queue-main strong,
+.operator-queue-main span {
+  display: block;
+}
+.operator-queue-main strong {
+  font-size: 14px;
+}
+.operator-queue-main span {
+  font-size: 12px;
+  color: var(--op-muted);
+  margin-top: 3px;
+}
+.operator-overview-aside > .mb-6 {
+  margin-bottom: 18px;
+}
+.operator-health-summary {
+  background: var(--op-surface);
+  border: 1px solid var(--op-line);
+  border-radius: 12px;
+  padding: 17px;
+}
+.operator-health-summary p {
+  color: var(--op-muted);
+  font-size: 13px;
+  margin: 7px 0 11px;
+}
+@media (max-width: 1100px) {
+  .operator-signal-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .operator-overview-columns {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 767px) {
+  .operator-workspace main {
+    padding: 22px 16px;
+  }
+  .operator-hero {
+    align-items: start;
+    flex-direction: column;
+  }
+  .operator-hero .btn-primary {
+    width: 100%;
+    text-align: center;
+  }
+  .operator-signal {
+    min-height: 108px;
+    padding: 13px;
+  }
+  .operator-signal strong {
+    font-size: 1.5rem;
+  }
+}

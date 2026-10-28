@@ -2,12 +2,13 @@ import { describe, expect, it } from "vitest";
 import { OPERATOR_BOTTOM_BAR, OPERATOR_MENU, operatorMenuItems } from "./menu";
 
 describe("меню оператора", () => {
-  it("четыре группы в заданном порядке", () => {
+  it("группы отражают рабочие задачи оператора", () => {
     expect(OPERATOR_MENU.map((g) => g.title)).toEqual([
+      "Работа",
       "Клиенты",
-      "Деньги",
-      "Каналы и вебхуки",
-      "Система",
+      "Продажи и деньги",
+      "Контент",
+      "Платформа",
     ]);
   });
 
@@ -16,6 +17,7 @@ describe("меню оператора", () => {
     expect(new Set(tos).size).toBe(tos.length);
     for (const to of [
       "/operator",
+      "/operator/clients",
       "/operator/clients/new",
       "/operator/revenue",
       "/operator/partners",

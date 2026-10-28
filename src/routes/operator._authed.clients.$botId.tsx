@@ -26,7 +26,7 @@ import { ApipayCard } from "@/app/operator/client/kaspi";
 import { ProdamusRateCard } from "@/app/operator/client/prodamus-rate";
 import { ConfirmName } from "@/app/operator/client/ConfirmName";
 import { CLIENT_TABS, parseTab, type ClientTab } from "@/app/operator/client/confirm-name";
-import { StatusBadge } from "./operator._authed.index";
+import { StatusBadge } from "./operator._authed.clients";
 
 export const Route = createFileRoute("/operator/_authed/clients/$botId")({
   validateSearch: (s: Record<string, unknown>): { tab?: ClientTab } =>
@@ -146,12 +146,10 @@ function ClientPage() {
             />
           </div>
           <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-2">
-            {consultant.pricelist && <ConsultantViewCard c={c} />}
-            <AdminAccessCard c={c} onDone={refresh} />
-            <ModulesCard c={c} onDone={refresh} />
-            <MetaCard c={c} onDone={refresh} />
+            <HealthCard c={c} />
             <NotesCard c={c} />
             <MessageCard c={c} />
+            {consultant.pricelist && <ConsultantViewCard c={c} />}
             <ShopGroupCard c={c} />
             <CommunityModCard c={c} />
             <MarketplaceModCard c={c} />
@@ -167,7 +165,14 @@ function ClientPage() {
           <ZernioCard c={c} onDone={refresh} />
           <WizardCard c={c} />
           <ZernioInboxCard botId={c.id} />
-          <HealthCard c={c} />
+        </div>
+      )}
+
+      {tab === "settings" && (
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-2">
+          <AdminAccessCard c={c} onDone={refresh} />
+          <ModulesCard c={c} onDone={refresh} />
+          <MetaCard c={c} onDone={refresh} />
         </div>
       )}
 
