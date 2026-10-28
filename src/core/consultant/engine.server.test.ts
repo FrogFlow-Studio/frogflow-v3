@@ -431,6 +431,50 @@ describe("консультант: ответ и состояние", () => {
     const system = args().system as Array<{ text: string }>;
     expect(system[1]!.text).toContain("+7 700 000 00 00");
   });
+
+  it("на шаге оплаты модель видит карточку оплаты этого заказа (Копилка 28.10, #274: «Выставите счёт / Халык» ушло менеджеру)", async () => {
+    const card = "🧾 Заказ #274 оформлен\n🧾 «Перевод Kaspi» — оплата в Kaspi.kz и чек сюда";
+    await runConsultant(
+      ctxOf(),
+      customer({
+        mode: "choose_pay",
+        pending_order_id: 4876,
+        direct: { pay_card: { order: 4876, text: card } },
+      } as never),
+      "Выставите счет на этот номер",
+      { platform: "whatsapp", shopInChat: true },
+    );
+    const system = args().system as Array<{ text: string }>;
+    expect(system[1]!.text).toContain("Активный шаг оплаты: заказ #4876");
+    expect(system[1]!.text).toContain("«Перевод Kaspi» — оплата в Kaspi.kz и чек сюда");
+    expect(system[0]!.text).toContain("Вопрос о способе оплаты при активном заказе");
+  });
+
+  it("карточка другого заказа или без активного шага оплаты в данные диалога не попадает", async () => {
+    await runConsultant(
+      ctxOf(),
+      customer({
+        mode: "choose_pay",
+        pending_order_id: 4877,
+        direct: { pay_card: { order: 4876, text: "Заказ #274 — старая карточка" } },
+      } as never),
+      "Халык",
+      { platform: "whatsapp", shopInChat: true },
+    );
+    expect((args().system as Array<{ text: string }>)[1]!.text).not.toContain("старая карточка");
+    create.mockClear();
+    await runConsultant(
+      ctxOf(),
+      customer({
+        mode: "idle",
+        pending_order_id: 4876,
+        direct: { pay_card: { order: 4876, text: "Заказ #274 — оплачен" } },
+      } as never),
+      "Халык",
+      { platform: "whatsapp", shopInChat: true },
+    );
+    expect((args().system as Array<{ text: string }>)[1]!.text).not.toContain("Заказ #274");
+  });
 });
 
 describe("консультант: передача менеджеру", () => {

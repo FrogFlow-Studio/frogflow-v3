@@ -5,7 +5,7 @@ import { DELIVERY_NOTE_KEY, withSellerNote } from "./note";
 /**
  * Текст «заказ выдан» для канала заказа. В Telegram приписки нет, как в v1:
  * там выдача — файлы в чате с кнопками бота, а приписка писалась для Direct
- * и WhatsApp, где материалы приходят ссылками.
+ * и WhatsApp (в Direct материалы приходят ссылками, в WhatsApp — документами).
  */
 export async function deliveredMessage(
   ctx: TenantContext,

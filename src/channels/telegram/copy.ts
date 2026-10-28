@@ -354,6 +354,8 @@ export type Msg = {
   nativeCartForwarded: string;
   /** Выдача ссылками в Direct и WhatsApp (channels/zernio/deliver). */
   deliveryLinksExpire: string;
+  /** WhatsApp: файлы ушли документами над этим сообщением. */
+  deliveryFilesAbove: string;
   /** Кнопка-ссылка на файл в Instagram Direct (до 20 знаков). */
   downloadBtn: string;
   deliveryOrderPage: string;
@@ -902,6 +904,7 @@ const ru: Msg = {
   nativeCartForwarded:
     "Получил вашу корзину из каталога и передал продавцу — он подтвердит заказ и напишет здесь.",
   deliveryLinksExpire: "Ссылки на файлы действуют 7 дней.",
+  deliveryFilesAbove: "Файлы — выше, они открываются прямо в WhatsApp.",
   downloadBtn: "📥 Скачать",
   deliveryOrderPage: "Все файлы заказа — на странице:",
   yourId: (id) => `Ваш Telegram ID: <code>${id}</code>`,
@@ -1263,6 +1266,7 @@ const kk: Msg = {
   nativeCartForwarded:
     "Каталогтан жиналған себетіңізді алдым және сатушыға бердім — ол тапсырысты растап, осында жазады.",
   deliveryLinksExpire: "Файл сілтемелері 7 күн жарамды.",
+  deliveryFilesAbove: "Файлдар жоғарыда, олар WhatsApp-та бірден ашылады.",
   downloadBtn: "📥 Жүктеп алу",
   deliveryOrderPage: "Тапсырыстың барлық файлдары — бетте:",
 };
@@ -1644,6 +1648,7 @@ const en: Msg = {
   nativeCartForwarded:
     "Got your cart from the catalog and passed it to the seller — they will confirm the order and reply here.",
   deliveryLinksExpire: "Links to the files are valid for 7 days.",
+  deliveryFilesAbove: "The files are above and open right in WhatsApp.",
   downloadBtn: "📥 Download",
   deliveryOrderPage: "All order files are on the page:",
 };
@@ -1990,6 +1995,7 @@ const uz: Msg = {
   nativeCartForwarded:
     "Katalogdan yig‘ilgan savatingizni oldim va sotuvchiga uzatdim — u buyurtmani tasdiqlab, shu yerda yozadi.",
   deliveryLinksExpire: "Fayl havolalari 7 kun amal qiladi.",
+  deliveryFilesAbove: "Fayllar yuqorida, ular WhatsApp’da darhol ochiladi.",
   downloadBtn: "📥 Yuklab olish",
   deliveryOrderPage: "Buyurtmaning barcha fayllari — sahifada:",
 };

@@ -2,7 +2,7 @@ import { previewReadonly } from "@/lib/preview";
 import Anthropic from "@anthropic-ai/sdk";
 import { env, envPresence } from "@/config/env";
 import type { TenantContext } from "@/core/tenant/resolve.server";
-import type { Customer } from "@/core/customers/customers";
+import type { Customer, DialogState } from "@/core/customers/customers";
 import type { Locale } from "@/core/i18n/locale";
 import { updateStateSection } from "@/core/customers/customers";
 import {
@@ -777,6 +777,15 @@ export function buildConsultantMessages(
   return out;
 }
 
+/** Текст карточки оплаты заказа `orderId` из памяти магазина (state.direct.pay_card), иначе null. */
+export function payCardOf(state: DialogState | undefined, orderId: unknown): string | null {
+  const direct = state?.direct;
+  if (!direct || typeof direct !== "object" || Array.isArray(direct)) return null;
+  const card = (direct as { pay_card?: { order?: unknown; text?: unknown } }).pay_card;
+  if (!card || Number(card.order) !== Number(orderId) || typeof card.text !== "string") return null;
+  return card.text.slice(0, 1500) || null;
+}
+
 function stateOf(customer: Customer): ConsultantState {
   const s = customer.state.consultant;
   return s && typeof s === "object" && !Array.isArray(s) ? (s as ConsultantState) : {};
@@ -1225,10 +1234,17 @@ async function answerConsultant(
     pendingOrderId &&
     ["choose_pay", "awaiting_payment", "awaiting_proof"].includes(paymentMode ?? ""),
   );
+  // Карточка оплаты, которую покупатель видит выше (shop/checkout: pay_card):
+  // без неё «Выставите счёт / Халык» ушло менеджеру, хотя «🧾 Перевод» был
+  // прямо над вопросом (Копилка, WhatsApp 28.10, заказ #274).
+  const payCard = hasActivePaymentOrder ? payCardOf(customer?.state, pendingOrderId) : null;
   const checkoutContext = !opts.shopInChat
     ? ""
     : hasActivePaymentOrder
-      ? `Активный шаг оплаты: заказ #${String(pendingOrderId)} (${paymentMode}). Не утверждай, что платёж или чек принят, если это не подтверждено системным статусом.`
+      ? `Активный шаг оплаты: заказ #${String(pendingOrderId)} (${paymentMode}). Не утверждай, что платёж или чек принят, если это не подтверждено системным статусом.` +
+        (payCard
+          ? `\nСообщение с оплатой этого заказа, которое покупатель видит выше в чате:\n«${payCard}»`
+          : "")
       : "К этому чату не передан активный заказ для оплаты. Не делай вывод по истории, что заказ или ссылка существуют; не проси оплачивать или присылать чек и не обещай выдачу материалов после оплаты.";
   const session = [
     `Канал: ${opts.platform}`,

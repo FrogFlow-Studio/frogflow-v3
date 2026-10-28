@@ -156,6 +156,7 @@ describe("WhatsApp Zero-Friction: авто-определение страны �
     expect(payLinkOf(`Переведите по ссылке: ${kaspiUrl}`)).toBe(kaspiUrl);
 
     await sendManualInstructions(s, {
+      orderId: 101,
       no: 101,
       due: 5000,
       currency: "KZT",
