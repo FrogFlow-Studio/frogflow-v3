@@ -12,7 +12,7 @@ export type PublicFn = { id: string; file: string; name: string; text: string };
 export function functionFiles(dir = "src/app"): string[] {
   const out: string[] = [];
   for (const e of readdirSync(dir)) {
-    const p = join(dir, e);
+    const p = join(dir, e).replace(/\\/g, "/");
     if (statSync(p).isDirectory()) out.push(...functionFiles(p));
     else if (e.endsWith(".functions.ts")) out.push(p);
   }

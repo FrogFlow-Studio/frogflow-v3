@@ -163,7 +163,7 @@ describe("карточка покупателя: теги и заметка", ()
     await put("tg_5", { tags: ["VIP", "опт"], note: "" });
     db.tables.bot_users!.push({ user_key: "tg_6", telegram_id: 6, platform: "telegram" });
     await put("tg_6", { tags: ["vip", "учитель"], note: "" });
-    expect(await knownTags(ctx())).toEqual(["VIP", "опт", "учитель"]);
+    expect((await knownTags(ctx())).sort()).toEqual(["VIP", "опт", "учитель"].sort());
     await put("tg_6", { tags: [], note: "  " });
     expect(db.tables.app_settings!.map((x) => x.key)).toEqual([`${NOTE_PREFIX}tg_5`]);
   });

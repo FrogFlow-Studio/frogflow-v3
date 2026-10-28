@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { OPERATOR_BOTTOM_BAR, OPERATOR_MENU, operatorMenuItems } from "./menu";
+import { OPERATOR_MENU, operatorMenuItems } from "./menu";
 
 describe("меню оператора", () => {
   it("группы отражают рабочие задачи оператора", () => {
@@ -33,11 +33,7 @@ describe("меню оператора", () => {
     }
   });
 
-  it("пункты нижней панели существуют в меню, а пустых групп нет", () => {
-    const tos = operatorMenuItems().map((i) => i.to);
-    for (const to of OPERATOR_BOTTOM_BAR) expect(tos).toContain(to);
-    // Четвёртая кнопка панели — «Ещё».
-    expect(OPERATOR_BOTTOM_BAR.length).toBe(3);
+  it("у каждой рабочей области есть доступные разделы", () => {
     for (const g of OPERATOR_MENU) expect(g.items.length).toBeGreaterThan(0);
   });
 });

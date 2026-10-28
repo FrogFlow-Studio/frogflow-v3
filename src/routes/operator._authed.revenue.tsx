@@ -1,3 +1,4 @@
+import { WorkspaceGroup } from "@/app/operator/workspace";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { revenueFn } from "@/app/operator/client-plans.functions";
 import { Badge, Card, Empty, PageTitle, Stat } from "@/app/ui";
@@ -58,7 +59,10 @@ function RevenuePage() {
         />
       </div>
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-2 [&>*]:min-w-0">
+      <WorkspaceGroup
+        title="Доход платформы"
+        description="Регулярная выручка по планам и фактические поступления — разные показатели."
+      >
         <Card title="MRR по планам">
           <div className="overflow-x-auto">
             <table className="table">
@@ -124,9 +128,9 @@ function RevenuePage() {
             </>
           }
         />
-      </div>
+      </WorkspaceGroup>
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-2 [&>*]:min-w-0">
+      <WorkspaceGroup title="Продления и удержание">
         <Card title="Продления в ближайшие 14 дней">
           {renewals.length === 0 ? (
             <Empty>Срок ни у одного платящего клиента не кончается в ближайшие 14 дней.</Empty>
@@ -216,7 +220,7 @@ function RevenuePage() {
             заплатил после пробного периода, не считается. Доля — от платящих сейчас и ушедших.
           </p>
         </Card>
-      </div>
+      </WorkspaceGroup>
 
       <Card title="Клиенты на планах" className="mt-4">
         {clients.length === 0 ? (

@@ -1,4 +1,5 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { WorkspaceGroup, WorkspaceTool } from "@/app/operator/workspace";
 import { useEffect, useMemo, useState } from "react";
 import {
   addLeadFn,
@@ -96,7 +97,9 @@ function LeadsPage() {
         subtitle="Воронка продаж FrogFlow: кого нашли, кому написали, кто ответил. Данные общие с v1."
       />
       {notice && <p className="mb-3 text-sm text-ok">{notice}</p>}
-      <PipelineCard />
+      <WorkspaceTool title="Настроить автоматический поиск лидов">
+        <PipelineCard />
+      </WorkspaceTool>
       <div className="mb-4 flex flex-wrap gap-2" role="group" aria-label="Стадии">
         <button
           className={stage === "all" ? "btn-primary" : "btn-secondary"}
@@ -122,25 +125,32 @@ function LeadsPage() {
         value={query}
         onChange={(e) => setQuery(e.target.value)}
       />
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="operator-section-grid">
         {shown.length === 0 && <Empty>Лидов с такими условиями нет.</Empty>}
         {shown.map((l) => (
           <LeadCard key={l.id} lead={l} aiAvailable={aiAvailable} onChanged={(m) => setNotice(m)} />
         ))}
-        <ImportCard
-          onDone={async (msg) => {
-            setNotice(msg);
-            await router.invalidate();
-          }}
-        />
-        {aiAvailable && (
-          <HuntCard
+      </div>
+      <WorkspaceGroup
+        title="Добавление и поиск"
+        description="Добавьте контакт вручную, импортируйте готовый список или запустите поиск."
+      >
+        <div className="operator-stack">
+          <ImportCard
             onDone={async (msg) => {
               setNotice(msg);
               await router.invalidate();
             }}
           />
-        )}
+          {aiAvailable && (
+            <HuntCard
+              onDone={async (msg) => {
+                setNotice(msg);
+                await router.invalidate();
+              }}
+            />
+          )}
+        </div>
         <Card title="Новый лид">
           <form
             className="grid gap-3 sm:grid-cols-2"
@@ -186,7 +196,7 @@ function LeadsPage() {
             <ErrorBox error={add.error} />
           </form>
         </Card>
-      </div>
+      </WorkspaceGroup>
     </>
   );
 }

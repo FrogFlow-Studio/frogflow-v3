@@ -1,4 +1,4 @@
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
@@ -61,7 +61,7 @@ const ALLOWED: Record<string, { n: number; why: string }> = {
 };
 
 function sourceFiles(): string[] {
-  return execSync("git ls-files 'src/*.ts' 'src/*.tsx'", { encoding: "utf8" })
+  return execFileSync("git", ["ls-files", "--", "src/*.ts", "src/*.tsx"], { encoding: "utf8" })
     .trim()
     .split("\n")
     .filter((f) => f && !/\.test\.tsx?$/.test(f));

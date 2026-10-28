@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
 import { cronStatusFn } from "@/app/operator/platform.functions";
 import { BUDGET_STREAK_WARN } from "@/app/operator/cron-status.shared";
 import { Badge, PageTitle } from "@/app/ui";
@@ -11,6 +12,10 @@ export const Route = createFileRoute("/operator/_authed/crons")({
 /** Кроны платформы: последний запуск, итог, длительность, ошибка; «молчит» — старше двух интервалов. */
 function CronsPage() {
   const jobs = Route.useLoaderData();
+  const [attentionOnly, setAttentionOnly] = useState(false);
+  const needsAttention = (j: (typeof jobs)[number]) =>
+    !j.last || j.stale || !j.last.ok || (j.last.budgetStreak ?? 0) >= BUDGET_STREAK_WARN;
+  const shown = attentionOnly ? jobs.filter(needsAttention) : jobs;
   const fmt = (iso: string) =>
     new Date(iso).toLocaleString("ru", { dateStyle: "short", timeStyle: "medium" });
   return (
@@ -19,6 +24,17 @@ function CronsPage() {
         title="Кроны"
         subtitle="Расписание из vercel.json; статус пишется самим кроном после каждого запуска"
       />
+      <div className="operator-directory-views" role="group" aria-label="Состояние фоновых задач">
+        <button type="button" aria-pressed={!attentionOnly} onClick={() => setAttentionOnly(false)}>
+          Все задачи <span>{jobs.length}</span>
+        </button>
+        <button type="button" aria-pressed={attentionOnly} onClick={() => setAttentionOnly(true)}>
+          Требует внимания <span>{jobs.filter(needsAttention).length}</span>
+        </button>
+      </div>
+      {shown.length === 0 && (
+        <p className="mb-4 text-sm text-muted">Фоновых задач с известными проблемами нет.</p>
+      )}
       {jobs
         .filter((j) => (j.last?.budgetStreak ?? 0) >= BUDGET_STREAK_WARN)
         .map((j) => (
@@ -42,7 +58,7 @@ function CronsPage() {
             </tr>
           </thead>
           <tbody>
-            {jobs.map((j) => (
+            {shown.map((j) => (
               <tr key={j.job}>
                 <td>
                   <div className="font-mono text-sm">{j.job}</div>

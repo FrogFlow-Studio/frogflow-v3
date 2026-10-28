@@ -37,37 +37,54 @@ function LoginPage() {
     ).catch(() => {});
   };
   return (
-    <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center px-4">
-      <h1 className="text-lg font-semibold">Панель оператора</h1>
-      <p className="mt-1 text-sm text-muted">Управление клиентами платформы FrogFlow.</p>
-      <form onSubmit={submit} className="card mt-6 space-y-4 p-5">
-        <Field label="Логин">
-          <input className="input" name="username" autoComplete="username" required />
-        </Field>
-        <Field label="Пароль">
-          <input
-            className="input"
-            name="password"
-            type="password"
-            autoComplete="current-password"
-            required
-          />
-        </Field>
-        {needCode && (
-          <Field
-            label="Код из приложения"
-            hint="6 цифр из приложения-аутентификатора или резервный код"
-          >
-            <input className="input" name="code" autoComplete="one-time-code" autoFocus required />
+    <main className="operator-workspace operator-login-screen">
+      <div className="operator-login-panel">
+        <div className="operator-login-brand">🐸 FrogFlow</div>
+        <h1 className="text-lg font-semibold">Панель оператора</h1>
+        <p className="mt-1 text-sm text-muted">Управление клиентами платформы FrogFlow.</p>
+        <form onSubmit={submit} className="mt-6 space-y-4">
+          <Field label="Логин">
+            <input className="input" name="username" autoComplete="username" required />
           </Field>
-        )}
-        {wrong && <p className="text-sm text-danger">Неверный логин или пароль.</p>}
-        {badCode && <p className="text-sm text-danger">Код не подошёл. Введите новый код.</p>}
-        <ErrorBox error={error} />
-        <button className="btn-primary w-full" disabled={busy}>
-          Войти
-        </button>
-      </form>
+          <Field label="Пароль">
+            <input
+              className="input"
+              name="password"
+              type="password"
+              autoComplete="current-password"
+              required
+            />
+          </Field>
+          {needCode && (
+            <Field
+              label="Код из приложения"
+              hint="6 цифр из приложения-аутентификатора или резервный код"
+            >
+              <input
+                className="input"
+                name="code"
+                autoComplete="one-time-code"
+                autoFocus
+                required
+              />
+            </Field>
+          )}
+          {wrong && (
+            <p className="text-sm text-danger" role="alert">
+              Неверный логин или пароль.
+            </p>
+          )}
+          {badCode && (
+            <p className="text-sm text-danger" role="alert">
+              Код не подошёл. Введите новый код.
+            </p>
+          )}
+          <ErrorBox error={error} />
+          <button className="btn-primary w-full" disabled={busy}>
+            {busy ? "Входим…" : "Войти"}
+          </button>
+        </form>
+      </div>
     </main>
   );
 }

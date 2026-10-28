@@ -9,33 +9,35 @@ export const Route = createFileRoute("/operator/_authed/health")({
 });
 
 const LIGHT: Record<Light, { tone: "ok" | "warn" | "danger" | "neutral"; label: string }> = {
-  green: { tone: "ok", label: "зелёный" },
+  green: { tone: "ok", label: "работает" },
   unknown: { tone: "neutral", label: "нет данных" },
-  yellow: { tone: "warn", label: "жёлтый" },
-  red: { tone: "danger", label: "красный" },
+  yellow: { tone: "warn", label: "внимание" },
+  red: { tone: "danger", label: "сбой" },
 };
 
 function Rows({ title, rows }: { title: string; rows: HealthRow[] }) {
   return (
-    <div className="card mb-4 overflow-x-auto">
-      <h2 className="mb-2 text-base font-semibold">{title}</h2>
-      <table className="table">
-        <tbody>
-          {rows.map((r) => (
-            <tr key={r.id}>
-              <td className="w-24">
-                <Badge tone={LIGHT[r.light].tone}>{LIGHT[r.light].label}</Badge>
-              </td>
-              <td>
-                <div className="text-sm">{r.title}</div>
-                <div className="text-xs text-muted">{r.detail}</div>
-                {r.todo && <div className="mt-1 text-xs">Что делать: {r.todo}</div>}
-              </td>
-            </tr>
+    <section className="operator-health-group">
+      <h2>{title}</h2>
+      <div className="operator-health-list">
+        {[...rows]
+          .sort(
+            (a, b) =>
+              ({ red: 0, unknown: 1, yellow: 2, green: 3 })[a.light] -
+              { red: 0, unknown: 1, yellow: 2, green: 3 }[b.light],
+          )
+          .map((r) => (
+            <article key={r.id}>
+              <div>
+                <h3>{r.title}</h3>
+                <p>{r.detail}</p>
+                {r.todo && <p className="operator-health-todo">Что делать: {r.todo}</p>}
+              </div>
+              <Badge tone={LIGHT[r.light].tone}>{LIGHT[r.light].label}</Badge>
+            </article>
           ))}
-        </tbody>
-      </table>
-    </div>
+      </div>
+    </section>
   );
 }
 

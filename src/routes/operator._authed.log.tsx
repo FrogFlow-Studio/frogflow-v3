@@ -145,11 +145,15 @@ function LogPage() {
                   <td>
                     <Badge>{shopEventView(e)?.title ?? KIND_LABEL.get(e.kind) ?? e.kind}</Badge>
                   </td>
-                  <td
-                    className="max-w-md truncate text-xs text-muted"
-                    title={shopEventView(e)?.details ?? summarize(e.payload)}
-                  >
-                    {shopEventView(e)?.details ?? summarize(e.payload)}
+                  <td className="max-w-md text-xs text-muted">
+                    <details>
+                      <summary className="cursor-pointer">
+                        {shopEventView(e)?.details ?? summarize(e.payload)}
+                      </summary>
+                      <pre className="mt-2 whitespace-pre-wrap break-all">
+                        {JSON.stringify(e.payload, null, 2)}
+                      </pre>
+                    </details>
                   </td>
                 </tr>
               ))}

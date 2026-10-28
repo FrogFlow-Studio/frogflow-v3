@@ -18,7 +18,7 @@ test("оператор включает магазин на площадке п�
   await page.getByRole("button", { name: "Войти", exact: true }).click();
   await expect(page).toHaveURL(/\/operator$/);
 
-  await page.goto(`/operator/clients/${S.id}`);
+  await page.goto(`/operator/clients/${S.id}?tab=settings`);
   await expect(
     page.getByText("Магазин не давал согласия на площадку (или не на v2).", { exact: true }),
   ).toBeVisible();

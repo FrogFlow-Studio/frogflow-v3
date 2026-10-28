@@ -31,6 +31,7 @@ function NewsAdmin() {
   const list = Route.useLoaderData();
   const router = useRouter();
   const [editing, setEditing] = useState<string | null>(null);
+  const [language, setLanguage] = useState<(typeof LANGS)[number]>("ru");
   const [title, setTitle] = useState<Texts>(blank());
   const [body, setBody] = useState<Texts>(blank());
   const [plans, setPlans] = useState<NewsPlanTier[]>([]);
@@ -87,231 +88,249 @@ function NewsAdmin() {
         title="Новости платформы"
         subtitle="Пишем на русском; пустой язык продавец увидит по-русски. Тарифы не выбраны — новость для всех."
       />
-      <Card>
-        <div className="space-y-3 p-4">
-          <h2 className="font-medium">{editing ? "Правка новости" : "Новая новость"}</h2>
-          <ErrorBox error={save.error} />
-          {LANGS.map((l) => (
-            <div key={l} className="space-y-1">
-              <input
-                className="input w-full"
-                value={title[l]}
-                maxLength={120}
-                placeholder={`Заголовок · ${LANG_NAME[l]}`}
-                aria-label={`Заголовок ${LANG_NAME[l]}`}
-                onChange={(e) => setTitle({ ...title, [l]: e.target.value })}
-              />
-              <textarea
-                className="input w-full"
-                rows={3}
-                value={body[l]}
-                maxLength={4000}
-                placeholder={`Текст · ${LANG_NAME[l]}`}
-                aria-label={`Текст ${LANG_NAME[l]}`}
-                onChange={(e) => setBody({ ...body, [l]: e.target.value })}
-              />
+      <div className="operator-editor-layout">
+        <Card>
+          <div className="space-y-3 p-4">
+            <h2 className="font-medium">{editing ? "Правка новости" : "Новая новость"}</h2>
+            <div className="operator-directory-views" role="group" aria-label="Язык новости">
+              {LANGS.map((l) => (
+                <button
+                  type="button"
+                  key={l}
+                  aria-pressed={language === l}
+                  onClick={() => setLanguage(l)}
+                >
+                  {LANG_NAME[l]}
+                </button>
+              ))}
             </div>
-          ))}
-          <fieldset className="flex flex-wrap gap-3 text-sm">
-            <legend className="mb-1 text-muted">Кому показать</legend>
-            {NEWS_PLAN_TIERS.map((p) => (
-              <label key={p} className="flex items-center gap-1">
-                <input
-                  type="checkbox"
-                  checked={plans.includes(p)}
-                  onChange={(e) =>
-                    setPlans(e.target.checked ? [...plans, p] : plans.filter((x) => x !== p))
-                  }
-                />
-                {TIER_NAME[p]}
-              </label>
-            ))}
-          </fieldset>
-          <fieldset className="flex flex-wrap items-center gap-3 text-sm">
-            <legend className="mb-1 text-muted">Кнопка в новости</legend>
-            <select
-              className="input"
-              aria-label="Вид кнопки"
-              value={action.kind}
-              onChange={(e) =>
-                setAction({
-                  kind: e.target.value as ActionForm["kind"],
-                  value:
-                    e.target.value === "module"
-                      ? (READY_MODULES[0] ?? "")
-                      : e.target.value === "link"
-                        ? NEWS_LINK_PATHS[0]
-                        : "",
-                })
-              }
-            >
-              <option value="">Без кнопки</option>
-              <option value="module">«Включить» (ведёт в «Модули»)</option>
-              <option value="link">«Подробнее» (страница админки)</option>
-            </select>
-            {action.kind === "module" && (
-              <select
-                className="input"
-                aria-label="Модуль"
-                value={action.value}
-                onChange={(e) => setAction({ ...action, value: e.target.value })}
-              >
-                {READY_MODULES.map((k) => (
-                  <option key={k} value={k}>
-                    {MODULES[k].title}
-                  </option>
-                ))}
-              </select>
-            )}
-            {action.kind === "link" && (
-              <select
-                className="input"
-                aria-label="Страница"
-                value={action.value}
-                onChange={(e) => setAction({ ...action, value: e.target.value })}
-              >
-                {NEWS_LINK_PATHS.map((p) => (
-                  <option key={p} value={p}>
-                    {p}
-                  </option>
-                ))}
-              </select>
-            )}
-          </fieldset>
-          <fieldset className="space-y-1 text-sm">
-            <legend className="mb-1 text-muted">
-              Опрос: варианты, по одному в строке (2–4; пусто — без опроса)
-              {pollLocked && " · после публикации не меняется"}
-            </legend>
+            <ErrorBox error={save.error} />
             {LANGS.map((l) => (
-              <textarea
-                key={l}
-                className="input w-full"
-                rows={3}
-                disabled={pollLocked}
-                value={poll[l]}
-                placeholder={`Варианты · ${LANG_NAME[l]}`}
-                aria-label={`Варианты опроса ${LANG_NAME[l]}`}
-                onChange={(e) => setPoll({ ...poll, [l]: e.target.value })}
-              />
+              <div key={l} className="space-y-1" hidden={language !== l}>
+                <input
+                  className="input w-full"
+                  value={title[l]}
+                  maxLength={120}
+                  placeholder={`Заголовок · ${LANG_NAME[l]}`}
+                  aria-label={`Заголовок ${LANG_NAME[l]}`}
+                  onChange={(e) => setTitle({ ...title, [l]: e.target.value })}
+                />
+                <textarea
+                  className="input w-full"
+                  rows={3}
+                  value={body[l]}
+                  maxLength={4000}
+                  placeholder={`Текст · ${LANG_NAME[l]}`}
+                  aria-label={`Текст ${LANG_NAME[l]}`}
+                  onChange={(e) => setBody({ ...body, [l]: e.target.value })}
+                />
+              </div>
             ))}
-          </fieldset>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              className="btn-primary"
-              disabled={save.busy || !title.ru.trim() || !body.ru.trim()}
-              onClick={() => void save.run().catch(() => {})}
-            >
-              {editing ? "Сохранить" : "Сохранить черновик"}
-            </button>
-            {editing && (
+            <fieldset className="flex flex-wrap gap-3 text-sm">
+              <legend className="mb-1 text-muted">Кому показать</legend>
+              {NEWS_PLAN_TIERS.map((p) => (
+                <label key={p} className="flex items-center gap-1">
+                  <input
+                    type="checkbox"
+                    checked={plans.includes(p)}
+                    onChange={(e) =>
+                      setPlans(e.target.checked ? [...plans, p] : plans.filter((x) => x !== p))
+                    }
+                  />
+                  {TIER_NAME[p]}
+                </label>
+              ))}
+            </fieldset>
+            <fieldset className="flex flex-wrap items-center gap-3 text-sm">
+              <legend className="mb-1 text-muted">Кнопка в новости</legend>
+              <select
+                className="input"
+                aria-label="Вид кнопки"
+                value={action.kind}
+                onChange={(e) =>
+                  setAction({
+                    kind: e.target.value as ActionForm["kind"],
+                    value:
+                      e.target.value === "module"
+                        ? (READY_MODULES[0] ?? "")
+                        : e.target.value === "link"
+                          ? NEWS_LINK_PATHS[0]
+                          : "",
+                  })
+                }
+              >
+                <option value="">Без кнопки</option>
+                <option value="module">«Включить» (ведёт в «Модули»)</option>
+                <option value="link">«Подробнее» (страница админки)</option>
+              </select>
+              {action.kind === "module" && (
+                <select
+                  className="input"
+                  aria-label="Модуль"
+                  value={action.value}
+                  onChange={(e) => setAction({ ...action, value: e.target.value })}
+                >
+                  {READY_MODULES.map((k) => (
+                    <option key={k} value={k}>
+                      {MODULES[k].title}
+                    </option>
+                  ))}
+                </select>
+              )}
+              {action.kind === "link" && (
+                <select
+                  className="input"
+                  aria-label="Страница"
+                  value={action.value}
+                  onChange={(e) => setAction({ ...action, value: e.target.value })}
+                >
+                  {NEWS_LINK_PATHS.map((p) => (
+                    <option key={p} value={p}>
+                      {p}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </fieldset>
+            <fieldset className="space-y-1 text-sm">
+              <legend className="mb-1 text-muted">
+                Опрос: варианты, по одному в строке (2–4; пусто — без опроса)
+                {pollLocked && " · после публикации не меняется"}
+              </legend>
+              {LANGS.map((l) => (
+                <textarea
+                  key={l}
+                  hidden={language !== l}
+                  className="input w-full"
+                  rows={3}
+                  disabled={pollLocked}
+                  value={poll[l]}
+                  placeholder={`Варианты · ${LANG_NAME[l]}`}
+                  aria-label={`Варианты опроса ${LANG_NAME[l]}`}
+                  onChange={(e) => setPoll({ ...poll, [l]: e.target.value })}
+                />
+              ))}
+            </fieldset>
+            <div className="flex gap-2">
               <button
                 type="button"
-                className="btn-ghost"
-                onClick={() => {
-                  setEditing(null);
-                  setTitle(blank());
-                  setBody(blank());
-                  setPlans([]);
-                  setAction(noAction());
-                  setPoll(blank());
-                  setPollLocked(false);
-                }}
+                className="btn-primary"
+                disabled={save.busy || !title.ru.trim() || !body.ru.trim()}
+                onClick={() => void save.run().catch(() => {})}
               >
-                Отмена
+                {editing ? "Сохранить" : "Сохранить черновик"}
               </button>
-            )}
+              {editing && (
+                <button
+                  type="button"
+                  className="btn-ghost"
+                  onClick={() => {
+                    setEditing(null);
+                    setTitle(blank());
+                    setBody(blank());
+                    setPlans([]);
+                    setAction(noAction());
+                    setPoll(blank());
+                    setPollLocked(false);
+                  }}
+                >
+                  Отмена
+                </button>
+              )}
+            </div>
           </div>
-        </div>
-      </Card>
-      <ErrorBox error={state.error} />
-      <Card>
-        {list.length === 0 ? (
-          <Empty>Новостей пока нет.</Empty>
-        ) : (
-          <ul className="divide-y divide-line">
-            {list.map((n) => (
-              <li
-                key={n.id}
-                className="flex flex-wrap items-center justify-between gap-2 px-4 py-3"
-              >
-                <span className="min-w-0">
-                  <span className="block truncate font-medium">{n.title.ru}</span>
-                  <span className="text-xs text-muted">
-                    {n.plans.length ? n.plans.map((p) => TIER_NAME[p]).join(", ") : "всем тарифам"}
-                  </span>
-                  {n.poll && n.publishedAt && (
-                    <span className="mt-1 block text-xs">
-                      Итоги опроса (голосов {n.poll.votes.reduce((a, b) => a + b, 0)}):{" "}
-                      {n.poll.options.map((o, i) => `${o.ru} — ${n.poll!.votes[i]}`).join("; ")}
+        </Card>
+        <ErrorBox error={state.error} />
+        <Card>
+          {list.length === 0 ? (
+            <Empty>Новостей пока нет.</Empty>
+          ) : (
+            <ul className="divide-y divide-line">
+              {list.map((n) => (
+                <li
+                  key={n.id}
+                  className="flex flex-wrap items-center justify-between gap-2 px-4 py-3"
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate font-medium">{n.title.ru}</span>
+                    <span className="text-xs text-muted">
+                      {n.plans.length
+                        ? n.plans.map((p) => TIER_NAME[p]).join(", ")
+                        : "всем тарифам"}
                     </span>
-                  )}
-                </span>
-                <span className="flex items-center gap-2">
-                  {n.archived ? (
-                    <Badge>в архиве</Badge>
-                  ) : n.publishedAt ? (
-                    <Badge tone="ok">опубликовано</Badge>
-                  ) : (
-                    <Badge tone="warn">черновик</Badge>
-                  )}
-                  <button
-                    type="button"
-                    className="btn-ghost text-xs"
-                    onClick={() => {
-                      setEditing(n.id);
-                      setTitle(fill(n.title));
-                      setBody(fill(n.body));
-                      setPlans(n.plans);
-                      setPoll(
-                        n.poll
-                          ? {
-                              ru: n.poll.options.map((o) => o.ru ?? "").join("\n"),
-                              kk: n.poll.options.map((o) => o.kk ?? "").join("\n"),
-                              en: n.poll.options.map((o) => o.en ?? "").join("\n"),
-                              uz: n.poll.options.map((o) => o.uz ?? "").join("\n"),
-                            }
-                          : blank(),
-                      );
-                      setPollLocked(Boolean(n.publishedAt));
-                      setAction(
-                        n.action?.kind === "module"
-                          ? { kind: "module", value: n.action.module }
-                          : n.action?.kind === "link"
-                            ? { kind: "link", value: n.action.path }
-                            : noAction(),
-                      );
-                    }}
-                  >
-                    Править
-                  </button>
-                  {!n.publishedAt && !n.archived && (
+                    {n.poll && n.publishedAt && (
+                      <span className="mt-1 block text-xs">
+                        Итоги опроса (голосов {n.poll.votes.reduce((a, b) => a + b, 0)}):{" "}
+                        {n.poll.options.map((o, i) => `${o.ru} — ${n.poll!.votes[i]}`).join("; ")}
+                      </span>
+                    )}
+                  </span>
+                  <span className="flex flex-wrap items-center gap-2">
+                    {n.archived ? (
+                      <Badge>в архиве</Badge>
+                    ) : n.publishedAt ? (
+                      <Badge tone="ok">опубликовано</Badge>
+                    ) : (
+                      <Badge tone="warn">черновик</Badge>
+                    )}
                     <button
                       type="button"
-                      className="btn-primary text-xs"
-                      disabled={state.busy}
-                      onClick={() => void state.run(n.id, "publish").catch(() => {})}
+                      className="btn-ghost text-xs"
+                      onClick={() => {
+                        setEditing(n.id);
+                        setLanguage("ru");
+                        setTitle(fill(n.title));
+                        setBody(fill(n.body));
+                        setPlans(n.plans);
+                        setPoll(
+                          n.poll
+                            ? {
+                                ru: n.poll.options.map((o) => o.ru ?? "").join("\n"),
+                                kk: n.poll.options.map((o) => o.kk ?? "").join("\n"),
+                                en: n.poll.options.map((o) => o.en ?? "").join("\n"),
+                                uz: n.poll.options.map((o) => o.uz ?? "").join("\n"),
+                              }
+                            : blank(),
+                        );
+                        setPollLocked(Boolean(n.publishedAt));
+                        setAction(
+                          n.action?.kind === "module"
+                            ? { kind: "module", value: n.action.module }
+                            : n.action?.kind === "link"
+                              ? { kind: "link", value: n.action.path }
+                              : noAction(),
+                        );
+                      }}
                     >
-                      Опубликовать
+                      Править
                     </button>
-                  )}
-                  <button
-                    type="button"
-                    className="btn-ghost text-xs"
-                    disabled={state.busy}
-                    onClick={() =>
-                      void state.run(n.id, n.archived ? "unarchive" : "archive").catch(() => {})
-                    }
-                  >
-                    {n.archived ? "Вернуть" : "В архив"}
-                  </button>
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Card>
+                    {!n.publishedAt && !n.archived && (
+                      <button
+                        type="button"
+                        className="btn-primary text-xs"
+                        disabled={state.busy}
+                        onClick={() => void state.run(n.id, "publish").catch(() => {})}
+                      >
+                        Опубликовать
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="btn-ghost text-xs"
+                      disabled={state.busy}
+                      onClick={() =>
+                        void state.run(n.id, n.archived ? "unarchive" : "archive").catch(() => {})
+                      }
+                    >
+                      {n.archived ? "Вернуть" : "В архив"}
+                    </button>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+      </div>
     </>
   );
 }

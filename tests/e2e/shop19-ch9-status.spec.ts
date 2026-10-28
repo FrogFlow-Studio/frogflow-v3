@@ -45,6 +45,8 @@ test("поддержка: статус, метка и заметка опера�
   await op.getByRole("link", { name: new RegExp(F.SHOP_NAME) }).click();
   await expect(op.getByText(question, { exact: true })).toBeVisible();
 
+  await op.getByText("Статус, метки и внутренняя заметка", { exact: true }).click();
+
   // Статус: «в работе». Второй проект ставит его на том же обращении одновременно: оба
   // видят «не нажата», оба жмут, и второй клик снимает статус. Жмём, пока не встанет.
   const work = op.getByRole("button", { name: "в работе", exact: true });
@@ -65,6 +67,7 @@ test("поддержка: статус, метка и заметка опера�
   await op.getByRole("textbox", { name: "Заметка оператора (продавец её не видит)" }).fill(note);
   await op.getByRole("button", { name: "Сохранить заметку", exact: true }).click();
   await op.reload();
+  await op.getByText("Статус, метки и внутренняя заметка", { exact: true }).click();
   await expect(
     op.getByRole("textbox", { name: "Заметка оператора (продавец её не видит)" }),
   ).toHaveValue(note);

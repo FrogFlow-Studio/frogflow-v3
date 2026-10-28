@@ -42,6 +42,11 @@ function MarketReportsPage() {
         subtitle="Покупатели жалуются на площадке без входа; магазин жалобу не видит. «Скрыть» убирает магазин с площадки (витрина по своей ссылке работает), вернуть его можно в карточке клиента."
       />
       <ErrorBox error={load.error ?? resolve.error} />
+      {!data && load.busy && (
+        <p className="text-sm text-muted" role="status">
+          Загружаем жалобы…
+        </p>
+      )}
       {data && data.reports.length === 0 && <Empty>Открытых жалоб нет.</Empty>}
       {data && data.total > 0 && (
         <p className="mb-3 text-sm text-muted">Открытых жалоб: {data.total}</p>

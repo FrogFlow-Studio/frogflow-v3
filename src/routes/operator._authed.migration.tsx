@@ -63,6 +63,17 @@ function MigrationPage() {
           </div>
         }
       />
+      <div className="operator-directory-views" aria-label="Готовность к переезду">
+        <span className="operator-summary-chip">
+          <strong>{ready.length}</strong> готовы к переводу
+        </span>
+        <span className="operator-summary-chip">
+          <strong>{candidates.length - ready.length}</strong> требуют подготовки
+        </span>
+        <span className="operator-summary-chip">
+          <strong>{picked.size}</strong> выбрано
+        </span>
+      </div>
       <ErrorBox error={move.error} />
       {result && (
         <Card title="Итог" className="mb-4">

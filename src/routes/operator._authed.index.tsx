@@ -55,9 +55,13 @@ function OperatorOverview() {
           <small>Каналы и просроченные подписки</small>
         </Link>
         <Link to="/operator/requests" className="operator-signal operator-signal-warn">
-          <strong>{pendingRequests}</strong>
+          <strong>{pendingRequests ?? "—"}</strong>
           <span>Заявки на модули</span>
-          <small>Запросы владельцев магазинов</small>
+          <small>
+            {pendingRequests === null
+              ? "Счётчик заявок недоступен"
+              : "Запросы владельцев магазинов"}
+          </small>
         </Link>
         <Link to="/operator/support" className="operator-signal">
           <strong>{inbox ? inbox.rows.filter((r) => r.unread > 0).length : "—"}</strong>

@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { WorkspaceTool } from "@/app/operator/workspace";
 import { useEffect, useState } from "react";
 import { z } from "zod";
 import {
@@ -124,7 +125,7 @@ function SupportInbox() {
           </Link>
         ))}
       </div>
-      <div className="grid gap-4 md:grid-cols-[minmax(0,20rem)_1fr]">
+      <div className="operator-support-layout" data-selected={Boolean(bot)}>
         <Card>
           {inbox.rows.length === 0 ? (
             <Empty>
@@ -175,6 +176,13 @@ function SupportInbox() {
             <Empty>Переписка недоступна.</Empty>
           ) : (
             <>
+              <Link
+                to="/operator/support"
+                search={{ status: statusFilter, label: labelFilter }}
+                className="btn-ghost mb-2 md:hidden"
+              >
+                К списку обращений
+              </Link>
               <div className="flex items-center justify-between border-b border-line px-4 py-3">
                 <Link
                   to="/operator/clients/$botId"
@@ -190,16 +198,18 @@ function SupportInbox() {
                 )}
               </div>
               {conversation.status && (
-                <ThreadPanel
-                  key={`${bot}:${conversation.note.updatedAt ?? ""}`}
-                  botId={bot}
-                  status={conversation.status}
-                  labels={conversation.labels}
-                  note={conversation.note}
-                  onDone={() => router.invalidate()}
-                />
+                <WorkspaceTool title="Статус, метки и внутренняя заметка">
+                  <ThreadPanel
+                    key={`${bot}:${conversation.note.updatedAt ?? ""}`}
+                    botId={bot}
+                    status={conversation.status}
+                    labels={conversation.labels}
+                    note={conversation.note}
+                    onDone={() => router.invalidate()}
+                  />
+                </WorkspaceTool>
               )}
-              <div className="max-h-[55vh] space-y-3 overflow-y-auto p-4">
+              <div className="operator-message-history space-y-3 p-4">
                 {conversation.messages.length === 0 ? (
                   <Empty>Сообщений пока нет.</Empty>
                 ) : (

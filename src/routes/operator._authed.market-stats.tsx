@@ -1,3 +1,4 @@
+import { WorkspaceGroup } from "@/app/operator/workspace";
 import { createFileRoute } from "@tanstack/react-router";
 import { marketOverviewFn } from "@/app/operator/moderation.functions";
 import { Card, Empty, PageTitle } from "@/app/ui";
@@ -50,8 +51,10 @@ function MarketStatsPage() {
           <div className="text-2xl font-semibold">{s.clicks}</div>
         </Card>
       </div>
-      <Card title="Популярные поиски">{list(s.topSearches)}</Card>
-      <Card title="Искали, но не нашли">{list(s.emptySearches)}</Card>
+      <WorkspaceGroup title="Что ищут покупатели">
+        <Card title="Популярные поиски">{list(s.topSearches)}</Card>
+        <Card title="Искали, но не нашли">{list(s.emptySearches)}</Card>
+      </WorkspaceGroup>
       <Card title="Магазины без переходов">
         {idle.length === 0 ? (
           <Empty>У всех магазинов на площадке есть переходы.</Empty>

@@ -1,4 +1,5 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { WorkspaceGroup } from "@/app/operator/workspace";
 import { useState, type FormEvent } from "react";
 import {
   operatorCredentialsFn,
@@ -72,19 +73,35 @@ function SettingsPage() {
   return (
     <>
       <PageTitle title="Настройки платформы" />
-      <div className="grid gap-4 lg:grid-cols-2">
-        <CommissionSwitchCard />
+      <WorkspaceGroup
+        title="Финансовые условия"
+        description="Комиссия платформы, реквизиты и наценка на ИИ."
+      >
+        <div className="operator-stack">
+          <CommissionSwitchCard />
+          <AiMarkupCard percent={cred.aiMarkup} />
+        </div>
         <RequisitesCard
           requisites={cred.requisites}
           recipient={cred.recipient}
           kaspiLink={cred.kaspiLink}
         />
-        <AiMarkupCard percent={cred.aiMarkup} />
+      </WorkspaceGroup>
+      <WorkspaceGroup title="Наблюдение и уведомления">
         <ErrorTrackingCard />
         <AlertsCard status={cred.alerts} />
-        <ZernioWebhookCard />
+      </WorkspaceGroup>
+      <WorkspaceGroup
+        title="Внешние подключения"
+        description="Общие настройки интеграций для всей платформы."
+      >
+        <div className="operator-stack">
+          <ZernioWebhookCard />
+          <UnmatchedZernioCard />
+        </div>
         <ApipayPartnerKeyCard />
-        <UnmatchedZernioCard />
+      </WorkspaceGroup>
+      <WorkspaceGroup title="Безопасность оператора">
         <TwoFactorCard status={cred.twoFactor} />
         <Card title="Учётка оператора">
           <p className="mb-3 text-sm text-muted">
@@ -168,7 +185,7 @@ function SettingsPage() {
           </form>
           <ErrorBox error={save.error} />
         </Card>
-      </div>
+      </WorkspaceGroup>
     </>
   );
 }

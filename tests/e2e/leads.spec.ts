@@ -91,12 +91,14 @@ test("лиды: крон конвейера по умолчанию выключ
   const errors = await watch(page);
   await operatorLogin(page);
   await page.goto("/operator/leads");
+  await page.getByText("Настроить автоматический поиск лидов", { exact: true }).click();
   const card = page.locator("section", { hasText: "Конвейер лидов" });
   await expect(card.getByLabel("Крон включён")).not.toBeChecked();
   await card.getByLabel("Напомнить через, дней").fill("5");
   await card.getByRole("button", { name: "Сохранить", exact: true }).click();
   await expect(card.getByText("Сохранено")).toBeVisible();
   await page.reload();
+  await page.getByText("Настроить автоматический поиск лидов", { exact: true }).click();
   await expect(card.getByLabel("Напомнить через, дней")).toHaveValue("5");
   await expect(card.getByLabel("Крон включён")).not.toBeChecked();
   expect(errors).toEqual([]);

@@ -27,6 +27,7 @@ import { ProdamusRateCard } from "@/app/operator/client/prodamus-rate";
 import { ConfirmName } from "@/app/operator/client/ConfirmName";
 import { CLIENT_TABS, parseTab, type ClientTab } from "@/app/operator/client/confirm-name";
 import { StatusBadge } from "@/app/operator/client-badges";
+import { WorkspaceGroup } from "@/app/operator/workspace";
 
 export const Route = createFileRoute("/operator/_authed/clients/$botId")({
   validateSearch: (s: Record<string, unknown>): { tab?: ClientTab } =>
@@ -102,7 +103,7 @@ function ClientPage() {
 
       <nav
         aria-label="Разделы клиента"
-        className="mb-4 flex gap-1 overflow-x-auto border-b border-line"
+        className="operator-client-tabs mb-4 flex gap-1 overflow-x-auto border-b border-line"
       >
         {CLIENT_TABS.map((t) => (
           <Link
@@ -145,50 +146,80 @@ function ClientPage() {
               }
             />
           </div>
-          <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-2">
-            <HealthCard c={c} />
-            <NotesCard c={c} />
-            <MessageCard c={c} />
-            {consultant.pricelist && <ConsultantViewCard c={c} />}
-            <ShopGroupCard c={c} />
-            <CommunityModCard c={c} />
-            <MarketplaceModCard c={c} />
+          <div className="operator-client-overview">
+            <div>
+              <NotesCard c={c} />
+            </div>
+            <div>
+              <HealthCard c={c} />
+              <MessageCard c={c} />
+              {consultant.pricelist && <ConsultantViewCard c={c} />}
+            </div>
           </div>
         </>
       )}
 
       {tab === "channels" && (
-        <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-2">
-          <DiagnoseCard c={c} />
-          <TelegramCard c={c} webhook={webhook} onDone={refresh} />
-          <AddressingCard c={c} onDone={refresh} />
-          <ZernioCard c={c} onDone={refresh} />
-          <WizardCard c={c} />
-          <ZernioInboxCard botId={c.id} />
-        </div>
+        <>
+          <WorkspaceGroup
+            title="Подключения"
+            description="Сначала проверьте связь, затем меняйте параметры нужного канала."
+          >
+            <TelegramCard c={c} webhook={webhook} onDone={refresh} />
+            <ZernioCard c={c} onDone={refresh} />
+          </WorkspaceGroup>
+          <WorkspaceGroup title="Диагностика и входящие">
+            <DiagnoseCard c={c} />
+            <ZernioInboxCard botId={c.id} />
+          </WorkspaceGroup>
+          <WorkspaceGroup title="Адреса и подключение">
+            <AddressingCard c={c} onDone={refresh} />
+            <WizardCard c={c} />
+          </WorkspaceGroup>
+        </>
       )}
 
       {tab === "settings" && (
-        <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-2">
-          <AdminAccessCard c={c} onDone={refresh} />
-          <ModulesCard c={c} onDone={refresh} />
-          <MetaCard c={c} onDone={refresh} />
-        </div>
+        <>
+          <WorkspaceGroup title="Магазин и владелец">
+            <MetaCard c={c} onDone={refresh} />
+            <AdminAccessCard c={c} onDone={refresh} />
+          </WorkspaceGroup>
+          <WorkspaceGroup title="Возможности и связанные магазины">
+            <ModulesCard c={c} onDone={refresh} />
+            <ShopGroupCard c={c} />
+          </WorkspaceGroup>
+          <WorkspaceGroup title="Публикация на платформе">
+            <CommunityModCard c={c} />
+            <MarketplaceModCard c={c} />
+          </WorkspaceGroup>
+        </>
       )}
 
       {tab === "billing" && (
         <>
-          <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-2">
+          <WorkspaceGroup
+            title="Подписка и счета"
+            description="Тариф определяет условия, счета фиксируют реальные начисления и оплаты."
+          >
             <PlanCard c={c} onDone={refresh} />
             <BillingCard c={c} />
+          </WorkspaceGroup>
+          <WorkspaceGroup title="Платёжные сервисы">
             <ApipayCard c={c} />
             <ProdamusRateCard c={c} />
+          </WorkspaceGroup>
+          <WorkspaceGroup title="Комиссия и приглашения">
             <InvitesCard c={c} />
             <CommissionStartCard c={c} start={c.commissionStart} billed={c.commissionBilled} />
+          </WorkspaceGroup>
+          <WorkspaceGroup title="ИИ: баланс и ограничения">
             <AiBalanceCard c={c} ai={ai} onDone={refresh} />
-            <ConsultantLimitsCard c={c} budget={consultant} onDone={refresh} />
-            <SmartSearchLimitCard c={c} budget={smartSearch} onDone={refresh} />
-          </div>
+            <div className="operator-stack">
+              <ConsultantLimitsCard c={c} budget={consultant} onDone={refresh} />
+              <SmartSearchLimitCard c={c} budget={smartSearch} onDone={refresh} />
+            </div>
+          </WorkspaceGroup>
           <ReceiptAuditCard c={c} />
         </>
       )}
@@ -248,4 +279,3 @@ function ClientPage() {
     </>
   );
 }
-

@@ -1,4 +1,5 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { useState } from "react";
 import { observerOverviewFn, setObserverFn } from "@/app/operator/observer.functions";
 import { Badge, Empty, ErrorBox, PageTitle, Switch, useAction } from "@/app/ui";
 
@@ -32,6 +33,13 @@ const SENT: Record<string, string> = {
  */
 function ObserverPage() {
   const data = Route.useLoaderData();
+  const [query, setQuery] = useState("");
+  const [scope, setScope] = useState("all");
+  const shown = data.clients.filter(
+    (c) =>
+      c.name.toLocaleLowerCase("ru").includes(query.trim().toLocaleLowerCase("ru")) &&
+      (scope === "all" || (scope === "enabled" ? c.enabled : Boolean(c.last?.error))),
+  );
   const router = useRouter();
   const toggle = useAction(async (botId: string, enabled: boolean) => {
     await setObserverFn({ data: { botId, enabled } });
@@ -46,8 +54,33 @@ function ObserverPage() {
         subtitle={`Sonnet раз в 15 минут читает новые реплики и сообщает продавцу о проблемах; покупателям не пишет. Промпт ${data.version}`}
       />
       <ErrorBox error={toggle.error} />
+      <div className="operator-directory-tools">
+        <input
+          className="input"
+          aria-label="Поиск клиента в наблюдателе"
+          placeholder="Название клиента"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+        <select
+          className="input"
+          aria-label="Состояние наблюдателя"
+          value={scope}
+          onChange={(e) => setScope(e.target.value)}
+        >
+          <option value="all">Все клиенты</option>
+          <option value="enabled">Наблюдение включено</option>
+          <option value="errors">С ошибками последнего запуска</option>
+        </select>
+        <span>
+          Показано {shown.length} из {data.clients.length}
+        </span>
+      </div>
       {data.clients.length === 0 && <Empty>Клиентов v2 нет</Empty>}
-      {data.clients.map((c) => (
+      {data.clients.length > 0 && shown.length === 0 && (
+        <Empty>Клиентов по этим условиям нет.</Empty>
+      )}
+      {shown.map((c) => (
         <div key={c.botId} className="card mb-3">
           <div className="flex flex-wrap items-center gap-3">
             <Switch

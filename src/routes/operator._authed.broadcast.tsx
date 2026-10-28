@@ -41,7 +41,7 @@ function BroadcastPage() {
         title="Сообщение владельцам"
         subtitle="Уходит каждому через его же бота на Telegram-id администраторов магазина. Клиенты без бота или без id — пропускаются с пометкой."
       />
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+      <div className="operator-editor-layout">
         <Card title="Новое сообщение">
           <textarea
             className="input min-h-32"

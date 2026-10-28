@@ -119,7 +119,7 @@ describe("API: ответ не кешируется без явной полит
 
   it("остальные задают политику: no-store через withNoStore или свои заголовки", () => {
     const rest = files(API)
-      .map((f) => f.slice(API.length + 1))
+      .map((f) => f.slice(API.length + 1).replace(/\\/g, "/"))
       .filter((f) => !POST_ONLY.includes(f));
     expect(rest.length).toBeGreaterThan(5);
     for (const f of rest)

@@ -70,16 +70,9 @@ export const OPERATOR_MENU: OperatorMenuGroup[] = [
       { to: "/operator/crons", label: "Кроны" },
       { to: "/operator/observer", label: "Наблюдатель" },
       { to: "/operator/log", label: "Журнал действий" },
-      { to: "/operator/settings", label: "Настройки и вебхук Zernio" },
+      { to: "/operator/settings", label: "Настройки платформы" },
     ],
   },
-];
-
-/** Четыре главных пункта нижней панели на телефоне; остальное — под «Ещё». */
-export const OPERATOR_BOTTOM_BAR: OperatorMenuItem["to"][] = [
-  "/operator",
-  "/operator/clients",
-  "/operator/support",
 ];
 
 export function operatorMenuItems(): OperatorMenuItem[] {

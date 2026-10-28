@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { WorkspaceTool } from "@/app/operator/workspace";
 import { useEffect, useState } from "react";
 import {
   deleteMarketCollectionFn,
@@ -72,11 +73,12 @@ function MarketCollectionsPage() {
             />
           )}
           {view.collections.map((c) => (
-            <Editor
+            <WorkspaceTool
               key={`${c.id}:${c.rev}`}
-              start={draftOf(c)}
-              onDone={() => void load.run().catch(() => {})}
-            />
+              title={`${c.title.ru || "Подборка"} · ${c.published ? "опубликована" : "черновик"}`}
+            >
+              <Editor start={draftOf(c)} onDone={() => void load.run().catch(() => {})} />
+            </WorkspaceTool>
           ))}
           {!fresh && (
             <button className="btn-secondary" onClick={() => setFresh(true)}>

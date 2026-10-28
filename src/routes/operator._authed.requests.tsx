@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { moduleRequestsFn, resolveModuleRequestFn } from "@/app/operator/owner-messages.functions";
-import { Badge, Card, Empty, ErrorBox, PageTitle, useAction } from "@/app/ui";
+import { Badge, Empty, ErrorBox, PageTitle, useAction } from "@/app/ui";
 
 export const Route = createFileRoute("/operator/_authed/requests")({
   loader: () => moduleRequestsFn(),
@@ -31,64 +31,49 @@ function RequestsPage() {
         subtitle="Продавцы нажали «Заказать подключение» в своей админке. Включение — сразу отсюда, владелец получит сообщение в Telegram."
       />
       <ErrorBox error={act.error} />
-      <Card>
-        {requests.length === 0 ? (
-          <Empty>Открытых заявок нет.</Empty>
-        ) : (
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Когда</th>
-                <th>Клиент</th>
-                <th>Модуль</th>
-                <th className="text-right">Цена</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {requests.map((r) => (
-                <tr key={r.id}>
-                  <td className="whitespace-nowrap text-muted">
-                    {new Date(r.requestedAt).toLocaleString("ru")}
-                  </td>
-                  <td>
-                    <Link
-                      to="/operator/clients/$botId"
-                      params={{ botId: r.botId }}
-                      className="font-medium hover:underline"
-                    >
-                      {r.clientName}
-                    </Link>
-                  </td>
-                  <td>
-                    {r.moduleTitle} <span className="text-xs text-muted">{r.moduleKey}</span>{" "}
-                    {r.alreadyOn && <Badge tone="ok">уже включён</Badge>}
-                  </td>
-                  <td className="text-right tabular-nums">
-                    {r.price === null ? "в базе" : `${r.price.toLocaleString("ru")} ₸`}
-                  </td>
-                  <td className="text-right whitespace-nowrap">
-                    <button
-                      className="btn-primary text-xs"
-                      disabled={act.busy}
-                      onClick={() => void act.run(r.id, "enable").catch(() => {})}
-                    >
-                      {r.alreadyOn ? "Закрыть заявку" : "Включить"}
-                    </button>
-                    <button
-                      className="btn-ghost ml-1 text-xs"
-                      disabled={act.busy}
-                      onClick={() => void act.run(r.id, "dismiss").catch(() => {})}
-                    >
-                      Снять
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </Card>
+      {requests.length === 0 ? (
+        <Empty>Открытых заявок нет.</Empty>
+      ) : (
+        <div className="operator-request-queue">
+          {requests.map((r) => (
+            <article className="operator-request" key={r.id}>
+              <div>
+                <Link
+                  to="/operator/clients/$botId"
+                  params={{ botId: r.botId }}
+                  className="operator-client-name"
+                >
+                  {r.clientName}
+                </Link>
+                <p className="text-xs text-muted">{new Date(r.requestedAt).toLocaleString("ru")}</p>
+              </div>
+              <div>
+                <h2>{r.moduleTitle}</h2>
+                <p className="text-sm text-muted">
+                  {r.price === null ? "Входит в базу" : `${r.price.toLocaleString("ru")} ₸`}
+                </p>
+                {r.alreadyOn && <Badge tone="ok">уже включён</Badge>}
+              </div>
+              <div className="operator-request-actions">
+                <button
+                  className="btn-primary"
+                  disabled={act.busy}
+                  onClick={() => void act.run(r.id, "enable").catch(() => {})}
+                >
+                  {r.alreadyOn ? "Закрыть заявку" : "Включить"}
+                </button>
+                <button
+                  className="btn-ghost"
+                  disabled={act.busy}
+                  onClick={() => void act.run(r.id, "dismiss").catch(() => {})}
+                >
+                  Снять
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
     </>
   );
 }

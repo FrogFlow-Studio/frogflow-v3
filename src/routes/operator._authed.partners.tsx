@@ -1,3 +1,4 @@
+import { WorkspaceTool } from "@/app/operator/workspace";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import {
@@ -140,7 +141,9 @@ function PartnersPage() {
             </div>
           </Card>
         ))}
-        <Card title="Добавить или изменить партнёра">
+      </div>
+      <WorkspaceTool title="Добавить или изменить партнёра">
+        <Card title="Условия партнёрства">
           <form
             className="grid gap-3 sm:grid-cols-2"
             onSubmit={(e) => {
@@ -178,7 +181,7 @@ function PartnersPage() {
             <ErrorBox error={save.error ?? remove.error ?? assign.error} />
           </form>
         </Card>
-      </div>
+      </WorkspaceTool>
     </>
   );
 }

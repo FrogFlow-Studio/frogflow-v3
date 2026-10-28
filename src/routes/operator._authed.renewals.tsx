@@ -61,7 +61,11 @@ function RenewalsPage() {
                 {o.list.map((r) => (
                   <tr key={r.botId}>
                     <td>
-                      <Link to="/operator/clients/$botId" params={{ botId: r.botId }}>
+                      <Link
+                        to="/operator/clients/$botId"
+                        params={{ botId: r.botId }}
+                        search={{ tab: "billing" }}
+                      >
                         {r.name}
                       </Link>
                     </td>

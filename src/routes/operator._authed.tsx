@@ -10,13 +10,12 @@ import { operatorCheck, operatorLogout } from "@/app/operator/operator-auth.func
 import { pendingRequestCountFn } from "@/app/operator/owner-messages.functions";
 import { OPERATOR_MENU } from "@/app/operator/menu";
 import { ThemeToggle } from "@/app/ui";
-import "@/app/operator/operator-workspace.css";
 
 export const Route = createFileRoute("/operator/_authed")({
   beforeLoad: async () => {
     const { authed } = await operatorCheck();
     if (!authed) throw redirect({ to: "/operator/login" });
-    return { pendingRequests: await pendingRequestCountFn().catch(() => 0) };
+    return { pendingRequests: await pendingRequestCountFn().catch(() => null) };
   },
   component: Layout,
 });
@@ -60,7 +59,7 @@ function Layout() {
           return (
             <Link key={g.id} to={first.to} data-active={group?.id === g.id}>
               {g.id === "work" ? "Входящие" : g.title}
-              {g.id === "work" && pendingRequests > 0 && <span>{pendingRequests}</span>}
+              {g.id === "work" && (pendingRequests ?? 0) > 0 && <span>{pendingRequests}</span>}
             </Link>
           );
         })}
@@ -69,19 +68,41 @@ function Layout() {
         {group && (
           <aside className="operator-context-nav">
             <p>{group.id === "work" ? "Входящие" : group.title}</p>
+            <select
+              className="operator-context-select input"
+              aria-label="Раздел рабочей области"
+              value={
+                currentItem?.to ??
+                (pathname.startsWith("/operator/clients/")
+                  ? "/operator/clients"
+                  : group.items[0]?.to)
+              }
+              onChange={(e) => {
+                const item = group.items.find((i) => i.to === e.target.value);
+                if (item) void navigate({ to: item.to });
+              }}
+            >
+              {group.items
+                .filter((i) => i.to !== "/operator")
+                .map((item) => (
+                  <option key={item.to} value={item.to}>
+                    {item.label}
+                  </option>
+                ))}
+            </select>
             <nav aria-label={group.title}>
               {group.items
                 .filter((i) => i.to !== "/operator")
                 .map((item) => (
                   <Link key={item.to} to={item.to} activeOptions={{ exact: true }}>
                     {item.label}
-                    {item.badge && pendingRequests > 0 && <span>{pendingRequests}</span>}
+                    {item.badge && (pendingRequests ?? 0) > 0 && <span>{pendingRequests}</span>}
                   </Link>
                 ))}
             </nav>
           </aside>
         )}
-        <main className="operator-page-content">
+        <main className="operator-page-content" data-page={pathname.split("/")[2] ?? "overview"}>
           <div className="operator-breadcrumb">
             <Link to="/operator">Платформа</Link>
             <span>/</span>

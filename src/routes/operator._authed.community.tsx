@@ -31,6 +31,11 @@ function CommunityReportsPage() {
   return (
     <>
       <PageTitle title="Жалобы сообщества" />
+      {!data && load.busy && (
+        <p className="text-sm text-muted" role="status">
+          Загружаем обращения…
+        </p>
+      )}
       <ErrorBox error={load.error ?? resolve.error} />
       {soon && <Empty>Таблицы сообщества ещё не созданы (миграция 19-2 не применена).</Empty>}
       {data && data.reports.length === 0 && <Empty>Открытых жалоб нет.</Empty>}
