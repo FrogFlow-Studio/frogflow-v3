@@ -33,6 +33,17 @@ describe("knowledge", () => {
     expect(retrieveKnowledge("d3 витамин", docs, 1)[0]!.title).toBe("Витамин D3");
     expect(retrieveKnowledge("???", docs, 1)).toHaveLength(1);
   });
+  it("находит статью по другому падежу слова (срез BOVI 28.10)", () => {
+    const kb = parseKnowledge(
+      JSON.stringify([
+        { title: "Общие условия", content: "Работаем ежедневно." },
+        { title: "Sander", tags: ["скатерти", "салфетки"], content: "Немецкий текстиль." },
+        { title: "Traumina", tags: ["одеяла", "пух"], content: "Немецкие наполнители." },
+      ]),
+    );
+    expect(retrieveKnowledge("скатерть", kb, 1)[0]!.title).toBe("Sander");
+    expect(retrieveKnowledge("пуховое одеяло", kb, 1)[0]!.title).toBe("Traumina");
+  });
 });
 
 describe("profile / prompt", () => {

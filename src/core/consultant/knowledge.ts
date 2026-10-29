@@ -48,12 +48,22 @@ export function tokenize(query: string): string[] {
     .filter((w) => w.length >= 3 && !STOP.has(w));
 }
 
+/**
+ * Основа слова для сравнения: без окончания, но не короче четырёх букв и не
+ * длиннее шести. Иначе «скатерть» не находила статью с меткой «скатерти», а
+ * «одеяло» — с «одеяла»: подстрока целого слова падежа не переживает.
+ */
+export function stemOf(token: string): string {
+  if (token.length <= 4) return token;
+  return token.slice(0, Math.min(6, Math.max(4, token.length - 2)));
+}
+
 function score(doc: KnowledgeDoc, tokens: string[]): number {
   const title = doc.title.toLowerCase();
   const tags = (doc.tags ?? []).map((t) => t.toLowerCase());
   const body = `${doc.category ?? ""} ${doc.content}`.toLowerCase();
   let s = 0;
-  for (const t of tokens) {
+  for (const t of tokens.map(stemOf)) {
     if (title.includes(t)) s += 5;
     if (tags.some((x) => x.includes(t))) s += 3;
     if (body.includes(t)) s += 1;

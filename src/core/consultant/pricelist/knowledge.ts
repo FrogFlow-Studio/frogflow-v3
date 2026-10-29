@@ -1,6 +1,6 @@
 /** База знаний продавца (перенос src/lib/consultant/knowledge.ts v1 без чтения базы — knowledge.server.ts). */
-import { haystackOf } from "./synonyms";
-import { searchTokens, type ConsultantProduct } from "./catalog";
+import { haystackOf, tokenizeQuery } from "./synonyms";
+import { extractNegatedWords, searchTokens, type ConsultantProduct } from "./catalog";
 import { brandVocabulary, fixBrandSpelling } from "./style";
 export const KNOWLEDGE_KEY = "consultant_knowledge_json";
 
@@ -203,6 +203,42 @@ export function formatKnowledgeIndexForPrompt(articles: ConsultantKnowledgeArtic
 }
 
 /**
+ * Стоп-лист каталога выкидывает доставку, страны и города: товар по ним в
+ * прайсе не ищут. А база знаний как раз про них — статья «Доставка в Россию
+ * (СДЭК)». На вопрос «сдэк?» поиск возвращал пусто (вечерний срез BOVI
+ * 28.10), поэтому для базы знаний эти слова снова идут в счёт.
+ */
+const KNOWLEDGE_TOPIC_WORDS = new Set([
+  "доставка",
+  "доставку",
+  "доставке",
+  "сдэк",
+  "cdek",
+  "россия",
+  "россии",
+  "россию",
+  "россией",
+  "казахстан",
+  "казахстана",
+  "алматы",
+  "астана",
+  "шымкент",
+  "москва",
+  "питер",
+  "страна",
+  "качество",
+]);
+
+function knowledgeTokens(query: string): string[] {
+  const negated = extractNegatedWords(query);
+  const out = searchTokens(query);
+  for (const t of tokenizeQuery(query)) {
+    if (KNOWLEDGE_TOPIC_WORDS.has(t) && !negated.has(t) && !out.includes(t)) out.push(t);
+  }
+  return out;
+}
+
+/**
  * Поиск по базе знаний: статьи, чьи название, теги или текст пересекаются с
  * запросом. Ранжирование простое — сколько слов запроса нашлось; название и
  * теги весят больше текста, потому что именно они описывают тему статьи.
@@ -215,7 +251,7 @@ export function searchKnowledge(
   // Сравниваем по началу слова, а не по целому: стеммер каталога оставляет
   // «стирать» как есть, а в статье написано «стирка», и точное совпадение
   // такую пару не ловит. Слова короче четырёх букв («как», «что») выкидываем.
-  const keys = searchTokens(query)
+  const keys = knowledgeTokens(query)
     .filter((t) => t.length >= 4)
     .map((t) => t.slice(0, 4));
   if (keys.length === 0) return [];
@@ -258,7 +294,7 @@ export function searchKnowledgeScored(
    */
   ignore?: ReadonlySet<string>,
 ): { article: ConsultantKnowledgeArticle; score: number }[] {
-  const keys = searchTokens(query)
+  const keys = knowledgeTokens(query)
     .filter((t) => t.length >= 4)
     .map((t) => t.slice(0, 4))
     .filter((k) => !ignore?.has(k));

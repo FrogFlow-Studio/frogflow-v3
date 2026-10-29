@@ -47,6 +47,23 @@ describe("база знаний по запросу", () => {
     expect(searchKnowledge("что за бренд dorelan", BASE).map((a) => a.id)).toContain("dorelan");
   });
 
+  it("доставка и СДЭК идут в счёт, хотя каталог их не ищет (срез BOVI 28.10)", () => {
+    const kb = [
+      ...BASE,
+      article({
+        id: "kb-delivery-russia-cdek",
+        title: "Доставка в Россию (СДЭК): ориентировочные цены",
+        tags: ["доставка", "сдэк", "россия", "москва"],
+        content: "Отправляем в Россию через СДЭК. Посылка 3 кг до Москвы — примерно 7 797 ₸.",
+      }),
+    ];
+    expect(searchKnowledge("сдэк", kb).map((a) => a.id)).toEqual(["kb-delivery-russia-cdek"]);
+    expect(searchKnowledge("СДЭК в Казахстан?", kb)[0]!.id).toBe("kb-delivery-russia-cdek");
+    expect(searchKnowledge("сколько стоит доставка в Москву", kb)[0]!.id).toBe(
+      "kb-delivery-russia-cdek",
+    );
+  });
+
   it("на посторонний вопрос не выдаёт ничего", () => {
     expect(searchKnowledge("велосипед", BASE)).toEqual([]);
   });
