@@ -3,6 +3,7 @@ import { chunksOf, inChunks } from "@/lib/in-chunks";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { pageAll } from "@/core/db/page";
 import { cleanReason } from "./reason";
+import { pauseHours } from "@/core/consultant/pause";
 
 /**
  * Чат с менеджером: продавец из панели «подключается» к диалогу и отвечает
@@ -121,14 +122,70 @@ export function tappedButtonText(label: string | null | undefined): string {
   return `👉 ${label?.trim() || "нажал кнопку"}`;
 }
 
-export async function isManagerConnected(ctx: TenantContext, telegramId: number): Promise<boolean> {
+/**
+ * Ведёт ли диалог человек. Подключение (передача менеджеру, «Подключиться» в
+ * «Чате») — пауза, а не навсегда: держится столько, сколько продавец выбрал в
+ * «Пауза консультанта» (`consultant_pause_hours`, по умолчанию 6 ч) от
+ * подключения или от последнего ответа человека (он продлевает паузу
+ * консультанта). 0 — «пока не верну сам». Истёкшее подключение снимается
+ * условной записью по `connected_at`: свежее подключение коллеги не затирается.
+ * Без `connected_at` (строки до M26) срок неизвестен — держим, как раньше.
+ * Раньше подключение не истекало: BOVI 31.10 — 85 диалогов молчали днями.
+ */
+export async function isManagerConnected(
+  ctx: TenantContext,
+  telegramId: number,
+  now = Date.now(),
+): Promise<boolean> {
   const { data, error: dataError } = await ctx.db
     .from("manager_chat_state")
-    .select("active")
+    .select("active, connected_at")
     .eq("telegram_id", telegramId)
     .maybeSingle();
   if (dataError) throw serverFailure(`Чат: ${dataError.message}`);
-  return data?.active === true;
+  if (data?.active !== true) return false;
+  const hours = pauseHours({ settings: ctx.tenant.settings ?? {} });
+  const connectedAt = data.connected_at ? Date.parse(data.connected_at) : NaN;
+  if (hours === 0 || !Number.isFinite(connectedAt)) return true;
+  if (connectedAt + hours * 3600_000 > now) return true;
+  const { data: user, error: userError } = await ctx.db
+    .from("bot_users")
+    .select("paused_until:state->consultant->>paused_until")
+    .eq("telegram_id", telegramId)
+    .maybeSingle();
+  if (userError) throw serverFailure(`Чат: ${userError.message}`);
+  const pausedUntil = Date.parse(String(user?.paused_until ?? ""));
+  if (Number.isFinite(pausedUntil) && pausedUntil > now) return true;
+  const { data: released, error: releaseError } = await ctx.db
+    .from("manager_chat_state")
+    .update({ active: false })
+    .eq("telegram_id", telegramId)
+    .eq("active", true)
+    .eq("connected_at", data.connected_at!)
+    .select("telegram_id")
+    .maybeSingle();
+  if (releaseError) {
+    // Срок вышел — бот отвечает; строка «у менеджера» снимется следующей репликой.
+    console.error(`[chat:${ctx.tenant.id}] release`, releaseError.message);
+    return false;
+  }
+  if (released) return false;
+  // Не совпало — коллега только что подключился заново: его подключение держим.
+  return reconnectedSince(ctx, telegramId, data.connected_at!);
+}
+
+async function reconnectedSince(
+  ctx: TenantContext,
+  telegramId: number,
+  connectedAt: string,
+): Promise<boolean> {
+  const { data, error } = await ctx.db
+    .from("manager_chat_state")
+    .select("active, connected_at")
+    .eq("telegram_id", telegramId)
+    .maybeSingle();
+  if (error) throw serverFailure(`Чат: ${error.message}`);
+  return data?.active === true && data.connected_at !== connectedAt;
 }
 
 /**

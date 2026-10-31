@@ -5,6 +5,7 @@ import type { TenantContext } from "@/core/tenant/resolve.server";
 import {
   inboundIntercepted,
   inboundLogText,
+  isManagerConnected,
   lastInboundAt,
   listMessages,
   tappedButtonText,
@@ -61,6 +62,87 @@ describe("чат с менеджером", () => {
     const off = setup(true, false);
     expect(await inboundIntercepted(off.ctx, 7, tappedButtonText("Каталог"))).toBe(false);
     expect(off.db.tables.manager_chat_messages).toHaveLength(1);
+  });
+});
+
+describe("подключение менеджера — пауза, а не навсегда", () => {
+  const H = 3600_000;
+  const now = Date.parse("2026-10-31T14:00:00Z");
+  function connected(o: {
+    hoursAgo: number;
+    pauseHours?: number;
+    pausedUntil?: string;
+    connectedAt?: string | null;
+  }) {
+    const s = setup(true, true);
+    const at =
+      o.connectedAt === undefined ? new Date(now - o.hoursAgo * H).toISOString() : o.connectedAt;
+    s.db.tables.manager_chat_state![0]!.connected_at = at;
+    s.db.tables.bot_users = [
+      {
+        bot_id: BOT,
+        telegram_id: 7,
+        user_key: "wa:7",
+        state: o.pausedUntil ? { consultant: { paused_until: o.pausedUntil } } : {},
+        // fakeDb отдаёт строку целиком, без проекций: так PostgREST вернул бы
+        // `paused_until:state->consultant->>paused_until`.
+        paused_until: o.pausedUntil ?? null,
+      },
+    ];
+    (s.ctx.tenant as { settings?: unknown }).settings =
+      o.pauseHours === undefined ? {} : { consultant_pause_hours: o.pauseHours };
+    return s;
+  }
+
+  it("передача 4 дня назад, менеджер молчит — снимается, в «Чате» диалог больше не «у менеджера»", async () => {
+    const s = connected({ hoursAgo: 96 });
+    expect(await isManagerConnected(s.ctx, 7, now)).toBe(false);
+    expect(s.db.tables.manager_chat_state![0]!.active).toBe(false);
+  });
+
+  it("в пределах паузы (6 ч по умолчанию) — держится", async () => {
+    const s = connected({ hoursAgo: 5 });
+    expect(await isManagerConnected(s.ctx, 7, now)).toBe(true);
+    expect(s.db.tables.manager_chat_state![0]!.active).toBe(true);
+  });
+
+  it("срок — из настройки продавца: 12 ч держит 10-часовую передачу, 3 ч — нет", async () => {
+    expect(await isManagerConnected(connected({ hoursAgo: 10, pauseHours: 12 }).ctx, 7, now)).toBe(
+      true,
+    );
+    expect(await isManagerConnected(connected({ hoursAgo: 4, pauseHours: 3 }).ctx, 7, now)).toBe(
+      false,
+    );
+  });
+
+  it("«пока не верну сам» (0) — не истекает", async () => {
+    const s = connected({ hoursAgo: 500, pauseHours: 0 });
+    expect(await isManagerConnected(s.ctx, 7, now)).toBe(true);
+  });
+
+  it("менеджер ответил недавно — пауза консультанта продлена, подключение держится", async () => {
+    const s = connected({ hoursAgo: 48, pausedUntil: new Date(now + 2 * H).toISOString() });
+    expect(await isManagerConnected(s.ctx, 7, now)).toBe(true);
+    expect(s.db.tables.manager_chat_state![0]!.active).toBe(true);
+  });
+
+  it("строка без connected_at — срок неизвестен, держим как раньше", async () => {
+    const s = connected({ hoursAgo: 0, connectedAt: null });
+    expect(await isManagerConnected(s.ctx, 7, now)).toBe(true);
+  });
+
+  it("гонка: коллега подключился заново между чтением и снятием — его подключение не затирается", async () => {
+    const s = connected({ hoursAgo: 96 });
+    const fresh = new Date(now - 60_000).toISOString();
+    const from = s.db.from.bind(s.db);
+    let reads = 0;
+    s.db.from = ((t: string) => {
+      if (t === "manager_chat_state" && ++reads === 2)
+        s.db.tables.manager_chat_state![0]!.connected_at = fresh;
+      return from(t as never);
+    }) as typeof s.db.from;
+    expect(await isManagerConnected(s.ctx, 7, now)).toBe(true);
+    expect(s.db.tables.manager_chat_state![0]).toMatchObject({ active: true, connected_at: fresh });
   });
 });
 

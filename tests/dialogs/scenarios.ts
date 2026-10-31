@@ -7,7 +7,7 @@ import { expect } from "vitest";
 import { COPY, type Msg } from "@/channels/telegram/copy";
 import { EVENING_COPY } from "@/channels/zernio/shop/evening-copy";
 import type { Locale } from "@/core/i18n/locale";
-import type { Channel, Input, Product, Room } from "./harness";
+import { ROOM_BOT, type Channel, type Input, type Product, type Room } from "./harness";
 import { BOTS_20 } from "./scenarios-bots";
 import { handoffReply, pricelistHandoffReply, unavailableReply } from "@/core/consultant/messages";
 import { VOICE_WRITE_TEXT } from "@/channels/zernio/nontext";
@@ -6296,5 +6296,55 @@ export const SCENARIOS: Scenario[] = [
         },
       },
     ],
+  },
+  {
+    id: "manager-handoff-expires-wa-ru",
+    title:
+      "передача менеджеру четыре дня назад, менеджер не ответил — покупатель пишет снова и бот отвечает, а не молчит вечно",
+    origin:
+      "BOVI 31.10: 85 диалогов «у менеджера» навсегда, 83 без ответа; asiyatt82 «Евро» 31.10 без ответа после передачи 27.10, карточка обещала «молчит 6 часов»",
+    channel: "whatsapp",
+    locale: "ru",
+    full: true,
+    vertical: "consultant",
+    modules: { whatsapp: true, wa_shop: true, manager_chat: true },
+    consultant: "Да, есть в евро размере.",
+    products: PRODUCTS,
+    arrange: (r) => {
+      const tg = Number(r.db.tables.bot_users![0]!.telegram_id);
+      r.db.tables.manager_chat_state!.push({
+        bot_id: ROOM_BOT,
+        telegram_id: tg,
+        active: true,
+        connected_at: new Date(Date.now() - 4 * 24 * 3600_000).toISOString(),
+        last_message_at: new Date(Date.now() - 4 * 24 * 3600_000).toISOString(),
+        unread_count: 0,
+      });
+    },
+    steps: [{ say: { text: "Евро" }, expect: { count: 1, says: ["Да, есть в евро размере."] } }],
+  },
+  {
+    id: "manager-handoff-fresh-holds-wa-ru",
+    title: "передача менеджеру час назад — бот в этом диалоге ещё молчит (пауза 6 часов)",
+    origin: "Ожидание к BOVI 31.10: пауза после передачи временная, но в своё окно держится",
+    channel: "whatsapp",
+    locale: "ru",
+    full: true,
+    vertical: "consultant",
+    modules: { whatsapp: true, wa_shop: true, manager_chat: true },
+    consultant: "Да, есть в евро размере.",
+    products: PRODUCTS,
+    arrange: (r) => {
+      const tg = Number(r.db.tables.bot_users![0]!.telegram_id);
+      r.db.tables.manager_chat_state!.push({
+        bot_id: ROOM_BOT,
+        telegram_id: tg,
+        active: true,
+        connected_at: new Date(Date.now() - 3600_000).toISOString(),
+        last_message_at: new Date(Date.now() - 3600_000).toISOString(),
+        unread_count: 0,
+      });
+    },
+    steps: [{ say: { text: "Евро" }, expect: { silent: true } }],
   },
 ];
