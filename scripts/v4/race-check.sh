@@ -64,4 +64,16 @@ $P -c "select v4.enqueue_job('race', 'j' || g) from generate_series(1, 30) g" >/
 for i in $(seq 1 6); do $P -c "select id from v4.claim_jobs(10) where kind = 'race'" >"$OUT/h$i" 2>&1 & done; wait
 check "6 исполнителей на 30 задач: каждая забрана один раз" "$(cat "$OUT"/h* | grep -E '^[0-9]+$' | sort | uniq -d | wc -l):$(cat "$OUT"/h* | grep -cE '^[0-9]+$')" "0:30"
 
+# Этап 3: выдача и доступы
+check "30 платежей одновременно: доступ выдан один раз" "$($P -c "select count(*) from v4.access where order_id = '$O1'")" 1
+check "задача выдачи одна" "$($P -c "select count(*) from v4.jobs j join v4.access a on a.id::text = j.payload ->> 'access_id' where a.order_id = '$O1' and j.kind = 'deliver'")" 1
+CL=$($P -c "insert into v4.products (bot_id, title, kind, base_price_minor, term) values ('$A', 'club', 'club', 100, '30 days') returning id" | head -1)
+CO=$($P -c "select id from v4.create_order('$A', '$BU', 'KZ', array['$CL']::uuid[])" | head -1)
+$P -c "select 1 from v4.record_payment('$A', '$CO', 100, 'KZT', 'transfer', 'club-race', 't')" >/dev/null
+for i in $(seq 1 10); do $P -c "select v4.expire_access(now() + interval '28 days')" >"$OUT/k$i" 2>&1 & done; wait
+check "10 тиков одновременно: напоминание о продлении одно" "$($P -c "select count(*) from v4.notifications where kind = 'club_renew_reminder'")" 1
+for i in $(seq 1 10); do $P -c "select v4.expire_access(now() + interval '31 days')" >"$OUT/l$i" 2>&1 & done; wait
+check "10 тиков одновременно: убрать из клуба — одна задача" "$($P -c "select count(*) from v4.jobs where kind = 'club_remove'")" 1
+check "тики доступа без ошибок" "$(grep -l ERROR "$OUT"/k* "$OUT"/l* 2>/dev/null | wc -l)" 0
+
 exit $fail

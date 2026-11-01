@@ -238,7 +238,13 @@ describe("заказ и платёж — разные записи (решени
       "select kind from v4.order_events where order_id = $1 order by id",
       [o.id],
     );
-    expect(events.rows.map((e) => e.kind)).toEqual(["created", "payment", "payment", "paid"]);
+    expect(events.rows.map((e) => e.kind)).toEqual([
+      "created",
+      "payment",
+      "payment",
+      "paid",
+      "fulfilled",
+    ]);
   });
 
   it("переплата видна и пишется событием", async () => {
