@@ -3,6 +3,8 @@ import { pageAll } from "@/core/db/page";
 import { UserError } from "@/core/i18n/user-error";
 import { reportError } from "@/lib/errors";
 import { serverFailure } from "@/lib/server-failure";
+import { env } from "@/config/env";
+import { needsSealing, openSetting, sealSetting } from "@/core/secrets/setting-secrets";
 
 /**
  * app_settings — KV клиента, PK (bot_id, key). Те же ключи, что в v1.
@@ -13,7 +15,9 @@ import { serverFailure } from "@/lib/server-failure";
  */
 export async function getSetting(ctx: TenantContext, key: string): Promise<string | null> {
   const { data } = await ctx.db.from("app_settings").select("value").eq("key", key).maybeSingle();
-  return data?.value ?? null;
+  if (data?.value == null) return null;
+  const out = await openRows(ctx, [{ key, value: data.value }], "soft");
+  return out[key] ?? null;
 }
 
 /** Строгое чтение: «не удалось прочитать» — сбой, а не «настройки нет». */
@@ -24,7 +28,9 @@ export async function getSettingStrict(ctx: TenantContext, key: string): Promise
     .eq("key", key)
     .maybeSingle();
   if (error) throw serverFailure(`Настройка ${key}: ${error.message}`);
-  return data?.value ?? null;
+  if (data?.value == null) return null;
+  const out = await openRows(ctx, [{ key, value: data.value }], "strict");
+  return out[key] ?? null;
 }
 
 /** Мягкое чтение нескольких ключей (см. getSetting). */
@@ -36,9 +42,7 @@ export async function getSettings(
     .from("app_settings")
     .select("key, value")
     .in("key", [...keys]);
-  const out: Record<string, string> = {};
-  for (const row of data ?? []) if (row.value != null) out[row.key] = row.value;
-  return out;
+  return openRows(ctx, data ?? [], "soft");
 }
 
 /** Строгое чтение нескольких ключей: сбой базы не превращается в пустой набор. */
@@ -51,9 +55,61 @@ export async function getSettingsStrict(
     .select("key, value")
     .in("key", [...keys]);
   if (error) throw serverFailure(`Настройки ${keys.join(", ")}: ${error.message}`);
+  return openRows(ctx, data ?? [], "strict");
+}
+
+const secretsKey = () => env().SECRETS_KEY;
+
+/**
+ * Строки app_settings → значения для кода. Ключи платёжек (core/secrets/
+ * setting-secrets) расшифровываются; не расшифровался — при строгом чтении
+ * сбой, при мягком ключа будто нет (и отчёт). Ключ, который ещё лежит
+ * открытым текстом, здесь же перезаписывается зашифрованным — условно, только
+ * если в базе всё то же значение (короткий ключ, не весь jsonb), так что
+ * параллельная смена ключа продавцом не затрётся.
+ */
+async function openRows(
+  ctx: TenantContext,
+  rows: ReadonlyArray<{ key: string; value: string | null }>,
+  mode: "soft" | "strict",
+): Promise<Record<string, string>> {
   const out: Record<string, string> = {};
-  for (const row of data ?? []) if (row.value != null) out[row.key] = row.value;
+  for (const row of rows) {
+    if (row.value == null) continue;
+    try {
+      out[row.key] = openSetting(row.key, row.value, secretsKey);
+    } catch (e) {
+      if (mode === "strict") throw serverFailure(`Настройка ${row.key} не расшифровалась`);
+      await reportError(e instanceof Error ? e : new Error(String(e)), {
+        where: "settings.open",
+        botId: ctx.tenant.id,
+        extra: { key: row.key },
+      });
+      continue;
+    }
+    if (needsSealing(row.key, row.value)) await sealStored(ctx, row.key, row.value);
+  }
   return out;
+}
+
+async function sealStored(ctx: TenantContext, key: string, plain: string): Promise<void> {
+  let failure: string | null = null;
+  try {
+    const { error } = await ctx.db
+      .from("app_settings")
+      .update({ value: sealSetting(key, plain, secretsKey) })
+      .eq("key", key)
+      .eq("value", plain);
+    failure = error?.message ?? null;
+  } catch (e) {
+    failure = e instanceof Error ? e.message : String(e);
+  }
+  if (failure)
+    await reportError(new Error(`app_settings ${key}: не зашифровался: ${failure}`), {
+      where: "settings.seal",
+      botId: ctx.tenant.id,
+      extra: { key },
+    });
 }
 
 /**
@@ -98,7 +154,13 @@ export async function trySetSetting(
  * app_settings менялся в истории; update-then-insert работает при любом.
  * Возвращает текст сбоя или null.
  */
-async function writeSetting(ctx: TenantContext, key: string, value: string) {
+async function writeSetting(ctx: TenantContext, key: string, plain: string) {
+  let value: string;
+  try {
+    value = sealSetting(key, plain, secretsKey);
+  } catch (e) {
+    return `не зашифровался: ${e instanceof Error ? e.message : String(e)}`;
+  }
   const found = await ctx.db.from("app_settings").select("key").eq("key", key).maybeSingle();
   if (found.error) return found.error.message;
   if (found.data) return updateSetting(ctx, key, value);
