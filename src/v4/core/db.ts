@@ -30,6 +30,9 @@ export const V4_REFUSALS = [
   "receipt_not_found",
   "bad_close_status",
   "append_only",
+  "unknown_case_kind",
+  "no_work_hours",
+  "bad_status",
 ] as const;
 export type V4Refusal = (typeof V4_REFUSALS)[number];
 
