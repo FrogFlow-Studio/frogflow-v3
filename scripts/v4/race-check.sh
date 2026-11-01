@@ -50,4 +50,18 @@ for i in $(seq 1 10); do $P -c "select decided from v4.decide_receipt('$A', '$RC
 check "10 «Принять чек» одновременно: решил один" "$(cat "$OUT"/e* | grep -c '^t$')" 1
 check "по чеку один платёж" "$($P -c "select count(*) from v4.ledger where order_id = '$O5'")" 1
 
+# Этап 2: дела, уведомления, задачи
+O6=$(new_order "$BU")
+$P -c "select 1 from v4.submit_receipt('$A', '$O6', 'x/z.jpg', repeat('b', 64))" >/dev/null
+CS=$($P -c "select id from v4.cases where order_id = '$O6' and kind = 'receipt_review'" | head -1)
+for i in $(seq 1 10); do $P -c "select v4.tick(now() + interval '3 hours')" >"$OUT/f$i" 2>&1 & done; wait
+check "10 тиков одновременно: напоминание по чеку одно" "$($P -c "select count(*) from v4.case_events where case_id = '$CS' and kind = 'reminded'")" 1
+check "тики без ошибок" "$(grep -l ERROR "$OUT"/f* 2>/dev/null | wc -l)" 0
+$P -c "select v4.notify('$A', 'seller', 'now', 'race', 'race-' || g) from generate_series(1, 40) g" >/dev/null
+for i in $(seq 1 8); do $P -c "select id from v4.claim_notifications('now', 10) where kind = 'race'" >"$OUT/g$i" 2>&1 & done; wait
+check "8 отправщиков на 40 уведомлений: каждое забрано один раз" "$(cat "$OUT"/g* | grep -E '^[0-9]+$' | sort | uniq -d | wc -l):$(cat "$OUT"/g* | grep -cE '^[0-9]+$')" "0:40"
+$P -c "select v4.enqueue_job('race', 'j' || g) from generate_series(1, 30) g" >/dev/null
+for i in $(seq 1 6); do $P -c "select id from v4.claim_jobs(10) where kind = 'race'" >"$OUT/h$i" 2>&1 & done; wait
+check "6 исполнителей на 30 задач: каждая забрана один раз" "$(cat "$OUT"/h* | grep -E '^[0-9]+$' | sort | uniq -d | wc -l):$(cat "$OUT"/h* | grep -cE '^[0-9]+$')" "0:30"
+
 exit $fail
