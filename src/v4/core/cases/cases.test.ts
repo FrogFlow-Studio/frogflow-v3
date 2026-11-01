@@ -350,9 +350,10 @@ describe("очередь задач в базе (решение 28)", () => {
     const now = Date.now();
     const claim = async (ms: number) =>
       (
-        await pg.query<{ id: number }>("select id from v4.claim_jobs(10, '2 minutes', $1)", [
-          new Date(now + ms).toISOString(),
-        ])
+        await pg.query<{ id: number }>(
+          "select id from v4.claim_jobs(10, '2 minutes', $1) where kind = 'demo'",
+          [new Date(now + ms).toISOString()],
+        )
       ).rows;
     expect(await claim(0)).toHaveLength(1);
     expect(await claim(1000)).toHaveLength(0); // аренда держит
