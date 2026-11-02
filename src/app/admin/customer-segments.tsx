@@ -9,7 +9,13 @@ import {
 } from "@/app/admin/segments.functions";
 import { adminT, intlLocale, type AdminKey } from "@/app/i18n/admin";
 import { Badge, ErrorBox, useAction } from "@/app/ui";
-import type { CustomerSegment, SegmentMember, SegmentRule } from "@/core/customers/saved-segments";
+import type {
+  CustomerSegment,
+  PresetSegment,
+  SegmentMember,
+  SegmentRule,
+  VipStatus,
+} from "@/core/customers/saved-segments";
 
 type T = ReturnType<typeof adminT>;
 
@@ -17,9 +23,17 @@ const PRESET_NAME: Record<string, AdminKey> = {
   "preset:orders2": "seg.preset.orders2",
   "preset:inactive60": "seg.preset.inactive60",
   "preset:vip": "seg.preset.vip",
+  "preset:vip_club": "seg.preset.vipClub",
 };
 
-type Active = { segment: CustomerSegment; label: string };
+const VIP_LABEL: Record<VipStatus, AdminKey> = {
+  active: "seg.vip.active",
+  former: "seg.vip.former",
+  wrote: "seg.vip.wrote",
+};
+const VIP_TONE = { active: "ok", former: "warn", wrote: "neutral" } as const;
+
+type Active = { segment: PresetSegment | CustomerSegment; label: string };
 type Result = { total: number; members: SegmentMember[] };
 
 /**
@@ -40,7 +54,7 @@ export function CustomerSegments({
 }) {
   const loc = intlLocale(locale as never);
   const [lists, setLists] = useState<{
-    presets: readonly CustomerSegment[];
+    presets: readonly PresetSegment[];
     saved: CustomerSegment[];
   } | null>(null);
   const [active, setActive] = useState<Active | null>(null);
@@ -55,7 +69,7 @@ export function CustomerSegments({
     void reload().catch(() => {});
   }, []);
 
-  const open = useAction(async (segment: CustomerSegment, label: string) => {
+  const open = useAction(async (segment: PresetSegment | CustomerSegment, label: string) => {
     setActive({ segment, label });
     setResult(null);
     onActive(true);
@@ -88,7 +102,8 @@ export function CustomerSegments({
   });
 
   const all = lists ? [...lists.presets, ...lists.saved] : [];
-  const label = (s: CustomerSegment) => (PRESET_NAME[s.id] ? t(PRESET_NAME[s.id]!) : s.name);
+  const label = (s: PresetSegment | CustomerSegment) =>
+    PRESET_NAME[s.id] ? t(PRESET_NAME[s.id]!) : s.name;
   return (
     <section className="mb-4" aria-label={t("seg.title")}>
       <h2 className="mb-1 flex items-center gap-1.5 text-sm font-medium text-muted">
@@ -193,17 +208,22 @@ export function CustomerSegments({
                   </tr>
                 </thead>
                 <tbody>
-                  {result.members.map((m) => (
-                    <tr key={m.userKey}>
+                  {result.members.map((m, i) => (
+                    <tr key={m.userKey ?? `vip-${i}`}>
                       <td>
-                        <Link
-                          to="/admin/customers/$key"
-                          params={{ key: m.userKey }}
-                          className="hover:text-accent"
-                        >
-                          {m.name || "—"}
-                        </Link>{" "}
+                        {m.userKey ? (
+                          <Link
+                            to="/admin/customers/$key"
+                            params={{ key: m.userKey }}
+                            className="hover:text-accent"
+                          >
+                            {m.name || "—"}
+                          </Link>
+                        ) : (
+                          m.name || "—"
+                        )}{" "}
                         {m.username && <span className="text-muted">@{m.username}</span>}
+                        {m.vip && <Badge tone={VIP_TONE[m.vip]}>{t(VIP_LABEL[m.vip])}</Badge>}
                         {m.optOut && <Badge tone="warn">{t("seg.optOut")}</Badge>}
                       </td>
                       <td className="text-muted">{m.platform}</td>

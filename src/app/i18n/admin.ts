@@ -433,6 +433,9 @@ const baseRu = {
   "customers.blocked": "заблокирован",
   "customers.block": "Заблокировать",
   "customers.unblock": "Разблокировать",
+  "customers.blockedList": "Заблокированные: {n}",
+  "customers.blockedListHint":
+    "Заблокированным бот не отвечает, поэтому в списке ниже их может не быть. «Разблокировать» снимает блок, бот снова отвечает.",
   // категории
   "categories.title": "Категории",
   "categories.subtitle": "Дерево каталога в боте и на витрине",
@@ -896,6 +899,9 @@ const baseKk: Dict = {
   "customers.blocked": "бұғатталған",
   "customers.block": "Бұғаттау",
   "customers.unblock": "Бұғаттан шығару",
+  "customers.blockedList": "Бұғатталғандар: {n}",
+  "customers.blockedListHint":
+    "Бұғатталғандарға бот жауап бермейді, сондықтан олар төмендегі тізімде болмауы мүмкін. «Бұғаттан шығару» бұғатты алады, бот қайта жауап береді.",
   "categories.title": "Санаттар",
   "categories.subtitle": "Боттағы және витринадағы каталог ағашы",
   "categories.new": "+ Санат",
@@ -1256,6 +1262,9 @@ const baseEn: Dict = {
   "customers.blocked": "blocked",
   "customers.block": "Block",
   "customers.unblock": "Unblock",
+  "customers.blockedList": "Blocked: {n}",
+  "customers.blockedListHint":
+    "The bot does not reply to blocked people, so they may be missing from the list below. «Unblock» lifts the block and the bot replies again.",
   "categories.title": "Categories",
   "categories.subtitle": "Catalog tree in the bot and storefront",
   "categories.new": "+ Category",
@@ -1622,6 +1631,9 @@ const baseUz: Dict = {
   "customers.blocked": "bloklangan",
   "customers.block": "Bloklash",
   "customers.unblock": "Blokdan chiqarish",
+  "customers.blockedList": "Bloklanganlar: {n}",
+  "customers.blockedListHint":
+    "Bloklanganlarga bot javob bermaydi, shuning uchun ular quyidagi ro‘yxatda bo‘lmasligi mumkin. «Blokdan chiqarish» blokni olib tashlaydi, bot yana javob beradi.",
   "categories.title": "Kategoriyalar",
   "categories.subtitle": "Botdagi va vitrinadagi katalog daraxti",
   "categories.new": "+ Kategoriya",

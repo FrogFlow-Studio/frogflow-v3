@@ -12,16 +12,19 @@ const ruleSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("tag"), tag: z.string().trim().min(1).max(32) }),
 ]);
 
+/** Правило для подсчёта: сохраняемые и готовый «VIP-клуб» (его не сохранить). */
+const memberRuleSchema = z.union([ruleSchema, z.object({ kind: z.literal("vip_club") })]);
+
 /** Готовые и сохранённые сегменты; кто покупал, считается отдельно — по нажатию. */
 export const customerSegmentsFn = createServerFn({ method: "GET" }).handler(async () => {
   const ctx = await admin();
-  const { listSegments, PRESET_SEGMENTS } = await import("@/core/customers/saved-segments");
-  return { presets: PRESET_SEGMENTS, saved: await listSegments(ctx) };
+  const { listSegments, presetSegments } = await import("@/core/customers/saved-segments");
+  return { presets: presetSegments(ctx), saved: await listSegments(ctx) };
 });
 
 /** Кто входит в сегмент: всего и первые 50 (без телефонов и почты). */
 export const segmentMembersFn = createServerFn({ method: "GET" })
-  .validator((d: unknown) => z.object({ rule: ruleSchema }).parse(d))
+  .validator((d: unknown) => z.object({ rule: memberRuleSchema }).parse(d))
   .handler(async ({ data }) => {
     const ctx = await admin();
     const { segmentMembers } = await import("@/core/customers/saved-segments");
