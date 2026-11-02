@@ -84,6 +84,63 @@ export const PANEL_TEXTS = {
     en: "Please write a reason.",
     uz: "Sababini yozing.",
   },
+  sellerTitle: {
+    ru: "ИИ-продавец (v4)",
+    kk: "ЖИ-сатушы (v4)",
+    en: "AI seller (v4)",
+    uz: "SI-sotuvchi (v4)",
+  },
+  sellerSubtitle: {
+    ru: "Условия оплаты и доставки бот берёт только отсюда — ничего не додумывает",
+    kk: "Төлем және жеткізу шарттарын бот тек осы жерден алады — ештеңе ойдан қоспайды",
+    en: "The bot takes payment and delivery terms only from here and invents nothing",
+    uz: "To'lov va yetkazib berish shartlarini bot faqat shu yerdan oladi — hech narsa to'qimaydi",
+  },
+  fShopName: { ru: "Название магазина", kk: "Дүкен атауы", en: "Shop name", uz: "Do'kon nomi" },
+  fAbout: {
+    ru: "О магазине и товарах",
+    kk: "Дүкен және тауарлар туралы",
+    en: "About the shop and products",
+    uz: "Do'kon va mahsulotlar haqida",
+  },
+  fPayment: {
+    ru: "Условия оплаты",
+    kk: "Төлем шарттары",
+    en: "Payment terms",
+    uz: "To'lov shartlari",
+  },
+  fDelivery: {
+    ru: "Условия доставки и выдачи",
+    kk: "Жеткізу және беру шарттары",
+    en: "Delivery terms",
+    uz: "Yetkazib berish shartlari",
+  },
+  fTone: {
+    ru: "Как говорить с покупателем",
+    kk: "Сатып алушымен қалай сөйлесу керек",
+    en: "How to talk to buyers",
+    uz: "Xaridor bilan qanday gaplashish",
+  },
+  fSpam: {
+    ru: "Стоп-слова для комментариев (по одному в строке): на такие комментарии бот не отвечает",
+    kk: "Пікірлерге арналған тыйым сөздер (әр жолға біреуден): мұндай пікірлерге бот жауап бермейді",
+    en: "Comment stop words (one per line): the bot doesn't reply to such comments",
+    uz: "Izohlar uchun taqiqlangan so'zlar (har qatorda bittadan): bunday izohlarga bot javob bermaydi",
+  },
+  aiLimit: {
+    ru: "Лимит ИИ на месяц (задаёт тариф)",
+    kk: "Айлық ЖИ лимиті (тариф белгілейді)",
+    en: "Monthly AI limit (set by the plan)",
+    uz: "Oylik SI limiti (tarif belgilaydi)",
+  },
+  save: { ru: "Сохранить", kk: "Сақтау", en: "Save", uz: "Saqlash" },
+  saved: { ru: "Сохранено.", kk: "Сақталды.", en: "Saved.", uz: "Saqlandi." },
+  stale: {
+    ru: "Пока вы редактировали, настройки сохранил кто-то другой. Обновите страницу и внесите правку снова.",
+    kk: "Сіз өңдеп жатқанда баптауларды басқа біреу сақтады. Бетті жаңартып, түзетуді қайта енгізіңіз.",
+    en: "Someone else saved the settings while you were editing. Reload the page and make your change again.",
+    uz: "Siz tahrirlayotganda sozlamalarni boshqa kishi saqladi. Sahifani yangilang va o'zgarishni qayta kiriting.",
+  },
 } satisfies Record<string, Record<SellerLang, string>>;
 
 export type PanelKey = keyof typeof PANEL_TEXTS;
