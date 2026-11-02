@@ -159,8 +159,14 @@ export async function claimNotifications(
   db: V4Db,
   urgency: "now" | "digest",
   limit = 50,
+  /** Только уведомления этих магазинов (обслуживаемых v4; migrations/v4/016). */
+  botIds?: readonly string[],
 ): Promise<QueuedNotification[]> {
-  const rows = await db.call("claim_notifications", { p_urgency: urgency, p_limit: limit });
+  const rows = await db.call("claim_notifications", {
+    p_urgency: urgency,
+    p_limit: limit,
+    ...(botIds ? { p_bot_ids: [...botIds] } : {}),
+  });
   return rows.map((r) => ({
     id: Number(r.id),
     botId: String(r.bot_id),

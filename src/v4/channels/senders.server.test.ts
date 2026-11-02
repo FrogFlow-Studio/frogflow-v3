@@ -2,7 +2,13 @@ import { describe, expect, it } from "vitest";
 import type { TelegramApi, TgResult } from "@/channels/telegram/api";
 import type { SendResult } from "@/channels/zernio/api.server";
 import { CONNECT_FAILED } from "@/channels/zernio/errors";
-import { telegramOutcome, v4BuyerSender, v4SellerTarget, zernioOutcome } from "./senders.server";
+import {
+  soleZernioAccount,
+  telegramOutcome,
+  v4BuyerSender,
+  v4SellerTarget,
+  zernioOutcome,
+} from "./senders.server";
 
 /**
  * Настоящие отправители v4: что сказал канал → sent / failed / unknown.
@@ -50,7 +56,12 @@ describe("отправитель покупателю", () => {
     const tg = fakeTelegram({});
     const send = v4BuyerSender({ telegram: tg.api, zernioAccount: {} });
     expect(
-      await send("telegram", { externalId: "777", conversationId: null }, "Ваш заказ", signal),
+      await send(
+        "telegram",
+        { externalId: "777", conversationId: null, accountId: null },
+        "Ваш заказ",
+        signal,
+      ),
     ).toBe("sent");
     expect(tg.calls).toEqual([
       {
@@ -65,7 +76,7 @@ describe("отправитель покупателю", () => {
     expect(
       await v4BuyerSender({ telegram: tg.api, zernioAccount: {} })(
         "telegram",
-        { externalId: "777", conversationId: null },
+        { externalId: "777", conversationId: null, accountId: null },
         "x",
         signal,
       ),
@@ -73,7 +84,7 @@ describe("отправитель покупателю", () => {
     expect(
       await v4BuyerSender({ telegram: null, zernioAccount: {} })(
         "telegram",
-        { externalId: "777", conversationId: null },
+        { externalId: "777", conversationId: null, accountId: null },
         "x",
         signal,
       ),
@@ -91,7 +102,7 @@ describe("отправитель покупателю", () => {
         return answer;
       },
     });
-    const to = { externalId: "ig-user", conversationId: "conv-1" };
+    const to = { externalId: "ig-user", conversationId: "conv-1", accountId: null };
     expect(await send("instagram", to, "Ссылка", signal)).toBe("sent");
     expect(calls).toEqual([
       ["conv-1", "acc-ig", "Ссылка", { platform: "instagram", idempotencyScope: "v4" }],
@@ -111,13 +122,74 @@ describe("отправитель покупателю", () => {
         return { ok: true };
       },
     });
-    expect(await send("instagram", { externalId: "u", conversationId: null }, "x", signal)).toBe(
-      "failed",
-    );
-    expect(await send("whatsapp", { externalId: "u", conversationId: "conv" }, "x", signal)).toBe(
-      "failed",
-    );
+    expect(
+      await send(
+        "instagram",
+        { externalId: "u", conversationId: null, accountId: null },
+        "x",
+        signal,
+      ),
+    ).toBe("failed");
+    expect(
+      await send(
+        "whatsapp",
+        { externalId: "u", conversationId: "conv", accountId: null },
+        "x",
+        signal,
+      ),
+    ).toBe("failed");
     expect(called).toBe(0);
+  });
+});
+
+describe("аккаунт Zernio", () => {
+  it("свой аккаунт покупателя важнее аккаунта магазина", async () => {
+    const calls: unknown[][] = [];
+    const send = v4BuyerSender({
+      telegram: null,
+      zernioAccount: { instagram: "acc-shop" },
+      sendInbox: async (...args) => {
+        calls.push(args);
+        return { ok: true };
+      },
+    });
+    await send(
+      "instagram",
+      { externalId: "u", conversationId: "c", accountId: "acc-2" },
+      "x",
+      signal,
+    );
+    expect(calls[0]!.slice(0, 2)).toEqual(["c", "acc-2"]);
+  });
+
+  it("единственный действующий аккаунт магазина; несколько, чужой или просроченный — null", () => {
+    const z = (accounts: { id: string; platform: string; expired?: boolean }[], ids: string[]) => ({
+      account_ids: ids,
+      accounts,
+    });
+    expect(soleZernioAccount(z([{ id: "a", platform: "instagram" }], ["a"]), "instagram")).toBe(
+      "a",
+    );
+    expect(
+      soleZernioAccount(z([{ id: "a", platform: "instagram" }], ["a"]), "whatsapp"),
+    ).toBeNull();
+    expect(
+      soleZernioAccount(
+        z(
+          [
+            { id: "a", platform: "instagram" },
+            { id: "b", platform: "instagram" },
+          ],
+          ["a", "b"],
+        ),
+        "instagram",
+      ),
+    ).toBeNull();
+    expect(soleZernioAccount(z([{ id: "a", platform: "instagram" }], []), "instagram")).toBeNull();
+    expect(
+      soleZernioAccount(z([{ id: "a", platform: "instagram", expired: true }], ["a"]), "instagram"),
+    ).toBeNull();
+    expect(soleZernioAccount(undefined, "instagram")).toBeNull();
   });
 });
 

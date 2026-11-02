@@ -24,3 +24,4 @@ returns jsonb language sql stable as $$
 $$;
 
 alter table v4.buyer_channels drop column if exists conversation_id;
+alter table v4.buyer_channels drop column if exists account_id;

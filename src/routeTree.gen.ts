@@ -152,6 +152,7 @@ import { Route as ApiAdminReportsKindRouteImport } from './routes/api/admin/repo
 import { Route as ApiImgBotIdSplatRouteImport } from './routes/api/img.$botId.$'
 import { Route as ApiRobokassaBotIdActionRouteImport } from './routes/api/robokassa.$botId.$action'
 import { Route as ApiTelegramBotIdVipRouteImport } from './routes/api/telegram.$botId.vip'
+import { Route as ApiV4CronJobRouteImport } from './routes/api/v4.cron.$job'
 import { Route as OperatorAuthedClientsIndexRouteImport } from './routes/operator._authed.clients.index'
 import { Route as OperatorAuthedClientsBotIdRouteImport } from './routes/operator._authed.clients.$botId'
 import { Route as OperatorAuthedClientsNewRouteImport } from './routes/operator._authed.clients.new'
@@ -895,6 +896,11 @@ const ApiTelegramBotIdVipRoute = ApiTelegramBotIdVipRouteImport.update({
   path: '/vip',
   getParentRoute: () => ApiTelegramBotIdRoute,
 } as any)
+const ApiV4CronJobRoute = ApiV4CronJobRouteImport.update({
+  id: '/api/v4/cron/$job',
+  path: '/api/v4/cron/$job',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OperatorAuthedClientsIndexRoute =
   OperatorAuthedClientsIndexRouteImport.update({
     id: '/clients/',
@@ -1116,6 +1122,7 @@ export interface FileRoutesByFullPath {
   '/api/img/$botId/$': typeof ApiImgBotIdSplatRoute
   '/api/robokassa/$botId/$action': typeof ApiRobokassaBotIdActionRoute
   '/api/telegram/$botId/vip': typeof ApiTelegramBotIdVipRoute
+  '/api/v4/cron/$job': typeof ApiV4CronJobRoute
   '/operator/clients/$botId': typeof OperatorAuthedClientsBotIdRoute
   '/operator/clients/new': typeof OperatorAuthedClientsNewRoute
   '/s/$slug/c/$category': typeof SSlugCCategoryRoute
@@ -1270,6 +1277,7 @@ export interface FileRoutesByTo {
   '/api/img/$botId/$': typeof ApiImgBotIdSplatRoute
   '/api/robokassa/$botId/$action': typeof ApiRobokassaBotIdActionRoute
   '/api/telegram/$botId/vip': typeof ApiTelegramBotIdVipRoute
+  '/api/v4/cron/$job': typeof ApiV4CronJobRoute
   '/operator/clients/$botId': typeof OperatorAuthedClientsBotIdRoute
   '/operator/clients/new': typeof OperatorAuthedClientsNewRoute
   '/s/$slug/c/$category': typeof SSlugCCategoryRoute
@@ -1431,6 +1439,7 @@ export interface FileRoutesById {
   '/api/img/$botId/$': typeof ApiImgBotIdSplatRoute
   '/api/robokassa/$botId/$action': typeof ApiRobokassaBotIdActionRoute
   '/api/telegram/$botId/vip': typeof ApiTelegramBotIdVipRoute
+  '/api/v4/cron/$job': typeof ApiV4CronJobRoute
   '/operator/_authed/clients/$botId': typeof OperatorAuthedClientsBotIdRoute
   '/operator/_authed/clients/new': typeof OperatorAuthedClientsNewRoute
   '/s/$slug/c/$category': typeof SSlugCCategoryRoute
@@ -1591,6 +1600,7 @@ export interface FileRouteTypes {
     | '/api/img/$botId/$'
     | '/api/robokassa/$botId/$action'
     | '/api/telegram/$botId/vip'
+    | '/api/v4/cron/$job'
     | '/operator/clients/$botId'
     | '/operator/clients/new'
     | '/s/$slug/c/$category'
@@ -1745,6 +1755,7 @@ export interface FileRouteTypes {
     | '/api/img/$botId/$'
     | '/api/robokassa/$botId/$action'
     | '/api/telegram/$botId/vip'
+    | '/api/v4/cron/$job'
     | '/operator/clients/$botId'
     | '/operator/clients/new'
     | '/s/$slug/c/$category'
@@ -1905,6 +1916,7 @@ export interface FileRouteTypes {
     | '/api/img/$botId/$'
     | '/api/robokassa/$botId/$action'
     | '/api/telegram/$botId/vip'
+    | '/api/v4/cron/$job'
     | '/operator/_authed/clients/$botId'
     | '/operator/_authed/clients/new'
     | '/s/$slug/c/$category'
@@ -1965,6 +1977,7 @@ export interface RootRouteChildren {
   ApiAdminReportsKindRoute: typeof ApiAdminReportsKindRoute
   ApiImgBotIdSplatRoute: typeof ApiImgBotIdSplatRoute
   ApiRobokassaBotIdActionRoute: typeof ApiRobokassaBotIdActionRoute
+  ApiV4CronJobRoute: typeof ApiV4CronJobRoute
   SSlugIconSizeRoute: typeof SSlugIconSizeRoute
   ApiCBotIdTokenFileIdRoute: typeof ApiCBotIdTokenFileIdRoute
   SSlugCertCodePdfRoute: typeof SSlugCertCodePdfRoute
@@ -2974,6 +2987,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiTelegramBotIdVipRouteImport
       parentRoute: typeof ApiTelegramBotIdRoute
     }
+    '/api/v4/cron/$job': {
+      id: '/api/v4/cron/$job'
+      path: '/api/v4/cron/$job'
+      fullPath: '/api/v4/cron/$job'
+      preLoaderRoute: typeof ApiV4CronJobRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/operator/_authed/clients/': {
       id: '/operator/_authed/clients/'
       path: '/clients'
@@ -3423,6 +3443,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminReportsKindRoute: ApiAdminReportsKindRoute,
   ApiImgBotIdSplatRoute: ApiImgBotIdSplatRoute,
   ApiRobokassaBotIdActionRoute: ApiRobokassaBotIdActionRoute,
+  ApiV4CronJobRoute: ApiV4CronJobRoute,
   SSlugIconSizeRoute: SSlugIconSizeRoute,
   ApiCBotIdTokenFileIdRoute: ApiCBotIdTokenFileIdRoute,
   SSlugCertCodePdfRoute: SSlugCertCodePdfRoute,

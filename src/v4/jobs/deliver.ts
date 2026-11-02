@@ -16,8 +16,12 @@ import type { Job, JobHandler } from "./runner";
 
 type Lang = "ru" | "kk" | "en" | "uz";
 
-/** Куда писать покупателю: id в канале и переписка Zernio (Instagram, WhatsApp; v4/015). */
-export type BuyerAddress = { externalId: string; conversationId: string | null };
+/** Куда писать покупателю: id в канале, переписка и аккаунт Zernio (Instagram, WhatsApp; v4/015). */
+export type BuyerAddress = {
+  externalId: string;
+  conversationId: string | null;
+  accountId: string | null;
+};
 
 export type BuyerSender = (
   channel: Exclude<DeliveryChannel, "email">,
@@ -133,6 +137,7 @@ export function deliverHandler(deps: {
         {
           externalId: String(plan.external_id),
           conversationId: (plan.conversation_id as string | null) ?? null,
+          accountId: (plan.account_id as string | null) ?? null,
         },
         text,
         signal,

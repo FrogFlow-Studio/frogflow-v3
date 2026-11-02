@@ -4,6 +4,7 @@ import { classifyZernioFailure } from "@/channels/zernio/errors";
 import type { SendOutcome } from "../core/cases/cases";
 import type { BuyerSender } from "../jobs/deliver";
 import type { NotifyTarget } from "../jobs/notify";
+import type { ZernioAccountSnapshot } from "@/core/tenant/types";
 import type { SellerLang } from "../screens/screens";
 
 /**
@@ -28,9 +29,14 @@ export function zernioOutcome(r: SendResult): SendOutcome {
 
 type SendInbox = typeof sendInboxMessage;
 
-/** Отправитель покупателю: Telegram — ботом магазина, Instagram и WhatsApp — через Zernio. */
+/**
+ * Отправитель покупателю: Telegram — ботом магазина, Instagram и WhatsApp —
+ * через Zernio, с того аккаунта магазина, куда покупатель писал; если он не
+ * записан — с единственного аккаунта магазина на этой площадке.
+ */
 export function v4BuyerSender(deps: {
   telegram: TelegramApi | null;
+  /** Единственный аккаунт магазина на площадке; null — нет или их несколько. */
   zernioAccount: { instagram?: string | null; whatsapp?: string | null };
   sendInbox?: SendInbox;
 }): BuyerSender {
@@ -46,7 +52,7 @@ export function v4BuyerSender(deps: {
         }),
       );
     }
-    const account = deps.zernioAccount[channel];
+    const account = to.accountId ?? deps.zernioAccount[channel];
     // Без аккаунта или переписки писать некуда — это «не отправлено», не «могло дойти».
     if (!account || !to.conversationId) return "failed";
     return zernioOutcome(
@@ -56,6 +62,18 @@ export function v4BuyerSender(deps: {
       }),
     );
   };
+}
+
+/** Единственный действующий аккаунт магазина на площадке (снимок settings.zernio). */
+export function soleZernioAccount(
+  zernio: { account_ids?: string[]; accounts?: ZernioAccountSnapshot[] } | undefined,
+  platform: "instagram" | "whatsapp",
+): string | null {
+  const own = new Set(zernio?.account_ids ?? []);
+  const ids = (zernio?.accounts ?? [])
+    .filter((a) => a.platform === platform && !a.expired && own.has(a.id))
+    .map((a) => a.id);
+  return ids.length === 1 ? ids[0]! : null;
 }
 
 /**
