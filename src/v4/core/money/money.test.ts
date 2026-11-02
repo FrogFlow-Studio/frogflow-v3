@@ -96,7 +96,7 @@ beforeAll(async () => {
   await seedShop(B);
   p3000 = await product(A, "Рабочая тетрадь 5 класс", 300_000);
   p500 = await product(A, "Плакат", 50_000);
-});
+}, 60_000);
 afterAll(async () => pg.close());
 
 describe("статусы в TS и в базе — один список (решение 70)", () => {

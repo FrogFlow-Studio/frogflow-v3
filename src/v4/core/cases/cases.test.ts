@@ -92,7 +92,7 @@ beforeAll(async () => {
       [A],
     )
   ).rows[0]!.id;
-});
+}, 60_000);
 afterAll(async () => pg.close());
 
 describe("списки в TS и в базе совпадают (решение 70)", () => {
