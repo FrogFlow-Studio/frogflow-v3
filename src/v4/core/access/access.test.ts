@@ -154,7 +154,7 @@ beforeAll(async () => {
     variant_label: "3 месяца",
     term: "90 days",
   });
-});
+}, 60_000);
 afterAll(async () => pg.close());
 
 describe("списки в TS и в базе совпадают", () => {
