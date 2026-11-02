@@ -56,11 +56,13 @@ begin
   ) select count(*) into n_buyers from ins;
 
   with ins as (
-    insert into v4.buyer_channels (bot_id, channel, external_id, buyer_id)
+    insert into v4.buyer_channels (bot_id, channel, external_id, buyer_id, conversation_id, account_id)
     select p_bot_id,
       case left(u.user_key, 3) when 'ig_' then 'instagram' when 'tg_' then 'telegram' else 'whatsapp' end,
       substr(u.user_key, 4),
-      (md5('v4buyer:' || p_bot_id || ':' || u.user_key))::uuid
+      (md5('v4buyer:' || p_bot_id || ':' || u.user_key))::uuid,
+      -- Переписка Zernio нужна для выдачи в Direct и WhatsApp (v4/015).
+      nullif(u.zernio_conversation_id, ''), nullif(u.zernio_account_id, '')
     from public.bot_users u
     where u.bot_id = p_bot_id and u.user_key ~ '^(ig|tg|wa)_.+'
     on conflict (bot_id, channel, external_id) do nothing

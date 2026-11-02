@@ -27,6 +27,8 @@ export type NotifyDeps = {
   budgetMs?: number;
   perSendMs?: number;
   now?: () => number;
+  /** Только эти магазины (обслуживаемые v4); остальные остаются в очереди. */
+  botIds?: readonly string[];
 };
 
 type L = Record<SellerLang, string>;
@@ -114,7 +116,7 @@ export async function runNotifications(
   const budget = deps.budgetMs ?? 100_000;
   const perSend = deps.perSendMs ?? 10_000;
   const report: NotifyReport = { sent: 0, failed: 0, unknown: 0, skipped: 0, released: 0 };
-  const claimed = await claimNotifications(deps.db, urgency, 200);
+  const claimed = await claimNotifications(deps.db, urgency, 200, deps.botIds);
   const groups = new Map<string, QueuedNotification[]>();
   for (const n of claimed) {
     const who = n.audience === "buyer" ? `buyer:${String(n.params.buyer_id ?? n.id)}` : n.audience;

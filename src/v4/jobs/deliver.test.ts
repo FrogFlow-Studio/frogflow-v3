@@ -25,7 +25,7 @@ type Sent = { channel: string; to: string; text: string };
 function sender(outcome: SendOutcome = "sent") {
   const sent: Sent[] = [];
   const send: BuyerSender = async (channel, to, text) => {
-    sent.push({ channel, to, text });
+    sent.push({ channel, to: to.externalId, text });
     return outcome;
   };
   return { sent, send };

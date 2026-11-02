@@ -26,7 +26,14 @@ export type RunReport = { done: number; retried: number; budgetLeft: boolean };
 export async function runJobs(
   db: V4Db,
   handlers: Record<string, JobHandler>,
-  opts: { budgetMs?: number; perJobMs?: number; limit?: number; now?: () => number } = {},
+  opts: {
+    budgetMs?: number;
+    perJobMs?: number;
+    limit?: number;
+    now?: () => number;
+    /** Только задачи этих магазинов (обслуживаемых v4; migrations/v4/016). */
+    botIds?: readonly string[];
+  } = {},
 ): Promise<RunReport> {
   const now = opts.now ?? Date.now;
   const started = now();
@@ -39,6 +46,7 @@ export async function runJobs(
     p_limit: opts.limit ?? 20,
     p_lease: "2 minutes",
     p_kinds: kinds,
+    ...(opts.botIds ? { p_bot_ids: [...opts.botIds] } : {}),
   });
   for (const r of rows) {
     const job: Job = {

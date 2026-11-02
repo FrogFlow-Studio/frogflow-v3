@@ -16,9 +16,16 @@ import type { Job, JobHandler } from "./runner";
 
 type Lang = "ru" | "kk" | "en" | "uz";
 
+/** Куда писать покупателю: id в канале, переписка и аккаунт Zernio (Instagram, WhatsApp; v4/015). */
+export type BuyerAddress = {
+  externalId: string;
+  conversationId: string | null;
+  accountId: string | null;
+};
+
 export type BuyerSender = (
   channel: Exclude<DeliveryChannel, "email">,
-  externalId: string,
+  to: BuyerAddress,
   text: string,
   signal: AbortSignal,
 ) => Promise<SendOutcome>;
@@ -125,7 +132,16 @@ export function deliverHandler(deps: {
 
     let outcome: SendOutcome;
     try {
-      outcome = await deps.send(channel, String(plan.external_id), text, signal);
+      outcome = await deps.send(
+        channel,
+        {
+          externalId: String(plan.external_id),
+          conversationId: (plan.conversation_id as string | null) ?? null,
+          accountId: (plan.account_id as string | null) ?? null,
+        },
+        text,
+        signal,
+      );
     } catch {
       outcome = "unknown";
     }
