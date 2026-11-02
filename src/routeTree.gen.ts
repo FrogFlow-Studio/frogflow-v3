@@ -119,6 +119,7 @@ import { Route as OperatorAuthedRequestsRouteImport } from './routes/operator._a
 import { Route as OperatorAuthedRevenueRouteImport } from './routes/operator._authed.revenue'
 import { Route as OperatorAuthedSettingsRouteImport } from './routes/operator._authed.settings'
 import { Route as OperatorAuthedSupportRouteImport } from './routes/operator._authed.support'
+import { Route as OperatorAuthedV4AttentionRouteImport } from './routes/operator._authed.v4-attention'
 import { Route as SSlugIndexRouteImport } from './routes/s.$slug.index'
 import { Route as SSlugAboutRouteImport } from './routes/s.$slug.about'
 import { Route as SSlugCartRouteImport } from './routes/s.$slug.cart'
@@ -716,6 +717,12 @@ const OperatorAuthedSupportRoute = OperatorAuthedSupportRouteImport.update({
   path: '/support',
   getParentRoute: () => OperatorAuthedRoute,
 } as any)
+const OperatorAuthedV4AttentionRoute =
+  OperatorAuthedV4AttentionRouteImport.update({
+    id: '/v4-attention',
+    path: '/v4-attention',
+    getParentRoute: () => OperatorAuthedRoute,
+  } as any)
 const SSlugIndexRoute = SSlugIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -1057,6 +1064,7 @@ export interface FileRoutesByFullPath {
   '/operator/revenue': typeof OperatorAuthedRevenueRoute
   '/operator/settings': typeof OperatorAuthedSettingsRoute
   '/operator/support': typeof OperatorAuthedSupportRoute
+  '/operator/v4-attention': typeof OperatorAuthedV4AttentionRoute
   '/s/$slug/about': typeof SSlugAboutRoute
   '/s/$slug/cart': typeof SSlugCartRoute
   '/s/$slug/checkout': typeof SSlugCheckoutRoute
@@ -1209,6 +1217,7 @@ export interface FileRoutesByTo {
   '/operator/revenue': typeof OperatorAuthedRevenueRoute
   '/operator/settings': typeof OperatorAuthedSettingsRoute
   '/operator/support': typeof OperatorAuthedSupportRoute
+  '/operator/v4-attention': typeof OperatorAuthedV4AttentionRoute
   '/s/$slug/about': typeof SSlugAboutRoute
   '/s/$slug/cart': typeof SSlugCartRoute
   '/s/$slug/checkout': typeof SSlugCheckoutRoute
@@ -1364,6 +1373,7 @@ export interface FileRoutesById {
   '/operator/_authed/revenue': typeof OperatorAuthedRevenueRoute
   '/operator/_authed/settings': typeof OperatorAuthedSettingsRoute
   '/operator/_authed/support': typeof OperatorAuthedSupportRoute
+  '/operator/_authed/v4-attention': typeof OperatorAuthedV4AttentionRoute
   '/s/$slug/about': typeof SSlugAboutRoute
   '/s/$slug/cart': typeof SSlugCartRoute
   '/s/$slug/checkout': typeof SSlugCheckoutRoute
@@ -1520,6 +1530,7 @@ export interface FileRouteTypes {
     | '/operator/revenue'
     | '/operator/settings'
     | '/operator/support'
+    | '/operator/v4-attention'
     | '/s/$slug/about'
     | '/s/$slug/cart'
     | '/s/$slug/checkout'
@@ -1672,6 +1683,7 @@ export interface FileRouteTypes {
     | '/operator/revenue'
     | '/operator/settings'
     | '/operator/support'
+    | '/operator/v4-attention'
     | '/s/$slug/about'
     | '/s/$slug/cart'
     | '/s/$slug/checkout'
@@ -1826,6 +1838,7 @@ export interface FileRouteTypes {
     | '/operator/_authed/revenue'
     | '/operator/_authed/settings'
     | '/operator/_authed/support'
+    | '/operator/_authed/v4-attention'
     | '/s/$slug/about'
     | '/s/$slug/cart'
     | '/s/$slug/checkout'
@@ -2692,6 +2705,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OperatorAuthedSupportRouteImport
       parentRoute: typeof OperatorAuthedRoute
     }
+    '/operator/_authed/v4-attention': {
+      id: '/operator/_authed/v4-attention'
+      path: '/v4-attention'
+      fullPath: '/operator/v4-attention'
+      preLoaderRoute: typeof OperatorAuthedV4AttentionRouteImport
+      parentRoute: typeof OperatorAuthedRoute
+    }
     '/s/$slug/': {
       id: '/s/$slug/'
       path: '/'
@@ -3197,6 +3217,7 @@ interface OperatorAuthedRouteChildren {
   OperatorAuthedRevenueRoute: typeof OperatorAuthedRevenueRoute
   OperatorAuthedSettingsRoute: typeof OperatorAuthedSettingsRoute
   OperatorAuthedSupportRoute: typeof OperatorAuthedSupportRoute
+  OperatorAuthedV4AttentionRoute: typeof OperatorAuthedV4AttentionRoute
   OperatorAuthedIndexRoute: typeof OperatorAuthedIndexRoute
   OperatorAuthedClientsBotIdRoute: typeof OperatorAuthedClientsBotIdRoute
   OperatorAuthedClientsNewRoute: typeof OperatorAuthedClientsNewRoute
@@ -3223,6 +3244,7 @@ const OperatorAuthedRouteChildren: OperatorAuthedRouteChildren = {
   OperatorAuthedRevenueRoute: OperatorAuthedRevenueRoute,
   OperatorAuthedSettingsRoute: OperatorAuthedSettingsRoute,
   OperatorAuthedSupportRoute: OperatorAuthedSupportRoute,
+  OperatorAuthedV4AttentionRoute: OperatorAuthedV4AttentionRoute,
   OperatorAuthedIndexRoute: OperatorAuthedIndexRoute,
   OperatorAuthedClientsBotIdRoute: OperatorAuthedClientsBotIdRoute,
   OperatorAuthedClientsNewRoute: OperatorAuthedClientsNewRoute,
