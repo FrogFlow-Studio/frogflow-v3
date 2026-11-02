@@ -46,7 +46,11 @@ test("чат: список постранично — «Показать ещё�
   await search.fill("");
   await expect(dialog(1)).toHaveCount(1);
 
-  // «Непрочитанные»: нечётные клиенты, чётных нет.
+  // «Непрочитанные»: нечётные клиенты, чётных нет. На телефоне вкладки — за кнопкой «Фильтры».
+  if (test.info().project.name === "phone") {
+    await expect(page.getByRole("button", { name: /^Непрочитанные/ })).toBeHidden();
+    await page.getByRole("button", { name: "Фильтры", exact: true }).click();
+  }
   await page.getByRole("button", { name: /^Непрочитанные/ }).click();
   await expect(dialog(1)).toHaveCount(1);
   await expect(dialog(2)).toHaveCount(0);

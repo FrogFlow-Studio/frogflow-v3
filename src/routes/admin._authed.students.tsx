@@ -105,7 +105,7 @@ function StudentsPage() {
                           key={s.orderItemId}
                           className="flex flex-wrap items-center gap-x-3 gap-y-1 py-1.5"
                         >
-                          <span className="min-w-0 flex-1 truncate">
+                          <span className="min-w-[10rem] flex-1 truncate">
                             {s.buyer ?? `#${s.orderNo}`}
                             {s.tariff ? ` · ${s.tariff}` : ""}
                             {s.cohort ? ` · ${s.cohort}` : ""}

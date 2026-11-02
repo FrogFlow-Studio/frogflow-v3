@@ -86,6 +86,7 @@ function ChatPage() {
       .then(setInvoiceModes)
       .catch(() => {});
   }, []);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [filter, setFilter] = useState<InboxFilter>({ status: "open", who: "all", channel: "all" });
   const [searchText, setSearchText] = useState("");
   const canWrite = canEdit(shop.role);
@@ -435,12 +436,14 @@ function ChatPage() {
       />
       {/* На телефоне открытый диалог занимает экран: напоминание и фильтры — только у списка. */}
       <div className={selected ? "hidden md:block" : undefined}>
-        <UnansweredAlert
-          t={t}
-          initial={initial.unansweredMinutes}
-          initialEscalate={initial.unansweredEscalate}
-          canWrite={canWrite}
-        />
+        <div className={filtersOpen ? undefined : "hidden md:block"}>
+          <UnansweredAlert
+            t={t}
+            initial={initial.unansweredMinutes}
+            initialEscalate={initial.unansweredEscalate}
+            canWrite={canWrite}
+          />
+        </div>
         <InboxFilters
           t={t}
           filter={filter}
@@ -448,6 +451,8 @@ function ChatPage() {
           search={searchText}
           onSearch={setSearchText}
           onChange={changeFilter}
+          open={filtersOpen}
+          onToggle={() => setFiltersOpen((v) => !v)}
         />
       </div>
       {/* Телефон: список и переписка раздельно (выбрал — переписка, «К списку» — назад);
@@ -523,9 +528,9 @@ function ChatPage() {
                 onClick={() => setSelectedId(c.telegram_id)}
                 className={`block w-full border-b border-line px-4 py-3 text-left hover:bg-surface-2/60 ${selectedId === c.telegram_id ? "bg-surface-2" : ""}`}
               >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="truncate text-sm font-medium">{label(c)}</span>
-                  <span className="flex shrink-0 items-center gap-1">
+                <div className="flex flex-col items-start gap-1 md:flex-row md:items-center md:justify-between md:gap-2">
+                  <span className="max-w-full truncate text-sm font-medium">{label(c)}</span>
+                  <span className="flex shrink-0 flex-wrap items-center gap-1">
                     {channelOf(c) && <Badge>{channelOf(c)}</Badge>}
                     {c.tickets.map((n) => (
                       <Badge key={n} tone="warn">

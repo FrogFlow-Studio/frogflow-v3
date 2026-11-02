@@ -76,7 +76,7 @@ function CustomersPage() {
         }}
       >
         <input
-          className="input w-64"
+          className="input min-w-0 flex-1 md:w-64 md:flex-none"
           placeholder={t("customers.searchPlaceholder")}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -127,7 +127,7 @@ function CustomersPage() {
         )
       ) : (
         <div className="card overflow-x-auto">
-          <table className="table">
+          <table className="table table-cards">
             <thead>
               <tr>
                 <th>{t("customers.col.customer")}</th>
@@ -145,7 +145,7 @@ function CustomersPage() {
             <tbody>
               {rows.map((r) => (
                 <tr key={r.user_key}>
-                  <td>
+                  <td className="cell-main">
                     <Link
                       to="/admin/customers/$key"
                       params={{ key: r.user_key }}
@@ -157,11 +157,17 @@ function CustomersPage() {
                     {r.blocked && <Badge tone="danger">{t("customers.blocked")}</Badge>}
                   </td>
                   <td className="text-muted">{r.platform}</td>
-                  <td className="text-muted">
+                  <td
+                    className={`cell-break break-words text-muted ${r.contact_phone || r.email ? "" : "cell-phone-hide"}`}
+                  >
                     {[r.contact_phone, r.email].filter(Boolean).join(" · ") || "—"}
                   </td>
-                  {sells && <td className="text-right tabular-nums">{r.loyalty_points}</td>}
-                  <td className="text-muted">
+                  {sells && (
+                    <td className="text-right tabular-nums" data-label={t("customers.col.points")}>
+                      {r.loyalty_points}
+                    </td>
+                  )}
+                  <td className="text-muted" data-label={t("customers.col.since")}>
                     {new Date(r.created_at).toLocaleDateString(intlLocale(shop.locale))}
                   </td>
                   {shop.modules.blocked && (
