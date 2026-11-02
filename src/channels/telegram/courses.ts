@@ -40,6 +40,7 @@ type Copy = {
   lessonsHeader: string;
   lessonFiles: string;
   submitBtn: (no: number) => string;
+  nextLessonBtn: (no: number) => string;
   channelBtn: string;
   prompt: (no: number, title: string, task: string) => string;
   sent: string;
@@ -90,6 +91,7 @@ const COPY: Record<Locale, Copy> = {
     lessonsHeader: "Открытые уроки — выберите:",
     lessonFiles: "Материалы (ссылки действуют сутки):",
     submitBtn: (no) => `📝 Сдать задание — урок ${no}`,
+    nextLessonBtn: (no) => `Следующий урок ${no} →`,
     channelBtn: "🔐 Вступить в канал курса",
     prompt: (no, title, task) =>
       `📝 <b>Урок ${no}. ${title}</b>\n\n${task}\n\n` +
@@ -148,6 +150,7 @@ const COPY: Record<Locale, Copy> = {
     lessonsHeader: "Ашық сабақтар — таңдаңыз:",
     lessonFiles: "Материалдар (сілтемелер бір тәулік жарамды):",
     submitBtn: (no) => `📝 Тапсырманы тапсыру — ${no}-сабақ`,
+    nextLessonBtn: (no) => `Келесі сабақ: ${no} →`,
     channelBtn: "🔐 Курс арнасына кіру",
     prompt: (no, title, task) =>
       `📝 <b>${no}-сабақ. ${title}</b>\n\n${task}\n\n` +
@@ -206,6 +209,7 @@ const COPY: Record<Locale, Copy> = {
     lessonsHeader: "Open lessons — pick one:",
     lessonFiles: "Materials (links work for 24 hours):",
     submitBtn: (no) => `📝 Submit homework — lesson ${no}`,
+    nextLessonBtn: (no) => `Next lesson ${no} →`,
     channelBtn: "🔐 Join the course channel",
     prompt: (no, title, task) =>
       `📝 <b>Lesson ${no}. ${title}</b>\n\n${task}\n\n` +
@@ -265,6 +269,7 @@ const COPY: Record<Locale, Copy> = {
     lessonsHeader: "Ochiq darslar — tanlang:",
     lessonFiles: "Materiallar (havolalar bir kun amal qiladi):",
     submitBtn: (no) => `📝 Vazifani topshirish — ${no}-dars`,
+    nextLessonBtn: (no) => `Keyingi dars: ${no} →`,
     channelBtn: "🔐 Kurs kanaliga qo‘shilish",
     prompt: (no, title, task) =>
       `📝 <b>${no}-dars. ${title}</b>\n\n${task}\n\n` +
@@ -703,6 +708,12 @@ export async function showLesson(b: CourseBot, data: string): Promise<void> {
   if (l.homework && tl.tariff.homework)
     rows.push([{ text: c.submitBtn(a.no), callback_data: `hw:${p.orderItemId}:${a.no}` }]);
   if (l.quiz) rows.push([quizButton(b, p.orderItemId, a.no)]);
+  // Курс в боте (settings.delivery.course_in_bot): следующий открытый урок — одной кнопкой.
+  const next = tl.access.find((x) => x.no === a.no + 1);
+  if (b.ctx.tenant.settings.delivery?.course_in_bot && next?.open)
+    rows.push([
+      { text: c.nextLessonBtn(next.no), callback_data: `lsn:${p.orderItemId}:${next.no}` },
+    ]);
   await send(
     b,
     parts.join("\n\n").slice(0, 4096),

@@ -451,6 +451,10 @@ export type Msg = {
   yourId: (id: number) => string;
   fileLink: string;
   fileLinkTtl: string;
+  /** Выдача курса, который проходят в боте (settings.delivery.course_in_bot). */
+  courseOpened: string;
+  courseStartBtn: string;
+  courseSiteBtn: string;
   chooseDeliveryLanguage: string;
   allLanguagesBtn: (n: number) => string;
   chooseItemLanguage: (name: string) => string;
@@ -458,6 +462,10 @@ export type Msg = {
 };
 
 const ru: Msg = {
+  courseOpened:
+    "🎓 Курс открыт ✅\n\nУроки — прямо здесь, в чате. Нажмите кнопку, чтобы начать. Вернуться к урокам можно в меню «🎓 Мои курсы».",
+  courseStartBtn: "▶️ Начать урок 1",
+  courseSiteBtn: "🌐 Открыть на сайте",
   choosePayMethodNamed: (l) =>
     `Выберите способ оплаты и нажмите кнопку ниже: ${l.map((x) => `«${x}»`).join(" или ")}.`,
   choosePayHint:
@@ -919,6 +927,10 @@ const ru: Msg = {
 
 const kk: Msg = {
   ...ru,
+  courseOpened:
+    "🎓 Курс ашылды ✅\n\nСабақтар — осы жерде, чатта. Бастау үшін батырманы басыңыз. Сабақтарға «🎓 Курстарым» мәзірінен қайта оралуға болады.",
+  courseStartBtn: "▶️ 1-сабақты бастау",
+  courseSiteBtn: "🌐 Сайтта ашу",
   payViaKaspiApipayBtn: "📱 Kaspi-де төлеу",
   kaspiApipayHint:
     "Сілтемені ашып, төлемді Kaspi-де растаңыз — сома дайын тұр. Тапсырыс төлемнен кейін бірден өзі расталады.",
@@ -1273,6 +1285,10 @@ const kk: Msg = {
 
 const en: Msg = {
   ...ru,
+  courseOpened:
+    "🎓 Your course is open ✅\n\nLessons are right here in the chat. Tap the button to start. You can come back to them any time via «🎓 My courses».",
+  courseStartBtn: "▶️ Start lesson 1",
+  courseSiteBtn: "🌐 Open on the website",
   payViaKaspiApipayBtn: "📱 Pay with Kaspi",
   kaspiApipayHint:
     "Open the link and confirm the payment in Kaspi — the amount is already filled in. The order is confirmed automatically right after payment.",
@@ -1655,6 +1671,10 @@ const en: Msg = {
 
 const uz: Msg = {
   ...ru,
+  courseOpened:
+    "🎓 Kurs ochildi ✅\n\nDarslar shu yerda, chatda. Boshlash uchun tugmani bosing. Darslarga «🎓 Kurslarim» menyusidan qaytish mumkin.",
+  courseStartBtn: "▶️ 1-darsni boshlash",
+  courseSiteBtn: "🌐 Saytda ochish",
   payViaKaspiApipayBtn: "📱 Kaspi orqali toʻlash",
   kaspiApipayHint:
     "Havolani oching va toʻlovni Kaspi’da tasdiqlang — summa allaqachon qoʻyilgan. Buyurtma toʻlovdan soʻng darhol oʻzi tasdiqlanadi.",

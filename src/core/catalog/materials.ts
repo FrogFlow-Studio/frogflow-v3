@@ -10,7 +10,16 @@ import { isLocale, type Locale } from "@/core/i18n/locale";
  * Порядок: сначала product_material_files (несколько, с сортировкой), потом
  * старые одиночные поля — только для ru и kk, у en/uz такой пары не было.
  */
-export type MaterialSnapshot = { path: string | null; name: string | null; url: string | null };
+export type MaterialSnapshot = {
+  path: string | null;
+  name: string | null;
+  url: string | null;
+  /**
+   * Ссылка на уроки курса, который проходят в боте (settings.delivery.course_in_bot):
+   * id позиции заказа — Telegram рисует «Курс открыт ✅» с кнопкой первого урока.
+   */
+  lessonsInBot?: string;
+};
 
 export type ProductWithFiles = {
   fulfillment_kind?: string | null;

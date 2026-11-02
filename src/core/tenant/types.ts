@@ -264,6 +264,12 @@ export type TenantSettings = {
   delivery?: {
     /** Водяной знак с покупателем и номером заказа на каждом выдаваемом PDF. */
     pdf_watermark?: boolean;
+    /**
+     * Курс проходят в боте: выдача — «Курс открыт ✅» с кнопкой «▶️ Начать
+     * урок 1», в уроке — «Следующий урок →» (core/courses/delivery,
+     * channels/telegram/courses). Нет — как было: ссылка на страницу курса.
+     */
+    course_in_bot?: boolean;
   };
 };
 

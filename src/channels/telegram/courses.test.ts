@@ -85,7 +85,10 @@ afterAll(() => {
   vi.unstubAllGlobals();
 });
 
-function school(state: Record<string, unknown> = {}) {
+function school(
+  state: Record<string, unknown> = {},
+  opts: { inBot?: boolean; startedDaysAgo?: number } = {},
+) {
   const db: FakeDb = fakeDb({ unique: { app_settings: [["bot_id", "key"]] } });
   db.tables.bot_users = [
     {
@@ -118,7 +121,10 @@ function school(state: Record<string, unknown> = {}) {
     {
       bot_id: T,
       key: `course_run_${ITEM}`,
-      value: JSON.stringify({ startedAt: new Date().toISOString(), done: [] }),
+      value: JSON.stringify({
+        startedAt: new Date(Date.now() - (opts.startedDaysAgo ?? 0) * 86_400_000).toISOString(),
+        done: [],
+      }),
     },
   ];
   const ctx = {
@@ -128,7 +134,11 @@ function school(state: Record<string, unknown> = {}) {
       status: "active",
       vertical: "courses",
       modules: { courses: true },
-      settings: { default_locale: "ru", slug: "school" },
+      settings: {
+        default_locale: "ru",
+        slug: "school",
+        ...(opts.inBot ? { delivery: { course_in_bot: true } } : {}),
+      },
     },
     db,
     appUrl: "https://app.test",
@@ -389,6 +399,37 @@ describe("урок в чате", () => {
     expect(buttons(lesson).map((x) => x.callback_data)).toContain(`hw:${ITEM}:1`);
     await handleTelegramUpdate(ctx, api, press(`lsn:${ITEM}:2`, 3));
     expect(messages(calls).at(-1)!.text).toBe("Этот урок ещё не открыт.");
+  });
+});
+
+describe("курс в боте: «Следующий урок →» (settings.delivery.course_in_bot)", () => {
+  const nextBtn = (m: Record<string, unknown>) =>
+    buttons(m).filter((x) => String(x.callback_data ?? "").startsWith(`lsn:${ITEM}:`));
+
+  it("включено и второй урок открыт — кнопка ведёт ко второму уроку", async () => {
+    const { ctx, api, calls } = school({}, { inBot: true, startedDaysAgo: 8 });
+    await handleTelegramUpdate(ctx, api, press(`lsn:${ITEM}:1`));
+    const first = messages(calls).at(-1)!;
+    expect(nextBtn(first)).toEqual([
+      { text: "Следующий урок 2 →", callback_data: `lsn:${ITEM}:2` },
+    ]);
+    await handleTelegramUpdate(ctx, api, press(`lsn:${ITEM}:2`, 2));
+    const second = messages(calls).at(-1)!;
+    expect(String(second.text)).toContain("2. Цвет");
+    // Последний урок — кнопки дальше нет.
+    expect(nextBtn(second)).toEqual([]);
+  });
+
+  it("включено, но второй урок ещё закрыт — кнопки нет", async () => {
+    const { ctx, api, calls } = school({}, { inBot: true });
+    await handleTelegramUpdate(ctx, api, press(`lsn:${ITEM}:1`));
+    expect(nextBtn(messages(calls).at(-1)!)).toEqual([]);
+  });
+
+  it("выключено (как у всех магазинов до включения) — урок как раньше, без кнопки", async () => {
+    const { ctx, api, calls } = school({}, { startedDaysAgo: 8 });
+    await handleTelegramUpdate(ctx, api, press(`lsn:${ITEM}:1`));
+    expect(nextBtn(messages(calls).at(-1)!)).toEqual([]);
   });
 });
 

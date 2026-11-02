@@ -33,7 +33,11 @@ import {
 } from "@/core/inbox/triage";
 import { useRouter } from "@tanstack/react-router";
 import { useState } from "react";
-import { saveSettingsFn, setPdfWatermarkFn } from "@/app/admin/settings.functions";
+import {
+  saveSettingsFn,
+  setCourseInBotFn,
+  setPdfWatermarkFn,
+} from "@/app/admin/settings.functions";
 import { Card, ErrorBox, Field, Switch, useAction } from "@/app/ui";
 import { SCHOOL_OFFER_RU, SCHOOL_PRIVACY_RU } from "@/app/admin/legal-templates";
 import { adminT, type AdminKey } from "@/app/i18n/admin";
@@ -215,6 +219,35 @@ export function WatermarkCard({ enabled }: { enabled: boolean }) {
           {enabled ? t("settings.watermark.on") : t("settings.watermark.off")}
         </span>
         <HelpTip article="settings-shop" anchor="watermark" />
+      </div>
+      <ErrorBox error={toggle.error} />
+    </Card>
+  );
+}
+
+/** Курс в боте: после оплаты «Курс открыт ✅ ▶️ Начать урок 1», в уроке — «Следующий урок →». */
+export function CourseInBotCard({ enabled }: { enabled: boolean }) {
+  const router = useRouter();
+  const { shop } = settingsRoute.useRouteContext();
+  const t = adminT(shop.locale);
+  const toggle = useAction(async (v: boolean) => {
+    await setCourseInBotFn({ data: { enabled: v } });
+    await router.invalidate();
+  });
+  return (
+    <Card title={t("settings.courseInBot.title")}>
+      <p className="mb-3 text-sm text-muted">{t("settings.courseInBot.intro")}</p>
+      <div className="flex items-center gap-3">
+        <Switch
+          checked={enabled}
+          disabled={toggle.busy}
+          onChange={(v) => void toggle.run(v).catch(() => {})}
+          label={t("settings.courseInBot.switch")}
+        />
+        <span className="text-sm">
+          {enabled ? t("settings.courseInBot.on") : t("settings.courseInBot.off")}
+        </span>
+        <HelpTip article="settings-shop" anchor="course-in-bot" />
       </div>
       <ErrorBox error={toggle.error} />
     </Card>

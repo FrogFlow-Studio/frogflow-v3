@@ -53,6 +53,7 @@ export const settingsFn = createServerFn({ method: "GET" }).handler(async () => 
     ownerTelegramId: ctx.tenant.ownerTelegramId,
     timezone: ctx.tenant.settings.timezone ?? null,
     pdfWatermark: ctx.tenant.settings.delivery?.pdf_watermark === true,
+    courseInBot: ctx.tenant.settings.delivery?.course_in_bot === true,
     recentKeys,
     smartSearchKey: platformHasKey(),
     ocrKey: receiptReaderConfigured(),
@@ -80,6 +81,16 @@ export const setPdfWatermarkFn = createServerFn({ method: "POST" })
     const ctx = await adminLevel();
     const { patchTenantSettings } = await import("@/core/tenant/resolve.server");
     await patchTenantSettings(ctx.tenant.id, { delivery: { pdf_watermark: data.enabled } });
+    return { ok: true, enabled: data.enabled };
+  });
+
+/** Курс проходят в боте (bots.settings.delivery.course_in_bot): выдача и уроки — кнопками в чате. */
+export const setCourseInBotFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ enabled: z.boolean() }).parse(d))
+  .handler(async ({ data }) => {
+    const ctx = await adminLevel();
+    const { patchTenantSettings } = await import("@/core/tenant/resolve.server");
+    await patchTenantSettings(ctx.tenant.id, { delivery: { course_in_bot: data.enabled } });
     return { ok: true, enabled: data.enabled };
   });
 
