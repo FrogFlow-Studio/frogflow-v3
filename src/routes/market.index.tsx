@@ -96,12 +96,7 @@ function MarketPage() {
         <>
           <p className="mt-1 text-sm text-muted">{t("lead")}</p>
           {data.collections.map((c) => (
-            <FeedList
-              key={c.id}
-              title={c.title}
-              items={c.items}
-              testId={`collection-${c.id}`}
-            />
+            <FeedList key={c.id} title={c.title} items={c.items} testId={`collection-${c.id}`} />
           ))}
           <FilterForm action="/market" openLabel={t("filter.open")} closeLabel={t("filter.apply")}>
             {lang && <input type="hidden" name="lang" value={lang} />}
