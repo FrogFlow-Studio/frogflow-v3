@@ -1,3 +1,4 @@
+import { NoPhoto } from "@/app/storefront/no-photo";
 import { publicHeaders } from "@/app/cache-policy";
 import { createFileRoute, Link, useLoaderData } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
@@ -229,11 +230,8 @@ function ProductPage() {
               <img src={p.images[img]} alt={p.name} className={`${frame.img} rounded-lg`} />
             </button>
           ) : (
-            <div
-              className={`flex ${frame.box} items-center justify-center rounded-lg bg-surface-2 text-5xl`}
-            >
-              📦
-            </div>
+            // Телефон: без фото поле не показываем — название и цена сразу сверху.
+            <NoPhoto name={p.name} className={`${frame.box} rounded-lg max-md:hidden`} />
           )}
           {p.images.length > 1 && (
             <div className="mt-2 flex gap-2 overflow-x-auto max-md:hidden">

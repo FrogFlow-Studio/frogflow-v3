@@ -1,3 +1,4 @@
+import { NoPhoto } from "@/app/storefront/no-photo";
 import { Link, useLoaderData, useNavigate } from "@tanstack/react-router";
 import { usePhotoFrame } from "@/app/storefront/photo-frame";
 import { imageSrcSet } from "@/core/catalog/image-url";
@@ -669,11 +670,7 @@ export function CatalogView({
                     decoding="async"
                   />
                 ) : (
-                  <div
-                    className={`flex ${frame.box} items-center justify-center bg-surface-2 text-4xl`}
-                  >
-                    {p.kind === "digital" ? "📄" : "📦"}
-                  </div>
+                  <NoPhoto name={p.name} className={frame.box} />
                 )}
                 <span className="absolute top-2 left-2 rounded-md bg-surface/90 px-2 py-0.5 text-[11px] font-medium backdrop-blur">
                   {(() => {

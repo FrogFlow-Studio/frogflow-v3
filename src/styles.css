@@ -154,6 +154,47 @@ body {
     font-size: 0.875rem;
     line-height: 1.25rem;
   }
+
+  /* Таблица-список на телефоне (товары, покупатели): каждая строка — карточка, без шапки и
+     без боковой прокрутки. Ячейка с `data-label` подписана; `.cell-main` — на всю ширину. */
+  .table.table-cards,
+  .table.table-cards tbody {
+    display: block;
+  }
+  .table.table-cards thead {
+    display: none;
+  }
+  .table.table-cards tr {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.375rem 0.75rem;
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--line);
+  }
+  .table.table-cards tr:last-child {
+    border-bottom: 0;
+  }
+  .table.table-cards td {
+    display: block;
+    padding: 0;
+    border: 0;
+    text-align: left;
+  }
+  .table.table-cards td.cell-main {
+    flex: 1 1 11rem;
+    min-width: 0;
+  }
+  .table.table-cards td.cell-break {
+    flex-basis: 100%;
+  }
+  .table.table-cards td[data-label]::before {
+    content: attr(data-label) ": ";
+    color: var(--muted);
+  }
+  .table.table-cards td.cell-phone-hide {
+    display: none;
+  }
 }
 
 /*

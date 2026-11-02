@@ -44,7 +44,7 @@ function DiscountsPage() {
     <>
       <PageTitle title={t("discounts.title")} subtitle={t("discounts.subtitle")} />
       <AskCommunityAdvice page="discounts" t={t} />
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2 [&>*]:min-w-0">
         {shop.modules.coupons && <PromoCard promos={promos} />}
         {shop.modules.gift_certificates && (
           <GiftCard gifts={gifts} currency={promos[0] ? "KZT" : "KZT"} />

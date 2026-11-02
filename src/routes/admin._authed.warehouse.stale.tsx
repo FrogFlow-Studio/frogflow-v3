@@ -92,7 +92,7 @@ function StalePage() {
       {report.products.length === 0 ? (
         <Empty>{t("stale.empty", { days: report.days })}</Empty>
       ) : (
-        <div className="mt-4 rounded-lg border border-line bg-surface">
+        <div className="mt-4 overflow-x-auto rounded-lg border border-line bg-surface">
           {canOffer && (
             <div className="flex flex-wrap items-center gap-3 border-b border-line p-3">
               <button

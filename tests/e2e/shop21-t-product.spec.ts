@@ -89,8 +89,9 @@ test("список товаров показывает готовность и �
   await page.getByRole("button", { name: "Войти", exact: true }).click();
   await expect(page).toHaveURL(/\/admin$/);
   await page.goto("/admin/products");
-  await expect(page.locator("thead th", { hasText: /^Готовность$/ })).toBeVisible();
-  await expect(page.locator("thead th", { hasText: /^Остаток$/ })).toBeVisible();
+  // На телефоне шапка скрыта (строки — карточки), колонки — в разметке.
+  await expect(page.locator("thead th", { hasText: /^Готовность$/ })).toBeAttached();
+  await expect(page.locator("thead th", { hasText: /^Остаток$/ })).toBeAttached();
   const row = page.getByRole("row").filter({ hasText: F.PRODUCT21_ITEM_NAME });
   await expect(row.getByTitle(/^Не хватает: /)).toBeVisible();
   await expect(row).toContainText("описание");
