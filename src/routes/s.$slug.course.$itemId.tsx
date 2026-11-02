@@ -192,6 +192,29 @@ function CoursePage() {
                     {t("course.openLink")}
                   </a>
                 )}
+                {l.more.map((v, i) => (
+                  <div key={`v${i}`} className="space-y-2">
+                    {v.embed && (
+                      <iframe
+                        src={v.embed}
+                        title={`${l.title} · ${i + 2}`}
+                        className="aspect-video w-full rounded-md border-0"
+                        loading="lazy"
+                        allow="autoplay; fullscreen; picture-in-picture"
+                        allowFullScreen
+                        referrerPolicy="strict-origin-when-cross-origin"
+                      />
+                    )}
+                    <a
+                      href={v.link}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-accent hover:underline"
+                    >
+                      {t("course.openLink")} {i + 2}
+                    </a>
+                  </div>
+                ))}
                 {l.files.length > 0 && (
                   <ul className="space-y-1">
                     {l.files.map((f) => (

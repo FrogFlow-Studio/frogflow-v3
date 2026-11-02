@@ -48,7 +48,13 @@ export type TelegramCallbackQuery = {
   id: string;
   data?: string;
   from?: TelegramUser;
-  message?: { chat?: { id: number }; message_id?: number; reply_markup?: InlineKeyboard };
+  message?: {
+    chat?: { id: number };
+    message_id?: number;
+    reply_markup?: InlineKeyboard;
+    /** Сообщение, на которое бот ответил этим (урок из бота: исходная ссылка продавца). */
+    reply_to_message?: { text?: string; caption?: string };
+  };
 };
 
 export type TelegramUpdate = {

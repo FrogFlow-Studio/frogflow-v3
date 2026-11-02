@@ -139,6 +139,15 @@ describe("курс — запись в настройки клиента", () =>
     expect(back.lessons[0]!.title).toBe("Введение");
   });
 
+  it("несколько видео: первое — в link, пустые убираются", async () => {
+    const { ctx } = ctxWith([{ id: P, fulfillment_kind: "digital" }]);
+    const l = { ...lesson(1), link: null, videos: [" ", " https://a.kz/1 ", "https://a.kz/2"] };
+    await saveCourse(ctx, P, course([l]));
+    const back = await getCourse(ctx, P);
+    expect(back.lessons[0]!.link).toBe("https://a.kz/1");
+    expect(back.lessons[0]!.videos).toEqual(["https://a.kz/2"]);
+  });
+
   it("чужой или несуществующий товар и физический товар — отказ", async () => {
     const { ctx } = ctxWith([{ id: P, fulfillment_kind: "physical" }]);
     await expect(saveCourse(ctx, P, course([lesson(1)]))).rejects.toMatchObject({

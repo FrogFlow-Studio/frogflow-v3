@@ -18,6 +18,8 @@ export const LESSON_TITLE_MAX = 200;
 export const LESSON_TEXT_MAX = 4000;
 export const LESSON_FILES_MAX = 10;
 export const LESSON_LINK_MAX = 500;
+/** Видео в уроке всего: основная ссылка плюс `videos`. */
+export const LESSON_VIDEOS_MAX = 10;
 /** Текст домашнего задания урока (ниша «Онлайн-школа»). */
 export const HOMEWORK_TASK_MAX = 2000;
 /** Шаг открытия уроков по расписанию, дней. */
@@ -33,6 +35,8 @@ export type Lesson = {
   files: CourseFile[];
   /** Ссылка на внешний материал (видео, документ); только https. */
   link: string | null;
+  /** Ещё видео урока после `link` (только https), до `LESSON_VIDEOS_MAX` вместе с ним. */
+  videos?: string[];
   /** Домашнее задание: текст задания; нет — урок без ДЗ (core/courses/homework). */
   homework?: string | null;
   /** Открытый урок: текст, ссылка и файлы видны до покупки (core/courses/preview). */
@@ -80,6 +84,11 @@ export type Course = {
 
 /** id канала или группы (-100…) либо публичное @имя. */
 export const COURSE_CHANNEL_RE = /^(-100\d{5,15}|@[A-Za-z][A-Za-z0-9_]{4,31})$/;
+
+/** Все ссылки урока по порядку: основная и дополнительные видео. */
+export function lessonLinks(l: { link: string | null; videos?: string[] }): string[] {
+  return [l.link, ...(l.videos ?? [])].filter((v): v is string => Boolean(v?.trim()));
+}
 
 export const EMPTY_COURSE: Course = { schedule: { mode: "all" }, lessons: [] };
 
@@ -223,6 +232,10 @@ export function parseCourse(raw: string | null | undefined): Course {
       if (path) files.push({ path, name: name || null });
     }
     const link = str(x.link, LESSON_LINK_MAX);
+    const videos = (Array.isArray(x.videos) ? x.videos : [])
+      .map((v) => str(v, LESSON_LINK_MAX))
+      .filter((v) => v && isHttpsLink(v))
+      .slice(0, LESSON_VIDEOS_MAX - 1);
     const homework = str(x.homework, HOMEWORK_TASK_MAX);
     const quiz = parseQuiz(x.quiz);
     lessons.push({
@@ -231,6 +244,7 @@ export function parseCourse(raw: string | null | undefined): Course {
       text: str(x.text, LESSON_TEXT_MAX),
       files: files.slice(0, LESSON_FILES_MAX),
       link: link && isHttpsLink(link) ? link : null,
+      ...(videos.length ? { videos } : {}),
       ...(homework ? { homework } : {}),
       ...(x.preview === true ? { preview: true } : {}),
       ...(quiz ? { quiz } : {}),
@@ -352,6 +366,9 @@ export function courseProblem(tenantId: string, c: Course): CourseProblem | null
     ids.add(l.id);
     if (!l.title.trim()) return { kind: "noTitle", lesson };
     if (l.link && !isHttpsLink(l.link)) return { kind: "badLink", lesson };
+    if ((l.videos?.length ?? 0) > LESSON_VIDEOS_MAX - 1) return { kind: "badLink", lesson };
+    if (l.videos?.some((v) => v.trim() && !isHttpsLink(v.trim())))
+      return { kind: "badLink", lesson };
     if (l.files.length > LESSON_FILES_MAX) return { kind: "tooManyFiles", lesson };
     if (l.files.some((f) => !isTenantStorageKey(tenantId, f.path)))
       return { kind: "foreignFile", lesson };
@@ -359,7 +376,7 @@ export function courseProblem(tenantId: string, c: Course): CourseProblem | null
       const question = quizProblem(l.quiz);
       if (question) return { kind: "badQuiz", lesson, question };
     }
-    if (!l.text.trim() && !l.link && l.files.length === 0 && !l.quiz)
+    if (!l.text.trim() && lessonLinks(l).length === 0 && l.files.length === 0 && !l.quiz)
       return { kind: "empty", lesson };
   }
   return null;
@@ -376,4 +393,86 @@ export function lessonOpensAfterDays(schedule: CourseSchedule, index: number): n
 /** Все файлы курса — чтобы убрать их из бакета вместе с товаром. */
 export function courseFilePaths(c: Course): string[] {
   return c.lessons.flatMap((l) => l.files.map((f) => f.path));
+}
+
+/** Урок мастера «Новый курс»: модуль — заголовок строкой «Модуль 1:» над уроками. */
+export type CourseOutlineLesson = { title: string; link: string | null; videos?: string[] };
+/** Строка плана, не ставшая уроком; `noLink` — урок без ссылки (пустой урок курс не сохранит, `courseProblem`). */
+export type CourseOutlineSkip = {
+  line: number;
+  reason: LessonListSkip["reason"] | "noLink" | "tooManyVideos";
+};
+export type CourseOutline = {
+  lessons: CourseOutlineLesson[];
+  skipped: CourseOutlineSkip[];
+  overLimit: number;
+  /** Сколько заголовков модулей нашлось. */
+  modules: number;
+};
+
+// Заголовок модуля: строка, кончающаяся двоеточием, без ссылки («Модуль 1. Основы:»).
+const MODULE_HEADING = /^(\S.*?)\s*:$/;
+export const MODULE_TITLE_MAX = 80;
+
+/**
+ * План курса в мастере «Новый курс»: строки «Название — ссылка» (как
+ * «Добавить уроки списком», `parseLessonList`) плюс заголовки модулей —
+ * строка с двоеточием на конце. Урок под заголовком получает название
+ * «Модуль · Урок»: модулей как отдельной сущности в курсе нет, это часть
+ * названия. Строка из одной ссылки под уроком — ещё одно видео этого урока
+ * (до `LESSON_VIDEOS_MAX`). У урока мастера нет текста и файлов, поэтому ссылка обязательна:
+ * строка без неё — в `skipped` с `noLink`. Номера строк — как в поле, с единицы.
+ */
+export function parseCourseOutline(text: string): CourseOutline {
+  const lessons: CourseOutlineLesson[] = [];
+  const skipped: CourseOutlineSkip[] = [];
+  let overLimit = 0;
+  let modules = 0;
+  let module: string | null = null;
+  for (const [i, raw] of text.split(/\r?\n/).entries()) {
+    const line = raw.trim();
+    if (!line) continue;
+    const h = MODULE_HEADING.exec(line);
+    if (h && !URL_LIKE.test(h[1]!) && !/\s(?:https?:\/\/|www\.)/i.test(h[1]!)) {
+      if (h[1]!.length > MODULE_TITLE_MAX) {
+        skipped.push({ line: i + 1, reason: "titleTooLong" });
+        continue;
+      }
+      module = h[1]!;
+      modules++;
+      continue;
+    }
+    // Строка из одной ссылки под уроком — ещё одно видео этого урока.
+    const prev = lessons[lessons.length - 1];
+    if (prev && URL_LIKE.test(line) && !/\s/.test(line)) {
+      if (!isHttpsLink(line)) skipped.push({ line: i + 1, reason: "notHttps" });
+      else if (lessonLinks(prev).length >= LESSON_VIDEOS_MAX)
+        skipped.push({ line: i + 1, reason: "tooManyVideos" });
+      else prev.videos = [...(prev.videos ?? []), line];
+      continue;
+    }
+    const r = parseLessonList(line, lessons.length);
+    if (r.overLimit) {
+      overLimit += r.overLimit;
+      continue;
+    }
+    const s = r.skipped[0];
+    if (s) {
+      skipped.push({ line: i + 1, reason: s.reason });
+      continue;
+    }
+    const l = r.lessons[0];
+    if (!l) continue;
+    if (!l.link) {
+      skipped.push({ line: i + 1, reason: "noLink" });
+      continue;
+    }
+    const title = module ? `${module} · ${l.title}` : l.title;
+    if (title.length > LESSON_TITLE_MAX) {
+      skipped.push({ line: i + 1, reason: "titleTooLong" });
+      continue;
+    }
+    lessons.push({ title, link: l.link });
+  }
+  return { lessons, skipped, overLimit, modules };
 }

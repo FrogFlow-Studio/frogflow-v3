@@ -105,6 +105,14 @@ Kalit topshiriladigan PDF’larga suv belgisini yoqadi: har bir sahifada kim sot
 
 «Kurslar» moduli bilan mavjud. Yoqilgan — oʻquvchi kursni bot bilan chatda oʻtadi: toʻlovdan keyin «Kurs ochildi ✅» xabari «▶️ 1-darsni boshlash» (va «🌐 Saytda ochish») tugmasi bilan keladi, har bir dars ostida esa — «Keyingi dars →», agar keyingi dars jadval boʻyicha ochiq boʻlsa. Oʻchirilgan — toʻlovdan keyin avvalgidek kurs sahifasiga havola keladi. Odatda oʻchirilgan. Darhol saqlanadi.
 
+## Darslarni botga xabar orqali qo‘shish {#lessons-by-bot}
+
+«Kurs botda» kartochkasida. Yoqilgan bo‘lsa — sotuvchi (egasi yoki do‘kon bildirishnomalarini oladigan kishi) botga shaxsiy xabarda izohli video havolasini yuboradi, masalan «1.2 Materiallar https://youtu.be/…». Bot shu havola va izohdagi nom bilan darsni kurs oxiriga qo‘shadi (izoh bo‘lmasa — «N-dars») va «✅ N-dars qo‘shildi» deb javob beradi. Darslari bor kurslar bir nechta bo‘lsa, bot tugmalar bilan qaysi biriga ekanini so‘raydi. Xuddi shu havola ikkinchi marta qo‘shilmaydi. Matn, fayllar va vazifa panelda qo‘shiladi. Standart holatda o‘chirilgan.
+
+## Chekni kim va qachon tekshiradi {#proof-eta}
+
+«Kurs botda» kartochkasida. Yoqilgan bo‘lsa — xaridor Telegram’da chek yuborganda bot «Sotuvchi tasdig‘ini kuting» o‘rniga chekni kim va qachon tekshirishini yozadi: ish vaqtida — «bugun 20:00 gacha», ochilishdan oldin — «bugun 10:00 dan keyin», yopilgandan keyin — «ertaga 10:00 dan keyin». Vaqt «Bot matnlari»dagi ish vaqtidan olinadi; bo‘lmasa — vaqtsiz. Ism — «Chekni kim tekshiradi» maydoni; bo‘sh bo‘lsa — «Sotuvchi». Oxirida bot tekshiruvdan so‘ng darhol shu chatga yozishini qo‘shadi. Standart holatda o‘chirilgan.
+
 ## Sovg‘a qadog‘i {#gift-wrap}
 
 «To‘plamlar va sovg‘alar» moduli bo‘lganda, faqat jismoniy buyurtmalar uchun bor.

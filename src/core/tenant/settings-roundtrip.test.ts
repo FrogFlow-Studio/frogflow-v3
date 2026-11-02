@@ -112,6 +112,14 @@ describe("settingsFromJson не теряет сохранённые ключи",
     expect(settingsFromJson({ delivery: { course_in_bot: "yes" } }).delivery).toEqual({
       pdf_watermark: false,
     });
+    // «Уроки сообщением боту» — так же: только true включает.
+    expect(settingsFromJson({ delivery: { lessons_by_bot: true } }).delivery).toEqual({
+      pdf_watermark: false,
+      lessons_by_bot: true,
+    });
+    expect(settingsFromJson({ delivery: { lessons_by_bot: 1 } }).delivery).toEqual({
+      pdf_watermark: false,
+    });
   });
 
   it("артикулы импорта: пары «артикул → id» переживают чтение, мусор отбрасывается", () => {

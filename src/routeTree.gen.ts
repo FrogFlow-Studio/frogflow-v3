@@ -136,6 +136,7 @@ import { Route as AdminAuthedLockedModuleRouteImport } from './routes/admin._aut
 import { Route as AdminAuthedOrdersIdRouteImport } from './routes/admin._authed.orders.$id'
 import { Route as AdminAuthedOrdersNewRouteImport } from './routes/admin._authed.orders.new'
 import { Route as AdminAuthedProductsIdRouteImport } from './routes/admin._authed.products_.$id'
+import { Route as AdminAuthedProductsNewCourseRouteImport } from './routes/admin._authed.products_.new-course'
 import { Route as AdminAuthedWarehouseIndexRouteImport } from './routes/admin._authed.warehouse.index'
 import { Route as AdminAuthedWarehouseJournalRouteImport } from './routes/admin._authed.warehouse.journal'
 import { Route as AdminAuthedWarehouseReceiptsRouteImport } from './routes/admin._authed.warehouse.receipts'
@@ -802,6 +803,12 @@ const AdminAuthedProductsIdRoute = AdminAuthedProductsIdRouteImport.update({
   path: '/products/$id',
   getParentRoute: () => AdminAuthedRoute,
 } as any)
+const AdminAuthedProductsNewCourseRoute =
+  AdminAuthedProductsNewCourseRouteImport.update({
+    id: '/products_/new-course',
+    path: '/products/new-course',
+    getParentRoute: () => AdminAuthedRoute,
+  } as any)
 const AdminAuthedWarehouseIndexRoute =
   AdminAuthedWarehouseIndexRouteImport.update({
     id: '/warehouse/',
@@ -1076,6 +1083,7 @@ export interface FileRoutesByFullPath {
   '/admin/orders/$id': typeof AdminAuthedOrdersIdRoute
   '/admin/orders/new': typeof AdminAuthedOrdersNewRoute
   '/admin/products/$id': typeof AdminAuthedProductsIdRoute
+  '/admin/products/new-course': typeof AdminAuthedProductsNewCourseRoute
   '/admin/warehouse/journal': typeof AdminAuthedWarehouseJournalRoute
   '/admin/warehouse/receipts': typeof AdminAuthedWarehouseReceiptsRoute
   '/admin/warehouse/requests': typeof AdminAuthedWarehouseRequestsRoute
@@ -1226,6 +1234,7 @@ export interface FileRoutesByTo {
   '/admin/orders/$id': typeof AdminAuthedOrdersIdRoute
   '/admin/orders/new': typeof AdminAuthedOrdersNewRoute
   '/admin/products/$id': typeof AdminAuthedProductsIdRoute
+  '/admin/products/new-course': typeof AdminAuthedProductsNewCourseRoute
   '/admin/warehouse/journal': typeof AdminAuthedWarehouseJournalRoute
   '/admin/warehouse/receipts': typeof AdminAuthedWarehouseReceiptsRoute
   '/admin/warehouse/requests': typeof AdminAuthedWarehouseRequestsRoute
@@ -1383,6 +1392,7 @@ export interface FileRoutesById {
   '/admin/_authed/orders/$id': typeof AdminAuthedOrdersIdRoute
   '/admin/_authed/orders/new': typeof AdminAuthedOrdersNewRoute
   '/admin/_authed/products_/$id': typeof AdminAuthedProductsIdRoute
+  '/admin/_authed/products_/new-course': typeof AdminAuthedProductsNewCourseRoute
   '/admin/_authed/warehouse/journal': typeof AdminAuthedWarehouseJournalRoute
   '/admin/_authed/warehouse/receipts': typeof AdminAuthedWarehouseReceiptsRoute
   '/admin/_authed/warehouse/requests': typeof AdminAuthedWarehouseRequestsRoute
@@ -1539,6 +1549,7 @@ export interface FileRouteTypes {
     | '/admin/orders/$id'
     | '/admin/orders/new'
     | '/admin/products/$id'
+    | '/admin/products/new-course'
     | '/admin/warehouse/journal'
     | '/admin/warehouse/receipts'
     | '/admin/warehouse/requests'
@@ -1689,6 +1700,7 @@ export interface FileRouteTypes {
     | '/admin/orders/$id'
     | '/admin/orders/new'
     | '/admin/products/$id'
+    | '/admin/products/new-course'
     | '/admin/warehouse/journal'
     | '/admin/warehouse/receipts'
     | '/admin/warehouse/requests'
@@ -1845,6 +1857,7 @@ export interface FileRouteTypes {
     | '/admin/_authed/orders/$id'
     | '/admin/_authed/orders/new'
     | '/admin/_authed/products_/$id'
+    | '/admin/_authed/products_/new-course'
     | '/admin/_authed/warehouse/journal'
     | '/admin/_authed/warehouse/receipts'
     | '/admin/_authed/warehouse/requests'
@@ -2811,6 +2824,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAuthedProductsIdRouteImport
       parentRoute: typeof AdminAuthedRoute
     }
+    '/admin/_authed/products_/new-course': {
+      id: '/admin/_authed/products_/new-course'
+      path: '/products/new-course'
+      fullPath: '/admin/products/new-course'
+      preLoaderRoute: typeof AdminAuthedProductsNewCourseRouteImport
+      parentRoute: typeof AdminAuthedRoute
+    }
     '/admin/_authed/warehouse/': {
       id: '/admin/_authed/warehouse/'
       path: '/warehouse'
@@ -3063,6 +3083,7 @@ interface AdminAuthedRouteChildren {
   AdminAuthedHelpSectionRoute: typeof AdminAuthedHelpSectionRoute
   AdminAuthedLockedModuleRoute: typeof AdminAuthedLockedModuleRoute
   AdminAuthedProductsIdRoute: typeof AdminAuthedProductsIdRoute
+  AdminAuthedProductsNewCourseRoute: typeof AdminAuthedProductsNewCourseRoute
   AdminAuthedWarehouseJournalRoute: typeof AdminAuthedWarehouseJournalRoute
   AdminAuthedWarehouseReceiptsRoute: typeof AdminAuthedWarehouseReceiptsRoute
   AdminAuthedWarehouseRequestsRoute: typeof AdminAuthedWarehouseRequestsRoute
@@ -3120,6 +3141,7 @@ const AdminAuthedRouteChildren: AdminAuthedRouteChildren = {
   AdminAuthedHelpSectionRoute: AdminAuthedHelpSectionRoute,
   AdminAuthedLockedModuleRoute: AdminAuthedLockedModuleRoute,
   AdminAuthedProductsIdRoute: AdminAuthedProductsIdRoute,
+  AdminAuthedProductsNewCourseRoute: AdminAuthedProductsNewCourseRoute,
   AdminAuthedWarehouseJournalRoute: AdminAuthedWarehouseJournalRoute,
   AdminAuthedWarehouseReceiptsRoute: AdminAuthedWarehouseReceiptsRoute,
   AdminAuthedWarehouseRequestsRoute: AdminAuthedWarehouseRequestsRoute,

@@ -86,6 +86,8 @@ export type CourseView = {
     link: string | null;
     /** Адрес встроенного плеера для ссылки на видео (core/courses/video); иначе null. */
     embed: string | null;
+    /** Ещё видео открытого урока после первого (`Lesson.videos`); у закрытого — пусто. */
+    more: Array<{ link: string; embed: string | null }>;
     files: Array<{ name: string; url: string }>;
     /** Тест к уроку (без верных ответов); null — у урока его нет. */
     quiz: LessonQuizView | null;
@@ -168,6 +170,7 @@ export async function courseView(
       text: a.open ? a.lesson.text : "",
       link: a.open ? a.lesson.link : null,
       embed: a.open && a.lesson.link ? videoEmbed(a.lesson.link) : null,
+      more: a.open ? (a.lesson.videos ?? []).map((v) => ({ link: v, embed: videoEmbed(v) })) : [],
       files,
       quiz,
       homework:

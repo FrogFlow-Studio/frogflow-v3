@@ -8,6 +8,7 @@ import {
   type HomeworkStatus,
 } from "@/core/courses/homework";
 import type { ChannelInviter } from "@/core/courses/channel.server";
+import { lessonLinks } from "@/core/courses/course";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { TelegramApi } from "./api";
 import { escapeHtml } from "./copy";
@@ -704,7 +705,7 @@ export async function showLesson(b: CourseBot, data: string): Promise<void> {
   if (files.length) parts.push(`${c.lessonFiles}\n${files.join("\n")}`);
   if (l.homework) parts.push(`📝 ${escapeHtml(l.homework)}`);
   const rows: InlineButton[][] = [];
-  if (l.link) rows.push([{ text: "▶️ " + l.title.slice(0, 40), url: l.link }]);
+  for (const row of videoRows(l.title, lessonLinks(l))) rows.push(row);
   if (l.homework && tl.tariff.homework)
     rows.push([{ text: c.submitBtn(a.no), callback_data: `hw:${p.orderItemId}:${a.no}` }]);
   if (l.quiz) rows.push([quizButton(b, p.orderItemId, a.no)]);
@@ -748,12 +749,15 @@ export async function showOpenLesson(b: CourseBot, data: string): Promise<void> 
   await send(
     b,
     parts.join("\n\n").slice(0, 4096),
-    found.open.link
-      ? {
-          reply_markup: {
-            inline_keyboard: [[{ text: "▶️ " + found.title.slice(0, 40), url: found.open.link }]],
-          },
-        }
+    found.open.links.length
+      ? { reply_markup: { inline_keyboard: videoRows(found.title, found.open.links) } }
       : {},
   );
+}
+
+/** Кнопки видео урока: одно — «▶️ Название», несколько — «▶️ 1. Название», «▶️ 2. Название»… */
+function videoRows(title: string, links: string[]): InlineButton[][] {
+  return links.map((url, i) => [
+    { text: "▶️ " + (links.length > 1 ? `${i + 1}. ` : "") + title.slice(0, 40), url },
+  ]);
 }

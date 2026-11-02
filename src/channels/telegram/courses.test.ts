@@ -66,6 +66,7 @@ const course: Course = {
       text: "Урок",
       files: [],
       link: "https://youtu.be/free",
+      videos: ["https://youtu.be/free2"],
       homework: "Смешайте",
       preview: true,
     },
@@ -433,6 +434,25 @@ describe("курс в боте: «Следующий урок →» (settings.de
   });
 });
 
+describe("несколько видео в уроке", () => {
+  it("урок в чате — по кнопке на каждое видео, с номером", async () => {
+    const { ctx, api, calls } = school({}, { startedDaysAgo: 8 });
+    await handleTelegramUpdate(ctx, api, press(`lsn:${ITEM}:2`));
+    const urls = buttons(messages(calls).at(-1)!).filter((x) => x.url);
+    expect(urls).toEqual([
+      { text: "▶️ 1. Цвет", url: "https://youtu.be/free" },
+      { text: "▶️ 2. Цвет", url: "https://youtu.be/free2" },
+    ]);
+  });
+
+  it("открытый урок до покупки — тоже все видео", async () => {
+    const { ctx, api, calls } = school();
+    await handleTelegramUpdate(ctx, api, press(`opl:${P}:2`));
+    const urls = buttons(messages(calls).at(-1)!).flatMap((x) => (x.url ? [x.url] : []));
+    expect(urls).toEqual(["https://youtu.be/free", "https://youtu.be/free2"]);
+  });
+});
+
 describe("открытый урок до покупки", () => {
   it("кнопка с карточки отдаёт открытый урок без задания; закрытый — «не открыт»", async () => {
     const { ctx, api, calls } = school();
@@ -440,7 +460,10 @@ describe("открытый урок до покупки", () => {
     const lesson = messages(calls).at(-1)!;
     expect(String(lesson.text)).toContain("2. Цвет");
     expect(String(lesson.text)).not.toContain("Смешайте");
-    expect(buttons(lesson).map((x) => x.url)).toEqual(["https://youtu.be/free"]);
+    expect(buttons(lesson).map((x) => x.url)).toEqual([
+      "https://youtu.be/free",
+      "https://youtu.be/free2",
+    ]);
     await handleTelegramUpdate(ctx, api, press(`opl:${P}:1`, 2));
     expect(messages(calls).at(-1)!.text).toBe("Этот урок ещё не открыт.");
   });
