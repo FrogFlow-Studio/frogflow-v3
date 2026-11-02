@@ -127,6 +127,7 @@ export async function saveCourse(
         files: l.files.map((f) => ({ path: f.path, name: f.name?.trim() || null })),
         link,
         ...(videos.length ? { videos } : {}),
+        ...(l.tgVideos?.length ? { tgVideos: l.tgVideos } : {}),
         ...(l.homework?.trim() ? { homework: l.homework.trim() } : {}),
         ...(l.preview ? { preview: true } : {}),
         ...(l.quiz ? { quiz: cleanQuiz(l.quiz) } : {}),

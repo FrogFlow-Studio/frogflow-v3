@@ -37,6 +37,12 @@ export type Lesson = {
   link: string | null;
   /** Ещё видео урока после `link` (только https), до `LESSON_VIDEOS_MAX` вместе с ним. */
   videos?: string[];
+  /**
+   * Видео, присланные продавцом боту (Telegram file_id): бот шлёт их ученице
+   * прямо в чат (`sendVideo`, без пересылки). Файл у нас не хранится; на сайте
+   * курса такое видео не показать — там «видео в боте».
+   */
+  tgVideos?: string[];
   /** Домашнее задание: текст задания; нет — урок без ДЗ (core/courses/homework). */
   homework?: string | null;
   /** Открытый урок: текст, ссылка и файлы видны до покупки (core/courses/preview). */
@@ -89,6 +95,9 @@ export const COURSE_CHANNEL_RE = /^(-100\d{5,15}|@[A-Za-z][A-Za-z0-9_]{4,31})$/;
 export function lessonLinks(l: { link: string | null; videos?: string[] }): string[] {
   return [l.link, ...(l.videos ?? [])].filter((v): v is string => Boolean(v?.trim()));
 }
+
+/** Telegram file_id: буквы, цифры, «_» и «-». */
+export const TG_FILE_ID_RE = /^[A-Za-z0-9_-]{10,200}$/;
 
 export const EMPTY_COURSE: Course = { schedule: { mode: "all" }, lessons: [] };
 
@@ -236,6 +245,9 @@ export function parseCourse(raw: string | null | undefined): Course {
       .map((v) => str(v, LESSON_LINK_MAX))
       .filter((v) => v && isHttpsLink(v))
       .slice(0, LESSON_VIDEOS_MAX - 1);
+    const tgVideos = (Array.isArray(x.tgVideos) ? x.tgVideos : [])
+      .filter((v): v is string => typeof v === "string" && TG_FILE_ID_RE.test(v))
+      .slice(0, LESSON_VIDEOS_MAX);
     const homework = str(x.homework, HOMEWORK_TASK_MAX);
     const quiz = parseQuiz(x.quiz);
     lessons.push({
@@ -245,6 +257,7 @@ export function parseCourse(raw: string | null | undefined): Course {
       files: files.slice(0, LESSON_FILES_MAX),
       link: link && isHttpsLink(link) ? link : null,
       ...(videos.length ? { videos } : {}),
+      ...(tgVideos.length ? { tgVideos } : {}),
       ...(homework ? { homework } : {}),
       ...(x.preview === true ? { preview: true } : {}),
       ...(quiz ? { quiz } : {}),
@@ -369,6 +382,11 @@ export function courseProblem(tenantId: string, c: Course): CourseProblem | null
     if ((l.videos?.length ?? 0) > LESSON_VIDEOS_MAX - 1) return { kind: "badLink", lesson };
     if (l.videos?.some((v) => v.trim() && !isHttpsLink(v.trim())))
       return { kind: "badLink", lesson };
+    if (
+      (l.tgVideos?.length ?? 0) > LESSON_VIDEOS_MAX ||
+      l.tgVideos?.some((v) => !TG_FILE_ID_RE.test(v))
+    )
+      return { kind: "badLink", lesson };
     if (l.files.length > LESSON_FILES_MAX) return { kind: "tooManyFiles", lesson };
     if (l.files.some((f) => !isTenantStorageKey(tenantId, f.path)))
       return { kind: "foreignFile", lesson };
@@ -376,7 +394,13 @@ export function courseProblem(tenantId: string, c: Course): CourseProblem | null
       const question = quizProblem(l.quiz);
       if (question) return { kind: "badQuiz", lesson, question };
     }
-    if (!l.text.trim() && lessonLinks(l).length === 0 && l.files.length === 0 && !l.quiz)
+    if (
+      !l.text.trim() &&
+      lessonLinks(l).length === 0 &&
+      !l.tgVideos?.length &&
+      l.files.length === 0 &&
+      !l.quiz
+    )
       return { kind: "empty", lesson };
   }
   return null;

@@ -55,6 +55,7 @@ const lesson = z.object({
     .array(z.string().max(LESSON_LINK_MAX))
     .max(LESSON_VIDEOS_MAX - 1)
     .optional(),
+  tgVideos: z.array(z.string().max(200)).max(LESSON_VIDEOS_MAX).optional(),
   homework: z.string().max(HOMEWORK_TASK_MAX).nullable().optional(),
   preview: z.boolean().optional(),
   quiz: z

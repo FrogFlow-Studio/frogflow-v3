@@ -21,6 +21,8 @@ export type OpenLesson = {
   link: string | null;
   /** Все видео открытого урока по порядку (`lessonLinks`): первое — то же, что `link`. */
   links: string[];
+  /** Видео из Telegram (file_id) — их показывает только бот. */
+  tgVideos: string[];
   files: Array<{ name: string; url: string }>;
 };
 
@@ -63,7 +65,7 @@ async function openContent(
     if (url) out.push({ name, url });
   }
   const links = lessonLinks(l);
-  return { text: l.text, link: links[0] ?? null, links, files: out };
+  return { text: l.text, link: links[0] ?? null, links, tgVideos: l.tgVideos ?? [], files: out };
 }
 
 /**

@@ -354,6 +354,24 @@ export function CourseCard({
                   </button>
                 </div>
               ))}
+              {(l.tgVideos ?? []).map((v, k) => (
+                <div key={v} className="mb-2 flex items-center gap-2 text-sm">
+                  <span className="flex-1">{t("product.lessonTgVideo", { n: k + 1 })}</span>
+                  <button
+                    type="button"
+                    className="btn-ghost"
+                    aria-label={t("product.lessonVideoDelete")}
+                    onClick={() =>
+                      edit(i, (x) => ({
+                        ...x,
+                        tgVideos: (x.tgVideos ?? []).filter((_, j) => j !== k),
+                      }))
+                    }
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
               {(l.videos?.length ?? 0) < LESSON_VIDEOS_MAX - 1 && (
                 <button
                   type="button"

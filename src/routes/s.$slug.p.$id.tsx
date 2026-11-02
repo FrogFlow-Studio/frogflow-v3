@@ -480,6 +480,11 @@ function ProductPage() {
                       {l.open.text && (
                         <p className="mt-2 whitespace-pre-line text-sm">{l.open.text}</p>
                       )}
+                      {l.open.tgVideos.length > 0 && (
+                        <p className="mt-2 text-sm text-muted">
+                          🎬 {t("product.course.videoInBot")}
+                        </p>
+                      )}
                       {l.open.links.map((link, i, all) => (
                         <a
                           key={`v${i}`}

@@ -715,6 +715,8 @@ export async function showLesson(b: CourseBot, data: string): Promise<void> {
     rows.push([
       { text: c.nextLessonBtn(next.no), callback_data: `lsn:${p.orderItemId}:${next.no}` },
     ]);
+  // Видео, присланные продавцом боту, — прямо в чат, перед текстом урока с кнопками.
+  await sendTgVideos(b, `${a.no}. ${l.title}`, l.tgVideos ?? []);
   await send(
     b,
     parts.join("\n\n").slice(0, 4096),
@@ -746,6 +748,7 @@ export async function showOpenLesson(b: CourseBot, data: string): Promise<void> 
         .map((f) => `• <a href="${escapeHtml(f.url)}">${escapeHtml(f.name)}</a>`)
         .join("\n")}`,
     );
+  await sendTgVideos(b, `${noRaw}. ${found.title}`, found.open.tgVideos);
   await send(
     b,
     parts.join("\n\n").slice(0, 4096),
@@ -753,6 +756,21 @@ export async function showOpenLesson(b: CourseBot, data: string): Promise<void> 
       ? { reply_markup: { inline_keyboard: videoRows(found.title, found.open.links) } }
       : {},
   );
+}
+
+/**
+ * Видео урока из Telegram (file_id): по одному `sendVideo` на видео, подпись —
+ * номер и название урока. `protect_content` — ученица не перешлёт и не
+ * сохранит видео (запрет Telegram на пересылку и сохранение).
+ */
+async function sendTgVideos(b: CourseBot, title: string, ids: string[]): Promise<void> {
+  for (const [i, video] of ids.entries())
+    await b.api.call("sendVideo", {
+      chat_id: b.chatId,
+      video,
+      caption: ("🎬 " + title + (ids.length > 1 ? ` · ${i + 1}/${ids.length}` : "")).slice(0, 1024),
+      protect_content: true,
+    });
 }
 
 /** Кнопки видео урока: одно — «▶️ Название», несколько — «▶️ 1. Название», «▶️ 2. Название»… */

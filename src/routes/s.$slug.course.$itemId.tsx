@@ -192,6 +192,7 @@ function CoursePage() {
                     {t("course.openLink")}
                   </a>
                 )}
+                {l.inBot > 0 && <p className="text-muted">🎬 {t("course.videoInBot")}</p>}
                 {l.more.map((v, i) => (
                   <div key={`v${i}`} className="space-y-2">
                     {v.embed && (
