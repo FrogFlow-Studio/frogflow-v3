@@ -144,6 +144,9 @@ export const ru = {
   "product.lessonText": "Текст урока",
   "product.lessonLink":
     "Ссылка на видео (YouTube, VK Видео, Kinescope, Boosty) или документ, https://…",
+  "product.lessonVideoAdd": "+ Ещё видео",
+  "product.lessonVideoMore": "Ещё одна ссылка на видео, https://…",
+  "product.lessonVideoDelete": "Убрать видео",
   "product.courseCohorts": "Потоки (необязательно)",
   "product.courseCohortsHint":
     "Поток — общий старт: купившие в его набор начинают вместе, уроки открываются по расписанию от даты старта, опоздавшие сразу видят открытые. Без потоков курс идёт с момента покупки. Когда набор во все потоки закончился, курс не продаётся. Лимит мест — остаток товара.",
@@ -391,6 +394,9 @@ export const kk: SectionDict<typeof ru> = {
   "product.lessonText": "Сабақ мәтіні",
   "product.lessonLink":
     "Бейнеге (YouTube, VK Видео, Kinescope, Boosty) немесе құжатқа сілтеме, https://…",
+  "product.lessonVideoAdd": "+ Тағы бейне",
+  "product.lessonVideoMore": "Тағы бір бейне сілтемесі, https://…",
+  "product.lessonVideoDelete": "Бейнені алып тастау",
   "product.courseCohorts": "Ағындар (міндетті емес)",
   "product.courseCohortsHint":
     "Ағын — ортақ басталу: қабылдауға сатып алғандар бірге бастайды, сабақтар басталу күнінен кесте бойынша ашылады, кешіккендер ашылғандарын бірден көреді. Ағынсыз курс сатып алған сәттен басталады. Барлық ағынға қабылдау аяқталса, курс сатылмайды. Орын шегі — тауар қалдығы.",
@@ -637,6 +643,9 @@ export const en: SectionDict<typeof ru> = {
   "product.lessonText": "Lesson text",
   "product.lessonLink":
     "Link to a video (YouTube, VK Video, Kinescope, Boosty) or a document, https://…",
+  "product.lessonVideoAdd": "+ Another video",
+  "product.lessonVideoMore": "One more video link, https://…",
+  "product.lessonVideoDelete": "Remove video",
   "product.courseCohorts": "Cohorts (optional)",
   "product.courseCohortsHint":
     "A cohort is a shared start: everyone who buys during enrolment starts together, lessons open on schedule from the start date, late joiners see the opened ones right away. Without cohorts the course runs from purchase. Once enrolment in every cohort is over, the course is not sold. Seat limit is the product stock.",
@@ -880,6 +889,9 @@ export const uz: SectionDict<typeof ru> = {
   "product.lessonText": "Dars matni",
   "product.lessonLink":
     "Video (YouTube, VK Video, Kinescope, Boosty) yoki hujjatga havola, https://…",
+  "product.lessonVideoAdd": "+ Yana video",
+  "product.lessonVideoMore": "Yana bitta video havolasi, https://…",
+  "product.lessonVideoDelete": "Videoni olib tashlash",
   "product.courseCohorts": "Oqimlar (ixtiyoriy)",
   "product.courseCohortsHint":
     "Oqim — umumiy boshlanish: qabul davrida sotib olganlar birga boshlaydi, darslar boshlanish sanasidan jadval bo‘yicha ochiladi, kechikkanlar ochilganlarini darhol ko‘radi. Oqimsiz kurs sotib olingan paytdan boshlanadi. Barcha oqimlarga qabul tugasa, kurs sotilmaydi. O‘rinlar chegarasi — mahsulot qoldig‘i.",

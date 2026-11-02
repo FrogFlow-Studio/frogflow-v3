@@ -6,6 +6,7 @@ import {
   HOMEWORK_TASK_MAX,
   LESSON_FILES_MAX,
   LESSON_LINK_MAX,
+  LESSON_VIDEOS_MAX,
   LESSON_TEXT_MAX,
   LESSON_TITLE_MAX,
   LESSONS_MAX,
@@ -50,6 +51,10 @@ const lesson = z.object({
     .max(LESSON_FILES_MAX)
     .default([]),
   link: z.string().max(LESSON_LINK_MAX).nullable().default(null),
+  videos: z
+    .array(z.string().max(LESSON_LINK_MAX))
+    .max(LESSON_VIDEOS_MAX - 1)
+    .optional(),
   homework: z.string().max(HOMEWORK_TASK_MAX).nullable().optional(),
   preview: z.boolean().optional(),
   quiz: z

@@ -1,7 +1,7 @@
 import { isTenantStorageKey } from "@/core/storage/keys";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { cohortStart, enrollingCohort, enrollOpen, type Tariff } from "./cohort";
-import { courseKey, hasCourseContent, parseCourse, type Lesson } from "./course";
+import { courseKey, hasCourseContent, lessonLinks, parseCourse, type Lesson } from "./course";
 import { readSetting } from "./db.server";
 
 /** Ссылка на файл открытого урока; null — не удалось подписать, файл пропускается. */
@@ -19,6 +19,8 @@ export type PreviewFileLink = (no: number, idx: number) => string;
 export type OpenLesson = {
   text: string;
   link: string | null;
+  /** Все видео открытого урока по порядку (`lessonLinks`): первое — то же, что `link`. */
+  links: string[];
   files: Array<{ name: string; url: string }>;
 };
 
@@ -60,7 +62,8 @@ async function openContent(
     const url = await files.sign(f.path, f.name).catch(() => null);
     if (url) out.push({ name, url });
   }
-  return { text: l.text, link: l.link, files: out };
+  const links = lessonLinks(l);
+  return { text: l.text, link: links[0] ?? null, links, files: out };
 }
 
 /**

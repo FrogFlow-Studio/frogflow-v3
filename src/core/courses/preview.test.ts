@@ -62,6 +62,7 @@ describe("открытый урок на витрине", () => {
     expect(open!.open).toEqual({
       text: "ОТКРЫТЫЙ ТЕКСТ",
       link: "https://youtu.be/abc",
+      links: ["https://youtu.be/abc"],
       files: [{ name: "Чек-лист", url: `/api/course-file/school/${P}/1/0` }],
     });
     expect(closed).toMatchObject({ title: "Платный", open: null });

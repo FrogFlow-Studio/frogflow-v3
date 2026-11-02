@@ -8,6 +8,7 @@ import {
   DRIP_DAYS_MIN,
   LESSON_FILES_MAX,
   LESSONS_MAX,
+  LESSON_VIDEOS_MAX,
   lessonOpensAfterDays,
   type Course,
   type Lesson,
@@ -324,6 +325,45 @@ export function CourseCard({
                 value={l.link ?? ""}
                 onChange={(e) => edit(i, (x) => ({ ...x, link: e.target.value.trim() || null }))}
               />
+              {(l.videos ?? []).map((v, k) => (
+                <div key={k} className="mb-2 flex gap-2">
+                  <input
+                    id={`lesson-video-${l.id}-${k}`}
+                    className="input"
+                    type="url"
+                    placeholder={t("product.lessonVideoMore")}
+                    value={v}
+                    onChange={(e) =>
+                      edit(i, (x) => ({
+                        ...x,
+                        videos: (x.videos ?? []).map((y, j) =>
+                          j === k ? e.target.value.trim() : y,
+                        ),
+                      }))
+                    }
+                  />
+                  <button
+                    type="button"
+                    className="btn-ghost"
+                    aria-label={t("product.lessonVideoDelete")}
+                    onClick={() =>
+                      edit(i, (x) => ({ ...x, videos: (x.videos ?? []).filter((_, j) => j !== k) }))
+                    }
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+              {(l.videos?.length ?? 0) < LESSON_VIDEOS_MAX - 1 && (
+                <button
+                  type="button"
+                  id={`lesson-video-add-${l.id}`}
+                  className="btn-ghost mb-2 text-sm"
+                  onClick={() => edit(i, (x) => ({ ...x, videos: [...(x.videos ?? []), ""] }))}
+                >
+                  {t("product.lessonVideoAdd")}
+                </button>
+              )}
               <label className="mb-2 flex items-start gap-2 text-sm">
                 <input
                   id={`lesson-preview-${l.id}`}

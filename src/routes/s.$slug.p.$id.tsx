@@ -480,16 +480,18 @@ function ProductPage() {
                       {l.open.text && (
                         <p className="mt-2 whitespace-pre-line text-sm">{l.open.text}</p>
                       )}
-                      {l.open.link && (
+                      {l.open.links.map((link, i, all) => (
                         <a
+                          key={`v${i}`}
                           className="mt-2 block text-sm underline"
-                          href={l.open.link}
+                          href={link}
                           target="_blank"
                           rel="noreferrer noopener"
                         >
                           ▶️ {t("product.course.openLink")}
+                          {all.length > 1 ? ` ${i + 1}` : ""}
                         </a>
-                      )}
+                      ))}
                       {l.open.files.map((f) => (
                         <a
                           key={f.url}

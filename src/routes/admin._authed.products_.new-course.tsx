@@ -7,6 +7,7 @@ import { Card, ErrorBox, Field, PageTitle, useAction } from "@/app/ui";
 import { canEdit } from "@/core/auth/roles";
 import {
   LESSON_TITLE_MAX,
+  LESSON_VIDEOS_MAX,
   LESSONS_MAX,
   parseCourseOutline,
   type CourseOutlineSkip,
@@ -37,12 +38,14 @@ function NewCourseWizard() {
     t(
       s.reason === "noLink"
         ? "courseWizard.noLink"
-        : s.reason === "notHttps"
-          ? "school.listNotHttps"
-          : s.reason === "noTitle"
-            ? "school.listNoTitle"
-            : "school.listTooLong",
-      { line: s.line, max: LESSON_TITLE_MAX },
+        : s.reason === "tooManyVideos"
+          ? "courseWizard.tooManyVideos"
+          : s.reason === "notHttps"
+            ? "school.listNotHttps"
+            : s.reason === "noTitle"
+              ? "school.listNoTitle"
+              : "school.listTooLong",
+      { line: s.line, max: s.reason === "tooManyVideos" ? LESSON_VIDEOS_MAX : LESSON_TITLE_MAX },
     );
   const blocked =
     outline.lessons.length === 0 || outline.skipped.length > 0 || outline.overLimit > 0;
@@ -91,6 +94,7 @@ function NewCourseWizard() {
             text: "",
             files: [],
             link: l.link,
+            ...(l.videos?.length ? { videos: l.videos } : {}),
             ...(free && i === 0 ? { preview: true } : {}),
           })),
         },
