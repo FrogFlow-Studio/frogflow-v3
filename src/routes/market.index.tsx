@@ -100,7 +100,6 @@ function MarketPage() {
               key={c.id}
               title={c.title}
               items={c.items}
-              locale={locale}
               testId={`collection-${c.id}`}
             />
           ))}
