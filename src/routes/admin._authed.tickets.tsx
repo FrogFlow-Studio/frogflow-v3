@@ -20,7 +20,8 @@ import type { Ticket, TicketStatus } from "@/core/helpdesk/tickets";
 export const Route = createFileRoute("/admin/_authed/tickets")({
   validateSearch: z.object({ status: z.enum(TICKET_FILTERS).optional() }),
   beforeLoad: ({ context }) => {
-    if (!context.shop.modules.helpdesk) throw redirect({ to: "/admin" });
+    if (!context.shop.modules.helpdesk)
+      throw redirect({ to: "/admin/locked/$module", params: { module: "helpdesk" } });
   },
   loaderDeps: ({ search }) => ({ status: search.status ?? "open" }),
   loader: ({ deps }) => ticketsFn({ data: { status: deps.status === "all" ? null : deps.status } }),

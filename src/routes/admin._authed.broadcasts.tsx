@@ -2,7 +2,7 @@ import { EngageBlock } from "@/app/admin/engage-block";
 import { SimilarCard } from "@/app/admin/similar-card";
 import { AutoStatsBlock } from "@/app/admin/auto-stats";
 import { GiveawaysCard } from "@/app/admin/giveaways-card";
-import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useRouter, redirect } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { broadcastsFn } from "@/app/admin/broadcasts.functions";
 import { adminT, intlLocale } from "@/app/i18n/admin";
@@ -32,6 +32,10 @@ export const Route = createFileRoute("/admin/_authed/broadcasts")({
         ? s.followup
         : undefined,
   }),
+  beforeLoad: ({ context }) => {
+    if (!context.shop.modules.broadcasts && !context.shop.modules.wa_broadcasts)
+      throw redirect({ to: "/admin/locked/$module", params: { module: "broadcasts" } });
+  },
   loader: () => broadcastsFn(),
   component: BroadcastsPage,
 });

@@ -21,7 +21,8 @@ import { HelpTip } from "@/app/admin/help-panel";
  */
 export const Route = createFileRoute("/admin/_authed/knowledge")({
   beforeLoad: ({ context }) => {
-    if (!context.shop.pricelist) throw redirect({ to: "/admin" });
+    if (!context.shop.pricelist)
+      throw redirect({ to: "/admin/locked/$module", params: { module: "pricelist" } });
   },
   loader: () => pricelistFn(),
   component: KnowledgePage,

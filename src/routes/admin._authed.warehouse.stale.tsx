@@ -15,7 +15,8 @@ export const Route = createFileRoute("/admin/_authed/warehouse/stale")({
     return { days: Number.isInteger(n) && n >= 7 && n <= 365 ? n : undefined };
   },
   beforeLoad: ({ context }) => {
-    if (!context.shop.modules.warehouse) throw redirect({ to: "/admin" });
+    if (!context.shop.modules.warehouse)
+      throw redirect({ to: "/admin/locked/$module", params: { module: "warehouse" } });
   },
   loaderDeps: ({ search }) => ({ days: search.days }),
   loader: ({ deps }) => staleFn({ data: { days: deps.days } }),
