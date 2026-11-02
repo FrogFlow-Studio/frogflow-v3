@@ -888,3 +888,14 @@
   align-content: start;
   min-width: 0;
 }
+
+/* Клиенты таблицей: полоса слева у строки с проблемой. */
+.operator-client-table tr.is-alert > td:first-child {
+  box-shadow: inset 3px 0 0 var(--color-danger, #b42318);
+}
+.operator-client-table tr.is-warn > td:first-child {
+  box-shadow: inset 3px 0 0 var(--color-warn, #b45309);
+}
+.operator-client-table .badge {
+  white-space: normal;
+}

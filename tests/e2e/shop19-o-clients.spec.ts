@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import * as F from "./fixtures.ts";
 import { watch } from "./helpers.ts";
 
-test("список клиентов: состояния, раскрытие показателей и фильтры в адресе", async ({ page }) => {
+test("список клиентов: таблица, состояния и фильтры в адресе", async ({ page }) => {
   const errors = await watch(page);
   await page.goto("/operator/login");
   await page.locator('input[name="username"]').fill(F.OPERATOR_LOGIN);
@@ -12,17 +12,9 @@ test("список клиентов: состояния, раскрытие по
   await page.goto("/operator/clients");
   const all = await page.locator(".operator-client-record").count();
   expect(all).toBeGreaterThan(0);
-  await page
-    .locator(".operator-client-record")
-    .first()
-    .getByText("Показатели и задолженность", { exact: true })
-    .click();
-  await expect(
-    page
-      .locator(".operator-client-record")
-      .first()
-      .getByText("Заказов за 30 дней", { exact: false }),
-  ).toBeVisible();
+  // Таблица: показатели в колонках, без раскрытия (на телефоне шапка скрыта — строки карточками).
+  await expect(page.locator("thead th", { hasText: /^Заказов за 30 дней$/ })).toBeAttached();
+  await expect(page.locator("thead th", { hasText: /^Оплачено$/ })).toBeAttached();
   for (const name of [/Нужна помощь/, /Оплата скоро/]) {
     await page.getByRole("button", { name }).click();
     expect(await page.locator(".operator-client-record").count()).toBeLessThanOrEqual(all);
