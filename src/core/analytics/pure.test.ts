@@ -43,7 +43,8 @@ describe("compactNumber", () => {
     expect(compactNumber(4_200_000)).toBe("4,2\u00a0млн");
   });
   it("на языке панели", () => {
-    expect(compactNumber(12900, "en-GB")).toBe("12.9k");
+    // Регистр «k»/«K» в en-GB зависит от версии ICU в Node (77 даёт «12.9K»).
+    expect(compactNumber(12900, "en-GB")).toMatch(/^12\.9k$/i);
     expect(compactNumber(12900, "kk")).toBe("12,9\u00a0мың");
     expect(compactNumber(12900, "uz")).toBe("12,9\u00a0ming");
   });
