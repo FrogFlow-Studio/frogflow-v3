@@ -10,6 +10,10 @@ import type { Locale } from "@/core/i18n/locale";
 import { intlLocale } from "./admin";
 
 const ru = {
+  "missing.page.title": "Такой страницы нет",
+  "missing.page.text": "Возможно, товар сняли с продажи или ссылка устарела.",
+  "missing.shop.title": "Магазин не найден",
+  "missing.shop.text": "Проверьте адрес: возможно, ссылка устарела.",
   "quiz.link": "🧩 Подобрать товар",
   "quiz.title": "Подбор товара",
   "quiz.step": "Вопрос {n} из {m}",
@@ -596,6 +600,10 @@ type Dict = Record<StorefrontKey, string>;
 export const STOREFRONT_KEYS = Object.keys(ru) as StorefrontKey[];
 
 const kk: Dict = {
+  "missing.page.title": "Мұндай бет жоқ",
+  "missing.page.text": "Тауар сатылымнан алынған немесе сілтеме ескірген болуы мүмкін.",
+  "missing.shop.title": "Дүкен табылмады",
+  "missing.shop.text": "Мекенжайды тексеріңіз: сілтеме ескірген болуы мүмкін.",
   "quiz.link": "🧩 Тауар таңдау",
   "quiz.title": "Тауар таңдау",
   "quiz.step": "{m} сұрақтың {n}-і",
@@ -1174,6 +1182,10 @@ const kk: Dict = {
 };
 
 const en: Dict = {
+  "missing.page.title": "This page doesn't exist",
+  "missing.page.text": "The product may have been removed or the link is out of date.",
+  "missing.shop.title": "Shop not found",
+  "missing.shop.text": "Check the address: the link may be out of date.",
   "quiz.link": "🧩 Find a product",
   "quiz.title": "Find a product",
   "quiz.step": "Question {n} of {m}",
@@ -1753,6 +1765,10 @@ const en: Dict = {
 };
 
 const uz: Dict = {
+  "missing.page.title": "Bunday sahifa yo‘q",
+  "missing.page.text": "Mahsulot sotuvdan olingan yoki havola eskirgan bo‘lishi mumkin.",
+  "missing.shop.title": "Do‘kon topilmadi",
+  "missing.shop.text": "Manzilni tekshiring: havola eskirgan bo‘lishi mumkin.",
   "quiz.link": "🧩 Mahsulot tanlash",
   "quiz.title": "Mahsulot tanlash",
   "quiz.step": "{m} savoldan {n}-si",

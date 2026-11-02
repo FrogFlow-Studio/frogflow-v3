@@ -8,6 +8,7 @@ import {
   catalogSearch,
   loadCatalog,
 } from "@/app/storefront/catalog-view";
+import { StorePageMissing } from "@/app/storefront/missing";
 
 /** Страница категории: основной адрес категории витрины, фильтры — в строке адреса. */
 export const Route = createFileRoute("/s/$slug/c/$category")({
@@ -26,6 +27,7 @@ export const Route = createFileRoute("/s/$slug/c/$category")({
       loaderData?.items.length ?? null,
     ),
   component: CategoryPage,
+  notFoundComponent: StorePageMissing,
 });
 
 function CategoryPage() {

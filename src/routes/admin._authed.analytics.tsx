@@ -5,12 +5,12 @@ import { analyticsFn } from "@/app/admin/sales-analytics.functions";
 import { adminT, intlLocale } from "@/app/i18n/admin";
 import { PageTitle } from "@/app/ui";
 import { canEdit } from "@/core/auth/roles";
-import { BarList, ChartCard, DataTable, LineChart } from "@/app/ui/charts";
+import { BarList, ChartCard, ChartLabelsProvider, DataTable, LineChart } from "@/app/ui/charts";
 import { compactNumber, shortDay } from "@/core/analytics/pure";
 import { FUNNEL_STAGES } from "@/core/analytics/funnel";
 import { growthFunnel } from "@/core/analytics/growth-funnel";
 import { revenueParts } from "@/core/analytics/source-funnel";
-import { formatMoney } from "@/core/money/money";
+import { formatMoneyUi } from "@/core/money/money";
 import { ProfitCard } from "@/app/admin/profit-card";
 import { OrderStatus } from "./admin._authed.orders";
 import { Tile, platformLabel, sourceLabel, SourceLinksCard } from "@/app/admin/analytics/parts";
@@ -39,18 +39,25 @@ function AnalyticsPage() {
   const { shop } = Route.useRouteContext();
   const t = adminT(shop.locale);
   const loc = intlLocale(shop.locale);
-  const money = (v: number) => formatMoney(v, a.currency);
+  const money = (v: number) => formatMoneyUi(v, a.currency);
   const moneyAll = (revenue: Record<string, number>) =>
     revenueParts(revenue, a.currency)
-      .map((p) => formatMoney(p.amount, p.currency))
+      .map((p) => formatMoneyUi(p.amount, p.currency))
       .join(" · ");
-  const short = (v: number) => compactNumber(v);
+  const short = (v: number) => compactNumber(v, loc);
   const num = (v: number) => v.toLocaleString(loc);
   const dayLabel = (d: string) =>
     new Date(`${d}T00:00:00`).toLocaleDateString(loc, { day: "numeric", month: "long" });
 
   return (
-    <>
+    <ChartLabelsProvider
+      value={{
+        table: t("analytics.chart.table"),
+        chart: t("analytics.chart.chart"),
+        empty: t("analytics.chart.empty"),
+        daily: t("analytics.chart.daily"),
+      }}
+    >
       <PageTitle title={t("analytics.title")} subtitle={t("analytics.subtitle")} />
       <div className="mb-4 flex flex-wrap items-center gap-2">
         {([7, 30, 90] as const).map((d) => (
@@ -111,10 +118,10 @@ function AnalyticsPage() {
 
       {a.byCurrency.some((c) => c.currency !== a.currency) && (
         <p className="mt-3 text-sm text-muted">
-          {t("analytics.byCurrency", { currency: formatMoney("", a.currency).trim() })}{" "}
+          {t("analytics.byCurrency", { currency: formatMoneyUi("", a.currency).trim() })}{" "}
           {a.byCurrency
             .map((c) => {
-              const own = `${formatMoney(c.revenue, c.currency)} (${num(c.orders)})`;
+              const own = `${formatMoneyUi(c.revenue, c.currency)} (${num(c.orders)})`;
               if (c.currency === a.currency) return own;
               return c.inBase == null
                 ? `${own} ${t("analytics.byCurrency.noRate")}`
@@ -358,6 +365,6 @@ function AnalyticsPage() {
           }
         />
       </div>
-    </>
+    </ChartLabelsProvider>
   );
 }

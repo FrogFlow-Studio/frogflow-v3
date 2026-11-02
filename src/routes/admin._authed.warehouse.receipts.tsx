@@ -12,7 +12,7 @@ import {
 import { ProductSearch } from "@/app/admin/product-picker";
 import { adminT, intlLocale, type AdminT } from "@/app/i18n/admin";
 import { Badge, Card, ErrorBox, Field, PageTitle, useAction } from "@/app/ui";
-import { formatMoney } from "@/core/money/money";
+import { formatMoneyUi } from "@/core/money/money";
 
 export const Route = createFileRoute("/admin/_authed/warehouse/receipts")({
   beforeLoad: ({ context }) => {
@@ -164,7 +164,7 @@ function ReceiptsPage() {
                   <li key={i}>
                     {l.name}
                     {l.variant ? ` · ${l.variant}` : ""} — {l.qty} ×{" "}
-                    {formatMoney(l.price, shop.currency)}
+                    {formatMoneyUi(l.price, shop.currency)}
                     {l.state === "skipped" && (
                       <span className="ml-1 text-xs text-warn">{t("receipts.lineSkipped")}</span>
                     )}

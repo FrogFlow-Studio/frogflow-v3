@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { ErrorBox } from "@/app/ui";
-import { formatMoney } from "@/core/money/money";
+import { formatMoneyUi } from "@/core/money/money";
 import type { MyRewards } from "@/core/storefront/my-rewards";
 import { useStorefrontLocale } from "./locale";
 
@@ -48,7 +48,7 @@ export function MyRewardsBox({ load }: { load: () => Promise<MyRewards | null> }
               {points.next &&
                 `. ${t("rewards.tierNext", {
                   name: points.next.name,
-                  amount: formatMoney(points.next.remaining, points.currency),
+                  amount: formatMoneyUi(points.next.remaining, points.currency),
                 })}`}
             </p>
           )}

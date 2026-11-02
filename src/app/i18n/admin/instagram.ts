@@ -2,6 +2,17 @@ import type { SectionDict } from "../section";
 
 /** Раздел «instagram» — ключи с префиксом `instagram.`. */
 export const ru = {
+  "instagram.catchup.idPlaceholder": "ID публикации, например 17913946659536537",
+  "instagram.catchup.fromListHint": "Выбрать из списка публикаций",
+  "instagram.catchup.manualHint": "Ввести ID публикации вручную",
+  "instagram.catchup.fromList": "Из списка",
+  "instagram.catchup.manual": "Ввести ID",
+  "instagram.catchup.checkNowHint":
+    "Запустить немедленный поиск и отправку ответов по свежим постам",
+  "instagram.catchup.checking": "Проверяем…",
+  "instagram.catchup.checkNow": "⚡ Проверить сейчас",
+  "instagram.catchup.checked":
+    "✓ Проверка завершена: проверено правил — {rules}, комментариев — {comments}, отправлено DM — {sent}.",
   // статусы комментариев
   "instagram.reply.owner": "ваш ответ",
   "instagram.reply.sent": "DM ушла",
@@ -153,6 +164,17 @@ export const ru = {
 } as const;
 
 export const kk: SectionDict<typeof ru> = {
+  "instagram.catchup.idPlaceholder": "Жарияланым ID, мысалы 17913946659536537",
+  "instagram.catchup.fromListHint": "Жарияланымдар тізімінен таңдау",
+  "instagram.catchup.manualHint": "Жарияланым ID-ін қолмен енгізу",
+  "instagram.catchup.fromList": "Тізімнен",
+  "instagram.catchup.manual": "ID енгізу",
+  "instagram.catchup.checkNowHint":
+    "Жаңа жазбалар бойынша жауаптарды іздеу мен жіберуді қазір іске қосу",
+  "instagram.catchup.checking": "Тексеріп жатырмыз…",
+  "instagram.catchup.checkNow": "⚡ Қазір тексеру",
+  "instagram.catchup.checked":
+    "✓ Тексеру аяқталды: ережелер — {rules}, пікірлер — {comments}, жіберілген DM — {sent}.",
   "instagram.reply.owner": "сіздің жауабыңыз",
   "instagram.reply.sent": "DM жіберілді",
   "instagram.reply.failed": "DM өтпеді",
@@ -298,6 +320,16 @@ export const kk: SectionDict<typeof ru> = {
 };
 
 export const en: SectionDict<typeof ru> = {
+  "instagram.catchup.idPlaceholder": "Post ID, e.g. 17913946659536537",
+  "instagram.catchup.fromListHint": "Pick from the list of posts",
+  "instagram.catchup.manualHint": "Enter the post ID by hand",
+  "instagram.catchup.fromList": "From the list",
+  "instagram.catchup.manual": "Enter ID",
+  "instagram.catchup.checkNowHint": "Search fresh posts and send replies right now",
+  "instagram.catchup.checking": "Checking…",
+  "instagram.catchup.checkNow": "⚡ Check now",
+  "instagram.catchup.checked":
+    "✓ Check finished: rules checked — {rules}, comments — {comments}, DMs sent — {sent}.",
   "instagram.reply.owner": "your reply",
   "instagram.reply.sent": "DM sent",
   "instagram.reply.failed": "DM failed",
@@ -441,6 +473,16 @@ export const en: SectionDict<typeof ru> = {
 };
 
 export const uz: SectionDict<typeof ru> = {
+  "instagram.catchup.idPlaceholder": "Post ID, masalan 17913946659536537",
+  "instagram.catchup.fromListHint": "Postlar roʻyxatidan tanlash",
+  "instagram.catchup.manualHint": "Post ID sini qoʻlda kiritish",
+  "instagram.catchup.fromList": "Roʻyxatdan",
+  "instagram.catchup.manual": "ID kiritish",
+  "instagram.catchup.checkNowHint": "Yangi postlar boʻyicha javoblarni hozir qidirish va yuborish",
+  "instagram.catchup.checking": "Tekshiryapmiz…",
+  "instagram.catchup.checkNow": "⚡ Hozir tekshirish",
+  "instagram.catchup.checked":
+    "✓ Tekshiruv tugadi: qoidalar — {rules}, izohlar — {comments}, yuborilgan DM — {sent}.",
   "instagram.reply.owner": "sizning javobingiz",
   "instagram.reply.sent": "DM yuborildi",
   "instagram.reply.failed": "DM o‘tmadi",

@@ -17,7 +17,7 @@ function BroadcastPage() {
   const { clients, history } = Route.useLoaderData();
   const router = useRouter();
   const reachable = clients.filter((c) => c.telegram.connected);
-  const [selected, setSelected] = useState<Set<string>>(new Set(reachable.map((c) => c.id)));
+  const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [text, setText] = useState("");
   const [last, setLast] = useState<Awaited<ReturnType<typeof broadcastToOwnersFn>> | null>(null);
   const send = useAction(async () => {

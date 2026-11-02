@@ -13,7 +13,7 @@ import {
 import { adminT } from "@/app/i18n/admin";
 import { Badge, Card, ErrorBox, Field, useAction } from "@/app/ui";
 import { canEdit } from "@/core/auth/roles";
-import { formatMoney } from "@/core/money/money";
+import { formatMoneyUi } from "@/core/money/money";
 import { displayNo } from "@/core/orders/pure";
 import { isClosedDay, type ClosedRules } from "@/core/fulfillment/closed-days";
 import { slotOf } from "@/core/fulfillment/slots";
@@ -139,7 +139,7 @@ export function RefundCard({
   const [notify, setNotify] = useState(true);
   const run = useAction(async () => {
     const sum = Number(amount.replace(",", "."));
-    if (!confirm(t("refund.confirm", { sum: formatMoney(sum, o.currency), no: displayNo(o) })))
+    if (!confirm(t("refund.confirm", { sum: formatMoneyUi(sum, o.currency), no: displayNo(o) })))
       return;
     const r = await refundOrderFn({
       data: { id: o.id, amount: sum, reason: reason.trim() || null, restock, notify },
@@ -152,7 +152,7 @@ export function RefundCard({
     <Card title={t("refund.title")} help={<HelpTip article="orders" anchor="refund" />}>
       {refunded > 0 && (
         <p className="mb-2 text-sm">
-          {t("refund.done", { sum: formatMoney(refunded, o.currency) })}
+          {t("refund.done", { sum: formatMoneyUi(refunded, o.currency) })}
         </p>
       )}
       {refundable > 0 && !open && (
@@ -169,7 +169,7 @@ export function RefundCard({
           }}
         >
           <p className="text-xs text-muted">
-            {t("refund.available", { sum: formatMoney(refundable, o.currency) })}
+            {t("refund.available", { sum: formatMoneyUi(refundable, o.currency) })}
           </p>
           <Field label={t("refund.amount")}>
             <div className="flex gap-2">
@@ -288,11 +288,11 @@ export function PaymentCard({
       )}
       <dl className="grid grid-cols-[120px_1fr] gap-y-1 text-sm">
         <dt className="text-muted">{t("physical.paid")}</dt>
-        <dd className="tabular-nums">{formatMoney(paid, o.currency)}</dd>
+        <dd className="tabular-nums">{formatMoneyUi(paid, o.currency)}</dd>
         <dt className="text-muted">{t("physical.remaining")}</dt>
         <dd className="tabular-nums">
           {remaining > 0 ? (
-            formatMoney(remaining, o.currency)
+            formatMoneyUi(remaining, o.currency)
           ) : (
             <Badge tone="ok">{t("physical.paidFull")}</Badge>
           )}
@@ -300,7 +300,7 @@ export function PaymentCard({
       </dl>
       {remaining > 0 && dueNow > paid && dueNow < Number(o.total) && (
         <p className="mt-1 text-xs text-muted">
-          {t("physical.dueNow", { sum: formatMoney(dueNow, o.currency) })}
+          {t("physical.dueNow", { sum: formatMoneyUi(dueNow, o.currency) })}
         </p>
       )}
       {remaining > 0 && !closed && canEdit(shop.role) && (
@@ -330,7 +330,7 @@ export function PaymentCard({
             disabled={pay.busy}
             onClick={() => void pay.run(remaining).catch(() => {})}
           >
-            {t("physical.recordAll")} · {formatMoney(remaining, o.currency)}
+            {t("physical.recordAll")} · {formatMoneyUi(remaining, o.currency)}
           </button>
           <p className="w-full text-xs text-muted">{t("physical.recordHint")}</p>
         </form>

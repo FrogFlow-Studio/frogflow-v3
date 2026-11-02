@@ -7,6 +7,7 @@ import { useStorefrontLocale } from "@/app/storefront/locale";
 import { OfferPrice } from "@/app/storefront/offer";
 import { Empty } from "@/app/ui";
 import { canonicalLink, shopCanonical } from "@/core/storefront/seo";
+import { StorePageMissing } from "@/app/storefront/missing";
 
 export const Route = createFileRoute("/s/$slug/col/$id")({
   headers: publicHeaders,
@@ -29,6 +30,7 @@ export const Route = createFileRoute("/s/$slug/col/$id")({
     };
   },
   component: CollectionPage,
+  notFoundComponent: StorePageMissing,
 });
 
 /** Подборка: страница со ссылкой для бота и соцсетей; товары — как на «Избранном». */

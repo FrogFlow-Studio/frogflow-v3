@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { commissionPageFn } from "@/app/admin/plan.functions";
 import { adminT, intlLocale, type AdminT } from "@/app/i18n/admin";
 import { Badge, Card, PageTitle } from "@/app/ui";
-import { formatMoney } from "@/core/money/money";
+import { formatMoneyUi } from "@/core/money/money";
 import { COMMISSION_CURRENCY, TIER_TITLES } from "@/core/plans/registry";
 
 export const Route = createFileRoute("/admin/_authed/commission")({
@@ -11,7 +11,7 @@ export const Route = createFileRoute("/admin/_authed/commission")({
 });
 
 type Page = Awaited<ReturnType<typeof commissionPageFn>>;
-const money = (n: number) => formatMoney(n, COMMISSION_CURRENCY);
+const money = (n: number) => formatMoneyUi(n, COMMISSION_CURRENCY);
 
 function MonthCard({ title, m, t }: { title: string; m: Page["current"]; t: AdminT }) {
   return (

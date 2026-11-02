@@ -1,5 +1,5 @@
 import type { StoreProduct } from "@/core/storefront/catalog";
-import { formatMoney } from "@/core/money/money";
+import { formatMoneyUi } from "@/core/money/money";
 import { intlLocale } from "@/app/i18n/admin";
 import { useStorefrontLocale } from "./locale";
 
@@ -24,14 +24,14 @@ export function OfferPrice({
   label?: (price: string) => string;
   className?: string;
 }) {
-  const shown = label(formatMoney(price, currency));
+  const shown = label(formatMoneyUi(price, currency));
   if (!offer || oldPrice == null || oldPrice <= price)
     return <span className={`tabular-nums ${className}`}>{shown}</span>;
   return (
     <span className={`inline-flex flex-wrap items-baseline gap-x-1.5 ${className}`}>
       <span className="tabular-nums text-accent">{shown}</span>
       <s className="text-[0.8em] font-normal text-muted tabular-nums">
-        {formatMoney(oldPrice, currency)}
+        {formatMoneyUi(oldPrice, currency)}
       </s>
       <span className="rounded bg-accent/10 px-1 text-[0.75em] font-semibold text-accent">
         −{offer.percent} %

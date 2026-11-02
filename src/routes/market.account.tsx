@@ -4,7 +4,8 @@ import { marketAccountFn, marketLogoutFn } from "@/app/market/buyer.functions";
 import { favoriteT } from "@/app/market/favorite-i18n";
 import { marketT } from "@/app/market/i18n";
 import { MarketReorderButton } from "@/app/market/reorder-button";
-import { SUPPORTED_LOCALES, type Locale } from "@/core/i18n/locale";
+import { SUPPORTED_LOCALES, type Locale, langLabel } from "@/core/i18n/locale";
+import { formatMoneyUi } from "@/core/money/money";
 
 /** «Мои заказы во всех магазинах» (В17): вход только через магазин, площадка его запоминает. */
 export const Route = createFileRoute("/market/account")({
@@ -41,7 +42,7 @@ function AccountPage() {
               search={{ lang: l }}
               className={l === locale ? "font-medium" : "text-muted"}
             >
-              {l.toUpperCase()}
+              {langLabel(l)}
             </Link>
           ))}
         </nav>
@@ -71,8 +72,7 @@ function AccountPage() {
                     {s.orders.map((o) => (
                       <li key={o.no}>
                         {t("acc.order", { no: o.no })} · {o.status} ·{" "}
-                        {new Intl.NumberFormat(locale).format(o.total)} {o.currency} ·{" "}
-                        {date.format(new Date(o.at))}
+                        {formatMoneyUi(o.total, o.currency)} · {date.format(new Date(o.at))}
                         <MarketReorderButton slug={s.slug} orderId={o.id} locale={locale} />
                       </li>
                     ))}
@@ -91,7 +91,7 @@ function AccountPage() {
                           >
                             {f.name}
                           </Link>{" "}
-                          · {new Intl.NumberFormat(locale).format(f.price)} {f.currency}
+                          · {formatMoneyUi(f.price, f.currency)}
                         </li>
                       ))}
                     </ul>
@@ -143,9 +143,7 @@ function AccountPage() {
                           >
                             {f.name}
                           </Link>
-                          <p>
-                            {new Intl.NumberFormat(locale).format(f.price)} {f.currency}
-                          </p>
+                          <p>{formatMoneyUi(f.price, f.currency)}</p>
                           <p className="text-xs text-muted">{f.shopName}</p>
                         </div>
                       </li>

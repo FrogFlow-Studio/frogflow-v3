@@ -8,7 +8,7 @@ import { solveChallenge } from "@/app/signup/challenge-solve";
 import { signupVerticalTitle } from "@/app/signup/i18n";
 import { formatTenge } from "@/app/landing/config";
 import { ErrorBox, Field, useAction } from "@/app/ui";
-import { SUPPORTED_LOCALES, type Locale } from "@/core/i18n/locale";
+import { SUPPORTED_LOCALES, type Locale, langLabel } from "@/core/i18n/locale";
 import { OPEN_VERTICALS, isOpenVertical, isTier } from "@/core/marketplace/open-request";
 import { CONNECTION_PRICE, MONTHLY_PRICE, PLAN_TIERS } from "@/core/plans/registry";
 import { VERTICALS } from "@/core/verticals/registry";
@@ -90,7 +90,7 @@ function OpenShopPage() {
               search={{ ...search, lang: l }}
               className={l === locale ? "font-medium" : "text-muted"}
             >
-              {l.toUpperCase()}
+              {langLabel(l)}
             </Link>
           ))}
         </nav>

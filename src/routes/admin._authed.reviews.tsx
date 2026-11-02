@@ -80,6 +80,7 @@ function ReviewsPage() {
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <select
           className="input w-40"
+          aria-label={t("reviews.filterAll")}
           value={search.rating ?? ""}
           onChange={(e) =>
             void navigate({

@@ -4,7 +4,7 @@ import { z } from "zod";
 import { authorPageFn } from "@/app/community-author/author.functions";
 import { authorT } from "@/app/community-author/i18n";
 import { SUPPORTED_LOCALES, type Locale } from "@/core/i18n/locale";
-import { formatMoney } from "@/core/money/money";
+import { formatMoneyUi } from "@/core/money/money";
 
 /** Публичная страница автора (С6): профиль, «Что продаю», оценка, взаимные рекомендации. Без входа. */
 export const Route = createFileRoute("/author/$slug")({
@@ -79,7 +79,7 @@ function AuthorPage() {
                 <span>{p.name}</span>
                 <span className="text-muted">
                   {p.priceFrom ? "от " : ""}
-                  {formatMoney(p.price, p.currency)}
+                  {formatMoneyUi(p.price, p.currency)}
                 </span>
               </li>
             ))}

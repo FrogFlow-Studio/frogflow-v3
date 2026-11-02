@@ -104,7 +104,7 @@ function Layout() {
             ))}
           </select>
           <div className="flex items-center justify-between">
-            <ThemeToggle />
+            <ThemeToggle labels={{ dark: t("nav.theme.dark"), light: t("nav.theme.light") }} />
             <button
               type="button"
               className="btn-ghost text-xs"

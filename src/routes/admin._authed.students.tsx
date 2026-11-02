@@ -45,6 +45,7 @@ function StudentsPage() {
             {courses.length > 1 && (
               <select
                 className="input w-auto"
+                aria-label={t("students.allCourses")}
                 value={course}
                 onChange={(e) => setCourse(e.target.value)}
               >

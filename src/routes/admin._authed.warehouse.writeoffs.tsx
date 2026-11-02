@@ -6,7 +6,7 @@ import { receiptProductFn, writeOffFn, writeoffsFn } from "@/app/admin/warehouse
 import { ProductSearch } from "@/app/admin/product-picker";
 import { adminT, intlLocale } from "@/app/i18n/admin";
 import { Card, ErrorBox, Field, PageTitle, useAction } from "@/app/ui";
-import { formatMoney } from "@/core/money/money";
+import { formatMoneyUi } from "@/core/money/money";
 
 export const Route = createFileRoute("/admin/_authed/warehouse/writeoffs")({
   beforeLoad: ({ context }) => {
@@ -177,7 +177,7 @@ function WriteoffsPage() {
                     {when(e.at)} ·{" "}
                     {e.unitCost === null || !e.currency
                       ? t("writeoff.noCost")
-                      : t("writeoff.unitCost", { cost: formatMoney(e.unitCost, e.currency) })}
+                      : t("writeoff.unitCost", { cost: formatMoneyUi(e.unitCost, e.currency) })}
                   </div>
                 </li>
               ))}
