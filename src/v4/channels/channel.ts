@@ -11,12 +11,22 @@ export type CardButton = { kind: "buy"; productId: string; label: string };
 
 export interface InstagramChannel {
   /** Публичный ответ под комментарием. */
-  publicReply(commentId: string, text: string, signal: AbortSignal): Promise<SendOutcome>;
+  publicReply(
+    postId: string,
+    commentId: string,
+    text: string,
+    signal: AbortSignal,
+  ): Promise<SendOutcome>;
   /** Первое сообщение в Direct по комментарию (private reply), без кнопок. */
-  privateReply(commentId: string, text: string, signal: AbortSignal): Promise<SendOutcome>;
-  /** Сообщение в Direct с кнопками (карточка после «+»). */
+  privateReply(
+    postId: string,
+    commentId: string,
+    text: string,
+    signal: AbortSignal,
+  ): Promise<SendOutcome>;
+  /** Сообщение в Direct с кнопками (карточка после «+»), в переписку покупателя. */
   sendCard(
-    recipientId: string,
+    conversationId: string,
     text: string,
     buttons: CardButton[],
     signal: AbortSignal,

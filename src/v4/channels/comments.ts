@@ -103,12 +103,13 @@ export async function runCommentSends(
       if (ch) {
         const signal = AbortSignal.timeout(perCall);
         const externalId = String(r.external_id);
+        const postId = String(r.post_id ?? "");
         const text = String(r.text);
         try {
           outcome =
             kind === "public"
-              ? await ch.publicReply(externalId, text, signal)
-              : await ch.privateReply(externalId, text, signal);
+              ? await ch.publicReply(postId, externalId, text, signal)
+              : await ch.privateReply(postId, externalId, text, signal);
         } catch {
           outcome = "unknown";
         }
@@ -132,7 +133,7 @@ export async function runCommentSends(
 export async function onDirectMessage(
   db: V4Db,
   channel: InstagramChannel,
-  input: { botId: string; buyerId: string; recipientId: string; lang?: string; now?: Date },
+  input: { botId: string; buyerId: string; conversationId: string; lang?: string; now?: Date },
 ): Promise<{ handled: boolean; outcome?: SendOutcome }> {
   const args: Record<string, unknown> = { p_bot_id: input.botId, p_buyer_id: input.buyerId };
   if (input.now) args.p_now = input.now.toISOString();
@@ -151,7 +152,7 @@ export async function onDirectMessage(
   let outcome: SendOutcome;
   try {
     outcome = await channel.sendCard(
-      input.recipientId,
+      input.conversationId,
       String(card.card_text),
       [
         {

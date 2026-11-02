@@ -22,7 +22,13 @@ const asB = () => pgliteV4(pg, { botId: B });
 let notebook: string;
 let seq = 0;
 
-type Sent = { kind: "public" | "dm" | "card"; to: string; text: string; buttons?: CardButton[] };
+type Sent = {
+  kind: "public" | "dm" | "card";
+  to: string;
+  text: string;
+  post?: string;
+  buttons?: CardButton[];
+};
 function fakeChannel(outcome: SendOutcome | "throw" = "sent") {
   const sent: Sent[] = [];
   const go = async (s: Sent): Promise<SendOutcome> => {
@@ -31,8 +37,8 @@ function fakeChannel(outcome: SendOutcome | "throw" = "sent") {
     return outcome;
   };
   const ch: InstagramChannel = {
-    publicReply: (to, text) => go({ kind: "public", to, text }),
-    privateReply: (to, text) => go({ kind: "dm", to, text }),
+    publicReply: (post, to, text) => go({ kind: "public", to, text, post }),
+    privateReply: (post, to, text) => go({ kind: "dm", to, text, post }),
     sendCard: (to, text, buttons) => go({ kind: "card", to, text, buttons }),
   };
   return { ch, sent };
@@ -170,7 +176,9 @@ describe("отправщик: ответ под комментарием сра�
     const c = await comment("Хочу!");
     const { ch, sent } = fakeChannel();
     await runCommentSends(svc(), () => ch, { now: () => at(5) });
-    expect(sent).toEqual([{ kind: "public", to: `c${seq}`, text: "Написала вам в Direct 💌" }]);
+    expect(sent).toEqual([
+      { kind: "public", to: `c${seq}`, text: "Написала вам в Direct 💌", post: POST },
+    ]);
 
     await runCommentSends(svc(), () => ch, { now: () => at(30) });
     expect(sent).toHaveLength(1);
@@ -248,7 +256,13 @@ describe("«+» в Direct → карточка с кнопкой, один ра�
   it("ответ «+» — карточка с одной кнопкой «Купить»; второй «+» отвечает бот", async () => {
     const c = await dmSent();
     const { ch, sent } = fakeChannel();
-    const input = { botId: A, buyerId: c.buyerId, recipientId: "igsid", lang: "kk", now: at(120) };
+    const input = {
+      botId: A,
+      buyerId: c.buyerId,
+      conversationId: "igsid",
+      lang: "kk",
+      now: at(120),
+    };
     expect(await onDirectMessage(asA(), ch, input)).toEqual({ handled: true, outcome: "sent" });
     expect(sent).toEqual([
       {
@@ -265,7 +279,7 @@ describe("«+» в Direct → карточка с кнопкой, один ра�
   it("два «+» одновременно — карточка одна", async () => {
     const c = await dmSent();
     const { ch, sent } = fakeChannel();
-    const input = { botId: A, buyerId: c.buyerId, recipientId: "igsid", now: at(120) };
+    const input = { botId: A, buyerId: c.buyerId, conversationId: "igsid", now: at(120) };
     const r = await Promise.all([
       onDirectMessage(asA(), ch, input),
       onDirectMessage(asA(), ch, input),
@@ -282,7 +296,7 @@ describe("«+» в Direct → карточка с кнопкой, один ра�
       await onDirectMessage(asA(), ch, {
         botId: A,
         buyerId: c.buyerId,
-        recipientId: "x",
+        conversationId: "x",
         now: late,
       }),
     ).toEqual({ handled: false });
@@ -301,7 +315,7 @@ describe("«+» в Direct → карточка с кнопкой, один ра�
         await onDirectMessage(asA(), ch, {
           botId: A,
           buyerId: c.buyerId,
-          recipientId: "x",
+          conversationId: "x",
           now: at(120),
         }),
       ).toEqual({ handled: false });
@@ -321,7 +335,7 @@ describe("«+» в Direct → карточка с кнопкой, один ра�
       await onDirectMessage(asB(), ch, {
         botId: B,
         buyerId: c.buyerId,
-        recipientId: "x",
+        conversationId: "x",
         now: at(120),
       }),
     ).toEqual({ handled: false });
