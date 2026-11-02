@@ -133,6 +133,7 @@ function SettingsPage() {
     ocrKey,
     pdfWatermark,
     courseInBot,
+    lessonsByBot,
     recentKeys,
   } = Route.useLoaderData();
   const { shop } = Route.useRouteContext();
@@ -569,7 +570,7 @@ function SettingsPage() {
               </SettingsSection>
               {shop.modules.courses && (
                 <SettingsSection id="course-in-bot">
-                  <CourseInBotCard enabled={courseInBot} />
+                  <CourseInBotCard enabled={courseInBot} lessonsByBot={lessonsByBot} />
                 </SettingsSection>
               )}
               {shop.modules.robokassa && (

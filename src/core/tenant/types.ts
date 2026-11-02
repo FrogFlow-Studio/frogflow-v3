@@ -270,6 +270,11 @@ export type TenantSettings = {
      * channels/telegram/courses). Нет — как было: ссылка на страницу курса.
      */
     course_in_bot?: boolean;
+    /**
+     * Продавец добавляет урок сообщением своему боту: ссылка на видео с
+     * подписью «1.2 Материалы» — новый урок в конце курса (core/courses/lesson-by-bot).
+     */
+    lessons_by_bot?: boolean;
   };
 };
 

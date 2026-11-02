@@ -226,12 +226,18 @@ export function WatermarkCard({ enabled }: { enabled: boolean }) {
 }
 
 /** Курс в боте: после оплаты «Курс открыт ✅ ▶️ Начать урок 1», в уроке — «Следующий урок →». */
-export function CourseInBotCard({ enabled }: { enabled: boolean }) {
+export function CourseInBotCard({
+  enabled,
+  lessonsByBot,
+}: {
+  enabled: boolean;
+  lessonsByBot: boolean;
+}) {
   const router = useRouter();
   const { shop } = settingsRoute.useRouteContext();
   const t = adminT(shop.locale);
-  const toggle = useAction(async (v: boolean) => {
-    await setCourseInBotFn({ data: { enabled: v } });
+  const toggle = useAction(async (data: { enabled?: boolean; lessonsByBot?: boolean }) => {
+    await setCourseInBotFn({ data });
     await router.invalidate();
   });
   return (
@@ -241,13 +247,26 @@ export function CourseInBotCard({ enabled }: { enabled: boolean }) {
         <Switch
           checked={enabled}
           disabled={toggle.busy}
-          onChange={(v) => void toggle.run(v).catch(() => {})}
+          onChange={(v) => void toggle.run({ enabled: v }).catch(() => {})}
           label={t("settings.courseInBot.switch")}
         />
         <span className="text-sm">
           {enabled ? t("settings.courseInBot.on") : t("settings.courseInBot.off")}
         </span>
         <HelpTip article="settings-shop" anchor="course-in-bot" />
+      </div>
+      <p className="mt-4 mb-3 text-sm text-muted">{t("settings.lessonsByBot.intro")}</p>
+      <div className="flex items-center gap-3">
+        <Switch
+          checked={lessonsByBot}
+          disabled={toggle.busy}
+          onChange={(v) => void toggle.run({ lessonsByBot: v }).catch(() => {})}
+          label={t("settings.lessonsByBot.switch")}
+        />
+        <span className="text-sm">
+          {lessonsByBot ? t("settings.courseInBot.on") : t("settings.lessonsByBot.off")}
+        </span>
+        <HelpTip article="settings-shop" anchor="lessons-by-bot" />
       </div>
       <ErrorBox error={toggle.error} />
     </Card>

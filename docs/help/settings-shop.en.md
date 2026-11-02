@@ -105,6 +105,10 @@ The switch turns on a watermark on delivered PDFs: every page shows who bought i
 
 Available with the «Courses» module. On: the student takes the course right in the bot chat — after payment they get «Your course is open ✅» with a «▶️ Start lesson 1» button (and «🌐 Open on the website»), and every lesson ends with «Next lesson →» when the next lesson is already open on schedule. Off: after payment the student gets a link to the course page, as before. Off by default. Saved immediately.
 
+## Lessons by messaging the bot {#lessons-by-bot}
+
+In the same “Course in the bot” card. When on, the seller (the owner or whoever receives the shop’s notifications) sends the bot a private message with a video link and a caption, e.g. “1.2 Materials https://youtu.be/…”. The bot adds a lesson with that link and the caption as its title (no caption — “Lesson N”) to the end of the course and replies “✅ Lesson N added”. With several courses that have lessons, the bot asks which one with buttons. The same link is not added twice. Text, files and homework are added in the panel. Off by default.
+
 ## Gift wrapping {#gift-wrap}
 
 Available with the "Bundles and gifts" module, for physical orders only.

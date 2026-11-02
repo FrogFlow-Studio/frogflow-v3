@@ -533,6 +533,10 @@ export const ru = {
   "settings.courseInBot.switch": "Проходить курс в боте",
   "settings.courseInBot.on": "Включено",
   "settings.courseInBot.off": "Выключено — после оплаты приходит ссылка на страницу курса",
+  "settings.lessonsByBot.intro":
+    "Продавец присылает своему боту в личку ссылку на видео с подписью, например «1.2 Материалы https://youtu.be/…», — бот добавляет урок в конец курса и отвечает «✅ Урок добавлен». Если курсов несколько, бот спросит, в какой. Покупатели этого не видят.",
+  "settings.lessonsByBot.switch": "Добавлять уроки сообщением боту",
+  "settings.lessonsByBot.off": "Выключено — уроки добавляются только в панели",
   "settings.ocr.month": "Распознано в этом месяце",
   "settings.ocr.total": "Всего",
   // команда
@@ -1117,6 +1121,10 @@ export const kk: SectionDict<typeof ru> = {
   "settings.courseInBot.switch": "Курсты ботта өту",
   "settings.courseInBot.on": "Қосулы",
   "settings.courseInBot.off": "Өшірулі — төлемнен кейін курс бетіне сілтеме келеді",
+  "settings.lessonsByBot.intro":
+    "Сатушы өз ботына жеке хабарламамен жазуы бар бейне сілтемесін жібереді, мысалы «1.2 Материалдар https://youtu.be/…», — бот сабақты курстың соңына қосып, «✅ Сабақ қосылды» деп жауап береді. Курс бірнешеу болса, бот қайсысына екенін сұрайды. Сатып алушылар мұны көрмейді.",
+  "settings.lessonsByBot.switch": "Сабақтарды ботқа хабарламамен қосу",
+  "settings.lessonsByBot.off": "Өшірулі — сабақтар тек панельде қосылады",
   "settings.ocr.month": "Осы айда танылды",
   "settings.ocr.total": "Барлығы",
   "settings.team.title": "Команда",
@@ -1695,6 +1703,10 @@ export const en: SectionDict<typeof ru> = {
   "settings.courseInBot.switch": "Take the course in the bot",
   "settings.courseInBot.on": "On",
   "settings.courseInBot.off": "Off — after payment the student gets a link to the course page",
+  "settings.lessonsByBot.intro":
+    "The seller sends their bot a private message with a video link and a caption, e.g. “1.2 Materials https://youtu.be/…”, and the bot adds the lesson to the end of the course and replies “✅ Lesson added”. With several courses the bot asks which one. Buyers don’t see this.",
+  "settings.lessonsByBot.switch": "Add lessons by messaging the bot",
+  "settings.lessonsByBot.off": "Off — lessons are added only in the panel",
   "settings.ocr.month": "Recognised this month",
   "settings.ocr.total": "Total",
   "settings.team.title": "Team",
@@ -2284,6 +2296,10 @@ export const uz: SectionDict<typeof ru> = {
   "settings.courseInBot.switch": "Kursni botda oʻtish",
   "settings.courseInBot.on": "Yoqilgan",
   "settings.courseInBot.off": "Oʻchirilgan — toʻlovdan keyin kurs sahifasiga havola keladi",
+  "settings.lessonsByBot.intro":
+    "Sotuvchi o‘z botiga shaxsiy xabarda izohli video havolasini yuboradi, masalan «1.2 Materiallar https://youtu.be/…», — bot darsni kurs oxiriga qo‘shadi va «✅ Dars qo‘shildi» deb javob beradi. Kurslar bir nechta bo‘lsa, bot qaysi biriga ekanini so‘raydi. Xaridorlar buni ko‘rmaydi.",
+  "settings.lessonsByBot.switch": "Darslarni botga xabar orqali qo‘shish",
+  "settings.lessonsByBot.off": "O‘chirilgan — darslar faqat panelda qo‘shiladi",
   "settings.ocr.month": "Shu oyda aniqlandi",
   "settings.ocr.total": "Jami",
   "settings.team.title": "Jamoa",

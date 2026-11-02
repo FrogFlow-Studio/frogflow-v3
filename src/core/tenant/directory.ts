@@ -295,6 +295,7 @@ export function settingsFromJson(json: unknown): TenantSettings {
         ? {
             pdf_watermark: obj(s.delivery).pdf_watermark === true,
             ...(obj(s.delivery).course_in_bot === true ? { course_in_bot: true } : {}),
+            ...(obj(s.delivery).lessons_by_bot === true ? { lessons_by_bot: true } : {}),
           }
         : undefined,
     // Без этих двух строк сохранённое продавцом (кураторы, быстрые ответы) не доходило до чтения.
