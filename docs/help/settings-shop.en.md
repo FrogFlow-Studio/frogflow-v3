@@ -101,6 +101,10 @@ A profile for the [community](/admin/community), a place where platform authors 
 
 The switch turns on a watermark on delivered PDFs: every page shows who bought it (name in Latin letters, @username or email) and the order number. The original in the catalog does not change. Off: PDFs go out without a mark. Off by default. Saved immediately.
 
+## Course in the bot {#course-in-bot}
+
+Available with the «Courses» module. On: the student takes the course right in the bot chat — after payment they get «Your course is open ✅» with a «▶️ Start lesson 1» button (and «🌐 Open on the website»), and every lesson ends with «Next lesson →» when the next lesson is already open on schedule. Off: after payment the student gets a link to the course page, as before. Off by default. Saved immediately.
+
 ## Gift wrapping {#gift-wrap}
 
 Available with the "Bundles and gifts" module, for physical orders only.

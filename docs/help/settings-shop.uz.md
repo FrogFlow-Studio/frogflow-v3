@@ -101,6 +101,10 @@ FrogFlow do‘konlarining umumiy katalogi, unda xaridorlar do‘konlarni o‘zla
 
 Kalit topshiriladigan PDF’larga suv belgisini yoqadi: har bir sahifada kim sotib olgani (lotincha ismi, @login yoki pochta) va buyurtma raqami yoziladi. Katalogdagi asl nusxa o‘zgarmaydi. O‘chirilgan — PDF belgisiz ketadi. Standart holatda o‘chirilgan. Darhol saqlanadi.
 
+## Kurs botda {#course-in-bot}
+
+«Kurslar» moduli bilan mavjud. Yoqilgan — oʻquvchi kursni bot bilan chatda oʻtadi: toʻlovdan keyin «Kurs ochildi ✅» xabari «▶️ 1-darsni boshlash» (va «🌐 Saytda ochish») tugmasi bilan keladi, har bir dars ostida esa — «Keyingi dars →», agar keyingi dars jadval boʻyicha ochiq boʻlsa. Oʻchirilgan — toʻlovdan keyin avvalgidek kurs sahifasiga havola keladi. Odatda oʻchirilgan. Darhol saqlanadi.
+
 ## Sovg‘a qadog‘i {#gift-wrap}
 
 «To‘plamlar va sovg‘alar» moduli bo‘lganda, faqat jismoniy buyurtmalar uchun bor.

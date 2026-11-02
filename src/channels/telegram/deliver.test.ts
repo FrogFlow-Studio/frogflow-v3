@@ -35,6 +35,39 @@ describe("telegramMaterialSender", () => {
     expect(String(calls[0]!.payload.text)).toContain('href="https://cdn.invalid/x.pdf"');
   });
 
+  it("курс в боте: «Курс открыт ✅» с кнопкой первого урока и ссылкой на сайт", async () => {
+    const { api, calls } = fakeApi();
+    const send = telegramMaterialSender(api, 42, COPY.ru);
+    const r = await send({ name_snapshot: "Наращивание ресниц" } as never, [
+      {
+        path: null,
+        name: "Уроки курса",
+        url: "https://app.test/s/x/course/i1?t=abc",
+        lessonsInBot: "i1",
+      },
+    ]);
+    expect(r).toBe("sent");
+    expect(calls.map((c) => c.method)).toEqual(["sendMessage"]);
+    expect(String(calls[0]!.payload.text)).toContain("Курс открыт ✅");
+    expect(String(calls[0]!.payload.text)).not.toContain(COPY.ru.fileLink);
+    expect(calls[0]!.payload.reply_markup).toEqual({
+      inline_keyboard: [
+        [{ text: "▶️ Начать урок 1", callback_data: "lsn:i1:1" }],
+        [{ text: "🌐 Открыть на сайте", url: "https://app.test/s/x/course/i1?t=abc" }],
+      ],
+    });
+  });
+
+  it("курс без «в боте» — как раньше: ссылка «скачать» без кнопок", async () => {
+    const { api, calls } = fakeApi();
+    const send = telegramMaterialSender(api, 42, COPY.ru);
+    await send({ name_snapshot: "Курс" } as never, [
+      { path: null, name: "Уроки курса", url: "https://app.test/s/x/course/i1?t=abc" },
+    ]);
+    expect(String(calls[0]!.payload.text)).toContain(COPY.ru.fileLink);
+    expect(calls[0]!.payload.reply_markup).toBeUndefined();
+  });
+
   it("файл из хранилища подписывается человеческим именем, а не ключом", async () => {
     // Размер не узнали (HEAD не ответил) — pdf уходит по ссылке, как раньше.
     vi.stubGlobal(

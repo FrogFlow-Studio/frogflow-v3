@@ -58,6 +58,7 @@ import {
   DirectTriageCard,
   SmartSearchCard,
   WatermarkCard,
+  CourseInBotCard,
   WeeklyReportCard,
   AutoMessagesCard,
   ServiceNoticesCard,
@@ -131,6 +132,7 @@ function SettingsPage() {
     smartSearchKey,
     ocrKey,
     pdfWatermark,
+    courseInBot,
     recentKeys,
   } = Route.useLoaderData();
   const { shop } = Route.useRouteContext();
@@ -565,6 +567,11 @@ function SettingsPage() {
               <SettingsSection id="watermark">
                 <WatermarkCard enabled={pdfWatermark} />
               </SettingsSection>
+              {shop.modules.courses && (
+                <SettingsSection id="course-in-bot">
+                  <CourseInBotCard enabled={courseInBot} />
+                </SettingsSection>
+              )}
               {shop.modules.robokassa && (
                 <SettingsSection id="robokassa">
                   <RobokassaCard settings={settings} />

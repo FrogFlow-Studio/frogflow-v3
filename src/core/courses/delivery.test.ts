@@ -19,7 +19,9 @@ const course: Course = {
   ],
 };
 
-function ctxWith(opts: { courses?: boolean; slug?: string | null; lessons?: boolean } = {}) {
+function ctxWith(
+  opts: { courses?: boolean; slug?: string | null; lessons?: boolean; inBot?: boolean } = {},
+) {
   const db = fakeDb();
   db.tables.app_settings =
     opts.lessons === false ? [] : [{ key: courseKey(P), value: JSON.stringify(course) }];
@@ -27,7 +29,10 @@ function ctxWith(opts: { courses?: boolean; slug?: string | null; lessons?: bool
     tenant: {
       id: T,
       modules: { courses: opts.courses ?? true },
-      settings: { slug: opts.slug === undefined ? "shop" : opts.slug },
+      settings: {
+        slug: opts.slug === undefined ? "shop" : opts.slug,
+        ...(opts.inBot ? { delivery: { course_in_bot: true } } : {}),
+      },
     },
     db,
     appUrl: "https://www.frogflow.tech",
@@ -35,6 +40,13 @@ function ctxWith(opts: { courses?: boolean; slug?: string | null; lessons?: bool
 }
 
 describe("курс — ссылка в выдаче", () => {
+  it("«Курс в боте» включён — ссылка помечена позицией для кнопки первого урока; выключен — без метки", async () => {
+    const [on] = await courseMaterials(ctxWith({ inBot: true }), { id: ITEM, product_id: P });
+    expect(on!.lessonsInBot).toBe(ITEM);
+    const [off] = await courseMaterials(ctxWith(), { id: ITEM, product_id: P });
+    expect(off!.lessonsInBot).toBeUndefined();
+  });
+
   it("курс с уроками — одна ссылка на страницу курса с верной подписью", async () => {
     const [m, ...rest] = await courseMaterials(ctxWith(), { id: ITEM, product_id: P });
     expect(rest).toEqual([]);
