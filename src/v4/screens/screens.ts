@@ -212,6 +212,8 @@ export type CaseCard = {
   dueAt: Date | null;
   orderId: string | null;
   buyerId: string | null;
+  /** Чек на проверке (дело receipt_review). */
+  receiptId: string | null;
   primary: { action: CaseAction; label: string };
   secondary: { action: CaseAction; label: string };
 };
@@ -248,6 +250,10 @@ function card(r: Row, lang: SellerLang): CaseCard {
     dueAt: r.due_at ? new Date(r.due_at as string) : null,
     orderId: (r.order_id as string | null) ?? null,
     buyerId: (r.buyer_id as string | null) ?? null,
+    receiptId:
+      r.detail && typeof (r.detail as Row).receipt_id === "string"
+        ? ((r.detail as Row).receipt_id as string)
+        : null,
     primary: { action: def.primary, label: ACTION_LABELS[def.primary][lang] },
     secondary: { action: def.secondary, label: ACTION_LABELS[def.secondary][lang] },
   };

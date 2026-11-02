@@ -66,7 +66,7 @@ export async function attempt<T>(run: () => Promise<T>): Promise<V4Result<T>> {
   }
 }
 
-type RpcClient = {
+export type RpcClient = {
   schema(name: "v4"): {
     rpc(
       fn: string,
