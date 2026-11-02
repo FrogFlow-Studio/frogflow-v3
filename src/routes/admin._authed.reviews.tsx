@@ -26,7 +26,8 @@ export const Route = createFileRoute("/admin/_authed/reviews")({
     page: z.coerce.number().int().min(1).max(10_000).optional(),
   }),
   beforeLoad: ({ context }) => {
-    if (!context.shop.modules.review_request) throw redirect({ to: "/admin" });
+    if (!context.shop.modules.review_request)
+      throw redirect({ to: "/admin/locked/$module", params: { module: "review_request" } });
   },
   loaderDeps: ({ search }) => search,
   loader: ({ deps }) =>

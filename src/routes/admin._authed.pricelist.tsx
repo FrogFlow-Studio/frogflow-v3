@@ -1,4 +1,4 @@
-import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useRouter, redirect } from "@tanstack/react-router";
 import { pricelistFn } from "@/app/admin/pricelist.functions";
 import {
   FileCard,
@@ -15,6 +15,10 @@ import { adminT, intlLocale } from "@/app/i18n/admin";
 import { consultantWorkspace } from "@/app/admin/nav-model";
 
 export const Route = createFileRoute("/admin/_authed/pricelist")({
+  beforeLoad: ({ context }) => {
+    if (!context.shop.pricelist)
+      throw redirect({ to: "/admin/locked/$module", params: { module: "pricelist" } });
+  },
   loader: () => pricelistFn(),
   component: PricelistPage,
 });

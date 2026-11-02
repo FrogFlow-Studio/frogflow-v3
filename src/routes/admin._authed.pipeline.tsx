@@ -11,7 +11,8 @@ import { PIPELINE_STAGES, type PipelineStage } from "@/core/pipeline/stages";
 
 export const Route = createFileRoute("/admin/_authed/pipeline")({
   beforeLoad: ({ context }) => {
-    if (!context.shop.modules.crm_pipeline) throw redirect({ to: "/admin" });
+    if (!context.shop.modules.crm_pipeline)
+      throw redirect({ to: "/admin/locked/$module", params: { module: "crm_pipeline" } });
   },
   loader: () => pipelineFn(),
   component: PipelinePage,

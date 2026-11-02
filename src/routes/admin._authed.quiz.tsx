@@ -1,4 +1,4 @@
-import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useRouter, redirect } from "@tanstack/react-router";
 import { useState } from "react";
 import { previewQuizFn, quizFn, saveQuizFn } from "@/app/admin/quiz.functions";
 import { adminT } from "@/app/i18n/admin";
@@ -6,6 +6,10 @@ import { Card, ErrorBox, Field, PageTitle, useAction } from "@/app/ui";
 import { HelpTip } from "@/app/admin/help-panel";
 
 export const Route = createFileRoute("/admin/_authed/quiz")({
+  beforeLoad: ({ context }) => {
+    if (!context.shop.modules.quiz)
+      throw redirect({ to: "/admin/locked/$module", params: { module: "quiz" } });
+  },
   loader: () => quizFn(),
   component: QuizPage,
 });

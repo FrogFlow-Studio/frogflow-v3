@@ -24,9 +24,9 @@ export const Route = createFileRoute("/admin/_authed/media")({
     q: z.string().optional(),
   }),
   beforeLoad: ({ context }) => {
-    if (!context.shop.pricelist || !roleAllows(context.shop.role, "manager")) {
-      throw redirect({ to: "/admin" });
-    }
+    if (!context.shop.pricelist)
+      throw redirect({ to: "/admin/locked/$module", params: { module: "pricelist" } });
+    if (!roleAllows(context.shop.role, "manager")) throw redirect({ to: "/admin" });
   },
   loader: () => consultantMediaOverviewFn(),
   component: MediaCatalogPage,

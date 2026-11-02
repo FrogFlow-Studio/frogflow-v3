@@ -10,7 +10,8 @@ import { formatMoneyUi } from "@/core/money/money";
 
 export const Route = createFileRoute("/admin/_authed/warehouse/writeoffs")({
   beforeLoad: ({ context }) => {
-    if (!context.shop.modules.warehouse) throw redirect({ to: "/admin" });
+    if (!context.shop.modules.warehouse)
+      throw redirect({ to: "/admin/locked/$module", params: { module: "warehouse" } });
   },
   loader: () => writeoffsFn({ data: { page: 0 } }),
   component: WriteoffsPage,

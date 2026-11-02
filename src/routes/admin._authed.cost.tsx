@@ -10,7 +10,8 @@ import { formatMoneyUi } from "@/core/money/money";
 
 export const Route = createFileRoute("/admin/_authed/cost")({
   beforeLoad: ({ context }) => {
-    if (!context.shop.modules.profit) throw redirect({ to: "/admin" });
+    if (!context.shop.modules.profit)
+      throw redirect({ to: "/admin/locked/$module", params: { module: "profit" } });
   },
   loader: () => costListFn(),
   component: CostPage,
