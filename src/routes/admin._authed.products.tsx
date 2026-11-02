@@ -187,6 +187,7 @@ function ProductsPage() {
   const filtered = Boolean(s.q || s.category || s.inactive || s.notopic || lf);
   const canReorder = canEdit(shop.role) && !filtered && sort === "catalog" && !hasMore;
   const [drag, setDrag] = useState<string | null>(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const reorder = useAction(async (fromId: string, toId: string) => {
     const { moveItem } = await import("@/core/catalog/reorder");
     const ids = products.map((p) => p.id);
@@ -237,91 +238,105 @@ function ProductsPage() {
         }}
       >
         <input
-          className="input w-56"
+          className="input min-w-0 flex-1 md:w-56 md:flex-none"
           placeholder={t("products.searchPlaceholder")}
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />
-        <select
-          className="input w-56"
-          aria-label={t("products.allCategories")}
-          value={s.category ?? ""}
-          onChange={(e) =>
-            void navigate({
-              to: "/admin/products",
-              search: (p) => ({ ...(p as typeof s), category: e.target.value || undefined }),
-            })
-          }
+        {/* Телефон: фильтры и сортировка — за кнопкой, чтобы товары были на первом экране. */}
+        <button
+          type="button"
+          className="btn-secondary md:hidden"
+          aria-expanded={filtersOpen}
+          onClick={() => setFiltersOpen((v) => !v)}
         >
-          <option value="">{t("products.allCategories")}</option>
-          {categories.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={Boolean(s.inactive)}
+          {t("common.filters")}
+          {filtered && !filtersOpen ? " •" : ""}
+        </button>
+        <div
+          className={`${filtersOpen ? "flex w-full flex-col items-start gap-2 [&_select.input]:w-full" : "hidden"} md:contents`}
+        >
+          <select
+            className="input w-56"
+            aria-label={t("products.allCategories")}
+            value={s.category ?? ""}
             onChange={(e) =>
               void navigate({
                 to: "/admin/products",
-                search: (p) => ({ ...(p as typeof s), inactive: e.target.checked || undefined }),
+                search: (p) => ({ ...(p as typeof s), category: e.target.value || undefined }),
               })
             }
-          />{" "}
-          {t("products.onlyHidden")}
-        </label>
-        <HelpTip article="products" anchor="filters" />
-        <select
-          className="input w-48"
-          aria-label={t("products.sort.label")}
-          value={sort}
-          onChange={(e) => setSort(e.target.value as Sort)}
-        >
-          {SORTS.map((v) => (
-            <option key={v} value={v}>
-              {t(`products.sort.${v}`)}
-            </option>
-          ))}
-        </select>
-        <HelpTip article="products" anchor="lang-filter" />
-        <select
-          className="input w-48"
-          aria-label={t("products.lang.label")}
-          title={t("products.lang.missingHint")}
-          value={s.lang && lf ? s.lang : ""}
-          onChange={(e) =>
-            void navigate({
-              to: "/admin/products",
-              search: (p) => ({ ...(p as typeof s), lang: e.target.value || undefined }),
-            })
-          }
-        >
-          <option value="">{t("products.lang.all")}</option>
-          {langs.flatMap((l) => [
-            <option key={l} value={l}>
-              {t("products.lang.has", { lang: LANG_LABEL[l] })}
-            </option>,
-            <option key={`-${l}`} value={`-${l}`}>
-              {t("products.lang.missing", { lang: LANG_LABEL[l] })}
-            </option>,
-          ])}
-        </select>
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={Boolean(s.notopic)}
+          >
+            <option value="">{t("products.allCategories")}</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={Boolean(s.inactive)}
+              onChange={(e) =>
+                void navigate({
+                  to: "/admin/products",
+                  search: (p) => ({ ...(p as typeof s), inactive: e.target.checked || undefined }),
+                })
+              }
+            />{" "}
+            {t("products.onlyHidden")}
+          </label>
+          <HelpTip article="products" anchor="filters" />
+          <select
+            className="input w-48"
+            aria-label={t("products.sort.label")}
+            value={sort}
+            onChange={(e) => setSort(e.target.value as Sort)}
+          >
+            {SORTS.map((v) => (
+              <option key={v} value={v}>
+                {t(`products.sort.${v}`)}
+              </option>
+            ))}
+          </select>
+          <HelpTip article="products" anchor="lang-filter" />
+          <select
+            className="input w-48"
+            aria-label={t("products.lang.label")}
+            title={t("products.lang.missingHint")}
+            value={s.lang && lf ? s.lang : ""}
             onChange={(e) =>
               void navigate({
                 to: "/admin/products",
-                search: { ...s, notopic: e.target.checked || undefined },
+                search: (p) => ({ ...(p as typeof s), lang: e.target.value || undefined }),
               })
             }
-          />{" "}
-          {t("products.noTopic")}
-        </label>
+          >
+            <option value="">{t("products.lang.all")}</option>
+            {langs.flatMap((l) => [
+              <option key={l} value={l}>
+                {t("products.lang.has", { lang: LANG_LABEL[l] })}
+              </option>,
+              <option key={`-${l}`} value={`-${l}`}>
+                {t("products.lang.missing", { lang: LANG_LABEL[l] })}
+              </option>,
+            ])}
+          </select>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={Boolean(s.notopic)}
+              onChange={(e) =>
+                void navigate({
+                  to: "/admin/products",
+                  search: { ...s, notopic: e.target.checked || undefined },
+                })
+              }
+            />{" "}
+            {t("products.noTopic")}
+          </label>
+        </div>
         <button className="btn-secondary">{t("common.search")}</button>
       </form>
       {canEdit(shop.role) && !canReorder && !hasMore && products.length > 1 && (
@@ -412,7 +427,7 @@ function ProductsPage() {
               onRun={(a) => void bulk.run(a).catch(() => {})}
             />
           )}
-          <table className="table">
+          <table className="table table-cards">
             <thead>
               <tr>
                 {editable && (
@@ -514,7 +529,7 @@ function ProductsPage() {
                         <div className="h-10 w-10 rounded bg-surface-2" />
                       )}
                     </td>
-                    <td>
+                    <td className="cell-main">
                       <Link
                         to="/admin/products/$id"
                         params={{ id: p.id }}
@@ -532,7 +547,7 @@ function ProductsPage() {
                           : ""}
                       </div>
                     </td>
-                    <td className="text-muted">
+                    <td className="cell-phone-hide text-muted">
                       {(Array.isArray(p.category_ids) ? (p.category_ids as string[]) : [])
                         .map((id) => catName.get(id) ?? "?")
                         .join(", ") || "—"}
@@ -568,7 +583,10 @@ function ProductsPage() {
                         </div>
                       )}
                     </td>
-                    <td className="text-right tabular-nums">
+                    <td
+                      className={`text-right tabular-nums ${p.stock_quantity === null ? "cell-phone-hide" : ""}`}
+                      data-label={t("products.col.stock")}
+                    >
                       {p.stock_quantity === null ? "—" : p.stock_quantity}
                     </td>
                     <td>
@@ -580,6 +598,7 @@ function ProductsPage() {
                           p.days_left !== null && p.days_left < 7 ? "font-medium text-danger" : ""
                         }`}
                         title={t("products.daysLeftHint")}
+                        data-label={p.days_left === null ? undefined : t("products.col.daysLeft")}
                       >
                         {p.days_left === null ? "—" : t("products.daysLeft", { n: p.days_left })}
                       </td>
@@ -606,7 +625,7 @@ function ProductsPage() {
                         </div>
                       )}
                     </td>
-                    <td className="whitespace-nowrap text-muted tabular-nums">
+                    <td className="cell-phone-hide whitespace-nowrap text-muted tabular-nums">
                       {new Date(p.created_at).toLocaleDateString(intlLocale(shop.locale), {
                         timeZone: "UTC",
                         day: "numeric",

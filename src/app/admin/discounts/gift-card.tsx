@@ -92,46 +92,48 @@ export function GiftCard({ gifts, currency }: { gifts: Gift[]; currency: string 
       {gifts.length === 0 ? (
         <Empty>{t("discounts.gift.empty")}</Empty>
       ) : (
-        <table className="table">
-          <thead>
-            <tr>
-              <th>{t("discounts.col.code")}</th>
-              <th>{t("discounts.gift.amount")}</th>
-              <th>{t("discounts.col.status")}</th>
-              <th>{t("discounts.col.note")}</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {gifts.map((g) => (
-              <tr key={g.id}>
-                <td className="font-mono">{g.code}</td>
-                <td className="tabular-nums">{formatMoneyUi(g.amount, g.currency)}</td>
-                <td>
-                  <Badge tone={tone[g.status as keyof typeof tone] ?? "neutral"}>
-                    {label[g.status as keyof typeof label] ?? g.status}
-                  </Badge>
-                  {g.redeemed_order_id && (
-                    <span className="ml-1 text-xs text-muted">
-                      {t("discounts.gift.order", { no: g.redeemed_order_id })}
-                    </span>
-                  )}
-                </td>
-                <td className="text-muted">{g.note ?? ""}</td>
-                <td className="text-right">
-                  {g.status === "active" && (
-                    <button
-                      className="btn-ghost text-xs text-danger"
-                      onClick={() => void cancel.run(g.id).catch(() => {})}
-                    >
-                      {t("discounts.gift.cancel")}
-                    </button>
-                  )}
-                </td>
+        <div className="-mx-1 overflow-x-auto px-1">
+          <table className="table">
+            <thead>
+              <tr>
+                <th>{t("discounts.col.code")}</th>
+                <th>{t("discounts.gift.amount")}</th>
+                <th>{t("discounts.col.status")}</th>
+                <th>{t("discounts.col.note")}</th>
+                <th></th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {gifts.map((g) => (
+                <tr key={g.id}>
+                  <td className="font-mono">{g.code}</td>
+                  <td className="tabular-nums">{formatMoneyUi(g.amount, g.currency)}</td>
+                  <td>
+                    <Badge tone={tone[g.status as keyof typeof tone] ?? "neutral"}>
+                      {label[g.status as keyof typeof label] ?? g.status}
+                    </Badge>
+                    {g.redeemed_order_id && (
+                      <span className="ml-1 text-xs text-muted">
+                        {t("discounts.gift.order", { no: g.redeemed_order_id })}
+                      </span>
+                    )}
+                  </td>
+                  <td className="text-muted">{g.note ?? ""}</td>
+                  <td className="text-right">
+                    {g.status === "active" && (
+                      <button
+                        className="btn-ghost text-xs text-danger"
+                        onClick={() => void cancel.run(g.id).catch(() => {})}
+                      >
+                        {t("discounts.gift.cancel")}
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </Card>
   );

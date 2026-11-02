@@ -52,58 +52,60 @@ export function PromoCard({ promos }: { promos: Promo[] }) {
       {promos.length === 0 ? (
         <Empty>{t("discounts.promo.empty")}</Empty>
       ) : (
-        <table className="table">
-          <thead>
-            <tr>
-              <th>{t("discounts.col.code")}</th>
-              <th>{t("discounts.col.discount")}</th>
-              <th>{t("discounts.col.uses")}</th>
-              <th>{t("discounts.col.validUntil")}</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {promos.map((p) => {
-              const expired = p.valid_until && new Date(p.valid_until) < new Date();
-              const exhausted = p.max_uses !== null && p.used_count >= p.max_uses;
-              return (
-                <tr key={p.id}>
-                  <td className="font-mono font-medium">
-                    {p.code} {!p.is_active && <Badge>{t("discounts.promo.off")}</Badge>}
-                    {expired && <Badge tone="warn">{t("discounts.promo.expired")}</Badge>}
-                    {exhausted && <Badge tone="warn">{t("discounts.promo.exhausted")}</Badge>}
-                    {p.once_per_buyer && <Badge>{t("discounts.promo.onceBadge")}</Badge>}
-                  </td>
-                  <td>
-                    {p.discount_type === "percent"
-                      ? `${Number(p.discount_value)} %`
-                      : formatMoneyUi(Number(p.discount_value), "KZT")}
-                  </td>
-                  <td className="tabular-nums">
-                    {p.used_count}
-                    {p.max_uses !== null ? ` / ${p.max_uses}` : ""}
-                  </td>
-                  <td className="text-muted">
-                    {p.valid_until
-                      ? new Date(p.valid_until).toLocaleDateString(intlLocale(shop.locale))
-                      : t("discounts.promo.noExpiry")}
-                  </td>
-                  <td className="text-right whitespace-nowrap">
-                    <button className="btn-ghost text-xs" onClick={() => setEditing(p)}>
-                      {t("common.edit")}
-                    </button>
-                    <button
-                      className="btn-ghost text-xs text-danger"
-                      onClick={() => void del.run(p.id).catch(() => {})}
-                    >
-                      {t("common.delete")}
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        <div className="-mx-1 overflow-x-auto px-1">
+          <table className="table">
+            <thead>
+              <tr>
+                <th>{t("discounts.col.code")}</th>
+                <th>{t("discounts.col.discount")}</th>
+                <th>{t("discounts.col.uses")}</th>
+                <th>{t("discounts.col.validUntil")}</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {promos.map((p) => {
+                const expired = p.valid_until && new Date(p.valid_until) < new Date();
+                const exhausted = p.max_uses !== null && p.used_count >= p.max_uses;
+                return (
+                  <tr key={p.id}>
+                    <td className="font-mono font-medium">
+                      {p.code} {!p.is_active && <Badge>{t("discounts.promo.off")}</Badge>}
+                      {expired && <Badge tone="warn">{t("discounts.promo.expired")}</Badge>}
+                      {exhausted && <Badge tone="warn">{t("discounts.promo.exhausted")}</Badge>}
+                      {p.once_per_buyer && <Badge>{t("discounts.promo.onceBadge")}</Badge>}
+                    </td>
+                    <td>
+                      {p.discount_type === "percent"
+                        ? `${Number(p.discount_value)} %`
+                        : formatMoneyUi(Number(p.discount_value), "KZT")}
+                    </td>
+                    <td className="tabular-nums">
+                      {p.used_count}
+                      {p.max_uses !== null ? ` / ${p.max_uses}` : ""}
+                    </td>
+                    <td className="text-muted">
+                      {p.valid_until
+                        ? new Date(p.valid_until).toLocaleDateString(intlLocale(shop.locale))
+                        : t("discounts.promo.noExpiry")}
+                    </td>
+                    <td className="text-right whitespace-nowrap">
+                      <button className="btn-ghost text-xs" onClick={() => setEditing(p)}>
+                        {t("common.edit")}
+                      </button>
+                      <button
+                        className="btn-ghost text-xs text-danger"
+                        onClick={() => void del.run(p.id).catch(() => {})}
+                      >
+                        {t("common.delete")}
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       )}
       <ErrorBox error={del.error} />
       {editing !== null && (
