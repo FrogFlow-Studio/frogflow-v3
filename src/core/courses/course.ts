@@ -377,3 +377,72 @@ export function lessonOpensAfterDays(schedule: CourseSchedule, index: number): n
 export function courseFilePaths(c: Course): string[] {
   return c.lessons.flatMap((l) => l.files.map((f) => f.path));
 }
+
+/** Урок мастера «Новый курс»: модуль — заголовок строкой «Модуль 1:» над уроками. */
+export type CourseOutlineLesson = { title: string; link: string | null };
+/** Строка плана, не ставшая уроком; `noLink` — урок без ссылки (пустой урок курс не сохранит, `courseProblem`). */
+export type CourseOutlineSkip = { line: number; reason: LessonListSkip["reason"] | "noLink" };
+export type CourseOutline = {
+  lessons: CourseOutlineLesson[];
+  skipped: CourseOutlineSkip[];
+  overLimit: number;
+  /** Сколько заголовков модулей нашлось. */
+  modules: number;
+};
+
+// Заголовок модуля: строка, кончающаяся двоеточием, без ссылки («Модуль 1. Основы:»).
+const MODULE_HEADING = /^(\S.*?)\s*:$/;
+export const MODULE_TITLE_MAX = 80;
+
+/**
+ * План курса в мастере «Новый курс»: строки «Название — ссылка» (как
+ * «Добавить уроки списком», `parseLessonList`) плюс заголовки модулей —
+ * строка с двоеточием на конце. Урок под заголовком получает название
+ * «Модуль · Урок»: модулей как отдельной сущности в курсе нет, это часть
+ * названия. У урока мастера нет текста и файлов, поэтому ссылка обязательна:
+ * строка без неё — в `skipped` с `noLink`. Номера строк — как в поле, с единицы.
+ */
+export function parseCourseOutline(text: string): CourseOutline {
+  const lessons: CourseOutlineLesson[] = [];
+  const skipped: CourseOutlineSkip[] = [];
+  let overLimit = 0;
+  let modules = 0;
+  let module: string | null = null;
+  for (const [i, raw] of text.split(/\r?\n/).entries()) {
+    const line = raw.trim();
+    if (!line) continue;
+    const h = MODULE_HEADING.exec(line);
+    if (h && !URL_LIKE.test(h[1]!) && !/\s(?:https?:\/\/|www\.)/i.test(h[1]!)) {
+      if (h[1]!.length > MODULE_TITLE_MAX) {
+        skipped.push({ line: i + 1, reason: "titleTooLong" });
+        continue;
+      }
+      module = h[1]!;
+      modules++;
+      continue;
+    }
+    const r = parseLessonList(line, lessons.length);
+    if (r.overLimit) {
+      overLimit += r.overLimit;
+      continue;
+    }
+    const s = r.skipped[0];
+    if (s) {
+      skipped.push({ line: i + 1, reason: s.reason });
+      continue;
+    }
+    const l = r.lessons[0];
+    if (!l) continue;
+    if (!l.link) {
+      skipped.push({ line: i + 1, reason: "noLink" });
+      continue;
+    }
+    const title = module ? `${module} · ${l.title}` : l.title;
+    if (title.length > LESSON_TITLE_MAX) {
+      skipped.push({ line: i + 1, reason: "titleTooLong" });
+      continue;
+    }
+    lessons.push({ title, link: l.link });
+  }
+  return { lessons, skipped, overLimit, modules };
+}

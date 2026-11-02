@@ -80,6 +80,8 @@ function ProductsPage() {
   const { categories } = first;
   const { shop } = Route.useRouteContext();
   const school = shop.vertical === "courses";
+  // Онлайн-школа с модулем «Курсы»: новый курс — мастер на одном экране (название, цена, уроки).
+  const wizard = school && Boolean(shop.modules.courses) && canEdit(shop.role);
   const t = adminT(shop.locale);
   const targetCountries = useMemo(() => {
     const list: { code: string; name: string; currency: string }[] = [];
@@ -213,9 +215,15 @@ function ProductsPage() {
                 {t("igImport.button")}
               </Link>
             )}
-            <Link to="/admin/products/$id" params={{ id: "new" }} className="btn-primary">
-              {t(school ? "products.newCourse" : "products.new")}
-            </Link>
+            {wizard ? (
+              <Link to="/admin/products/new-course" className="btn-primary">
+                {t("products.newCourse")}
+              </Link>
+            ) : (
+              <Link to="/admin/products/$id" params={{ id: "new" }} className="btn-primary">
+                {t(school ? "products.newCourse" : "products.new")}
+              </Link>
+            )}
           </div>
         }
       />
@@ -399,8 +407,9 @@ function ProductsPage() {
             hint={t("products.emptyHint")}
             action={{
               label: t(school ? "products.addFirstCourse" : "products.addFirst"),
-              to: "/admin/products/$id",
-              params: { id: "new" },
+              ...(wizard
+                ? { to: "/admin/products/new-course" }
+                : { to: "/admin/products/$id", params: { id: "new" } }),
             }}
           />
         )
