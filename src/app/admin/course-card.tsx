@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { channelStrangersFn, courseFn, saveCourseFn } from "@/app/admin/courses.functions";
 import { uploadFile } from "@/app/admin/upload-client";
 import type { AdminT } from "@/app/i18n/admin";
@@ -22,12 +22,43 @@ import { Students, Strangers } from "./course/students";
 
 /**
  * Уроки курса в карточке цифрового товара (модуль courses): порядок,
- * текст, файлы, ссылка и расписание открытия. Сохраняется отдельной кнопкой,
- * как «С этим предлагать».
+ * текст, файлы, ссылка и расписание открытия. Сохраняется своей кнопкой, а
+ * несохранённые правки уроков — ещё и общей кнопкой товара: `flushRef`
+ * отдаёт странице товара функцию, которую та вызывает перед сохранением
+ * товара (иначе ссылка на видео, вписанная в урок, терялась при «Сохранить»
+ * внизу страницы — так и было у продавца 02.11.2026).
  */
-export function CourseCard({ productId, t }: { productId: string; t: AdminT }) {
+export type CourseFlush = { current: (() => Promise<void>) | null };
+
+export function CourseCard({
+  productId,
+  t,
+  flushRef,
+}: {
+  productId: string;
+  t: AdminT;
+  flushRef?: CourseFlush;
+}) {
   const [course, setCourse] = useState<Course | null>(null);
   const [saved, setSaved] = useState(false);
+  // Правки, ещё не записанные в базу: их сохранит общая кнопка товара.
+  const latest = useRef<Course | null>(null);
+  const dirty = useRef(false);
+  useEffect(() => {
+    latest.current = course;
+  }, [course]);
+  useEffect(() => {
+    if (!flushRef) return;
+    flushRef.current = async () => {
+      if (!dirty.current || !latest.current) return;
+      await saveCourseFn({ data: { productId, course: latest.current } });
+      dirty.current = false;
+      setSaved(true);
+    };
+    return () => {
+      flushRef.current = null;
+    };
+  }, [flushRef, productId]);
   const [uploading, setUploading] = useState<string | null>(null);
   // «В канале без доступа» — один обход на карточку, не по разу на каждый чат.
   const [strangers, setStrangers] = useState<Awaited<ReturnType<typeof channelStrangersFn>> | null>(
@@ -41,6 +72,7 @@ export function CourseCard({ productId, t }: { productId: string; t: AdminT }) {
   const save = useAction(async () => {
     if (!course) return;
     await saveCourseFn({ data: { productId, course } });
+    dirty.current = false;
     setSaved(true);
     await loadStrangers();
   });
@@ -66,10 +98,12 @@ export function CourseCard({ productId, t }: { productId: string; t: AdminT }) {
 
   const change = (next: Course) => {
     setSaved(false);
+    dirty.current = true;
     setCourse(next);
   };
   function edit(index: number, f: (l: Lesson) => Lesson) {
     setSaved(false);
+    dirty.current = true;
     setCourse((c) => c && { ...c, lessons: c.lessons.map((l, i) => (i === index ? f(l) : l)) });
   }
   const move = (index: number, by: -1 | 1) => {

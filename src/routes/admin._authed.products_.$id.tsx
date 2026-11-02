@@ -13,7 +13,7 @@ import {
   saveProductFn,
 } from "@/app/admin/products.functions";
 import { adminT, intlLocale } from "@/app/i18n/admin";
-import { CourseCard } from "@/app/admin/course-card";
+import { CourseCard, type CourseFlush } from "@/app/admin/course-card";
 import { canEdit } from "@/core/auth/roles";
 import { Badge, Card, ErrorBox, Field, PageTitle, useAction } from "@/app/ui";
 import { imagePath } from "@/core/catalog/image-url";
@@ -115,7 +115,10 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
   const [uploading, setUploading] = useState<Progress | null>(null);
   const [uploadError, setUploadError] = useState<unknown>(null);
 
+  const courseFlush: CourseFlush = useRef<(() => Promise<void>) | null>(null);
   const save = useAction(async (f: FormData) => {
+    // Несохранённые уроки курса — до товара: упадёт запись курса, страница не уйдёт.
+    await courseFlush.current?.();
     const countryPrices: Record<string, number> = {};
     for (const code of [...countries.map((c) => c.code), ...(ruCardPrice ? ["RU"] : [])]) {
       const v = Number(f.get(`cp_${code}`));
@@ -498,7 +501,7 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
               </div>
             </Card>
             {school && shop.modules.courses && p?.id && kind === "digital" && (
-              <CourseCard productId={p.id} t={t} />
+              <CourseCard productId={p.id} t={t} flushRef={courseFlush} />
             )}
 
             <Card
@@ -632,7 +635,7 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
               <PreviewCard productId={p.id} t={t} botId={shop.botId} />
             )}
             {!school && shop.modules.courses && p?.id && kind === "digital" && (
-              <CourseCard productId={p.id} t={t} />
+              <CourseCard productId={p.id} t={t} flushRef={courseFlush} />
             )}
           </div>
           <div data-tab="price" {...panel("price")}>
