@@ -24,7 +24,7 @@ Yuklab olish moduli ulangan bo‘lsa, tugma bor va u menejer va undan yuqori rol
 
 Segment «unga kim kiradi» degan savolga javob beradi. Xabar yuborish yoki aksiyani o‘zingiz ishga tushirasiz — segment hech narsa yubormaydi.
 
-- Tayyorlari: «2+ marta xarid qilgan», «60 kun xarid qilmagan», «VIP («VIP» tegi)».
+- Tayyorlari: «2+ marta xarid qilgan», «60 kun xarid qilmagan», «VIP» tegi» (kartada «VIP» tegini o‘zingiz qo‘ygan xaridorlar). VIP-klub ulangan bo‘lsa, «VIP-klub» segmenti ham bor: hozir klubdagilar, avval bo‘lganlar (to‘langan obuna tugagan) va VIP-botga yozib, to‘lamaganlar. Har birining yonida «klubda», «klubda bo‘lgan» yoki «VIP-botga yozgan» belgisi turadi. «VIP-botga yozgan» — unda tilni tanlagan, tarif olgan yoki to‘lovga ariza qoldirgan odam.
 - Segmentni tanlang — «Segmentda: …» va buyurtmalar soni hamda oxirgi xarid ko‘rsatilgan jadvalni ko‘rasiz. «obunadan chiqqan» belgisi — odam xabarnomalardan voz kechganini bildiradi.
 - «Barcha xaridorlarni ko‘rsatish» odatdagi ro‘yxatni qaytaradi.
 
@@ -39,6 +39,8 @@ Segment «unga kim kiradi» degan savolga javob beradi. Xabar yuborish yoki aksi
 ## Bloklash {#block}
 
 Bloklash moduli ulangan bo‘lsa, tugma bor va u faqat Telegram’dagi xaridorlar uchun ishlaydi. Bloklangan odam «bloklangan» deb belgilanadi, bot unga javob berishni to‘xtatadi. «Blokdan chiqarish» hammasini avvalgidek qaytaradi.
+
+Bloklangan odamga bot javob bermaydi, shuning uchun u umumiy ro‘yxatda bo‘lmasligi mumkin. Bunday odamlar ro‘yxat ustidagi alohida «Bloklanganlar» blokida ko‘rsatiladi: ismi, @nik, Telegram ID va «Blokdan chiqarish» tugmasi. Qidiruvda nikni «@» bilan ham, usiz ham yozish mumkin.
 
 ## Xaridor kartasi {#card}
 

@@ -33,6 +33,24 @@ export const PRESET_SEGMENTS: readonly CustomerSegment[] = [
   { id: "preset:vip", name: "vip", rule: { kind: "tag", tag: "VIP" } },
 ];
 
+/**
+ * «VIP-клуб» — только готовый сегмент и только у клиента с модулем VIP: кто
+ * сейчас в клубе, кто был (оплаченная подписка закончилась) и кто писал
+ * VIP-боту, но не платил. Не сохраняется (parseRule его не принимает).
+ */
+export type MemberRule = SegmentRule | { kind: "vip_club" };
+export type PresetSegment = { id: string; name: string; rule: MemberRule };
+export const VIP_CLUB_PRESET: PresetSegment = {
+  id: "preset:vip_club",
+  name: "vip_club",
+  rule: { kind: "vip_club" },
+};
+
+/** Готовые сегменты этого клиента: «VIP-клуб» — только при модуле VIP. */
+export function presetSegments(ctx: TenantContext): readonly PresetSegment[] {
+  return ctx.tenant.modules.vip ? [...PRESET_SEGMENTS, VIP_CLUB_PRESET] : PRESET_SEGMENTS;
+}
+
 /** Правило из недоверенного ввода; мусор — null. */
 export function parseRule(v: unknown): SegmentRule | null {
   if (!v || typeof v !== "object" || Array.isArray(v)) return null;
@@ -123,8 +141,13 @@ export async function deleteSegment(ctx: TenantContext, id: string): Promise<voi
   );
 }
 
+export type VipStatus = "active" | "former" | "wrote";
+
 export type SegmentMember = {
-  userKey: string;
+  /** null — человека нет в базе покупателей (писал только VIP-боту): без ссылки на карточку. */
+  userKey: string | null;
+  /** Только в сегменте «VIP-клуб». */
+  vip?: VipStatus;
   name: string;
   username: string | null;
   platform: string;
@@ -172,9 +195,10 @@ export function ruleKeys(
  */
 export async function segmentMembers(
   ctx: TenantContext,
-  rule: SegmentRule,
+  rule: MemberRule,
   now = Date.now(),
 ): Promise<{ total: number; members: SegmentMember[] }> {
+  if (rule.kind === "vip_club") return vipClubMembers(ctx, now);
   const purchases = await pageAll(
     (from, to) =>
       ctx.db
@@ -218,4 +242,122 @@ export async function segmentMembers(
       lastAt: stats.get(u.user_key)?.lastAt ?? null,
     })),
   };
+}
+
+const VIP_ORDER: Record<VipStatus, number> = { active: 0, former: 1, wrote: 2 };
+/**
+ * Подписки, которые были оплачены: после них человек «был в клубе». «cancelled»
+ * — отклонённая или брошенная заявка без оплаты (subscription-payment), это «писал».
+ */
+const VIP_WAS_PAID = new Set(["active", "expired"]);
+
+/** Статус человека в VIP-клубе по его подпискам; без подписок — «писал VIP-боту». */
+export function vipStatusOf(
+  subs: ReadonlyArray<{ status: string; expires_at: string }>,
+  now = Date.now(),
+): VipStatus {
+  if (subs.some((x) => x.status === "active" && Date.parse(x.expires_at) > now)) return "active";
+  if (subs.some((x) => VIP_WAS_PAID.has(x.status))) return "former";
+  return "wrote";
+}
+
+/**
+ * Сегмент «VIP-клуб»: все, у кого есть подписка (любая, и неоплаченная заявка)
+ * или профиль VIP-бота (выбрал язык или получил тариф). Читается постранично,
+ * без обрезки; карточка покупателя — если человек есть и в bot_users.
+ */
+async function vipClubMembers(
+  ctx: TenantContext,
+  now: number,
+): Promise<{ total: number; members: SegmentMember[] }> {
+  if (!ctx.tenant.modules.vip) return { total: 0, members: [] };
+  const [subs, profiles] = await Promise.all([
+    pageAll(
+      (from, to) =>
+        ctx.db
+          .from("vip_subscriptions")
+          .select("id, telegram_id, username, first_name, last_name, status, expires_at")
+          .order("id")
+          .range(from, to),
+      "Сегменты: VIP-подписки",
+    ),
+    pageAll(
+      (from, to) =>
+        ctx.db
+          .from("vip_member_profiles")
+          .select("telegram_id, username, first_name, last_name")
+          .order("telegram_id")
+          .range(from, to),
+      "Сегменты: VIP-бот",
+    ),
+  ]);
+  type Person = {
+    name: string;
+    username: string | null;
+    subs: Array<{ status: string; expires_at: string }>;
+  };
+  const people = new Map<number, Person>();
+  const touch = (r: {
+    telegram_id: number;
+    username: string | null;
+    first_name: string | null;
+    last_name: string | null;
+  }) => {
+    const id = Number(r.telegram_id);
+    const cur = people.get(id) ?? { name: "", username: null, subs: [] };
+    if (!cur.name) cur.name = [r.first_name, r.last_name].filter(Boolean).join(" ");
+    if (!cur.username) cur.username = r.username;
+    people.set(id, cur);
+    return cur;
+  };
+  for (const r of profiles) touch(r);
+  for (const r of subs) touch(r).subs.push({ status: r.status, expires_at: r.expires_at });
+
+  const ids = [...people.keys()];
+  const users = await inChunks(
+    ids,
+    (chunk) =>
+      ctx.db
+        .from("bot_users")
+        .select("user_key, telegram_id, first_name, last_name, username, loyalty_points, opt_out")
+        .eq("platform", "telegram")
+        .in("telegram_id", chunk)
+        .order("user_key"),
+    "Сегменты: покупатели VIP",
+  );
+  const byTg = new Map(users.map((u) => [Number(u.telegram_id), u]));
+  const purchases = await pageAll(
+    (from, to) =>
+      ctx.db
+        .from("orders")
+        .select("id, user_key, telegram_id, created_at")
+        .in("status", [...PURCHASE_STATUSES])
+        .order("id")
+        .range(from, to),
+    "Сегменты: покупки",
+  );
+  const stats = purchaseStats(purchases);
+
+  const all = ids.map((id) => {
+    const p = people.get(id)!;
+    const u = byTg.get(id);
+    const key = u?.user_key ?? null;
+    const st = stats.get(key ?? `tg_${id}`);
+    return {
+      id,
+      member: {
+        userKey: key,
+        vip: vipStatusOf(p.subs, now),
+        name: (u && [u.first_name, u.last_name].filter(Boolean).join(" ")) || p.name,
+        username: u?.username ?? p.username,
+        platform: "telegram",
+        points: Number(u?.loyalty_points) || 0,
+        optOut: u?.opt_out === true,
+        orders: st?.orders ?? 0,
+        lastAt: st?.lastAt ?? null,
+      } satisfies SegmentMember,
+    };
+  });
+  all.sort((a, b) => VIP_ORDER[a.member.vip] - VIP_ORDER[b.member.vip] || a.id - b.id);
+  return { total: all.length, members: all.slice(0, SEGMENT_PAGE).map((x) => x.member) };
 }
