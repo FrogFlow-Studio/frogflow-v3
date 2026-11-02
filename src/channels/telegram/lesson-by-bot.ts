@@ -1,5 +1,6 @@
 import type { Locale } from "@/core/i18n/locale";
-import { lessonFromMessage } from "@/core/courses/lesson-by-bot";
+import { lessonFromMessage, videoLessonFromMessage } from "@/core/courses/lesson-by-bot";
+import type { BotLesson } from "@/core/courses/lesson-by-bot.server";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { TelegramApi } from "./api";
 import type { TelegramMessage } from "./types";
@@ -7,7 +8,9 @@ import type { TelegramMessage } from "./types";
 /**
  * Урок сообщением боту (settings.delivery.lessons_by_bot, по умолчанию
  * выключено): продавец магазина присылает своему боту в личку ссылку на
- * видео с подписью «1.2 Материалы» — урок добавляется в конец курса. Один
+ * видео или само видео с подписью «1.2 Материалы» — урок добавляется в конец
+ * курса; видео с той же подписью подряд — в тот же урок. Видео файлом бот
+ * потом шлёт ученице по file_id (`sendVideo`), у нас оно не хранится. Один
  * курс — сразу; несколько — бот спрашивает кнопками, куда (`lbb:<товар>`,
  * ссылку берёт из сообщения, на которое ответил). Покупателей не касается:
  * проверка — по списку продавцов магазина (`shopAdminIds`).
@@ -20,6 +23,10 @@ const COPY = {
     which: "В какой курс добавить урок?",
     none: "Курсов с уроками пока нет: создайте курс в панели, потом присылайте уроки сюда.",
     full: "В курсе уже 100 уроков — больше добавить нельзя.",
+    appended: (no: number, title: string, course: string) =>
+      `✅ Ещё одно видео добавлено в урок ${no} «${title}» курса «${course}».`,
+    videosFull:
+      "В уроке уже 10 видео — больше добавить нельзя. Пришлите видео с другой подписью — будет новый урок.",
     fallback: (no: number) => `Урок ${no}`,
   },
   kk: {
@@ -29,6 +36,10 @@ const COPY = {
     which: "Сабақты қай курсқа қосу керек?",
     none: "Сабақтары бар курс әзірге жоқ: панельде курс құрыңыз, содан кейін сабақтарды осында жіберіңіз.",
     full: "Курста 100 сабақ бар — бұдан артық қосуға болмайды.",
+    appended: (no: number, title: string, course: string) =>
+      `✅ «${course}» курсының ${no}-сабағына («${title}») тағы бір бейне қосылды.`,
+    videosFull:
+      "Сабақта 10 бейне бар — бұдан артық қосуға болмайды. Бейнені басқа жазумен жіберіңіз — жаңа сабақ болады.",
     fallback: (no: number) => `${no}-сабақ`,
   },
   en: {
@@ -38,6 +49,10 @@ const COPY = {
     which: "Which course should the lesson go to?",
     none: "No courses with lessons yet: create a course in the panel, then send lessons here.",
     full: "The course already has 100 lessons — no more can be added.",
+    appended: (no: number, title: string, course: string) =>
+      `✅ One more video added to lesson ${no} “${title}” of “${course}”.`,
+    videosFull:
+      "The lesson already has 10 videos — no more can be added. Send a video with a different caption to start a new lesson.",
     fallback: (no: number) => `Lesson ${no}`,
   },
   uz: {
@@ -47,6 +62,10 @@ const COPY = {
     which: "Darsni qaysi kursga qo‘shay?",
     none: "Darslari bor kurs hozircha yo‘q: panelda kurs yarating, keyin darslarni shu yerga yuboring.",
     full: "Kursda allaqachon 100 ta dars bor — boshqa qo‘shib bo‘lmaydi.",
+    appended: (no: number, title: string, course: string) =>
+      `✅ «${course}» kursining ${no}-darsiga («${title}») yana bitta video qo‘shildi.`,
+    videosFull:
+      "Darsda allaqachon 10 ta video bor — boshqa qo‘shib bo‘lmaydi. Videoni boshqa izoh bilan yuboring — yangi dars bo‘ladi.",
     fallback: (no: number) => `${no}-dars`,
   },
 } as const satisfies Record<Locale, unknown>;
@@ -68,7 +87,7 @@ export async function lessonBySeller(
   msg: TelegramMessage,
 ): Promise<boolean> {
   if (!on(ctx) || !msg.from || msg.chat.id !== msg.from.id || msg.reply_to_message) return false;
-  const lesson = lessonFromMessage(msg.text ?? msg.caption);
+  const lesson = sellerLesson(msg);
   if (!lesson || !(await isSeller(ctx, msg.from.id))) return false;
   const c = copyOf(ctx);
   const say = (text: string, extra: Record<string, unknown> = {}) =>
@@ -101,10 +120,10 @@ export async function lessonCourseButton(
   fromId: number,
   chatId: number,
   data: string,
-  original: { text?: string; caption?: string } | undefined,
+  original: Parameters<typeof sellerLesson>[0] | undefined,
 ): Promise<void> {
   if (!on(ctx) || !(await isSeller(ctx, fromId))) return;
-  const lesson = lessonFromMessage(original?.text ?? original?.caption);
+  const lesson = original ? sellerLesson(original) : null;
   const productId = data.slice(4);
   const { lessonCourses } = await import("@/core/courses/lesson-by-bot.server");
   const course = (await lessonCourses(ctx)).find((p) => p.id === productId);
@@ -115,15 +134,25 @@ export async function lessonCourseButton(
 async function addTo(
   ctx: TenantContext,
   course: { id: string; name: string },
-  lesson: { title: string; link: string },
+  lesson: BotLesson,
   say: (text: string) => Promise<unknown>,
 ) {
   const c = copyOf(ctx);
   const { addLessonByBot } = await import("@/core/courses/lesson-by-bot.server");
   const r = await addLessonByBot(ctx, course.id, lesson, c.fallback);
   if (!r.ok) {
-    await say(r.reason === "full" ? c.full : c.again);
+    await say(r.reason === "full" ? c.full : r.reason === "videosFull" ? c.videosFull : c.again);
     return;
   }
-  await say(c.added(r.no, lesson.title || c.fallback(r.no), course.name));
+  await say((r.appended ? c.appended : c.added)(r.no, r.title, course.name));
+}
+
+/** Видео файлом с подписью или ссылка с подписью — урок; иначе null. */
+function sellerLesson(m: {
+  text?: string;
+  caption?: string;
+  video?: { file_id: string };
+  document?: { file_id: string; mime_type?: string };
+}): BotLesson | null {
+  return videoLessonFromMessage(m) ?? lessonFromMessage(m.text ?? m.caption);
 }

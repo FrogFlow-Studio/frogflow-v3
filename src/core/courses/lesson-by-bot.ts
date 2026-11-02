@@ -1,4 +1,4 @@
-import { isHttpsLink, LESSON_TITLE_MAX } from "./course";
+import { isHttpsLink, LESSON_TITLE_MAX, TG_FILE_ID_RE } from "./course";
 
 /**
  * Урок сообщением боту (settings.delivery.lessons_by_bot): продавец шлёт ссылку
@@ -21,4 +21,21 @@ export function lessonFromMessage(text: string | undefined): {
     .trim()
     .slice(0, LESSON_TITLE_MAX);
   return { title, link };
+}
+
+/**
+ * Видео файлом от продавца: file_id видео (или документа-видео) и подпись —
+ * название урока. Подпись со ссылкой — это урок-ссылка, не видео.
+ */
+export function videoLessonFromMessage(m: {
+  caption?: string;
+  video?: { file_id: string };
+  document?: { file_id: string; mime_type?: string };
+}): { title: string; tgVideo: string } | null {
+  const id =
+    m.video?.file_id ??
+    (m.document?.mime_type?.startsWith("video/") ? m.document.file_id : undefined);
+  if (!id || !TG_FILE_ID_RE.test(id)) return null;
+  const title = (m.caption ?? "").replace(/\s+/g, " ").trim().slice(0, LESSON_TITLE_MAX);
+  return { title, tgVideo: id };
 }

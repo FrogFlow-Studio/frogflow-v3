@@ -67,6 +67,7 @@ const course: Course = {
       files: [],
       link: "https://youtu.be/free",
       videos: ["https://youtu.be/free2"],
+      tgVideos: ["BAACAgIAAxkBAAIfree3"],
       homework: "Смешайте",
       preview: true,
     },
@@ -443,6 +444,22 @@ describe("несколько видео в уроке", () => {
       { text: "▶️ 1. Цвет", url: "https://youtu.be/free" },
       { text: "▶️ 2. Цвет", url: "https://youtu.be/free2" },
     ]);
+  });
+
+  it("видео из Telegram — прямо в чат, без пересылки, перед текстом урока", async () => {
+    const { ctx, api, calls } = school({}, { startedDaysAgo: 8 });
+    await handleTelegramUpdate(ctx, api, press(`lsn:${ITEM}:2`));
+    const vids = calls.filter(([m]) => m === "sendVideo").map(([, p]) => p);
+    expect(vids).toEqual([
+      {
+        chat_id: TG,
+        video: "BAACAgIAAxkBAAIfree3",
+        caption: "🎬 2. Цвет",
+        protect_content: true,
+      },
+    ]);
+    const order = calls.map(([m]) => m).filter((m) => m === "sendVideo" || m === "sendMessage");
+    expect(order.slice(-2)).toEqual(["sendVideo", "sendMessage"]);
   });
 
   it("открытый урок до покупки — тоже все видео", async () => {

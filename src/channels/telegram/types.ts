@@ -53,7 +53,12 @@ export type TelegramCallbackQuery = {
     message_id?: number;
     reply_markup?: InlineKeyboard;
     /** Сообщение, на которое бот ответил этим (урок из бота: исходная ссылка продавца). */
-    reply_to_message?: { text?: string; caption?: string };
+    reply_to_message?: {
+      text?: string;
+      caption?: string;
+      video?: { file_id: string };
+      document?: { file_id: string; mime_type?: string };
+    };
   };
 };
 

@@ -107,7 +107,7 @@ Kalit topshiriladigan PDF’larga suv belgisini yoqadi: har bir sahifada kim sot
 
 ## Darslarni botga xabar orqali qo‘shish {#lessons-by-bot}
 
-«Kurs botda» kartochkasida. Yoqilgan bo‘lsa — sotuvchi (egasi yoki do‘kon bildirishnomalarini oladigan kishi) botga shaxsiy xabarda izohli video havolasini yuboradi, masalan «1.2 Materiallar https://youtu.be/…». Bot shu havola va izohdagi nom bilan darsni kurs oxiriga qo‘shadi (izoh bo‘lmasa — «N-dars») va «✅ N-dars qo‘shildi» deb javob beradi. Darslari bor kurslar bir nechta bo‘lsa, bot tugmalar bilan qaysi biriga ekanini so‘raydi. Xuddi shu havola ikkinchi marta qo‘shilmaydi. Matn, fayllar va vazifa panelda qo‘shiladi. Standart holatda o‘chirilgan.
+«Kurs botda» kartochkasida. Yoqilgan bo‘lsa — sotuvchi (egasi yoki do‘kon bildirishnomalarini oladigan kishi) botga shaxsiy xabarda izohli video havolasini yuboradi, masalan «1.2 Materiallar https://youtu.be/…». Bot shu havola va izohdagi nom bilan darsni kurs oxiriga qo‘shadi (izoh bo‘lmasa — «N-dars») va «✅ N-dars qo‘shildi» deb javob beradi. Darslari bor kurslar bir nechta bo‘lsa, bot tugmalar bilan qaysi biriga ekanini so‘raydi. Xuddi shu havola ikkinchi marta qo‘shilmaydi. Matn, fayllar va vazifa panelda qo‘shiladi. Standart holatda o‘chirilgan. Videoning o‘zini ham fayl sifatida yuborish mumkin (2 GB gacha): bot uni Telegram’da eslab qoladi va o‘quvchiga ulashish taqiqi bilan to‘g‘ridan-to‘g‘ri chatga yuboradi; FrogFlow’da fayl saqlanmaydi, kurs saytida uning o‘rniga «video — botda» yozuvi. Oxirgi dars izohi bilan bir xil video shu darsga qo‘shiladi (10 tagacha video).
 
 ## Chekni kim va qachon tekshiradi {#proof-eta}
 

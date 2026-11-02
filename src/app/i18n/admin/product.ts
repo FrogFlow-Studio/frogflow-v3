@@ -145,6 +145,7 @@ export const ru = {
   "product.lessonLink":
     "Ссылка на видео (YouTube, VK Видео, Kinescope, Boosty) или документ, https://…",
   "product.lessonVideoAdd": "+ Ещё видео",
+  "product.lessonTgVideo": "🎬 Видео из Telegram №{n} — бот пришлёт его ученице прямо в чат",
   "product.lessonVideoMore": "Ещё одна ссылка на видео, https://…",
   "product.lessonVideoDelete": "Убрать видео",
   "product.courseCohorts": "Потоки (необязательно)",
@@ -395,6 +396,7 @@ export const kk: SectionDict<typeof ru> = {
   "product.lessonLink":
     "Бейнеге (YouTube, VK Видео, Kinescope, Boosty) немесе құжатқа сілтеме, https://…",
   "product.lessonVideoAdd": "+ Тағы бейне",
+  "product.lessonTgVideo": "🎬 Telegram-нан №{n} бейне — бот оны оқушыға тікелей чатқа жібереді",
   "product.lessonVideoMore": "Тағы бір бейне сілтемесі, https://…",
   "product.lessonVideoDelete": "Бейнені алып тастау",
   "product.courseCohorts": "Ағындар (міндетті емес)",
@@ -644,6 +646,8 @@ export const en: SectionDict<typeof ru> = {
   "product.lessonLink":
     "Link to a video (YouTube, VK Video, Kinescope, Boosty) or a document, https://…",
   "product.lessonVideoAdd": "+ Another video",
+  "product.lessonTgVideo":
+    "🎬 Telegram video #{n} — the bot sends it to the student right in the chat",
   "product.lessonVideoMore": "One more video link, https://…",
   "product.lessonVideoDelete": "Remove video",
   "product.courseCohorts": "Cohorts (optional)",
@@ -890,6 +894,8 @@ export const uz: SectionDict<typeof ru> = {
   "product.lessonLink":
     "Video (YouTube, VK Video, Kinescope, Boosty) yoki hujjatga havola, https://…",
   "product.lessonVideoAdd": "+ Yana video",
+  "product.lessonTgVideo":
+    "🎬 Telegram’dan №{n} video — bot uni o‘quvchiga to‘g‘ridan-to‘g‘ri chatga yuboradi",
   "product.lessonVideoMore": "Yana bitta video havolasi, https://…",
   "product.lessonVideoDelete": "Videoni olib tashlash",
   "product.courseCohorts": "Oqimlar (ixtiyoriy)",

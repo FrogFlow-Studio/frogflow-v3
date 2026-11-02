@@ -128,3 +128,28 @@ describe("несколько видео в уроке: чтение и пров�
     expect(courseProblem("t", blank)).toEqual({ kind: "empty", lesson: 1 });
   });
 });
+
+describe("видео из Telegram в уроке", () => {
+  const id = "11111111-1111-4111-8111-111111111111";
+  const base = { id, title: "У", text: "", files: [], link: null };
+  it("урок только с видео из бота — не пустой; мусорный file_id — отказ", () => {
+    expect(
+      courseProblem("t", {
+        schedule: { mode: "all" },
+        lessons: [{ ...base, tgVideos: ["BAACAgIAAxkBAAIv1"] }],
+      }),
+    ).toBeNull();
+    expect(
+      courseProblem("t", {
+        schedule: { mode: "all" },
+        lessons: [{ ...base, tgVideos: ["<script>"] }],
+      }),
+    ).toEqual({ kind: "badLink", lesson: 1 });
+  });
+  it("parseCourse читает tgVideos и отбрасывает мусор", () => {
+    const c = parseCourse(
+      JSON.stringify({ lessons: [{ ...base, tgVideos: ["BAACAgIAAxkBAAIv1", "bad id", 5] }] }),
+    );
+    expect(c.lessons[0]!.tgVideos).toEqual(["BAACAgIAAxkBAAIv1"]);
+  });
+});

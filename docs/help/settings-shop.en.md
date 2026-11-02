@@ -107,7 +107,7 @@ Available with the «Courses» module. On: the student takes the course right in
 
 ## Lessons by messaging the bot {#lessons-by-bot}
 
-In the same “Course in the bot” card. When on, the seller (the owner or whoever receives the shop’s notifications) sends the bot a private message with a video link and a caption, e.g. “1.2 Materials https://youtu.be/…”. The bot adds a lesson with that link and the caption as its title (no caption — “Lesson N”) to the end of the course and replies “✅ Lesson N added”. With several courses that have lessons, the bot asks which one with buttons. The same link is not added twice. Text, files and homework are added in the panel. Off by default.
+In the same “Course in the bot” card. When on, the seller (the owner or whoever receives the shop’s notifications) sends the bot a private message with a video link and a caption, e.g. “1.2 Materials https://youtu.be/…”. The bot adds a lesson with that link and the caption as its title (no caption — “Lesson N”) to the end of the course and replies “✅ Lesson N added”. With several courses that have lessons, the bot asks which one with buttons. The same link is not added twice. Text, files and homework are added in the panel. Off by default. You can also send the video itself as a file (up to 2 GB): the bot keeps it on Telegram and sends it to the student right in the chat with forwarding disabled; FrogFlow does not store the file, and the course website shows “the video is in the bot” instead. A video with the same caption as the last lesson is added to that lesson (up to 10 videos).
 
 ## Who checks the receipt and when {#proof-eta}
 
