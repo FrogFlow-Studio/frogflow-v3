@@ -2,7 +2,7 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 import { z } from "zod";
 import { HelpView } from "@/app/admin/help-view";
 import { adminT } from "@/app/i18n/admin";
-import { HELP_GROUPS, type HelpGroup } from "@/core/help/articles";
+import { HELP_GROUPS, type HelpGroup } from "@/core/help/groups";
 
 export const Route = createFileRoute("/admin/_authed/help_/$section")({
   validateSearch: z.object({ q: z.string().max(200).optional(), a: z.string().max(80).optional() }),

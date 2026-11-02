@@ -15,7 +15,7 @@ import { closedHandover, defaultHandoverStep } from "@/core/orders/handover";
 import { slotOf } from "@/core/fulfillment/slots";
 import { ApprovalCard, CourierCard, FulfillmentEditor } from "@/app/admin/order-cards";
 import { MoneyBlock } from "@/app/admin/order-money";
-import { OrderStatus } from "./admin._authed.orders";
+import { OrderStatus } from "@/app/admin/order-status";
 
 export const Route = createFileRoute("/admin/_authed/orders/$id")({
   loader: ({ params }) => orderFn({ data: { id: Number(params.id) } }),

@@ -12,13 +12,15 @@ import { MarketBand } from "@/app/storefront/market-band";
 import { TelegramBackButton } from "@/app/storefront/telegram-back";
 import { InstallPrompt } from "@/app/storefront/install";
 import { StorefrontLocaleProvider, useStorefrontLocale } from "@/app/storefront/locale";
-import { storefrontT } from "@/app/i18n/storefront";
 import { ThemeToggle } from "@/app/ui";
 import { activeTab, miniAppTabs, type MiniAppTab } from "@/core/storefront/tabs";
 import { themeClass } from "@/core/storefront/design";
 import { showMobileCartBar } from "@/core/storefront/mobile";
 import { formatMoneyUi } from "@/core/money/money";
 import { StoreMissing } from "@/app/storefront/missing";
+
+/** Заголовок вкладки, пока данных магазина нет (как `meta.shop` в словаре витрины). */
+const SHOP_TITLE: Record<string, string> = { ru: "Магазин", kk: "Дүкен", en: "Shop", uz: "Do‘kon" };
 
 export const Route = createFileRoute("/s/$slug")({
   loader: async ({ params }) => {
@@ -29,7 +31,8 @@ export const Route = createFileRoute("/s/$slug")({
     return { ...info, share };
   },
   head: ({ loaderData }) => {
-    const fallback = storefrontT(loaderData?.locale ?? "ru")("meta.shop");
+    // Без словаря витрины: заголовок `head` идёт в общий код всех страниц сайта.
+    const fallback = SHOP_TITLE[loaderData?.locale ?? "ru"] ?? SHOP_TITLE.ru;
     return {
       meta: loaderData
         ? shopMeta({
