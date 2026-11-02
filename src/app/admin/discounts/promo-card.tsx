@@ -4,6 +4,7 @@ import { deletePromoCodeFn, promoCodesFn, savePromoCodeFn } from "@/app/admin/pr
 import { adminT, intlLocale } from "@/app/i18n/admin";
 import { Badge, Card, Empty, ErrorBox, Field, useAction } from "@/app/ui";
 import { HelpTip } from "@/app/admin/help-panel";
+import { formatMoneyUi } from "@/core/money/money";
 
 /** Промокоды. */
 
@@ -76,7 +77,7 @@ export function PromoCard({ promos }: { promos: Promo[] }) {
                   <td>
                     {p.discount_type === "percent"
                       ? `${Number(p.discount_value)} %`
-                      : `${Number(p.discount_value)} ₸`}
+                      : formatMoneyUi(Number(p.discount_value), "KZT")}
                   </td>
                   <td className="tabular-nums">
                     {p.used_count}

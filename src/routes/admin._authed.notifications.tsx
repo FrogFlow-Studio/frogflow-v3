@@ -3,7 +3,7 @@ import { useState } from "react";
 import { markNotificationsReadFn, notificationsFn } from "@/app/admin/notifications.functions";
 import { adminT, intlLocale, type AdminKey, type AdminT } from "@/app/i18n/admin";
 import { Badge, Empty, ErrorBox, PageTitle, useAction } from "@/app/ui";
-import { formatMoney } from "@/core/money/money";
+import { formatMoneyUi } from "@/core/money/money";
 import {
   groupFeed,
   NOTIFY_TYPES,
@@ -47,7 +47,7 @@ function Row({ i, t, locale }: { i: NotifyItem; t: AdminT; locale: string }) {
         <span className="font-medium">{itemText(i, t)}</span>
         {!i.read && <Badge tone="accent">{t("bell.new")}</Badge>}
         {i.amount !== null && i.currency && (
-          <span className="text-sm text-muted">{formatMoney(i.amount, i.currency)}</span>
+          <span className="text-sm text-muted">{formatMoneyUi(i.amount, i.currency)}</span>
         )}
       </span>
       <span className="block text-xs text-muted">

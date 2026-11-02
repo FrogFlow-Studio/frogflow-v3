@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { formatMoney } from "@/core/money/money";
+import { formatMoneyUi } from "@/core/money/money";
 import { OrderStatus } from "@/routes/admin._authed.orders";
 import { useEffect, useState } from "react";
 import { chatCustomerPanelFn } from "@/app/admin/chat.functions";
@@ -85,7 +85,7 @@ export function CustomerPanelView({
   });
   const spent = data
     ? Object.entries(data.stats.totals)
-        .map(([cur, sum]) => formatMoney(sum, cur))
+        .map(([cur, sum]) => formatMoneyUi(sum, cur))
         .join(" + ")
     : "";
   return (
@@ -129,7 +129,7 @@ export function CustomerPanelView({
                         className="flex flex-wrap items-center justify-between gap-x-2 hover:text-accent"
                       >
                         <span>#{o.no}</span>
-                        <span className="tabular-nums">{formatMoney(o.total, o.currency)}</span>
+                        <span className="tabular-nums">{formatMoneyUi(o.total, o.currency)}</span>
                         <span className="w-full text-xs text-muted">
                           <OrderStatus status={o.status} /> ·{" "}
                           {new Date(o.createdAt).toLocaleDateString(loc)}

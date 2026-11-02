@@ -146,3 +146,8 @@ export function t(key: keyof typeof messages, locale: Locale): string {
   const entry = messages[key];
   return entry?.[locale] ?? entry?.ru ?? String(key);
 }
+
+/** Подпись языка в переключателе: RU, KZ, EN, UZ — как на главной. */
+export function langLabel(l: Locale): string {
+  return l === "kk" ? "KZ" : l.toUpperCase();
+}

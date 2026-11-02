@@ -111,6 +111,7 @@ export function CatchupCard({ data }: { data: Data }) {
         {data.accounts.length > 1 && (
           <select
             className="input w-44"
+            aria-label="Instagram"
             value={accountId}
             onChange={(e) => {
               setAccountId(e.target.value);
@@ -128,7 +129,7 @@ export function CatchupCard({ data }: { data: Data }) {
         {manual ? (
           <input
             className="input min-w-48 flex-1"
-            placeholder="Platform Post ID (например, 17913946659536537)"
+            placeholder={t("instagram.catchup.idPlaceholder")}
             value={manualId}
             onChange={(e) => {
               setManualId(e.target.value);
@@ -138,6 +139,7 @@ export function CatchupCard({ data }: { data: Data }) {
         ) : (
           <select
             className="input min-w-48 flex-1"
+            aria-label={t("instagram.catchup.fromListHint")}
             value={postId}
             onChange={(e) => {
               setPostId(e.target.value);
@@ -169,9 +171,9 @@ export function CatchupCard({ data }: { data: Data }) {
             setManual((m) => !m);
             setLoaded(null);
           }}
-          title={manual ? "Выбрать из списка публикаций" : "Ввести ID публикации вручную"}
+          title={manual ? t("instagram.catchup.fromListHint") : t("instagram.catchup.manualHint")}
         >
-          {manual ? "Из списка" : "Ввести ID"}
+          {manual ? t("instagram.catchup.fromList") : t("instagram.catchup.manual")}
         </button>
         <button
           className="btn-secondary text-xs"
@@ -185,15 +187,18 @@ export function CatchupCard({ data }: { data: Data }) {
           className="btn-secondary text-xs"
           disabled={triggerCheck.busy}
           onClick={() => void triggerCheck.run()}
-          title="Запустить немедленный поиск и отправку ответов по свежим постам"
+          title={t("instagram.catchup.checkNowHint")}
         >
-          {triggerCheck.busy ? "Проверяем…" : "⚡ Проверить сейчас"}
+          {triggerCheck.busy ? t("instagram.catchup.checking") : t("instagram.catchup.checkNow")}
         </button>
       </div>
       {fallbackResult && (
         <p className="mt-2 text-xs text-green-500">
-          ✓ Проверка завершена: проверено правил — {fallbackResult.automationsChecked}, комментариев
-          — {fallbackResult.commentsChecked}, отправлено DM — {fallbackResult.sent}.
+          {t("instagram.catchup.checked", {
+            rules: fallbackResult.automationsChecked,
+            comments: fallbackResult.commentsChecked,
+            sent: fallbackResult.sent,
+          })}
         </p>
       )}
       <ErrorBox error={triggerCheck.error} />

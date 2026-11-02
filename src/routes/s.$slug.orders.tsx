@@ -15,10 +15,11 @@ import { MyAddressesBox } from "@/app/storefront/my-addresses";
 import { MyTicketsBox } from "@/app/storefront/my-tickets";
 import { ReorderButton } from "@/app/storefront/reorder";
 import { useStorefrontLocale } from "@/app/storefront/locale";
-import { formatMoney } from "@/core/money/money";
+import { formatMoneyUi } from "@/core/money/money";
 import { Empty, ErrorBox } from "@/app/ui";
 import { intlLocale } from "@/app/i18n/admin";
 import { ordersView } from "@/core/storefront/tabs";
+import { StorePageMissing } from "@/app/storefront/missing";
 
 export const Route = createFileRoute("/s/$slug/orders")({
   validateSearch: (s: Record<string, unknown>): { tab?: "library" | "orders" } => {
@@ -26,6 +27,7 @@ export const Route = createFileRoute("/s/$slug/orders")({
     return v === "all" ? {} : { tab: v };
   },
   component: OrdersPage,
+  notFoundComponent: StorePageMissing,
 });
 
 type Data = Awaited<ReturnType<typeof miniAppOrdersFn>>;
@@ -135,7 +137,7 @@ function OrdersPage() {
             <li key={o.id} className="px-3 py-2 text-sm">
               <div className="flex items-center justify-between">
                 <span className="font-medium">#{o.no}</span>
-                <span className="tabular-nums">{formatMoney(o.total, o.currency)}</span>
+                <span className="tabular-nums">{formatMoneyUi(o.total, o.currency)}</span>
               </div>
               <div className="text-xs text-muted">
                 {new Date(o.createdAt).toLocaleDateString(intlLocale(locale))} ·{" "}

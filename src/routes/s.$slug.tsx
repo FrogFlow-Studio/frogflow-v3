@@ -17,7 +17,8 @@ import { ThemeToggle } from "@/app/ui";
 import { activeTab, miniAppTabs, type MiniAppTab } from "@/core/storefront/tabs";
 import { themeClass } from "@/core/storefront/design";
 import { showMobileCartBar } from "@/core/storefront/mobile";
-import { formatMoney } from "@/core/money/money";
+import { formatMoneyUi } from "@/core/money/money";
+import { StoreMissing } from "@/app/storefront/missing";
 
 export const Route = createFileRoute("/s/$slug")({
   loader: async ({ params }) => {
@@ -45,12 +46,7 @@ export const Route = createFileRoute("/s/$slug")({
     };
   },
   component: StoreLayout,
-  notFoundComponent: () => (
-    <main className="mx-auto max-w-md px-4 py-20 text-center">
-      <h1 className="text-lg font-semibold">Магазин не найден</h1>
-      <p className="mt-2 text-sm text-muted">Проверьте адрес — возможно, ссылка устарела.</p>
-    </main>
-  ),
+  notFoundComponent: StoreMissing,
 });
 
 function initials(name: string): string {
@@ -290,17 +286,21 @@ function MobileCartBar({ slug }: { slug: string }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   if (!showMobileCartBar(pathname, slug, cart.count)) return null;
   return (
-    <Link
-      to="/s/$slug/cart"
-      params={{ slug }}
-      data-testid="mobile-cart-bar"
-      className="btn-primary fixed inset-x-3 bottom-3 z-20 flex justify-between pb-[env(safe-area-inset-bottom)] shadow-lg sm:hidden"
-    >
-      <span>
-        🛒 {t("layout.cart")} · {cart.count}
-      </span>
-      <span>{formatMoney(cart.total, cart.currency)}</span>
-    </Link>
+    <>
+      {/* Место под липкой кнопкой: подвал и последний блок не прячутся под ней. */}
+      <div className="h-20 sm:hidden" aria-hidden />
+      <Link
+        to="/s/$slug/cart"
+        params={{ slug }}
+        data-testid="mobile-cart-bar"
+        className="btn-primary fixed inset-x-3 bottom-3 z-20 flex justify-between pb-[env(safe-area-inset-bottom)] shadow-lg sm:hidden"
+      >
+        <span>
+          🛒 {t("layout.cart")} · {cart.count}
+        </span>
+        <span>{formatMoneyUi(cart.total, cart.currency)}</span>
+      </Link>
+    </>
   );
 }
 

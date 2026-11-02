@@ -3,7 +3,7 @@ import { useState } from "react";
 import { adminShopFn } from "@/app/admin/shop.functions";
 import { orderFn } from "@/app/admin/orders.functions";
 import { adminT, intlLocale } from "@/app/i18n/admin";
-import { formatMoney } from "@/core/money/money";
+import { formatMoneyUi } from "@/core/money/money";
 import { displayNo } from "@/core/orders/pure";
 import { slotOf } from "@/core/fulfillment/slots";
 
@@ -120,19 +120,19 @@ function PrintPage() {
                 <td className="py-1">{i.name_snapshot}</td>
                 <td className="py-1 text-right">{i.quantity}</td>
                 <td className="py-1 text-right">
-                  {formatMoney(Number(i.price_snapshot) * i.quantity, o.currency)}
+                  {formatMoneyUi(Number(i.price_snapshot) * i.quantity, o.currency)}
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
         <p className="text-right text-base font-bold">
-          {t("common.total")}: {formatMoney(o.total, o.currency)}
+          {t("common.total")}: {formatMoneyUi(o.total, o.currency)}
           {physical && Number(o.paid_amount) > 0 && Number(o.paid_amount) < Number(o.total) && (
             <span className="block text-sm font-normal">
-              {t("physical.paid")} {formatMoney(o.paid_amount, o.currency)} ·{" "}
+              {t("physical.paid")} {formatMoneyUi(o.paid_amount, o.currency)} ·{" "}
               {t("physical.remaining")}{" "}
-              {formatMoney(Number(o.total) - Number(o.paid_amount), o.currency)}
+              {formatMoneyUi(Number(o.total) - Number(o.paid_amount), o.currency)}
             </span>
           )}
         </p>

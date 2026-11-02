@@ -19,7 +19,7 @@ test("рассылки: итоги автосообщений на карточ�
   const stats = cart.getByTestId("auto-stats");
   await expect(stats).toContainText("Отправлено: 2, не дошло: 1");
   await expect(stats).toContainText("Заказали после сообщения: 1, оплаченных заказов: 1");
-  await expect(stats).toContainText("4500 ₸");
+  await expect(stats).toContainText("4 500 ₸");
 
   const winback = page.locator("section.card", { hasText: "Возвратные продажи" });
   await expect(winback.getByTestId("auto-stats")).toContainText("Отправлено: 1, не дошло: 0");

@@ -3,7 +3,7 @@ import { useState } from "react";
 import { billingHistoryFn } from "@/app/admin/plan.functions";
 import { adminT, intlLocale, type AdminT } from "@/app/i18n/admin";
 import { Badge, Card, ErrorBox, PageTitle, useAction } from "@/app/ui";
-import { formatMoney } from "@/core/money/money";
+import { formatMoneyUi } from "@/core/money/money";
 import { HelpTip } from "@/app/admin/help-panel";
 
 export const Route = createFileRoute("/admin/_authed/billing")({
@@ -94,7 +94,9 @@ function BillingPage() {
                     <td>
                       {day(p.period_start)} – {day(p.period_end)}
                     </td>
-                    <td className="text-right tabular-nums">{formatMoney(p.amount, p.currency)}</td>
+                    <td className="text-right tabular-nums">
+                      {formatMoneyUi(p.amount, p.currency)}
+                    </td>
                     <td>{day(p.paid_at)}</td>
                   </tr>
                 ))}
@@ -122,7 +124,9 @@ function BillingPage() {
                 {invoices.rows.map((i) => (
                   <tr key={i.id}>
                     <td>{day(i.created_at)}</td>
-                    <td className="text-right tabular-nums">{formatMoney(i.amount, i.currency)}</td>
+                    <td className="text-right tabular-nums">
+                      {formatMoneyUi(i.amount, i.currency)}
+                    </td>
                     <td>
                       <Badge tone={STATUS_TONE[i.status] ?? "neutral"}>
                         {t(`billing.status.${i.status}` as never)}

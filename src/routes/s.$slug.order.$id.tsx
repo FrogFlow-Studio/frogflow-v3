@@ -12,7 +12,7 @@ import { useStorefrontLocale } from "@/app/storefront/locale";
 import { ReorderButton } from "@/app/storefront/reorder";
 import { TgLoginBox, useTgLogin } from "@/app/storefront/tg-login";
 import { linkWebOrderFn, webOrderLinkStateFn } from "@/app/storefront/tg-login.functions";
-import { formatMoney } from "@/core/money/money";
+import { formatMoneyUi } from "@/core/money/money";
 import { intlLocale } from "@/app/i18n/admin";
 import { isoToDisplay } from "@/core/fulfillment/pure";
 import { orderSteps } from "@/core/storefront/order-steps";
@@ -20,6 +20,7 @@ import { ErrorBox, useAction } from "@/app/ui";
 import type { StorefrontKey } from "@/app/i18n/storefront";
 import { rememberOrderToken, savedOrderToken } from "@/app/storefront/order-token";
 import { ORDER_PAGE_HEADERS } from "@/app/storefront/order-page-headers";
+import { StorePageMissing } from "@/app/storefront/missing";
 
 export const Route = createFileRoute("/s/$slug/order/$id")({
   validateSearch: (s: Record<string, unknown>): { t: string } => ({
@@ -34,6 +35,7 @@ export const Route = createFileRoute("/s/$slug/order/$id")({
   }),
   headers: () => ORDER_PAGE_HEADERS,
   component: OrderPage,
+  notFoundComponent: StorePageMissing,
 });
 
 type View = Awaited<ReturnType<typeof webOrderFn>>;
@@ -164,7 +166,7 @@ function OrderPage() {
               {i.name}
               {i.qty > 1 ? ` × ${i.qty}` : ""}
             </span>
-            <span className="tabular-nums">{formatMoney(i.price * i.qty, view.currency)}</span>
+            <span className="tabular-nums">{formatMoneyUi(i.price * i.qty, view.currency)}</span>
           </li>
         ))}
       </ul>
@@ -195,11 +197,11 @@ function OrderPage() {
         <div className="space-y-1 text-sm">
           <div className="flex justify-between gap-3">
             <span>{t("order.discount")}</span>
-            <span className="tabular-nums">−{formatMoney(view.discount, view.currency)}</span>
+            <span className="tabular-nums">−{formatMoneyUi(view.discount, view.currency)}</span>
           </div>
           <div className="flex justify-between gap-3 font-semibold">
             <span>{t("cart.total")}</span>
-            <span className="tabular-nums">{formatMoney(view.total, view.currency)}</span>
+            <span className="tabular-nums">{formatMoneyUi(view.total, view.currency)}</span>
           </div>
         </div>
       )}
@@ -266,8 +268,8 @@ function OrderPage() {
           due={view.balance.due}
           currency={view.currency}
           hint={t("order.balancePaid", {
-            paid: formatMoney(view.balance.paid, view.currency),
-            total: formatMoney(view.total, view.currency),
+            paid: formatMoneyUi(view.balance.paid, view.currency),
+            total: formatMoneyUi(view.total, view.currency),
           })}
           payment={view.balance}
           card={card}
@@ -294,7 +296,7 @@ function OrderPage() {
         <section className="card space-y-2 p-5">
           <h2 className="font-semibold">{t("order.gift.title")}</h2>
           <p className="text-sm">
-            {t("order.gift.amount", { sum: formatMoney(view.gift.amount, view.gift.currency) })}
+            {t("order.gift.amount", { sum: formatMoneyUi(view.gift.amount, view.gift.currency) })}
           </p>
           <p className="rounded-md bg-surface-2 px-3 py-2 text-center font-mono text-xl tracking-wider select-all">
             {view.gift.code}
@@ -307,7 +309,7 @@ function OrderPage() {
           <h2 className="font-semibold">{t("order.giftRest.title")}</h2>
           <p className="text-sm">
             {t("order.gift.amount", {
-              sum: formatMoney(view.giftRest.amount, view.giftRest.currency),
+              sum: formatMoneyUi(view.giftRest.amount, view.giftRest.currency),
             })}
           </p>
           <p className="rounded-md bg-surface-2 px-3 py-2 text-center font-mono text-xl tracking-wider select-all">
@@ -393,7 +395,7 @@ function PayBox(props: {
     <section className="card space-y-3 p-5">
       <h2 className="font-semibold">{props.title}</h2>
       <p className="text-lg font-semibold tabular-nums">
-        {t("order.amount", { sum: formatMoney(props.due, props.currency) })}
+        {t("order.amount", { sum: formatMoneyUi(props.due, props.currency) })}
       </p>
       {props.hint && <p className="text-xs text-muted">{props.hint}</p>}
       {payment.card && (
@@ -433,7 +435,7 @@ function PayBox(props: {
           >
             {t("order.payRussia")}
             {payment.russia.currency !== props.currency.toUpperCase() &&
-              ` · ${formatMoney(payment.russia.amount, payment.russia.currency)}`}
+              ` · ${formatMoneyUi(payment.russia.amount, payment.russia.currency)}`}
           </button>
           <p className="text-xs text-muted">{t("order.payRussiaHint")}</p>
           <ErrorBox error={russia.error} />

@@ -6,7 +6,7 @@ import { costListFn } from "@/app/admin/cost.functions";
 import { adminT } from "@/app/i18n/admin";
 import { Badge, Card, PageTitle } from "@/app/ui";
 import { canEdit } from "@/core/auth/roles";
-import { formatMoney } from "@/core/money/money";
+import { formatMoneyUi } from "@/core/money/money";
 
 export const Route = createFileRoute("/admin/_authed/cost")({
   beforeLoad: ({ context }) => {
@@ -66,7 +66,7 @@ function CostPage() {
             title={
               <span>
                 {r.name}{" "}
-                <span className="text-xs text-muted">{formatMoney(r.price, r.currency)}</span>
+                <span className="text-xs text-muted">{formatMoneyUi(r.price, r.currency)}</span>
               </span>
             }
           >

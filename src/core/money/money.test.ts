@@ -26,3 +26,19 @@ describe("money", () => {
     expect(convertViaUsd(1000, "KZT", "EUR", rates)).toBeNull();
   });
 });
+
+describe("formatMoneyUi", () => {
+  it("разряды неразрывным пробелом, знак валюты не отрывается", async () => {
+    const { formatMoneyUi } = await import("./money");
+    expect(formatMoneyUi(12500, "KZT")).toBe("12 500 ₸");
+    expect(formatMoneyUi(1250000, "RUB")).toBe("1 250 000 ₽");
+    expect(formatMoneyUi(999, "KZT")).toBe("999 ₸");
+    expect(formatMoneyUi(-4500, "KZT")).toBe("-4 500 ₸");
+    expect(formatMoneyUi(1234.5, "USD")).toBe("1 234.50 USD");
+    expect(formatMoneyUi("abc", "KZT")).toBe("abc ₸");
+  });
+  it("бот и письма без изменений", async () => {
+    const { formatMoney } = await import("./money");
+    expect(formatMoney(12500, "KZT")).toBe("12500 ₸");
+  });
+});

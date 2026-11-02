@@ -3,7 +3,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { z } from "zod";
 import { marketHeadLinks } from "@/app/market/seo";
 import { RULES_SECTIONS, rulesT } from "@/app/market/rules-i18n";
-import { SUPPORTED_LOCALES, type Locale } from "@/core/i18n/locale";
+import { SUPPORTED_LOCALES, type Locale, langLabel } from "@/core/i18n/locale";
 
 /** Правила площадки (В12): что она делает на самом деле — согласие, одобрение, скрытие. */
 export const Route = createFileRoute("/market/rules")({
@@ -41,7 +41,7 @@ function RulesPage() {
               search={{ lang: l }}
               className={l === locale ? "font-medium" : "text-muted"}
             >
-              {l.toUpperCase()}
+              {langLabel(l)}
             </Link>
           ))}
         </nav>

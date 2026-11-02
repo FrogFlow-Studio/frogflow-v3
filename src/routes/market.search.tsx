@@ -7,7 +7,8 @@ import { rememberMarketBack } from "@/app/market/back";
 import { MarketFeeds } from "@/app/market/feeds";
 import { marketT } from "@/app/market/i18n";
 import { marketSearchFn } from "@/app/market/search.functions";
-import { SUPPORTED_LOCALES, type Locale } from "@/core/i18n/locale";
+import { SUPPORTED_LOCALES, type Locale, langLabel } from "@/core/i18n/locale";
+import { formatMoneyUi } from "@/core/money/money";
 
 /** Поиск товаров по всем магазинам площадки (В8). Без входа. */
 export const Route = createFileRoute("/market/search")({
@@ -89,7 +90,7 @@ function MarketSearchPage() {
               search={{ ...search, lang: l }}
               className={l === locale ? "font-medium" : "text-muted"}
             >
-              {l.toUpperCase()}
+              {langLabel(l)}
             </Link>
           ))}
         </nav>
@@ -164,9 +165,7 @@ function MarketSearchPage() {
                     )}
                     <div className="min-w-0 flex-1">
                       <h2 className="font-medium">{i.name}</h2>
-                      <p className="text-sm">
-                        {new Intl.NumberFormat(locale).format(i.price)} {i.currency}
-                      </p>
+                      <p className="text-sm">{formatMoneyUi(i.price, i.currency)}</p>
                       <p className="mt-0.5 text-xs text-muted">
                         <ItemAuthor
                           text={t("items.in", { shop: "\u0000" })}

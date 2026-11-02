@@ -25,8 +25,8 @@ test("отчёты: продажи считают только оплаченн�
     "true",
   );
   // Выручка 5000 ₸ (неоплаченные 9000 и отклонённый не в счёте).
-  await expect(page.getByRole("cell", { name: "5000 ₸", exact: true }).first()).toBeVisible();
-  await expect(page.getByText("14000 ₸")).toHaveCount(0);
+  await expect(page.getByRole("cell", { name: "5 000 ₸", exact: true }).first()).toBeVisible();
+  await expect(page.getByText("14 000 ₸")).toHaveCount(0);
 
   await page.getByRole("button", { name: "7 дней", exact: true }).click();
   await expect(page.getByRole("button", { name: "7 дней", exact: true })).toHaveAttribute(

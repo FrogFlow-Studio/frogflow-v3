@@ -1,4 +1,4 @@
-import { useId, useState, type ReactNode } from "react";
+import { createContext, useContext, useId, useState, type ReactNode } from "react";
 import { Card } from "@/app/ui";
 import { niceTicks } from "@/core/analytics/pure";
 
@@ -9,6 +9,17 @@ import { niceTicks } from "@/core/analytics/pure";
  */
 
 export type Point = { x: string; y: number };
+
+/** Подписи графиков на языке панели; по умолчанию русские (панель оператора). */
+export type ChartLabels = { table: string; chart: string; empty: string; daily: string };
+const RU_LABELS: ChartLabels = {
+  table: "Таблица",
+  chart: "График",
+  empty: "Нет данных за период",
+  daily: "График по дням",
+};
+const LabelsCtx = createContext<ChartLabels>(RU_LABELS);
+export const ChartLabelsProvider = LabelsCtx.Provider;
 
 export function ChartCard({
   title,
@@ -22,6 +33,7 @@ export function ChartCard({
   className?: string;
 }) {
   const [mode, setMode] = useState<"chart" | "table">("chart");
+  const l = useContext(LabelsCtx);
   return (
     <Card
       title={title}
@@ -32,7 +44,7 @@ export function ChartCard({
           className="btn-ghost text-xs"
           onClick={() => setMode(mode === "chart" ? "table" : "chart")}
         >
-          {mode === "chart" ? "Таблица" : "График"}
+          {mode === "chart" ? l.table : l.chart}
         </button>
       }
     >
@@ -61,6 +73,7 @@ export function LineChart({
 }) {
   const [hover, setHover] = useState<number | null>(null);
   const id = useId();
+  const l = useContext(LabelsCtx);
   const n = points.length;
   const max = Math.max(0, ...points.map((p) => p.y));
   const ticks = niceTicks(max, 4, integer);
@@ -89,7 +102,7 @@ export function LineChart({
     if (e.key === "Escape") setHover(null);
   };
 
-  if (n === 0) return <p className="py-10 text-center text-sm text-muted">Нет данных за период</p>;
+  if (n === 0) return <p className="py-10 text-center text-sm text-muted">{l.empty}</p>;
 
   return (
     <div className="relative">
@@ -97,7 +110,7 @@ export function LineChart({
         viewBox={`0 0 ${W} ${H}`}
         className="block w-full touch-none select-none outline-none"
         role="img"
-        aria-label="График по дням"
+        aria-label={l.daily}
         tabIndex={0}
         onPointerMove={onMove}
         onPointerLeave={() => setHover(null)}
@@ -214,8 +227,8 @@ export function BarList({
   color?: string;
 }) {
   const max = Math.max(0, ...rows.map((r) => r.value));
-  if (rows.length === 0)
-    return <p className="py-10 text-center text-sm text-muted">Нет данных за период</p>;
+  const l = useContext(LabelsCtx);
+  if (rows.length === 0) return <p className="py-10 text-center text-sm text-muted">{l.empty}</p>;
   return (
     <ul className="space-y-2.5">
       {rows.map((r) => (

@@ -4,12 +4,14 @@ import { giftCheckoutFn, giftSaleInfoFn } from "@/app/storefront/gift.functions"
 import { CHALLENGE_MIN_FILL_MS, solveChallenge } from "@/app/signup/challenge-solve";
 import { rememberOrderToken } from "@/app/storefront/order-token";
 import { useStorefrontLocale } from "@/app/storefront/locale";
-import { formatMoney } from "@/core/money/money";
+import { formatMoneyUi } from "@/core/money/money";
 import { Empty, ErrorBox, Field, useAction } from "@/app/ui";
+import { StorePageMissing } from "@/app/storefront/missing";
 
 export const Route = createFileRoute("/s/$slug/gift")({
   loader: ({ params }) => giftSaleInfoFn({ data: { slug: params.slug } }),
   component: GiftPage,
+  notFoundComponent: StorePageMissing,
 });
 
 /** Подарочный сертификат: номинал и контакты → заказ → страница заказа с оплатой. */
@@ -85,7 +87,7 @@ function GiftPage() {
                   checked={amount === a}
                   onChange={() => setAmount(a)}
                 />
-                {formatMoney(a, info.currency)}
+                {formatMoneyUi(a, info.currency)}
               </label>
             ))}
           </div>

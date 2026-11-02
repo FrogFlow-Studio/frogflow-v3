@@ -17,6 +17,7 @@ import { intlLocale } from "@/app/i18n/admin";
 import type { Locale } from "@/core/i18n/locale";
 import type { StorefrontT } from "@/app/i18n/storefront";
 import { ErrorBox, useAction } from "@/app/ui";
+import { StorePageMissing } from "@/app/storefront/missing";
 
 /**
  * Купленный курс: покупатель приходит по ссылке из сообщения о выдаче
@@ -36,6 +37,7 @@ export const Route = createFileRoute("/s/$slug/course/$itemId")({
   // Видео урока во встроенном плеере: во фреймах — только белый список хостов.
   headers: () => ({ "Content-Security-Policy": COURSE_PAGE_CSP }),
   component: CoursePage,
+  notFoundComponent: StorePageMissing,
 });
 
 function CoursePage() {

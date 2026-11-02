@@ -9,14 +9,16 @@ import {
 import { webCheckoutInfoFn } from "@/app/storefront/checkout.functions";
 import { useCart, useTelegramWebApp } from "@/app/storefront/cart";
 import { useStorefrontLocale } from "@/app/storefront/locale";
-import { formatMoney } from "@/core/money/money";
+import { formatMoneyUi } from "@/core/money/money";
 import { Empty, ErrorBox, useAction } from "@/app/ui";
+import { StorePageMissing } from "@/app/storefront/missing";
 
 export const Route = createFileRoute("/s/$slug/cart")({
   loader: async ({ params }) => ({
     web: (await webCheckoutInfoFn({ data: { slug: params.slug } })).enabled,
   }),
   component: CartPage,
+  notFoundComponent: StorePageMissing,
 });
 
 function CartPage() {
@@ -74,7 +76,7 @@ function CartPage() {
             )}
             <div className="min-w-0 flex-1">
               <div className="truncate text-sm font-medium">{l.name}</div>
-              <div className="text-xs text-muted">{formatMoney(l.price, l.currency)}</div>
+              <div className="text-xs text-muted">{formatMoneyUi(l.price, l.currency)}</div>
             </div>
             {l.kind === "physical" ? (
               <div className="flex items-center gap-1">
@@ -107,10 +109,10 @@ function CartPage() {
         <>
           <div className="mt-4 flex items-center justify-between text-lg font-semibold">
             <span>{t("cart.total")}</span>
-            <span className="tabular-nums">{formatMoney(cart.total, cart.currency)}</span>
+            <span className="tabular-nums">{formatMoneyUi(cart.total, cart.currency)}</span>
           </div>
           <p className="mt-1 text-xs text-muted">
-            {wa ? t("cart.nextStep") : t("cart.nextStepTelegram")}
+            {wa || webCheckout ? t("cart.nextStep") : t("cart.nextStepTelegram")}
           </p>
           {webCheckout && (
             <Link
@@ -184,8 +186,8 @@ function UpsellBlock({ slug, offers }: { slug: string; offers: Offer[] }) {
               <div className="truncate text-sm font-medium">{p.name}</div>
               <div className="text-xs text-muted">
                 {p.priceFrom
-                  ? t("catalog.priceFrom", { price: formatMoney(p.price, p.currency) })
-                  : formatMoney(p.price, p.currency)}
+                  ? t("catalog.priceFrom", { price: formatMoneyUi(p.price, p.currency) })
+                  : formatMoneyUi(p.price, p.currency)}
               </div>
             </Link>
             {p.variants.length > 0 ? (

@@ -44,6 +44,9 @@ export const Route = createRootRoute({
     <main className="mx-auto max-w-md p-8 text-center">
       <h1 className="text-5xl font-bold">404</h1>
       <p className="mt-3 text-sm text-neutral-500">Такой страницы нет.</p>
+      <a href="/" className="btn-primary mt-6 inline-flex">
+        На главную FrogFlow
+      </a>
     </main>
   ),
 });

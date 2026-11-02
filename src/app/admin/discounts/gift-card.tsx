@@ -7,7 +7,7 @@ import {
 } from "@/app/admin/promos.functions";
 import { adminT } from "@/app/i18n/admin";
 import { Badge, Card, Empty, ErrorBox, Field, useAction } from "@/app/ui";
-import { formatMoney } from "@/core/money/money";
+import { formatMoneyUi } from "@/core/money/money";
 import { HelpTip } from "@/app/admin/help-panel";
 
 /** Подарочные сертификаты. */
@@ -106,7 +106,7 @@ export function GiftCard({ gifts, currency }: { gifts: Gift[]; currency: string 
             {gifts.map((g) => (
               <tr key={g.id}>
                 <td className="font-mono">{g.code}</td>
-                <td className="tabular-nums">{formatMoney(g.amount, g.currency)}</td>
+                <td className="tabular-nums">{formatMoneyUi(g.amount, g.currency)}</td>
                 <td>
                   <Badge tone={tone[g.status as keyof typeof tone] ?? "neutral"}>
                     {label[g.status as keyof typeof label] ?? g.status}

@@ -16,6 +16,26 @@ export function formatMoney(amount: number | string, currency: string): string {
   return `${value} ${currency}`;
 }
 
+/** «12500» → «12 500»: разряды неразрывным пробелом, дробная часть не трогается. */
+export function groupThousands(value: string): string {
+  const m = /^(-?)(\d+)(.*)$/.exec(value);
+  if (!m) return value;
+  const [, sign = "", digits = "", rest = ""] = m;
+  return sign + digits.replace(/\B(?=(\d{3})+(?!\d))/g, "\u00a0") + rest;
+}
+
+/**
+ * То же, что formatMoney, но с разрядами: «12 500 ₸». Для экранов панели и
+ * витрины. Тексты бота и писем остаются на formatMoney: суммы оттуда
+ * покупатель копирует в Kaspi, и неразрывный пробел там лишний.
+ */
+export function formatMoneyUi(amount: number | string, currency: string): string {
+  const s = formatMoney(amount, currency);
+  const i = s.indexOf(" ");
+  // Знак валюты не отрывается от числа при переносе строки.
+  return i < 0 ? groupThousands(s) : `${groupThousands(s.slice(0, i))}\u00a0${s.slice(i + 1)}`;
+}
+
 /**
  * Ручная цена страны из products.country_prices.
  * Форма админки пишет плоскую карту `{"KZ": 600}`; старый вид

@@ -2,6 +2,10 @@ import type { SectionDict } from "../section";
 
 /** Раздел «analytics» — ключи с префиксом `analytics.`. */
 export const ru = {
+  "analytics.chart.table": "Таблица",
+  "analytics.chart.chart": "График",
+  "analytics.chart.empty": "Нет данных за период",
+  "analytics.chart.daily": "График по дням",
   "analytics.title": "Аналитика",
   "analytics.subtitle":
     "Оплаченные заказы: выданные цифровые и физические с принятым задатком. Сравнение — с таким же периодом до этого.",
@@ -140,6 +144,10 @@ export const ru = {
 } as const;
 
 export const kk: SectionDict<typeof ru> = {
+  "analytics.chart.table": "Кесте",
+  "analytics.chart.chart": "График",
+  "analytics.chart.empty": "Кезеңде деректер жоқ",
+  "analytics.chart.daily": "Күндер бойынша график",
   "analytics.title": "Аналитика",
   "analytics.subtitle":
     "Төленген тапсырыстар: берілген цифрлық және кепілақысы қабылданған физикалық тапсырыстар. Салыстыру — оның алдындағы дәл сондай кезеңмен.",
@@ -278,6 +286,10 @@ export const kk: SectionDict<typeof ru> = {
 };
 
 export const en: SectionDict<typeof ru> = {
+  "analytics.chart.table": "Table",
+  "analytics.chart.chart": "Chart",
+  "analytics.chart.empty": "No data for this period",
+  "analytics.chart.daily": "Daily chart",
   "analytics.title": "Analytics",
   "analytics.subtitle":
     "Paid orders: delivered digital orders and physical orders with an accepted deposit. Compared with the same period before it.",
@@ -417,6 +429,10 @@ export const en: SectionDict<typeof ru> = {
 };
 
 export const uz: SectionDict<typeof ru> = {
+  "analytics.chart.table": "Jadval",
+  "analytics.chart.chart": "Grafik",
+  "analytics.chart.empty": "Bu davr uchun maʼlumot yoʻq",
+  "analytics.chart.daily": "Kunlar boʻyicha grafik",
   "analytics.title": "Analitika",
   "analytics.subtitle":
     "To‘langan buyurtmalar: topshirilgan raqamli va oldindan to‘lovi qabul qilingan jismoniy buyurtmalar. Taqqoslash — undan oldingi xuddi shunday davr bilan.",

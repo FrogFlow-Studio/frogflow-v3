@@ -185,7 +185,14 @@ function CommunityPage() {
                 </>
               )}
             </form>
-            <ErrorBox error={load.error} />
+            {load.error instanceof Error && load.error.message === t("err.community.notJoined") ? (
+              // Не ошибка, а обычное состояние: продавец ещё не вступил в сообщество.
+              <p className="rounded-md border border-line bg-surface-2 px-3 py-2 text-sm text-muted">
+                {load.error.message}
+              </p>
+            ) : (
+              <ErrorBox error={load.error} />
+            )}
             {composing && (
               <NewThread
                 section={section}

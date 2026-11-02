@@ -15,7 +15,7 @@ import { EmptyState } from "@/app/ui/states";
 import { Badge, Empty, ErrorBox, PageTitle, Switch, useAction } from "@/app/ui";
 import { ReadinessBadge } from "@/app/admin/product-readiness";
 import { rowReadiness } from "@/core/catalog/readiness";
-import { formatMoney, manualCountryPrice } from "@/core/money/money";
+import { formatMoneyUi, manualCountryPrice } from "@/core/money/money";
 import { imagePath } from "@/core/catalog/image-url";
 import { nextPageOffset } from "@/core/catalog/picker";
 import type { BulkAction } from "@/core/catalog/bulk";
@@ -244,6 +244,7 @@ function ProductsPage() {
         />
         <select
           className="input w-56"
+          aria-label={t("products.allCategories")}
           value={s.category ?? ""}
           onChange={(e) =>
             void navigate({
@@ -467,7 +468,7 @@ function ProductsPage() {
                     if (manual !== null) {
                       return {
                         code: c.code,
-                        text: `${c.code}: ${formatMoney(manual, c.currency)}`,
+                        text: `${c.code}: ${formatMoneyUi(manual, c.currency)}`,
                         isManual: true,
                       };
                     }
@@ -543,7 +544,7 @@ function ProductsPage() {
                         hash="price"
                         className="font-medium hover:underline"
                       >
-                        {formatMoney(p.price, p.currency)}
+                        {formatMoneyUi(p.price, p.currency)}
                       </Link>
                       {regionalBadges.length > 0 && (
                         <div className="mt-0.5 flex flex-wrap justify-end gap-1">

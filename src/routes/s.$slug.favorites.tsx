@@ -10,9 +10,11 @@ import { OfferPrice } from "@/app/storefront/offer";
 import { formatRatingSummary } from "@/core/reviews/pure";
 import type { StoreProduct } from "@/core/storefront/catalog";
 import { Empty, ErrorBox, useAction } from "@/app/ui";
+import { StorePageMissing } from "@/app/storefront/missing";
 
 export const Route = createFileRoute("/s/$slug/favorites")({
   component: FavoritesPage,
+  notFoundComponent: StorePageMissing,
 });
 
 /**

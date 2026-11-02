@@ -3,7 +3,7 @@ import { useState } from "react";
 import { cancelBroadcastFn, moreBroadcastsFn } from "@/app/admin/broadcasts.functions";
 import { adminT, intlLocale, type AdminKey } from "@/app/i18n/admin";
 import { Badge, Card, Empty, ErrorBox, useAction } from "@/app/ui";
-import { formatMoney } from "@/core/money/money";
+import { formatMoneyUi } from "@/core/money/money";
 import { progressPercent } from "@/core/broadcasts/pure";
 import { abCompareState, abVerdict, type AbMoneySide } from "@/core/broadcasts/ab";
 import { AUDIENCES, type Broadcast, type Channel, STATUS } from "./shared";
@@ -203,7 +203,7 @@ export function History({
                         orders: x.revenue.orders,
                         money:
                           Object.entries(x.revenue.revenue)
-                            .map(([cur, sum]) => formatMoney(sum, cur))
+                            .map(([cur, sum]) => formatMoneyUi(sum, cur))
                             .join(", ") || "0",
                       })}
                     </li>
@@ -237,7 +237,7 @@ export function History({
                     {Object.entries(b.revenue.revenue).map(([cur, sum]) => (
                       <span key={cur} className="text-ok">
                         {" · "}
-                        {formatMoney(sum, cur)}
+                        {formatMoneyUi(sum, cur)}
                       </span>
                     ))}
                     <span className="block">

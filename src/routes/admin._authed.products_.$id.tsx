@@ -1,7 +1,7 @@
 import { HelpTip } from "@/app/admin/help-panel";
 import { createFileRoute, Link, useBlocker, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { convertViaUsd, formatMoney } from "@/core/money/money";
+import { convertViaUsd, formatMoneyUi } from "@/core/money/money";
 import { ReadinessCard } from "@/app/admin/product-readiness";
 import { ProductToc, SaveBar, SectionHeading, useActiveSection } from "@/app/admin/product-layout";
 import { productReadiness } from "@/core/catalog/readiness";
@@ -298,7 +298,7 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
           code: c.code,
           name: c.name,
           flag,
-          amount: formatMoney(manual, c.currency),
+          amount: formatMoneyUi(manual, c.currency),
           tag: t("product.pricePreviewManual"),
           isManual: true,
         };
@@ -309,7 +309,7 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
             code: c.code,
             name: c.name,
             flag,
-            amount: formatMoney(basePrice, c.currency),
+            amount: formatMoneyUi(basePrice, c.currency),
             tag: t("product.pricePreviewBase"),
             isManual: false,
           };
@@ -321,7 +321,7 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
               code: c.code,
               name: c.name,
               flag,
-              amount: `≈ ${formatMoney(converted, c.currency)}`,
+              amount: `≈ ${formatMoneyUi(converted, c.currency)}`,
               tag: t("product.pricePreviewAuto"),
               isManual: false,
             };
@@ -333,7 +333,9 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
         name: c.name,
         flag,
         amount:
-          basePrice !== null && basePrice > 0 && isBase ? formatMoney(basePrice, c.currency) : "—",
+          basePrice !== null && basePrice > 0 && isBase
+            ? formatMoneyUi(basePrice, c.currency)
+            : "—",
         tag: isBase ? t("product.pricePreviewBase") : t("product.pricePreviewAuto"),
         isManual: false,
       };

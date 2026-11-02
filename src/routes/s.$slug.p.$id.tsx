@@ -7,7 +7,7 @@ import { useCart } from "@/app/storefront/cart";
 import { FavoriteButton } from "@/app/storefront/favorites";
 import { useStorefrontLocale } from "@/app/storefront/locale";
 import { reviewsWord } from "@/app/i18n/storefront";
-import { formatMoney } from "@/core/money/money";
+import { formatMoneyUi } from "@/core/money/money";
 import { intlLocale } from "@/app/i18n/admin";
 import { Breadcrumbs } from "@/app/storefront/breadcrumbs";
 import { OfferNote, OfferPrice } from "@/app/storefront/offer";
@@ -28,6 +28,7 @@ import {
   breadcrumbJsonLd,
   storefrontCrumbs,
 } from "@/core/storefront/seo";
+import { StorePageMissing } from "@/app/storefront/missing";
 
 export const Route = createFileRoute("/s/$slug/p/$id")({
   headers: publicHeaders,
@@ -99,6 +100,7 @@ export const Route = createFileRoute("/s/$slug/p/$id")({
     };
   },
   component: ProductPageKeyed,
+  notFoundComponent: StorePageMissing,
 });
 
 /** Другой товар — новая страница: выбранные фото и вариант не переносятся при листании. */
@@ -308,7 +310,7 @@ function ProductPage() {
                     onClick={() => setVariant(v.id)}
                     className={`badge cursor-pointer px-3 py-1.5 text-sm ${variant === v.id ? "border-accent bg-accent/10 text-accent" : ""}`}
                   >
-                    {v.name} · {formatMoney(v.price, v.currency)}
+                    {v.name} · {formatMoneyUi(v.price, v.currency)}
                   </button>
                 ))}
               </div>
@@ -328,8 +330,8 @@ function ProductPage() {
               {p.bundle.saving !== null && (
                 <div className="font-medium text-accent">
                   {t("bundle.saving", {
-                    saving: formatMoney(p.bundle.saving, p.currency),
-                    separate: formatMoney(p.bundle.separateTotal ?? 0, p.currency),
+                    saving: formatMoneyUi(p.bundle.saving, p.currency),
+                    separate: formatMoneyUi(p.bundle.separateTotal ?? 0, p.currency),
                   })}
                 </div>
               )}
@@ -565,7 +567,7 @@ function ProductPage() {
                 )}
                 <div className="p-2 text-xs">
                   <div className="line-clamp-2">{r.name}</div>
-                  <div className="mt-1 font-semibold">{formatMoney(r.price, r.currency)}</div>
+                  <div className="mt-1 font-semibold">{formatMoneyUi(r.price, r.currency)}</div>
                 </div>
               </Link>
             ))}

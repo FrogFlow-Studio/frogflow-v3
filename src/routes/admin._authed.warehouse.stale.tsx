@@ -4,7 +4,7 @@ import { useState } from "react";
 import { staleFn } from "@/app/admin/stock-reports.functions";
 import { adminT } from "@/app/i18n/admin";
 import { Card, Empty, PageTitle } from "@/app/ui";
-import { formatMoney } from "@/core/money/money";
+import { formatMoneyUi } from "@/core/money/money";
 import { STALE_DEFAULT_DAYS, STALE_OFFER_MAX } from "@/core/stock/stale-const";
 
 const PAGE = 50;
@@ -81,7 +81,7 @@ function StalePage() {
         <p className="mt-3 text-sm">
           {t("stale.total", {
             n: report.products.length,
-            sum: formatMoney(report.frozenTotal, report.currency),
+            sum: formatMoneyUi(report.frozenTotal, report.currency),
           })}
         </p>
         {report.unknownCost > 0 && (
@@ -147,10 +147,10 @@ function StalePage() {
                   </td>
                   <td className="text-right tabular-nums">{p.stock}</td>
                   <td className="text-right tabular-nums">
-                    {p.unitCost === null ? "—" : formatMoney(p.unitCost, report.currency)}
+                    {p.unitCost === null ? "—" : formatMoneyUi(p.unitCost, report.currency)}
                   </td>
                   <td className="text-right tabular-nums">
-                    {p.frozen === null ? "—" : formatMoney(p.frozen, report.currency)}
+                    {p.frozen === null ? "—" : formatMoneyUi(p.frozen, report.currency)}
                   </td>
                 </tr>
               ))}

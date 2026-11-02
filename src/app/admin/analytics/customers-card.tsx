@@ -3,7 +3,7 @@ import { analyticsFn } from "@/app/admin/sales-analytics.functions";
 import { adminT, intlLocale } from "@/app/i18n/admin";
 import { Card } from "@/app/ui";
 import { DataTable } from "@/app/ui/charts";
-import { formatMoney } from "@/core/money/money";
+import { formatMoneyUi } from "@/core/money/money";
 
 /** Контекст страницы аналитики: компонент вынесен из файла маршрута. */
 const Route = getRouteApi("/admin/_authed/analytics");
@@ -27,7 +27,7 @@ export function CustomersCard({
       month: "short",
       timeZone: "UTC",
     });
-  const money = (v: number) => formatMoney(v, c.currency ?? currencyFallback);
+  const money = (v: number) => formatMoneyUi(v, c.currency ?? currencyFallback);
   return (
     <Card title={t("analytics.customers.title")} className="lg:col-span-2">
       <div className="mb-4 border-b border-line pb-4" data-returning>
@@ -57,7 +57,9 @@ export function CustomersCard({
                 const g = i === 0 ? c.period.fresh : c.period.back;
                 return [
                   ...r,
-                  g.avg === null ? "—" : formatMoney(g.avg, c.period.currency ?? currencyFallback),
+                  g.avg === null
+                    ? "—"
+                    : formatMoneyUi(g.avg, c.period.currency ?? currencyFallback),
                 ];
               })}
             />

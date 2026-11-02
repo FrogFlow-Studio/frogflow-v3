@@ -46,9 +46,9 @@ test("себестоимость: задать, принять оплаченн�
   await page.goto("/admin/analytics?days=30");
   await expect(page.getByRole("heading", { name: "Прибыль по товарам" })).toBeVisible();
   const row = page.locator("tr", { hasText: name });
-  await expect(row).toContainText("8000 ₸");
-  await expect(row).toContainText("3000 ₸");
-  await expect(row).toContainText("5000 ₸");
+  await expect(row).toContainText("8 000 ₸");
+  await expect(row).toContainText("3 000 ₸");
+  await expect(row).toContainText("5 000 ₸");
   await expect(row).toContainText(/62[.,]5%/);
   await expect(
     page.getByText(
