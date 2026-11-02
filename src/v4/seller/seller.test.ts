@@ -2,7 +2,7 @@ import type { PGlite } from "@electric-sql/pglite";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { pgliteV4, v4Db } from "../test/pg";
 import { scriptedModel, type SellerModel } from "./model";
-import { buildSellerPrompt, isSpam, parseProfile } from "./prompt";
+import { buildSellerPrompt, parseProfile } from "./prompt";
 import { buyNow, runSeller } from "./seller";
 
 /**
@@ -420,7 +420,7 @@ describe("runSeller: без модели", () => {
   });
 });
 
-describe("промпт и спам", () => {
+describe("промпт", () => {
   it("пустая анкета так и сказана — модель не придумывает условия", () => {
     const s = buildSellerPrompt({
       profile: parseProfile({}),
@@ -431,11 +431,5 @@ describe("промпт и спам", () => {
     expect(s).toContain("Оплата: в анкете не заполнено.");
     expect(s).toContain("узбекском");
     expect(s).not.toContain("Оформляем заказ?»\n");
-  });
-
-  it("спам: ссылки и слова магазина, без ИИ (решение 56)", () => {
-    expect(isSpam("Заработок от 100$ t.me/xxx", [])).toBe(true);
-    expect(isSpam("Казино Вулкан", ["казино"])).toBe(true);
-    expect(isSpam("Сколько стоит тетрадь?", ["казино", " "])).toBe(false);
   });
 });

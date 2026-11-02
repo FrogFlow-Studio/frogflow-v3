@@ -76,4 +76,18 @@ for i in $(seq 1 10); do $P -c "select v4.expire_access(now() + interval '31 day
 check "10 тиков одновременно: убрать из клуба — одна задача" "$($P -c "select count(*) from v4.jobs where kind = 'club_remove'")" 1
 check "тики доступа без ошибок" "$(grep -l ERROR "$OUT"/k* "$OUT"/l* 2>/dev/null | wc -l)" 0
 
+# Этап 4б: комментарии и Direct
+$P -c "insert into v4.comment_rules (bot_id, match_mode, public_reply, dm_first, product_id, card_text) values ('$A', 'any', 'pub', 'dm', '$PR', 'card')"
+for i in $(seq 1 20); do $P -c "select buyer_id from v4.accept_comment('$A', 'instagram', 'same-c', 'p', 'same-u', 'хочу', now() - interval '2 minutes')" >"$OUT/m$i" 2>&1 & done; wait
+check "20 повторов вебхука комментария: одна строка" "$($P -c "select count(*) from v4.comments where external_id = 'same-c'")" 1
+check "и один покупатель" "$(cat "$OUT"/m* | sort -u | wc -l):$($P -c "select count(*) from v4.buyer_channels where external_id = 'same-u'")" "1:1"
+for i in $(seq 1 20); do $P -c "select 1 from v4.accept_comment('$A', 'instagram', 'c-$i', 'p', 'one-u', 'хочу', now() - interval '2 minutes')" >"$OUT/n$i" 2>&1 & done; wait
+check "20 комментариев одного человека одновременно: один покупатель" "$($P -c "select count(distinct buyer_id) from v4.comments where commenter_external_id = 'one-u'"):$(grep -l ERROR "$OUT"/n* 2>/dev/null | wc -l)" "1:0"
+for i in $(seq 1 8); do $P -c "select comment_id || ':' || kind from v4.claim_comment_sends(5)" >"$OUT/o$i" 2>&1 & done; wait
+check "8 отправщиков на 21 комментарий: каждая отправка забрана один раз" "$(cat "$OUT"/o* | grep ':' | sort | uniq -d | wc -l):$(cat "$OUT"/o* | grep -c ':')" "0:42"
+$P -c "select v4.finish_comment_send(id, 'dm', 'sent') from v4.comments where external_id = 'same-c'" >/dev/null
+SB=$($P -c "select buyer_id from v4.comments where external_id = 'same-c'")
+for i in $(seq 1 10); do $P -c "select comment_id from v4.claim_card('$A', '$SB')" >"$OUT/p$i" 2>&1 & done; wait
+check "10 «+» одновременно: карточка забрана один раз" "$(cat "$OUT"/p* | grep -c -- '-')" 1
+
 exit $fail
