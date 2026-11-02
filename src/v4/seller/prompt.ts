@@ -67,10 +67,3 @@ export function buildSellerPrompt(input: {
   }
   return lines.join("\n");
 }
-
-/** Спам в комментариях — без ИИ (решение 56): слова магазина и ссылки. */
-export function isSpam(text: string, spamWords: string[]): boolean {
-  const t = text.toLowerCase();
-  if (/(https?:\/\/|t\.me\/|wa\.me\/)/.test(t)) return true;
-  return spamWords.some((w) => w.trim() !== "" && t.includes(w.trim().toLowerCase()));
-}
