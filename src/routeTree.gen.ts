@@ -100,6 +100,7 @@ import { Route as ApiTakeoutBotIdRouteImport } from './routes/api/takeout.$botId
 import { Route as ApiTelegramBotIdRouteImport } from './routes/api/telegram.$botId'
 import { Route as ApiV1SplatRouteImport } from './routes/api/v1.$'
 import { Route as ApiZernioWebhookRouteImport } from './routes/api/zernio/webhook'
+import { Route as CBotIdTokenRouteImport } from './routes/c.$botId.$token'
 import { Route as OperatorAuthedIndexRouteImport } from './routes/operator._authed.index'
 import { Route as OperatorAuthedBroadcastRouteImport } from './routes/operator._authed.broadcast'
 import { Route as OperatorAuthedBulkRouteImport } from './routes/operator._authed.bulk'
@@ -163,6 +164,7 @@ import { Route as SSlugLegalDocRouteImport } from './routes/s.$slug.legal.$doc'
 import { Route as SSlugOrderIdRouteImport } from './routes/s.$slug.order.$id'
 import { Route as SSlugPIdRouteImport } from './routes/s.$slug.p.$id'
 import { Route as SSlugIconSizeRouteImport } from './routes/s.$slug_.icon.$size'
+import { Route as ApiCBotIdTokenFileIdRouteImport } from './routes/api/c.$botId.$token.$fileId'
 import { Route as SSlugCertCodePdfRouteImport } from './routes/s.$slug_.cert.$code.pdf'
 import { Route as ApiCourseFileSlugProductIdNoIdxRouteImport } from './routes/api/course-file.$slug.$productId.$no.$idx'
 
@@ -620,6 +622,11 @@ const ApiZernioWebhookRoute = ApiZernioWebhookRouteImport.update({
   path: '/api/zernio/webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CBotIdTokenRoute = CBotIdTokenRouteImport.update({
+  id: '/c/$botId/$token',
+  path: '/c/$botId/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OperatorAuthedIndexRoute = OperatorAuthedIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -951,6 +958,11 @@ const SSlugIconSizeRoute = SSlugIconSizeRouteImport.update({
   path: '/s/$slug/icon/$size',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiCBotIdTokenFileIdRoute = ApiCBotIdTokenFileIdRouteImport.update({
+  id: '/api/c/$botId/$token/$fileId',
+  path: '/api/c/$botId/$token/$fileId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SSlugCertCodePdfRoute = SSlugCertCodePdfRouteImport.update({
   id: '/s/$slug_/cert/$code/pdf',
   path: '/s/$slug/cert/$code/pdf',
@@ -1052,6 +1064,7 @@ export interface FileRoutesByFullPath {
   '/api/telegram/$botId': typeof ApiTelegramBotIdRouteWithChildren
   '/api/v1/$': typeof ApiV1SplatRoute
   '/api/zernio/webhook': typeof ApiZernioWebhookRoute
+  '/c/$botId/$token': typeof CBotIdTokenRoute
   '/operator/broadcast': typeof OperatorAuthedBroadcastRoute
   '/operator/bulk': typeof OperatorAuthedBulkRoute
   '/operator/community': typeof OperatorAuthedCommunityRoute
@@ -1116,6 +1129,7 @@ export interface FileRoutesByFullPath {
   '/s/$slug/icon/$size': typeof SSlugIconSizeRoute
   '/admin/warehouse/': typeof AdminAuthedWarehouseIndexRoute
   '/operator/clients/': typeof OperatorAuthedClientsIndexRoute
+  '/api/c/$botId/$token/$fileId': typeof ApiCBotIdTokenFileIdRoute
   '/s/$slug/cert/$code/pdf': typeof SSlugCertCodePdfRoute
   '/api/course-file/$slug/$productId/$no/$idx': typeof ApiCourseFileSlugProductIdNoIdxRoute
 }
@@ -1206,6 +1220,7 @@ export interface FileRoutesByTo {
   '/api/telegram/$botId': typeof ApiTelegramBotIdRouteWithChildren
   '/api/v1/$': typeof ApiV1SplatRoute
   '/api/zernio/webhook': typeof ApiZernioWebhookRoute
+  '/c/$botId/$token': typeof CBotIdTokenRoute
   '/operator/broadcast': typeof OperatorAuthedBroadcastRoute
   '/operator/bulk': typeof OperatorAuthedBulkRoute
   '/operator/community': typeof OperatorAuthedCommunityRoute
@@ -1268,6 +1283,7 @@ export interface FileRoutesByTo {
   '/s/$slug/icon/$size': typeof SSlugIconSizeRoute
   '/admin/warehouse': typeof AdminAuthedWarehouseIndexRoute
   '/operator/clients': typeof OperatorAuthedClientsIndexRoute
+  '/api/c/$botId/$token/$fileId': typeof ApiCBotIdTokenFileIdRoute
   '/s/$slug/cert/$code/pdf': typeof SSlugCertCodePdfRoute
   '/api/course-file/$slug/$productId/$no/$idx': typeof ApiCourseFileSlugProductIdNoIdxRoute
 }
@@ -1363,6 +1379,7 @@ export interface FileRoutesById {
   '/api/telegram/$botId': typeof ApiTelegramBotIdRouteWithChildren
   '/api/v1/$': typeof ApiV1SplatRoute
   '/api/zernio/webhook': typeof ApiZernioWebhookRoute
+  '/c/$botId/$token': typeof CBotIdTokenRoute
   '/operator/_authed/broadcast': typeof OperatorAuthedBroadcastRoute
   '/operator/_authed/bulk': typeof OperatorAuthedBulkRoute
   '/operator/_authed/community': typeof OperatorAuthedCommunityRoute
@@ -1427,6 +1444,7 @@ export interface FileRoutesById {
   '/s/$slug_/icon/$size': typeof SSlugIconSizeRoute
   '/admin/_authed/warehouse/': typeof AdminAuthedWarehouseIndexRoute
   '/operator/_authed/clients/': typeof OperatorAuthedClientsIndexRoute
+  '/api/c/$botId/$token/$fileId': typeof ApiCBotIdTokenFileIdRoute
   '/s/$slug_/cert/$code/pdf': typeof SSlugCertCodePdfRoute
   '/api/course-file/$slug/$productId/$no/$idx': typeof ApiCourseFileSlugProductIdNoIdxRoute
 }
@@ -1521,6 +1539,7 @@ export interface FileRouteTypes {
     | '/api/telegram/$botId'
     | '/api/v1/$'
     | '/api/zernio/webhook'
+    | '/c/$botId/$token'
     | '/operator/broadcast'
     | '/operator/bulk'
     | '/operator/community'
@@ -1585,6 +1604,7 @@ export interface FileRouteTypes {
     | '/s/$slug/icon/$size'
     | '/admin/warehouse/'
     | '/operator/clients/'
+    | '/api/c/$botId/$token/$fileId'
     | '/s/$slug/cert/$code/pdf'
     | '/api/course-file/$slug/$productId/$no/$idx'
   fileRoutesByTo: FileRoutesByTo
@@ -1675,6 +1695,7 @@ export interface FileRouteTypes {
     | '/api/telegram/$botId'
     | '/api/v1/$'
     | '/api/zernio/webhook'
+    | '/c/$botId/$token'
     | '/operator/broadcast'
     | '/operator/bulk'
     | '/operator/community'
@@ -1737,6 +1758,7 @@ export interface FileRouteTypes {
     | '/s/$slug/icon/$size'
     | '/admin/warehouse'
     | '/operator/clients'
+    | '/api/c/$botId/$token/$fileId'
     | '/s/$slug/cert/$code/pdf'
     | '/api/course-file/$slug/$productId/$no/$idx'
   id:
@@ -1831,6 +1853,7 @@ export interface FileRouteTypes {
     | '/api/telegram/$botId'
     | '/api/v1/$'
     | '/api/zernio/webhook'
+    | '/c/$botId/$token'
     | '/operator/_authed/broadcast'
     | '/operator/_authed/bulk'
     | '/operator/_authed/community'
@@ -1895,6 +1918,7 @@ export interface FileRouteTypes {
     | '/s/$slug_/icon/$size'
     | '/admin/_authed/warehouse/'
     | '/operator/_authed/clients/'
+    | '/api/c/$botId/$token/$fileId'
     | '/s/$slug_/cert/$code/pdf'
     | '/api/course-file/$slug/$productId/$no/$idx'
   fileRoutesById: FileRoutesById
@@ -1932,6 +1956,7 @@ export interface RootRouteChildren {
   ApiTelegramBotIdRoute: typeof ApiTelegramBotIdRouteWithChildren
   ApiV1SplatRoute: typeof ApiV1SplatRoute
   ApiZernioWebhookRoute: typeof ApiZernioWebhookRoute
+  CBotIdTokenRoute: typeof CBotIdTokenRoute
   SSlugManifestDotwebmanifestRoute: typeof SSlugManifestDotwebmanifestRoute
   SSlugOfflineRoute: typeof SSlugOfflineRoute
   SSlugSitemapDotxmlRoute: typeof SSlugSitemapDotxmlRoute
@@ -1941,6 +1966,7 @@ export interface RootRouteChildren {
   ApiImgBotIdSplatRoute: typeof ApiImgBotIdSplatRoute
   ApiRobokassaBotIdActionRoute: typeof ApiRobokassaBotIdActionRoute
   SSlugIconSizeRoute: typeof SSlugIconSizeRoute
+  ApiCBotIdTokenFileIdRoute: typeof ApiCBotIdTokenFileIdRoute
   SSlugCertCodePdfRoute: typeof SSlugCertCodePdfRoute
   ApiCourseFileSlugProductIdNoIdxRoute: typeof ApiCourseFileSlugProductIdNoIdxRoute
 }
@@ -2584,6 +2610,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiZernioWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/c/$botId/$token': {
+      id: '/c/$botId/$token'
+      path: '/c/$botId/$token'
+      fullPath: '/c/$botId/$token'
+      preLoaderRoute: typeof CBotIdTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/operator/_authed/': {
       id: '/operator/_authed/'
       path: '/'
@@ -3025,6 +3058,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SSlugIconSizeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/c/$botId/$token/$fileId': {
+      id: '/api/c/$botId/$token/$fileId'
+      path: '/api/c/$botId/$token/$fileId'
+      fullPath: '/api/c/$botId/$token/$fileId'
+      preLoaderRoute: typeof ApiCBotIdTokenFileIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/s/$slug_/cert/$code/pdf': {
       id: '/s/$slug_/cert/$code/pdf'
       path: '/s/$slug/cert/$code/pdf'
@@ -3374,6 +3414,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiTelegramBotIdRoute: ApiTelegramBotIdRouteWithChildren,
   ApiV1SplatRoute: ApiV1SplatRoute,
   ApiZernioWebhookRoute: ApiZernioWebhookRoute,
+  CBotIdTokenRoute: CBotIdTokenRoute,
   SSlugManifestDotwebmanifestRoute: SSlugManifestDotwebmanifestRoute,
   SSlugOfflineRoute: SSlugOfflineRoute,
   SSlugSitemapDotxmlRoute: SSlugSitemapDotxmlRoute,
@@ -3383,6 +3424,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiImgBotIdSplatRoute: ApiImgBotIdSplatRoute,
   ApiRobokassaBotIdActionRoute: ApiRobokassaBotIdActionRoute,
   SSlugIconSizeRoute: SSlugIconSizeRoute,
+  ApiCBotIdTokenFileIdRoute: ApiCBotIdTokenFileIdRoute,
   SSlugCertCodePdfRoute: SSlugCertCodePdfRoute,
   ApiCourseFileSlugProductIdNoIdxRoute: ApiCourseFileSlugProductIdNoIdxRoute,
 }
