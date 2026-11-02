@@ -14,7 +14,7 @@ import { adjustPointsFn } from "@/app/admin/loyalty.functions";
 import { adminT, intlLocale, type AdminKey } from "@/app/i18n/admin";
 import { Badge, Card, ErrorBox, Field, PageTitle, useAction } from "@/app/ui";
 import { formatMoneyUi } from "@/core/money/money";
-import { OrderStatus } from "./admin._authed.orders";
+import { OrderStatus } from "@/app/admin/order-status";
 
 export const Route = createFileRoute("/admin/_authed/customers_/$key")({
   loader: ({ params }) => customerCardFn({ data: { key: params.key } }),

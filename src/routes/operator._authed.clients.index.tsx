@@ -130,95 +130,91 @@ function ClientDirectory() {
       {!shown.length ? (
         <Empty>По этим условиям клиентов нет. Измените поиск или фильтры.</Empty>
       ) : (
-        <div className="operator-client-directory">
-          <div className="operator-client-columnhead">
-            <span>Магазин</span>
-            <span>Сигнал</span>
-            <span>Каналы</span>
-            <span>Подписка</span>
-          </div>
-          {shown.map((c) => {
-            const error = lastError(c);
-            const incomplete = c.statsUnread || c.debtUnread || (c.servedBy === "v2" && !c.pulse);
-            const reason =
-              error ??
-              (c.subscription.state === "overdue" || c.subscription.state === "grace_over"
-                ? "Подписка просрочена"
-                : c.pulse?.quiet
-                  ? "Заказы или активность снизились"
-                  : incomplete
-                    ? "Данные прочитаны не полностью"
-                    : "Нет известных проблем");
-            return (
-              <article key={c.id} className="operator-client-record">
-                <div className="operator-client-record-main">
-                  <div>
-                    <Link
-                      to="/operator/clients/$botId"
-                      params={{ botId: c.id }}
-                      className="operator-client-name"
-                    >
-                      {c.name}
-                    </Link>
-                    <p>{c.verticalTitle}</p>
-                    <StatusBadge status={c.status} />
-                  </div>
-                  <div className="operator-client-reason">
-                    <Badge
-                      tone={
-                        error
-                          ? "danger"
-                          : isProblem(c) || c.pulse?.quiet || incomplete
-                            ? "warn"
-                            : "neutral"
-                      }
-                    >
-                      {reason}
-                    </Badge>
-                    <small>
-                      {c.pulse
-                        ? `${c.pulse.last7} оплаченных заказов за 7 дней`
-                        : "Пульс недоступен"}
-                    </small>
-                  </div>
-                  <div className="operator-client-channels">
-                    {channelStates(c).map((ch) => (
-                      <span key={ch.key}>
-                        <Badge tone={ch.tone}>{ch.label}</Badge>
-                        {ch.hint && <small>{ch.hint}</small>}
-                      </span>
-                    ))}
-                  </div>
-                  <div>
-                    <p>{planLabel(c.plan)}</p>
-                    <SubscriptionBadge s={c.subscription} expiresAt={c.subscriptionExpiresAt} />
-                  </div>
-                </div>
-                <details className="operator-client-detail">
-                  <summary>Показатели и задолженность</summary>
-                  <div>
-                    <span>
-                      Заказов за 30 дней{" "}
-                      <b>{c.statsUnread ? "нет данных" : (c.stats?.orders_30d ?? "—")}</b>
-                    </span>
-                    <span>
-                      Долг{" "}
-                      <b>
-                        {c.debtUnread
-                          ? "нет данных"
-                          : c.debt
-                            ? `${c.debt.amount.toLocaleString("ru")} ₸`
-                            : "нет"}
-                      </b>
-                    </span>
-                    <span>
-                      Адрес <b>{c.slug ? `/s/${c.slug}` : (c.appUrl ?? "не задан")}</b>
-                    </span>
-                  </div>
-                </details>
-              </article>
-            );
-          })}
+        // Таблица: строка на магазин, чтобы сравнить оплату, каналы и заказы глазами.
+        // На телефоне строки складываются в карточки (`.table-cards`).
+        <div className="card overflow-x-auto">
+          <table className="table table-cards operator-client-table">
+            <thead>
+              <tr>
+                <th>Магазин</th>
+                <th>Тариф</th>
+                <th>Оплачено</th>
+                <th className="text-right">Заказов за 7 дней</th>
+                <th className="text-right">Заказов за 30 дней</th>
+                <th className="text-right">Долг</th>
+                <th>Каналы</th>
+                <th>Сигнал</th>
+              </tr>
+            </thead>
+            <tbody>
+              {shown.map((c) => {
+                const error = lastError(c);
+                const incomplete =
+                  c.statsUnread || c.debtUnread || (c.servedBy === "v2" && !c.pulse);
+                const reason =
+                  error ??
+                  (c.subscription.state === "overdue" || c.subscription.state === "grace_over"
+                    ? "Подписка просрочена"
+                    : c.pulse?.quiet
+                      ? "Заказы или активность снизились"
+                      : incomplete
+                        ? "Данные прочитаны не полностью"
+                        : "Нет известных проблем");
+                const tone = error
+                  ? "danger"
+                  : isProblem(c) || c.pulse?.quiet || incomplete
+                    ? "warn"
+                    : "neutral";
+                return (
+                  <tr
+                    key={c.id}
+                    className={`operator-client-record ${tone === "danger" ? "is-alert" : tone === "warn" ? "is-warn" : ""}`}
+                  >
+                    <td className="cell-main">
+                      <Link
+                        to="/operator/clients/$botId"
+                        params={{ botId: c.id }}
+                        className="operator-client-name"
+                      >
+                        {c.name}
+                      </Link>
+                      <div className="text-xs text-muted">{c.verticalTitle}</div>
+                      <StatusBadge status={c.status} />
+                    </td>
+                    <td className="whitespace-nowrap">{planLabel(c.plan)}</td>
+                    <td>
+                      <SubscriptionBadge s={c.subscription} expiresAt={c.subscriptionExpiresAt} />
+                    </td>
+                    <td className="text-right tabular-nums" data-label="Заказов за 7 дней">
+                      {c.pulse ? c.pulse.last7 : "—"}
+                    </td>
+                    <td className="text-right tabular-nums" data-label="Заказов за 30 дней">
+                      {c.statsUnread ? "нет данных" : (c.stats?.orders_30d ?? "—")}
+                    </td>
+                    <td className="text-right whitespace-nowrap tabular-nums" data-label="Долг">
+                      {c.debtUnread
+                        ? "нет данных"
+                        : c.debt
+                          ? `${c.debt.amount.toLocaleString("ru")} ₸`
+                          : "нет"}
+                    </td>
+                    <td className="cell-break">
+                      <div className="flex flex-wrap gap-1">
+                        {channelStates(c).map((ch) => (
+                          <Badge key={ch.key} tone={ch.tone}>
+                            {ch.hint ? `${ch.label} · ${ch.hint}` : ch.label}
+                          </Badge>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="cell-break">
+                      <Badge tone={tone}>{reason}</Badge>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
     </div>

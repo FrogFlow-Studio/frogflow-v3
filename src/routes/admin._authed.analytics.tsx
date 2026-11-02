@@ -12,7 +12,7 @@ import { growthFunnel } from "@/core/analytics/growth-funnel";
 import { revenueParts } from "@/core/analytics/source-funnel";
 import { formatMoneyUi } from "@/core/money/money";
 import { ProfitCard } from "@/app/admin/profit-card";
-import { OrderStatus } from "./admin._authed.orders";
+import { OrderStatus } from "@/app/admin/order-status";
 import { Tile, platformLabel, sourceLabel, SourceLinksCard } from "@/app/admin/analytics/parts";
 import { ExplainCard, SpeedCard } from "@/app/admin/analytics/insights";
 import { PromoteCard } from "@/app/admin/analytics/promote-card";
