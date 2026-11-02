@@ -32,7 +32,7 @@ beforeAll(async () => {
     create table public.bots (id uuid primary key, settings jsonb not null default '{}');
     create table public.bot_users (bot_id uuid, user_key text, platform text, telegram_id bigint,
       first_name text, last_name text, language_code text, email text, loyalty_points integer,
-      created_at timestamptz default now());
+      zernio_conversation_id text, created_at timestamptz default now());
     create table public.products (id uuid primary key, bot_id uuid, name text, price numeric, currency text,
       is_active boolean, country_prices jsonb, created_at timestamptz default now());
     create table public.product_variants (id uuid primary key, bot_id uuid, product_id uuid, name text,
@@ -64,6 +64,9 @@ beforeAll(async () => {
       ($1, null, 'telegram', 9, 'Без ключа', null, 50),
       ($2, 'ig_999', 'instagram', -3, 'Чужой', 'ru', 500)`,
     [BOT, OTHER],
+  );
+  await pg.query(
+    "update public.bot_users set zernio_conversation_id = 'conv-ig-1' where user_key = 'ig_1746922216556948'",
   );
   await pg.query(
     `insert into public.products (id, bot_id, name, price, currency, is_active, country_prices) values
@@ -189,6 +192,17 @@ describe("copy_from_public", () => {
       { external_id: "555", ends_in_days: 20 },
       { external_id: "777", ends_in_days: 25 },
     ]);
+  });
+
+  it("переписка Zernio переносится в канал покупателя (нужна для выдачи в Direct)", async () => {
+    const rows = (
+      await pg.query<{ channel: string; conversation_id: string | null }>(
+        "select channel, conversation_id from v4.buyer_channels where bot_id = $1 order by channel",
+        [BOT],
+      )
+    ).rows;
+    expect(rows.find((r) => r.channel === "instagram")?.conversation_id).toBe("conv-ig-1");
+    expect(rows.find((r) => r.channel === "telegram")?.conversation_id).toBeNull();
   });
 
   it("чужой магазин и public не тронуты", async () => {
