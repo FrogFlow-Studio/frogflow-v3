@@ -595,7 +595,11 @@ function ProductsPage() {
                     {shop.modules.stock && (
                       <td
                         className={`text-right tabular-nums ${
-                          p.days_left !== null && p.days_left < 7 ? "font-medium text-danger" : ""
+                          p.days_left === null
+                            ? "cell-phone-hide"
+                            : p.days_left < 7
+                              ? "font-medium text-danger"
+                              : ""
                         }`}
                         title={t("products.daysLeftHint")}
                         data-label={p.days_left === null ? undefined : t("products.col.daysLeft")}
@@ -603,7 +607,13 @@ function ProductsPage() {
                         {p.days_left === null ? "—" : t("products.daysLeft", { n: p.days_left })}
                       </td>
                     )}
-                    <td>
+                    <td
+                      className={
+                        p.fulfillment_kind !== "digital" && p.langs.length === 0
+                          ? "cell-phone-hide"
+                          : ""
+                      }
+                    >
                       {p.fulfillment_kind === "digital" ? (
                         p.files ? (
                           <Badge tone="ok">{p.files}</Badge>
