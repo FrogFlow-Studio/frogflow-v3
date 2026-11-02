@@ -1,4 +1,5 @@
 import { cleanPersona } from "@/core/consultant/pricelist/persona";
+import { cleanChecker } from "@/core/orders/proof-checker";
 import { isReservedSlug } from "./slug";
 import { signupOrigin } from "@/core/signup/origin";
 import { MODULE_KEYS, type ModuleKey } from "@/core/modules/registry";
@@ -296,6 +297,10 @@ export function settingsFromJson(json: unknown): TenantSettings {
             pdf_watermark: obj(s.delivery).pdf_watermark === true,
             ...(obj(s.delivery).course_in_bot === true ? { course_in_bot: true } : {}),
             ...(obj(s.delivery).lessons_by_bot === true ? { lessons_by_bot: true } : {}),
+            ...(obj(s.delivery).proof_eta === true ? { proof_eta: true } : {}),
+            ...(cleanChecker(obj(s.delivery).proof_checker)
+              ? { proof_checker: cleanChecker(obj(s.delivery).proof_checker)! }
+              : {}),
           }
         : undefined,
     // Без этих двух строк сохранённое продавцом (кураторы, быстрые ответы) не доходило до чтения.

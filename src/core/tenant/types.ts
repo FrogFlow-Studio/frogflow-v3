@@ -275,6 +275,13 @@ export type TenantSettings = {
      * подписью «1.2 Материалы» — новый урок в конце курса (core/courses/lesson-by-bot).
      */
     lessons_by_bot?: boolean;
+    /**
+     * Чек получен — покупатель видит, кто и когда его проверит (core/orders/proof-eta):
+     * имя `proof_checker` и рабочие часы `work_hours`. Нет — «Ожидайте подтверждения продавца».
+     */
+    proof_eta?: boolean;
+    /** Кто проверяет чек, для текста `proof_eta` («Айс»); нет — «Продавец». */
+    proof_checker?: string;
   };
 };
 

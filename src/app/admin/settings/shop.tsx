@@ -229,17 +229,29 @@ export function WatermarkCard({ enabled }: { enabled: boolean }) {
 export function CourseInBotCard({
   enabled,
   lessonsByBot,
+  proofEta,
+  proofChecker,
 }: {
   enabled: boolean;
   lessonsByBot: boolean;
+  proofEta: boolean;
+  proofChecker: string;
 }) {
   const router = useRouter();
   const { shop } = settingsRoute.useRouteContext();
   const t = adminT(shop.locale);
-  const toggle = useAction(async (data: { enabled?: boolean; lessonsByBot?: boolean }) => {
-    await setCourseInBotFn({ data });
-    await router.invalidate();
-  });
+  const [checker, setChecker] = useState(proofChecker);
+  const toggle = useAction(
+    async (data: {
+      enabled?: boolean;
+      lessonsByBot?: boolean;
+      proofEta?: boolean;
+      proofChecker?: string;
+    }) => {
+      await setCourseInBotFn({ data });
+      await router.invalidate();
+    },
+  );
   return (
     <Card title={t("settings.courseInBot.title")}>
       <p className="mb-3 text-sm text-muted">{t("settings.courseInBot.intro")}</p>
@@ -268,6 +280,40 @@ export function CourseInBotCard({
         </span>
         <HelpTip article="settings-shop" anchor="lessons-by-bot" />
       </div>
+      <p className="mt-4 mb-3 text-sm text-muted">{t("settings.proofEta.intro")}</p>
+      <div className="flex items-center gap-3">
+        <Switch
+          checked={proofEta}
+          disabled={toggle.busy}
+          onChange={(v) => void toggle.run({ proofEta: v }).catch(() => {})}
+          label={t("settings.proofEta.switch")}
+        />
+        <span className="text-sm">
+          {proofEta ? t("settings.courseInBot.on") : t("settings.proofEta.off")}
+        </span>
+        <HelpTip article="settings-shop" anchor="proof-eta" />
+      </div>
+      {proofEta && (
+        <div className="mt-3 flex flex-wrap items-end gap-2">
+          <Field label={t("settings.proofEta.checker")} hint={t("settings.proofEta.checkerHint")}>
+            <input
+              id="proof-checker"
+              className="input"
+              maxLength={40}
+              value={checker}
+              onChange={(e) => setChecker(e.target.value)}
+            />
+          </Field>
+          <button
+            type="button"
+            className="btn-secondary"
+            disabled={toggle.busy || checker === proofChecker}
+            onClick={() => void toggle.run({ proofChecker: checker }).catch(() => {})}
+          >
+            {t("settings.proofEta.save")}
+          </button>
+        </div>
+      )}
       <ErrorBox error={toggle.error} />
     </Card>
   );
