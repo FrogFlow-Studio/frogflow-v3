@@ -30,6 +30,8 @@ const PUBLIC = [
 
 /** Зависят от входа, корзины, ссылки заказа с токеном, формы с задачей против ботов — закрыты. */
 const PRIVATE = [
+  // Кабинет покупателя v4: у каждого свой, по секретной ссылке.
+  "c.$botId.$token.tsx",
   "market.account.tsx",
   "market.report.tsx",
   "market.open.tsx",
