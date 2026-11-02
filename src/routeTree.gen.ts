@@ -80,6 +80,7 @@ import { Route as AdminAuthedSupportRouteImport } from './routes/admin._authed.s
 import { Route as AdminAuthedTasksRouteImport } from './routes/admin._authed.tasks'
 import { Route as AdminAuthedTicketsRouteImport } from './routes/admin._authed.tickets'
 import { Route as AdminAuthedUndeliveredRouteImport } from './routes/admin._authed.undelivered'
+import { Route as AdminAuthedV4SellerRouteImport } from './routes/admin._authed.v4-seller'
 import { Route as AdminAuthedV4TodayRouteImport } from './routes/admin._authed.v4-today'
 import { Route as AdminAuthedVipRouteImport } from './routes/admin._authed.vip'
 import { Route as AdminPackingIdRouteImport } from './routes/admin.packing.$id'
@@ -517,6 +518,11 @@ const AdminAuthedTicketsRoute = AdminAuthedTicketsRouteImport.update({
 const AdminAuthedUndeliveredRoute = AdminAuthedUndeliveredRouteImport.update({
   id: '/undelivered',
   path: '/undelivered',
+  getParentRoute: () => AdminAuthedRoute,
+} as any)
+const AdminAuthedV4SellerRoute = AdminAuthedV4SellerRouteImport.update({
+  id: '/v4-seller',
+  path: '/v4-seller',
   getParentRoute: () => AdminAuthedRoute,
 } as any)
 const AdminAuthedV4TodayRoute = AdminAuthedV4TodayRouteImport.update({
@@ -1026,6 +1032,7 @@ export interface FileRoutesByFullPath {
   '/admin/tasks': typeof AdminAuthedTasksRoute
   '/admin/tickets': typeof AdminAuthedTicketsRoute
   '/admin/undelivered': typeof AdminAuthedUndeliveredRoute
+  '/admin/v4-seller': typeof AdminAuthedV4SellerRoute
   '/admin/v4-today': typeof AdminAuthedV4TodayRoute
   '/admin/vip': typeof AdminAuthedVipRoute
   '/admin/packing/$id': typeof AdminPackingIdRoute
@@ -1179,6 +1186,7 @@ export interface FileRoutesByTo {
   '/admin/tasks': typeof AdminAuthedTasksRoute
   '/admin/tickets': typeof AdminAuthedTicketsRoute
   '/admin/undelivered': typeof AdminAuthedUndeliveredRoute
+  '/admin/v4-seller': typeof AdminAuthedV4SellerRoute
   '/admin/v4-today': typeof AdminAuthedV4TodayRoute
   '/admin/vip': typeof AdminAuthedVipRoute
   '/admin/packing/$id': typeof AdminPackingIdRoute
@@ -1335,6 +1343,7 @@ export interface FileRoutesById {
   '/admin/_authed/tasks': typeof AdminAuthedTasksRoute
   '/admin/_authed/tickets': typeof AdminAuthedTicketsRoute
   '/admin/_authed/undelivered': typeof AdminAuthedUndeliveredRoute
+  '/admin/_authed/v4-seller': typeof AdminAuthedV4SellerRoute
   '/admin/_authed/v4-today': typeof AdminAuthedV4TodayRoute
   '/admin/_authed/vip': typeof AdminAuthedVipRoute
   '/admin/packing/$id': typeof AdminPackingIdRoute
@@ -1492,6 +1501,7 @@ export interface FileRouteTypes {
     | '/admin/tasks'
     | '/admin/tickets'
     | '/admin/undelivered'
+    | '/admin/v4-seller'
     | '/admin/v4-today'
     | '/admin/vip'
     | '/admin/packing/$id'
@@ -1645,6 +1655,7 @@ export interface FileRouteTypes {
     | '/admin/tasks'
     | '/admin/tickets'
     | '/admin/undelivered'
+    | '/admin/v4-seller'
     | '/admin/v4-today'
     | '/admin/vip'
     | '/admin/packing/$id'
@@ -1800,6 +1811,7 @@ export interface FileRouteTypes {
     | '/admin/_authed/tasks'
     | '/admin/_authed/tickets'
     | '/admin/_authed/undelivered'
+    | '/admin/_authed/v4-seller'
     | '/admin/_authed/v4-today'
     | '/admin/_authed/vip'
     | '/admin/packing/$id'
@@ -2430,6 +2442,13 @@ declare module '@tanstack/react-router' {
       path: '/undelivered'
       fullPath: '/admin/undelivered'
       preLoaderRoute: typeof AdminAuthedUndeliveredRouteImport
+      parentRoute: typeof AdminAuthedRoute
+    }
+    '/admin/_authed/v4-seller': {
+      id: '/admin/_authed/v4-seller'
+      path: '/v4-seller'
+      fullPath: '/admin/v4-seller'
+      preLoaderRoute: typeof AdminAuthedV4SellerRouteImport
       parentRoute: typeof AdminAuthedRoute
     }
     '/admin/_authed/v4-today': {
@@ -3077,6 +3096,7 @@ interface AdminAuthedRouteChildren {
   AdminAuthedTasksRoute: typeof AdminAuthedTasksRoute
   AdminAuthedTicketsRoute: typeof AdminAuthedTicketsRoute
   AdminAuthedUndeliveredRoute: typeof AdminAuthedUndeliveredRoute
+  AdminAuthedV4SellerRoute: typeof AdminAuthedV4SellerRoute
   AdminAuthedV4TodayRoute: typeof AdminAuthedV4TodayRoute
   AdminAuthedVipRoute: typeof AdminAuthedVipRoute
   AdminAuthedIndexRoute: typeof AdminAuthedIndexRoute
@@ -3134,6 +3154,7 @@ const AdminAuthedRouteChildren: AdminAuthedRouteChildren = {
   AdminAuthedTasksRoute: AdminAuthedTasksRoute,
   AdminAuthedTicketsRoute: AdminAuthedTicketsRoute,
   AdminAuthedUndeliveredRoute: AdminAuthedUndeliveredRoute,
+  AdminAuthedV4SellerRoute: AdminAuthedV4SellerRoute,
   AdminAuthedV4TodayRoute: AdminAuthedV4TodayRoute,
   AdminAuthedVipRoute: AdminAuthedVipRoute,
   AdminAuthedIndexRoute: AdminAuthedIndexRoute,
