@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { formatMoneyUi } from "@/core/money/money";
-import { OrderStatus } from "@/routes/admin._authed.orders";
+import { OrderStatus } from "@/app/admin/order-status";
 import { useEffect, useState } from "react";
 import { chatCustomerPanelFn } from "@/app/admin/chat.functions";
 import { saveCustomerNoteFn } from "@/app/admin/customers.functions";

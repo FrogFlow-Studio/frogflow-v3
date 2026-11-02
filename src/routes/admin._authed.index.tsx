@@ -15,7 +15,7 @@ import { verticalTitleKey } from "@/app/i18n/admin/catalog";
 import { Badge, Card, Empty, ErrorBox, PageTitle, Stat, useAction } from "@/app/ui";
 import { formatMoneyUi } from "@/core/money/money";
 import { displayNo } from "@/core/orders/pure";
-import { OrderStatus } from "./admin._authed.orders";
+import { OrderStatus } from "@/app/admin/order-status";
 import { nextSetupStep, setupProgress, type SetupStep } from "@/app/admin/setup";
 import { TIER_TITLES } from "@/core/plans/registry";
 import type { LimitNotice } from "@/core/plans/tenant";

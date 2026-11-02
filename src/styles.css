@@ -276,3 +276,15 @@ body {
     animation: none;
   }
 }
+
+/* Главная, ниши, статьи на телефоне: ссылки и кнопки шапки и подвала — не меньше 40 px
+   по высоте, чтобы попадать пальцем (вид на компьютере не меняется). */
+@media (pointer: coarse) {
+  .theme-night header a,
+  .theme-night header button,
+  .theme-night footer a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 40px;
+  }
+}
