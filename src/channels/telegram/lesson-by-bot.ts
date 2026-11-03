@@ -181,7 +181,9 @@ async function addTo(
     await say(r.reason === "full" ? c.full : r.reason === "videosFull" ? c.videosFull : c.again);
     return;
   }
-  const rows = [[{ text: c.view, callback_data: `lbv:${course.id}:${r.no}` }]];
+  const rows: Array<Array<{ text: string; callback_data: string }>> = [
+    [{ text: c.view, callback_data: `lbv:${course.id}:${r.no}` }],
+  ];
   if (r.video !== undefined && lesson.tgVideo)
     rows.push([
       {
