@@ -20,6 +20,9 @@ import { loadRuns } from "./runs.server";
  * - несданное задание — когда прошёл срок сдачи (Course.homeworkDays) после
  *   открытия урока, один раз на урок, только в тарифе с проверкой;
  * - конец доступа по тарифу — исключение из закрытого канала курса;
+ * - курс в боте (settings.delivery.course_in_bot): ученица STALL_DAYS дней не
+ *   отмечала уроки, а непройденный открытый урок есть — «вы остановились на
+ *   уроке N», один раз на каждое затишье (`nudgedFor`);
  * - окончание курса (выдан сертификат) — просьба оценить курс, один раз;
  *   ответ идёт в обычные отзывы товара, на модерацию (А28).
  *
@@ -37,7 +40,18 @@ export type CourseReminder =
       title: string;
       url: string;
     }
-  | { kind: "review"; telegramId: number; course: string; productId: string };
+  | { kind: "review"; telegramId: number; course: string; productId: string }
+  | {
+      kind: "stalled";
+      telegramId: number;
+      course: string;
+      itemId: string;
+      lessonNo: number;
+      title: string;
+    };
+
+/** Сколько дней без пройденных уроков до напоминания «продолжим?» (курс в боте). */
+export const STALL_DAYS = 3;
 
 export const PRE_START_DAYS = [3, 1] as const;
 /** Выпускников старше этого срока не беспокоим: просьба нужна «по горячим следам». */
@@ -166,6 +180,36 @@ export async function courseReminders(
               }
             : null,
         );
+    }
+
+    // Курс в боте: остановилась — одно напоминание на затишье, с кнопкой урока.
+    if (ctx.tenant.settings.delivery?.course_in_bot && !tl.expired && !tl.beforeStart) {
+      const next = tl.access.find((a) => a.open && !r.run.done.includes(a.lesson.id));
+      const since = r.run.lastAt ?? r.run.startedAt;
+      if (
+        next &&
+        now.getTime() - Date.parse(since) >= STALL_DAYS * DAY &&
+        r.run.nudgedFor !== since
+      ) {
+        const ok = await mark(r.itemId, (cur) => {
+          const s = cur.lastAt ?? cur.startedAt;
+          return cur.nudgedFor === s || s !== since ? null : { ...cur, nudgedFor: s };
+        });
+        if (ok)
+          await deliver(
+            r,
+            tg
+              ? {
+                  kind: "stalled",
+                  telegramId: tg,
+                  course: r.name,
+                  itemId: r.itemId,
+                  lessonNo: next.no,
+                  title: next.lesson.title,
+                }
+              : null,
+          );
+      }
     }
 
     // Конец доступа по тарифу: закрытый канал — только пока доступ открыт.

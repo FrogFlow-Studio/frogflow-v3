@@ -35,6 +35,10 @@ export type CourseRun = {
   reviewAsked?: string;
   /** Эфиры, о которых уже напомнили: метки core/courses/live-remind (за сутки, за час). */
   liveReminded?: string[];
+  /** Когда ученик последний раз отметил урок пройденным (ISO). */
+  lastAt?: string;
+  /** Затишье, о котором уже напомнили: значение `lastAt ?? startedAt` на момент напоминания. */
+  nudgedFor?: string;
 };
 
 export function parseRun(raw: string | null | undefined): CourseRun | null {
@@ -54,6 +58,8 @@ export function parseRun(raw: string | null | undefined): CourseRun | null {
       until?: unknown;
       reviewAsked?: unknown;
       liveReminded?: unknown;
+      lastAt?: unknown;
+      nudgedFor?: unknown;
     };
     const n = x.notified;
     const pre = Array.isArray(x.pre)
@@ -80,6 +86,10 @@ export function parseRun(raw: string | null | undefined): CourseRun | null {
         : {}),
       ...(typeof x.reviewAsked === "string" ? { reviewAsked: x.reviewAsked } : {}),
       ...(live.length ? { liveReminded: live } : {}),
+      ...(typeof x.lastAt === "string" && Number.isFinite(Date.parse(x.lastAt))
+        ? { lastAt: x.lastAt }
+        : {}),
+      ...(typeof x.nudgedFor === "string" ? { nudgedFor: x.nudgedFor.slice(0, 40) } : {}),
     };
   } catch {
     return null;
@@ -206,7 +216,7 @@ export async function markLesson(
     const set = new Set(cur.done.filter((id) => p.course.lessons.some((l) => l.id === id)));
     if (done) set.add(lessonId);
     else set.delete(lessonId);
-    next = { ...cur, done: [...set] };
+    next = { ...cur, done: [...set], ...(done ? { lastAt: now.toISOString() } : {}) };
     return JSON.stringify(next);
   });
   return next;

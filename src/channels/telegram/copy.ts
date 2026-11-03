@@ -432,6 +432,9 @@ export type Msg = {
   courseHomeworkDue: (course: string, no: number, title: string) => string;
   /** Курс пройден: просьба оценить (оценка 1–5 звёздами, затем текст). */
   courseReviewAsk: (course: string) => string;
+  /** Курс в боте: ученица несколько дней не проходила уроки. */
+  courseStalled: (course: string, no: number, title: string) => string;
+  courseContinueBtn: (no: number) => string;
   /** Напоминания об эфире потока (core/courses/live-remind): время в поясе магазина уже в строке. */
   courseLiveDay: (course: string, title: string, when: string) => string;
   courseLiveHour: (course: string, title: string, when: string) => string;
@@ -602,6 +605,9 @@ const ru: Msg = {
   courseLiveWatchBtn: "Смотреть запись",
   courseReviewAsk: (course) =>
     `🎓 Поздравляем с окончанием курса «${course}»! Оцените его — это займёт минуту:`,
+  courseStalled: (course, no, title) =>
+    `👋 Вы остановились на уроке ${no} «${title}» курса «${course}». Продолжим? Урок займёт пару минут.`,
+  courseContinueBtn: (no) => `▶️ Продолжить: урок ${no}`,
   courseHomeworkDue: (course, no, title) =>
     `📝 Напоминаем: задание урока ${no} «${title}» курса «${course}» ещё не сдано. Пришлите ответ — преподаватель ждёт.`,
   broadcastPick: "👇 Выберите материал:",
@@ -1192,6 +1198,9 @@ const kk: Msg = {
   courseLiveWatchBtn: "Жазбаны көру",
   courseReviewAsk: (course) =>
     `🎓 «${course}» курсын аяқтағаныңызбен құттықтаймыз! Оны бағалаңыз — бір минут қана:`,
+  courseStalled: (course, no, title) =>
+    `👋 Сіз «${course}» курсының ${no}-сабағында «${title}» тоқтадыңыз. Жалғастырамыз ба?`,
+  courseContinueBtn: (no) => `▶️ Жалғастыру: ${no}-сабақ`,
   courseHomeworkDue: (course, no, title) =>
     `📝 Еске саламыз: «${course}» курсының ${no}-сабағы «${title}» тапсырмасы әлі тапсырылмаған. Жауабыңызды жіберіңіз — оқытушы күтуде.`,
   broadcastPick: "👇 Материалды таңдаңыз:",
@@ -1540,6 +1549,9 @@ const en: Msg = {
   courseLiveWatchBtn: "Watch the recording",
   courseReviewAsk: (course) =>
     `🎓 Congratulations on finishing “${course}”! Please rate it — it takes a minute:`,
+  courseStalled: (course, no, title) =>
+    `👋 You stopped at lesson ${no} “${title}” of “${course}”. Shall we continue? It takes a couple of minutes.`,
+  courseContinueBtn: (no) => `▶️ Continue: lesson ${no}`,
   courseHomeworkDue: (course, no, title) =>
     `📝 Reminder: the homework for lesson ${no} “${title}” of “${course}” hasn't been submitted yet. Send your answer — the teacher is waiting.`,
   broadcastPick: "👇 Pick an item:",
@@ -1939,6 +1951,9 @@ const uz: Msg = {
   courseLiveWatchBtn: "Yozuvni ko‘rish",
   courseReviewAsk: (course) =>
     `🎓 «${course}» kursini tugatganingiz bilan tabriklaymiz! Uni baholang — bir daqiqa kifoya:`,
+  courseStalled: (course, no, title) =>
+    `👋 Siz «${course}» kursining ${no}-darsida «${title}» to‘xtadingiz. Davom etamizmi?`,
+  courseContinueBtn: (no) => `▶️ Davom etish: ${no}-dars`,
   courseHomeworkDue: (course, no, title) =>
     `📝 Eslatma: «${course}» kursining ${no}-darsi «${title}» vazifasi hali topshirilmagan. Javobingizni yuboring — o‘qituvchi kutmoqda.`,
   broadcastPick: "👇 Materialni tanlang:",

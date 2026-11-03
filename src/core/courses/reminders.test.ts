@@ -288,3 +288,62 @@ describe("просьба оценить курс (А28)", () => {
     );
   });
 });
+
+describe("курс в боте: «вы остановились на уроке» (Lash Academy, 03.11.2026)", () => {
+  const L2 = "00000000-0000-4000-8000-000000000002";
+  function stalled(opts: { inBot?: boolean; done?: string[]; lastAt?: string } = {}) {
+    const { ctx, db } = school();
+    const plain: Course = {
+      schedule: { mode: "all" },
+      lessons: [
+        { id: L1, title: "1.1. Знакомство", text: "т", files: [], link: null },
+        { id: L2, title: "1.2. Материалы", text: "т", files: [], link: null },
+      ],
+    };
+    const rows = db.tables.app_settings as Array<{ key: string; value: string }>;
+    rows.find((r) => r.key === courseKey(P))!.value = JSON.stringify(plain);
+    rows.find((r) => r.key === runKey("item-1"))!.value = JSON.stringify({
+      startedAt: "2026-10-01T00:00:00Z",
+      done: opts.done ?? [],
+      ...(opts.lastAt ? { lastAt: opts.lastAt } : {}),
+    });
+    (db.tables.order_items as Array<Record<string, unknown>>)[0]!.product_variant_id = null;
+    (ctx.tenant as { settings: Record<string, unknown> }).settings = {
+      slug: "school",
+      ...(opts.inBot === false ? {} : { delivery: { course_in_bot: true } }),
+    };
+    const sent: Array<{ kind: string; lessonNo?: number; itemId?: string }> = [];
+    const send = async (x: { kind: string; lessonNo?: number; itemId?: string }) => (
+      sent.push(x),
+      true
+    );
+    return { ctx, sent, send };
+  }
+
+  it("3 дня без уроков — одно напоминание с первым непройденным уроком; повтор крона — тишина", async () => {
+    const { ctx, sent, send } = stalled({ done: [L1], lastAt: "2026-10-05T10:00:00Z" });
+    await courseReminders(ctx, send, null, new Date("2026-10-07T10:00:00Z"));
+    expect(sent.filter((s) => s.kind === "stalled")).toEqual([]);
+    await courseReminders(ctx, send, null, new Date("2026-10-08T11:00:00Z"));
+    await courseReminders(ctx, send, null, new Date("2026-10-08T12:00:00Z"));
+    expect(sent.filter((s) => s.kind === "stalled")).toEqual([
+      expect.objectContaining({ kind: "stalled", lessonNo: 2, itemId: "item-1" }),
+    ]);
+  });
+
+  it("два крона одновременно — одно сообщение", async () => {
+    const { ctx, sent, send } = stalled();
+    const at = new Date("2026-10-08T11:00:00Z");
+    await Promise.all([courseReminders(ctx, send, null, at), courseReminders(ctx, send, null, at)]);
+    expect(sent.filter((s) => s.kind === "stalled")).toHaveLength(1);
+  });
+
+  it("всё пройдено или переключатель выключен — не пишем", async () => {
+    const a = stalled({ done: [L1, L2], lastAt: "2026-10-02T00:00:00Z" });
+    await courseReminders(a.ctx, a.send, null, new Date("2026-10-20T00:00:00Z"));
+    expect(a.sent.filter((s) => s.kind === "stalled")).toEqual([]);
+    const b = stalled({ inBot: false });
+    await courseReminders(b.ctx, b.send, null, new Date("2026-10-20T00:00:00Z"));
+    expect(b.sent.filter((s) => s.kind === "stalled")).toEqual([]);
+  });
+});
