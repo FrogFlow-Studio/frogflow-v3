@@ -219,6 +219,8 @@ export const ru = {
   "err.course.badTariff": "Срок доступа тарифа — от 1 до 3650 дней.",
   "err.course.badLesson": "Урок {lesson} повреждён — удалите его и добавьте заново.",
   "err.course.tgVideoGone": "Этого видео в уроке уже нет — обновите страницу.",
+  "err.course.shortBad": "Короткая ссылка — латиница, цифры и дефис, от 2 до 40 знаков.",
+  "err.course.shortTaken": "Эта короткая ссылка уже у другого курса.",
   "err.broadcast.badSegment": "Сегмент заполнен не полностью.",
   "err.broadcast.badSchedule": "Время отправки — от минуты до 60 дней вперёд.",
   "err.broadcast.followupOfFollowup":
@@ -466,6 +468,8 @@ export const kk: SectionDict<typeof ru> = {
   "err.course.badTariff": "Тарифтің қолжетімділік мерзімі — 1-ден 3650 күнге дейін.",
   "err.course.badLesson": "{lesson}-сабақ бүлінген — оны өшіріп, қайта қосыңыз.",
   "err.course.tgVideoGone": "Бұл бейне сабақта енді жоқ — бетті жаңартыңыз.",
+  "err.course.shortBad": "Қысқа сілтеме — латын әріптері, сандар және сызықша, 2-ден 40 таңбаға дейін.",
+  "err.course.shortTaken": "Бұл қысқа сілтеме басқа курста бар.",
   "err.broadcast.badSegment": "Сегмент толық толтырылмаған.",
   "err.broadcast.badSchedule": "Жіберу уақыты — бір минуттан 60 күнге дейін алда.",
   "err.broadcast.followupOfFollowup":
@@ -715,6 +719,8 @@ export const en: SectionDict<typeof ru> = {
   "err.course.badTariff": "A tariff’s access period is 1 to 3650 days.",
   "err.course.badLesson": "Lesson {lesson} is damaged — delete it and add it again.",
   "err.course.tgVideoGone": "This video is no longer in the lesson — refresh the page.",
+  "err.course.shortBad": "Short link: Latin letters, digits and hyphens, 2 to 40 characters.",
+  "err.course.shortTaken": "Another course already uses this short link.",
   "err.broadcast.badSegment": "The segment is not filled in completely.",
   "err.broadcast.badSchedule": "Send time must be from one minute to 60 days ahead.",
   "err.broadcast.followupOfFollowup":
@@ -970,6 +976,8 @@ export const uz: SectionDict<typeof ru> = {
   "err.course.badTariff": "Tarifning kirish muddati — 1 dan 3650 kungacha.",
   "err.course.badLesson": "{lesson}-dars buzilgan — uni oʻchirib, qaytadan qoʻshing.",
   "err.course.tgVideoGone": "Bu video darsda endi yoʻq — sahifani yangilang.",
+  "err.course.shortBad": "Qisqa havola — lotin harflari, raqamlar va chiziqcha, 2 dan 40 belgigacha.",
+  "err.course.shortTaken": "Bu qisqa havola boshqa kursda band.",
   "err.broadcast.badSegment": "Segment to'liq to'ldirilmagan.",
   "err.broadcast.badSchedule": "Yuborish vaqti — bir daqiqadan 60 kungacha oldinda.",
   "err.broadcast.followupOfFollowup":

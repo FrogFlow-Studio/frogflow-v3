@@ -110,6 +110,7 @@ export function seedCourseLanding(db: StubDb, now: string) {
     accent: "#c2185b",
     headline: "Ресницы с нуля Л1",
     subtitle: "Три урока в двух модулях",
+    short: "lash-l1",
     order: ["faq", "program", "learn", "authors", "works", "quotes"],
     hidden: ["quotes"],
     authors: [{ photo: null, name: "Жази Л1", text: "Мастер и преподаватель" }],

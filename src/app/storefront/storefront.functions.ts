@@ -81,7 +81,8 @@ export const storeCatalogFn = createServerFn({ method: "GET" })
   });
 
 export const storeProductFn = createServerFn({ method: "GET" })
-  .validator((d: unknown) => z.object({ slug, id: z.string().uuid() }).parse(d))
+  // id — номер товара или короткая ссылка страницы курса (/p/kurs, core/courses/landing).
+  .validator((d: unknown) => z.object({ slug, id: z.string().min(1).max(64) }).parse(d))
   .handler(async ({ data }) => {
     // Каталог открыт (витрина или Mini App) — любой товар. Иначе у школы
     // (модуль courses) открыта только страница курса с включённой «Страницей
@@ -95,7 +96,14 @@ export const storeProductFn = createServerFn({ method: "GET" })
     if (!catalog && !storefrontOpen(t, "course")) throw notFound();
     const ctx = tenantContext(t);
     const { storeProduct, storeRelated } = await import("@/core/storefront/catalog");
-    const product = await storeProduct(ctx, data.id);
+    const { isProductUuid } = await import("@/core/courses/landing");
+    let id: string | null = data.id;
+    if (!isProductUuid(id)) {
+      const { productByShort } = await import("@/core/courses/landing.server");
+      id = storefrontOpen(t, "course") ? await productByShort(ctx, id) : null;
+      if (!id) throw notFound();
+    }
+    const product = await storeProduct(ctx, id);
     if (!product) {
       if (!catalog) throw notFound();
       throw shownError((await shopT(ctx))("error.productNotFound"));

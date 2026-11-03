@@ -50,7 +50,22 @@ export type CourseLanding = {
   works: string[];
   quotes: Array<{ name: string; text: string }>;
   faq: Array<{ q: string; a: string }>;
+  /** Короткая ссылка: /s/<магазин>/p/<short> вместо номера товара; null — нет. */
+  short: string | null;
 };
+
+/** Латиница, цифры и дефис, 2–40 знаков, не номер товара. */
+const SHORT_RE = /^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])$/;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Короткая ссылка в нижнем регистре или null, если такую задать нельзя. */
+export function cleanShort(v: unknown): string | null {
+  if (typeof v !== "string") return null;
+  const s = v.trim().toLowerCase();
+  return SHORT_RE.test(s) && !UUID_RE.test(s) ? s : null;
+}
+
+export const isProductUuid = (s: string) => UUID_RE.test(s);
 
 export const landingKey = (productId: string) => `course_landing_${productId}`;
 
@@ -60,6 +75,7 @@ export const emptyLanding = (): CourseLanding => ({
   accent: null,
   headline: "",
   subtitle: "",
+  short: null,
   order: [...LANDING_BLOCKS],
   hidden: [],
   authors: [],
@@ -118,6 +134,7 @@ export function cleanLanding(v: Record<string, unknown>, tenantId: string): Cour
     accent,
     headline: str(v.headline, L.headline),
     subtitle: str(v.subtitle, L.subtitle),
+    short: cleanShort(v.short),
     order: normalOrder(v.order),
     hidden: [...new Set(arr(v.hidden).filter(isBlock))],
     authors: arr(v.authors)

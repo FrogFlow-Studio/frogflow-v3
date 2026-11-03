@@ -3,8 +3,39 @@ import { UserError } from "@/core/i18n/user-error";
 import { updateSettingStamped } from "@/core/settings/settings";
 import { serverFailure } from "@/lib/server-failure";
 import { imageUrl } from "@/core/catalog/catalog";
+import { pageAll } from "@/core/db/page";
 import { readSetting } from "./db.server";
-import { cleanLanding, landingKey, parseLanding, type CourseLanding } from "./landing";
+import { cleanLanding, cleanShort, landingKey, parseLanding, type CourseLanding } from "./landing";
+
+const PREFIX = landingKey("");
+
+/** Все страницы курсов магазина: [id товара, запись]. Сбой чтения — сбой, не «нет». */
+async function allLandings(ctx: TenantContext): Promise<Array<[string, CourseLanding]>> {
+  const rows = await pageAll<{ key: string; value: string | null }>(
+    (from, to) =>
+      ctx.db
+        .from("app_settings")
+        .select("key, value")
+        .like("key", `${PREFIX}%`)
+        .order("key")
+        .range(from, to),
+    "страницы курсов",
+  );
+  return rows
+    .filter((r) => r.key.startsWith(PREFIX))
+    .map((r) => [r.key.slice(PREFIX.length), parseLanding(r.value, ctx.tenant.id)]);
+}
+
+/**
+ * Товар по короткой ссылке (/s/<магазин>/p/<short>): только включённая
+ * страница курса. null — такой ссылки нет.
+ */
+export async function productByShort(ctx: TenantContext, short: string): Promise<string | null> {
+  const want = cleanShort(short);
+  if (!want) return null;
+  const hit = (await allLandings(ctx)).find(([, l]) => l.on && l.short === want);
+  return hit ? hit[0] : null;
+}
 
 /** Страница курса в админке: прочитать как есть (выключенная тоже). */
 export async function getLanding(ctx: TenantContext, productId: string): Promise<CourseLanding> {
@@ -34,6 +65,18 @@ export async function saveLanding(
       "Курс можно сделать только из цифрового товара, не из физического.",
     );
   const clean = cleanLanding(landing as unknown as Record<string, unknown>, ctx.tenant.id);
+  if (landing.short && !clean.short)
+    throw new UserError(
+      "err.course.shortBad",
+      "Короткая ссылка — латиница, цифры и дефис, от 2 до 40 знаков.",
+    );
+  if (clean.short) {
+    const taken = (await allLandings(ctx)).some(
+      ([pid, l]) => pid !== productId && l.short === clean.short,
+    );
+    if (taken)
+      throw new UserError("err.course.shortTaken", "Эта короткая ссылка уже у другого курса.");
+  }
   const r = await updateSettingStamped(ctx, landingKey(productId), () => JSON.stringify(clean));
   if (r !== "written")
     throw new UserError(

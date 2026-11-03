@@ -28,7 +28,8 @@ export const Route = createFileRoute("/s/$slug")({
       storeInfoFn({ data: { slug: params.slug } }),
       storeShareFn({ data: { slug: params.slug } }),
     ]);
-    return { ...info, share };
+    // Нет фото товаров для превью ссылки — аватар бота, а не пустая карточка.
+    return { ...info, share: { ...share, cover: share.cover ?? info.logo } };
   },
   head: ({ loaderData }) => {
     // Без словаря витрины: заголовок `head` идёт в общий код всех страниц сайта.
