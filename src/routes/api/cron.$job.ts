@@ -97,6 +97,17 @@ export const Route = createFileRoute("/api/cron/$job")({
                   results[`${t.id}:vip`] = await tenantFailure(t.id, e);
                 }
               });
+              // Аватар бота для шапки витрины: раз в сутки на клиента, сам себя отмечает.
+              const { syncBotAvatar } = await import("@/channels/telegram/bot-avatar.server");
+              await eachWithin(ordered, budget, skipped, async (t) => {
+                try {
+                  const r = await syncBotAvatar(t);
+                  if (r.action === "updated" || r.action === "failed")
+                    results[`${t.id}:avatar`] = r;
+                } catch (e) {
+                  results[`${t.id}:avatar`] = await tenantFailure(t.id, e);
+                }
+              });
               // Быстрые вопросы Instagram: только клиентам v2 и только когда набор сменился.
               const { ensureIceBreakers } = await import("@/channels/zernio/ice-breakers.server");
               await eachWithin(ordered, budget, skipped, async (t) => {

@@ -16,6 +16,7 @@ import {
   type Product,
 } from "@/core/catalog/catalog";
 import { imagePath } from "@/core/catalog/image-url";
+import { BOT_AVATAR_KEY, parseBotAvatar } from "./bot-avatar";
 import { resolveListPrice, resolvePrice } from "@/core/pricing/pricing";
 import {
   activeOfferFor,
@@ -118,6 +119,8 @@ export type StoreInfo = {
   design: StoreDesign;
   /** Заполнена страница «О магазине»: в подвале есть ссылка на неё. */
   hasAbout: boolean;
+  /** Аватар Telegram-бота для шапки (/api/img/…); null — кружок с буквами. */
+  logo: string | null;
 };
 
 export async function storeInfo(ctx: TenantContext): Promise<StoreInfo> {
@@ -136,9 +139,11 @@ export async function storeInfo(ctx: TenantContext): Promise<StoreInfo> {
       "shop_tagline",
       "storefront_accent",
       "mini_app_catalog",
+      BOT_AVATAR_KEY,
     ]),
   ]);
   const visible = visibleCategoryIds(cats);
+  const avatar = parseBotAvatar(s[BOT_AVATAR_KEY] ?? null, ctx.tenant.id);
   const legalOn = Boolean(ctx.tenant.modules.legal_docs);
   return {
     botId: ctx.tenant.id,
@@ -170,6 +175,7 @@ export async function storeInfo(ctx: TenantContext): Promise<StoreInfo> {
     catalogLayout: parseCatalogLayout(s.mini_app_catalog),
     design: parseDesign(ctx.tenant.settings.storefront_design),
     hasAbout: aboutFilled(parseAbout(ctx.tenant.settings.storefront_about)),
+    logo: avatar?.path ? imagePath(ctx.tenant.id, avatar.path) : null,
     // Ссылки на юр. страницы — только при модуле legal_docs (core/storefront/access).
     legal: {
       offer: legalOn && Boolean(s.legal_offer),
