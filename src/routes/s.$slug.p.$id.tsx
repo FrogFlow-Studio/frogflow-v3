@@ -191,7 +191,7 @@ function ProductPage() {
           {t("product.course.program", { n: course.lessons.length })}
         </h2>
       )}
-      <p className="mb-3 text-xs text-muted">
+      <p className={landing ? "mb-4 text-sm text-muted" : "mb-3 text-xs text-muted"}>
         {course.everyDays
           ? t("product.course.drip", { n: course.everyDays })
           : course.afterTask
@@ -205,11 +205,11 @@ function ProductPage() {
       {landing ? (
         <>
           {programModules(course.lessons).map((g, gi) => (
-            <div key={gi} className={gi ? "mt-4" : ""}>
-              {g.title && <h3 className="mb-1 text-sm font-semibold">{g.title}</h3>}
-              <ol className="space-y-1 text-sm">
+            <div key={gi} className={`card p-5${gi ? " mt-3" : ""}`}>
+              {g.title && <h3 className="mb-3 text-base font-semibold">{g.title}</h3>}
+              <ol className="space-y-2 text-base">
                 {g.lessons.map((l) => (
-                  <li key={l.no} className="flex gap-2">
+                  <li key={l.no} className="flex gap-3">
                     <span className="w-6 shrink-0 text-right text-muted tabular-nums">{l.no}.</span>
                     <div className="min-w-0 flex-1">
                       <span>{l.short}</span>
@@ -364,11 +364,15 @@ function ProductPage() {
           t={t}
         />
       )}
-      {/* Страница курса без фото: шапка уже есть, пустое поле фото не рисуем. */}
+      {/* Страница курса: слева фото и блоки продавца, справа — карточка покупки (липкая на компьютере). */}
       <div
-        className={`grid gap-6 ${landing ? "mt-6" : "mt-3"} ${landing && !p.images.length ? "max-w-2xl" : "md:grid-cols-2"}`}
+        className={
+          landing
+            ? "mt-10 grid gap-10 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-14"
+            : "mt-3 grid gap-6 md:grid-cols-2"
+        }
       >
-        <div className={landing && !p.images.length ? "hidden" : undefined}>
+        <div className={landing ? "order-1 min-w-0" : undefined}>
           {p.images.length > 1 && (
             // Телефон: фото листаются пальцем (scroll-snap), без JS-кода жестов.
             <div
@@ -398,8 +402,9 @@ function ProductPage() {
             >
               <img src={p.images[img]} alt={p.name} className={`${frame.img} rounded-lg`} />
             </button>
-          ) : (
+          ) : landing ? null : (
             // Телефон: без фото поле не показываем — название и цена сразу сверху.
+            // Страница курса без фото начинается с блоков: пустое поле там только мешает.
             <NoPhoto name={p.name} className={`${frame.box} rounded-lg max-md:hidden`} />
           )}
           {p.images.length > 1 && (
@@ -415,222 +420,246 @@ function ProductPage() {
               ))}
             </div>
           )}
+          {landing && (
+            <>
+              <LandingBlocks
+                landing={landing}
+                program={program}
+                onPhoto={(i) => setViewer({ set: "works", i })}
+                first={p.images.length === 0}
+                t={t}
+              />
+              {p.description && (
+                <section className="mt-14">
+                  <h2 className="mb-4 text-2xl font-semibold">{t("product.description")}</h2>
+                  <p className="text-base leading-relaxed whitespace-pre-line">{p.description}</p>
+                </section>
+              )}
+            </>
+          )}
         </div>
-        <SwipeArea nav={nav}>
-          {landing ? (
-            // Заголовок страницы — в шапке курса; здесь — название товара у кнопки покупки.
-            <h2 className="text-2xl font-semibold">{p.name}</h2>
-          ) : (
-            <h1 className="text-2xl font-semibold">{p.name}</h1>
-          )}
-          <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted">
-            <span className="badge">{t(pageBadge(p))}</span>
-            {p.rating && (
-              <span>
-                ★ {p.rating.avg.toFixed(1)} · {p.rating.count} {reviewsWord(locale, p.rating.count)}
-              </span>
-            )}
-          </div>
-          <div className="mt-3 text-2xl font-semibold">
-            <OfferPrice
-              price={price}
-              oldPrice={chosen ? chosen.oldPrice : (p.offer?.oldPrice ?? null)}
-              currency={currency}
-              offer={p.offer}
-            />
-          </div>
-          {p.offer && <OfferNote offer={p.offer} className="mt-1 block text-sm text-accent" />}
-          {p.leadTimeDays ? (
-            <div className="mt-1 text-sm text-muted">
-              {t("product.leadTime", { n: p.leadTimeDays })}
-            </div>
-          ) : null}
-          {p.kind === "digital" && (p.files?.length ?? 0) > 0 ? (
-            <div className="mt-3">
-              <div className="label">{t("product.filesTitle")}</div>
-              <ul className="space-y-1 text-sm">
-                {p.files!.map((f, i) => (
-                  <li key={i} className="flex items-baseline gap-2">
-                    <span aria-hidden>📄</span>
-                    <span className="min-w-0 flex-1 break-words">
-                      {f.name || t("product.fileUnnamed")}
-                    </span>
-                    {p.languages.length > 1 && (
-                      <span className="shrink-0 text-xs text-muted">
-                        {f.lang === "kk" ? "KZ" : f.lang.toUpperCase()}
-                      </span>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : (
-            p.kind === "digital" &&
-            p.languages.length > 0 && (
-              <div className="mt-1 text-sm text-muted">
-                {t("product.files", { langs: p.languages.map((l) => l.toUpperCase()).join(", ") })}
-              </div>
-            )
-          )}
-          {p.variants.length > 0 && (
-            <div className="mt-4">
-              <div className="label">{t("product.variant")}</div>
-              <div className="flex flex-wrap gap-2">
-                {p.variants.map((v) => (
-                  <button
-                    key={v.id}
-                    onClick={() => setVariant(v.id)}
-                    className={`badge cursor-pointer px-3 py-1.5 text-sm ${variant === v.id ? "border-accent bg-accent/10 text-accent" : ""}`}
-                  >
-                    {v.name} · {formatMoneyUi(v.price, v.currency)}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-          {p.bundle && (
-            <div className="mt-4 space-y-1 text-sm" data-testid="bundle-parts">
-              <div className="label">{t("bundle.contains")}</div>
-              <ul className="space-y-0.5">
-                {p.bundle.parts.map((part, i) => (
-                  <li key={i}>
-                    {part.name}
-                    {part.variantName ? ` (${part.variantName})` : ""} × {part.qty}
-                  </li>
-                ))}
-              </ul>
-              {p.bundle.saving !== null && (
-                <div className="font-medium text-accent">
-                  {t("bundle.saving", {
-                    saving: formatMoneyUi(p.bundle.saving, p.currency),
-                    separate: formatMoneyUi(p.bundle.separateTotal ?? 0, p.currency),
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-          {course && tariff && (
-            <div className="mt-4 space-y-1 text-sm">
-              {course.cohort && (
-                <div className="font-medium">
-                  {t("product.course.cohort", {
-                    title: course.cohort.title,
-                    date: courseDate(course.cohort.start),
-                  })}
-                </div>
-              )}
-              <div className="label">{t("product.course.includes")}</div>
-              <ul className="space-y-0.5">
-                {course.lessons.some((l) => l.homework) && (
-                  <li>
-                    {tariff.homework
-                      ? t("product.course.incHomework")
-                      : t("product.course.noHomework")}
-                  </li>
-                )}
-                {course.channel && tariff.channel && <li>{t("product.course.incChannel")}</li>}
-                <li>
-                  {tariff.accessDays
-                    ? t("product.course.access", { n: tariff.accessDays })
-                    : t("product.course.accessForever")}
-                </li>
-              </ul>
-            </div>
-          )}
-          <div id="buy" className="mt-5 flex scroll-mt-20 items-center gap-3">
-            {course && !course.enrollOpen ? (
-              <span className="badge">{t("product.course.closed")}</span>
-            ) : !siteCart ? (
-              // Школа без витрины: корзины на сайте нет, курс покупают в Telegram.
-              tgBuy && (
-                <a
-                  href={tgBuy}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="btn-primary px-5 py-2.5 text-base"
-                >
-                  {t("landing.buyTg")}
-                </a>
-              )
-            ) : p.inStock || p.preorder ? (
-              <>
-                <button className="btn-primary px-5 py-2.5 text-base" onClick={add}>
-                  {t("product.addToCart")}
-                </button>
-                {!p.preorder && p.lowLeft !== null && (
-                  <span className="badge" role="status">
-                    {t("product.lowLeft", { n: p.lowLeft })}
-                  </span>
-                )}
-                {p.preorder && (
-                  <span className="badge">
-                    {p.preorder.from
-                      ? t("product.preorder", {
-                          date: new Date(`${p.preorder.from}T12:00:00`).toLocaleDateString(
-                            intlLocale(locale),
-                            { day: "numeric", month: "long", year: "numeric" },
-                          ),
-                        })
-                      : t("product.preorderNoDate")}
-                  </span>
-                )}
-              </>
+        <SwipeArea nav={nav} className={landing ? "order-2" : undefined}>
+          {/* На странице курса название и цена — в шапке; здесь карточка покупки. */}
+          <div className={landing ? "card p-6 lg:sticky lg:top-24" : "contents"}>
+            {landing ? (
+              <h2 className="text-lg font-semibold">{p.name}</h2>
             ) : (
-              <>
-                <span className="badge">
-                  {p.bundle && !p.bundle.available
-                    ? t("bundle.unavailable")
-                    : t("product.outOfStock")}
+              <h1 className="text-2xl font-semibold">{p.name}</h1>
+            )}
+            <div
+              className={`mt-2 flex flex-wrap items-center gap-2 text-sm text-muted${landing ? " hidden" : ""}`}
+            >
+              <span className="badge">{t(pageBadge(p))}</span>
+              {p.rating && (
+                <span>
+                  ★ {p.rating.avg.toFixed(1)} · {p.rating.count}{" "}
+                  {reviewsWord(locale, p.rating.count)}
                 </span>
-                {waitlistUrl && !p.bundle && (
+              )}
+            </div>
+            <div className="mt-3 text-2xl font-semibold">
+              <OfferPrice
+                price={price}
+                oldPrice={chosen ? chosen.oldPrice : (p.offer?.oldPrice ?? null)}
+                currency={currency}
+                offer={p.offer}
+              />
+            </div>
+            {p.offer && <OfferNote offer={p.offer} className="mt-1 block text-sm text-accent" />}
+            {p.leadTimeDays ? (
+              <div className="mt-1 text-sm text-muted">
+                {t("product.leadTime", { n: p.leadTimeDays })}
+              </div>
+            ) : null}
+            {p.kind === "digital" && (p.files?.length ?? 0) > 0 ? (
+              <div className="mt-3">
+                <div className="label">{t("product.filesTitle")}</div>
+                <ul className="space-y-1 text-sm">
+                  {p.files!.map((f, i) => (
+                    <li key={i} className="flex items-baseline gap-2">
+                      <span aria-hidden>📄</span>
+                      <span className="min-w-0 flex-1 break-words">
+                        {f.name || t("product.fileUnnamed")}
+                      </span>
+                      {p.languages.length > 1 && (
+                        <span className="shrink-0 text-xs text-muted">
+                          {f.lang === "kk" ? "KZ" : f.lang.toUpperCase()}
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              p.kind === "digital" &&
+              p.languages.length > 0 && (
+                <div className="mt-1 text-sm text-muted">
+                  {t("product.files", {
+                    langs: p.languages.map((l) => l.toUpperCase()).join(", "),
+                  })}
+                </div>
+              )
+            )}
+            {p.variants.length > 0 && (
+              <div className="mt-4">
+                <div className="label">{t("product.variant")}</div>
+                <div className="flex flex-wrap gap-2">
+                  {p.variants.map((v) => (
+                    <button
+                      key={v.id}
+                      onClick={() => setVariant(v.id)}
+                      className={`badge cursor-pointer px-3 py-1.5 text-sm ${variant === v.id ? "border-accent bg-accent/10 text-accent" : ""}`}
+                    >
+                      {v.name} · {formatMoneyUi(v.price, v.currency)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {p.bundle && (
+              <div className="mt-4 space-y-1 text-sm" data-testid="bundle-parts">
+                <div className="label">{t("bundle.contains")}</div>
+                <ul className="space-y-0.5">
+                  {p.bundle.parts.map((part, i) => (
+                    <li key={i}>
+                      {part.name}
+                      {part.variantName ? ` (${part.variantName})` : ""} × {part.qty}
+                    </li>
+                  ))}
+                </ul>
+                {p.bundle.saving !== null && (
+                  <div className="font-medium text-accent">
+                    {t("bundle.saving", {
+                      saving: formatMoneyUi(p.bundle.saving, p.currency),
+                      separate: formatMoneyUi(p.bundle.separateTotal ?? 0, p.currency),
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+            {course && tariff && (
+              <div className="mt-4 space-y-1 text-sm">
+                {course.cohort && (
+                  <div className="font-medium">
+                    {t("product.course.cohort", {
+                      title: course.cohort.title,
+                      date: courseDate(course.cohort.start),
+                    })}
+                  </div>
+                )}
+                <div className="label">{t("product.course.includes")}</div>
+                <ul className="space-y-0.5">
+                  {course.lessons.some((l) => l.homework) && (
+                    <li>
+                      {tariff.homework
+                        ? t("product.course.incHomework")
+                        : t("product.course.noHomework")}
+                    </li>
+                  )}
+                  {course.channel && tariff.channel && <li>{t("product.course.incChannel")}</li>}
+                  <li>
+                    {tariff.accessDays
+                      ? t("product.course.access", { n: tariff.accessDays })
+                      : t("product.course.accessForever")}
+                  </li>
+                </ul>
+              </div>
+            )}
+            <div id="buy" className="mt-5 flex scroll-mt-20 items-center gap-3">
+              {course && !course.enrollOpen ? (
+                <span className="badge">{t("product.course.closed")}</span>
+              ) : !siteCart ? (
+                // Школа без витрины: корзины на сайте нет, курс покупают в Telegram.
+                tgBuy && (
                   <a
-                    href={waitlistUrl}
+                    href={tgBuy}
                     target="_blank"
                     rel="noreferrer"
-                    className="btn-secondary px-4 py-2"
+                    className="btn-primary px-5 py-2.5 text-base"
                   >
-                    {t("product.notify")}
+                    {t("landing.buyTg")}
                   </a>
-                )}
-              </>
+                )
+              ) : p.inStock || p.preorder ? (
+                <>
+                  <button className="btn-primary px-5 py-2.5 text-base" onClick={add}>
+                    {t("product.addToCart")}
+                  </button>
+                  {!p.preorder && p.lowLeft !== null && (
+                    <span className="badge" role="status">
+                      {t("product.lowLeft", { n: p.lowLeft })}
+                    </span>
+                  )}
+                  {p.preorder && (
+                    <span className="badge">
+                      {p.preorder.from
+                        ? t("product.preorder", {
+                            date: new Date(`${p.preorder.from}T12:00:00`).toLocaleDateString(
+                              intlLocale(locale),
+                              { day: "numeric", month: "long", year: "numeric" },
+                            ),
+                          })
+                        : t("product.preorderNoDate")}
+                    </span>
+                  )}
+                </>
+              ) : (
+                <>
+                  <span className="badge">
+                    {p.bundle && !p.bundle.available
+                      ? t("bundle.unavailable")
+                      : t("product.outOfStock")}
+                  </span>
+                  {waitlistUrl && !p.bundle && (
+                    <a
+                      href={waitlistUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="btn-secondary px-4 py-2"
+                    >
+                      {t("product.notify")}
+                    </a>
+                  )}
+                </>
+              )}
+              {siteCart && (
+                <FavoriteButton
+                  id={p.id}
+                  addLabel={t("fav.add")}
+                  removeLabel={t("fav.remove")}
+                  className="border border-line"
+                />
+              )}
+              {msg && <span className="text-sm text-muted">{msg}</span>}
+            </div>
+            {writeUrl && (
+              <a
+                href={writeUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="btn-secondary mt-3 inline-flex px-4 py-2"
+              >
+                {t("product.writeShop")}
+              </a>
             )}
-            {siteCart && (
-              <FavoriteButton
-                id={p.id}
-                addLabel={t("fav.add")}
-                removeLabel={t("fav.remove")}
-                className="border border-line"
-              />
-            )}
-            {msg && <span className="text-sm text-muted">{msg}</span>}
+            <ul className="mt-5 space-y-1.5 text-sm text-muted">
+              {course ? (
+                <li>{t("product.course.instant")}</li>
+              ) : p.kind === "digital" ? (
+                <>
+                  <li>{t("product.digitalInstant")}</li>
+                  <li>{t("product.digitalResend")}</li>
+                </>
+              ) : (
+                <>
+                  <li>{t("product.physicalDate")}</li>
+                  <li>{t("product.physicalDelivery")}</li>
+                </>
+              )}
+              <li>{t("product.payment")}</li>
+            </ul>
           </div>
-          {writeUrl && (
-            <a
-              href={writeUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="btn-secondary mt-3 inline-flex px-4 py-2"
-            >
-              {t("product.writeShop")}
-            </a>
-          )}
-          <ul className="mt-5 space-y-1.5 text-sm text-muted">
-            {course ? (
-              <li>{t("product.course.instant")}</li>
-            ) : p.kind === "digital" ? (
-              <>
-                <li>{t("product.digitalInstant")}</li>
-                <li>{t("product.digitalResend")}</li>
-              </>
-            ) : (
-              <>
-                <li>{t("product.physicalDate")}</li>
-                <li>{t("product.physicalDelivery")}</li>
-              </>
-            )}
-            <li>{t("product.payment")}</li>
-          </ul>
-          {p.description && (
+          {!landing && p.description && (
             <div className="mt-6 border-t border-line pt-5">
               <h2 className="mb-2 text-sm font-semibold">{t("product.description")}</h2>
               <p className="text-sm leading-relaxed whitespace-pre-line">{p.description}</p>
@@ -639,14 +668,6 @@ function ProductPage() {
         </SwipeArea>
       </div>
       {course && !landing && <section className="mt-10">{program}</section>}
-      {landing && (
-        <LandingBlocks
-          landing={landing}
-          program={program}
-          onPhoto={(i) => setViewer({ set: "works", i })}
-          t={t}
-        />
-      )}
       {preview.length > 0 && (
         <section className="mt-10">
           <h2 className="mb-3 text-sm font-semibold text-muted">{t("product.preview")}</h2>

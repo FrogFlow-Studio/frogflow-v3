@@ -1,5 +1,5 @@
 import type React from "react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { rememberWebSource } from "@/app/storefront/source";
 import { sendVisit, trackVisit } from "@/app/storefront/visit-track";
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
@@ -63,6 +63,28 @@ function initials(name: string): string {
   );
 }
 
+/** Аватар бота из Telegram; нет фото или не загрузилось — кружок с буквами. */
+function ShopAvatar({ name, logo }: { name: string; logo: string | null }) {
+  const [broken, setBroken] = useState(false);
+  if (logo && !broken)
+    return (
+      <img
+        src={`${logo}?w=320`}
+        alt=""
+        width={40}
+        height={40}
+        className="h-10 w-10 shrink-0 rounded-full border border-line object-cover"
+        onError={() => setBroken(true)}
+        data-testid="shop-avatar"
+      />
+    );
+  return (
+    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-accent text-sm font-semibold text-accent-fg">
+      {initials(name)}
+    </span>
+  );
+}
+
 function StoreLayout() {
   const shop = Route.useLoaderData();
   // Откуда пришёл покупатель (utm, ref) — запоминается при первом входе.
@@ -109,9 +131,7 @@ function StoreFrame() {
             params={{ slug: shop.slug }}
             className="flex min-w-0 items-center gap-3"
           >
-            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-accent text-sm font-semibold text-accent-fg">
-              {initials(shop.name)}
-            </span>
+            <ShopAvatar name={shop.name} logo={shop.logo} />
             <span className="min-w-0">
               <span className="block truncate text-base font-semibold">{shop.name}</span>
               {shop.tagline && (

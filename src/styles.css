@@ -75,6 +75,8 @@ body {
 @layer components {
   .input {
     @apply w-full rounded-md border border-line bg-surface px-3 py-2 text-sm text-fg outline-none placeholder:text-muted focus:border-accent focus:ring-2 focus:ring-accent/25 disabled:opacity-60;
+    /* «w-auto» у списка с длинным пунктом не раздвигает страницу на телефоне. */
+    max-width: 100%;
   }
   .btn-primary {
     @apply inline-flex items-center justify-center gap-2 rounded-md px-3.5 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 bg-accent text-accent-fg hover:opacity-90;

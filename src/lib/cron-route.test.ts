@@ -69,6 +69,7 @@ vi.mock("@/channels/telegram/webhook-setup.server", () => ({
 vi.mock("@/channels/telegram/vip-webhook-setup.server", () => ({
   ensureVipWebhook: hit("vipWebhook"),
 }));
+vi.mock("@/channels/telegram/bot-avatar.server", () => ({ syncBotAvatar: hit("botAvatar") }));
 vi.mock("@/channels/zernio/connect.server", () => ({
   v2WebhookStatus: async () => ({ ok: true }),
   // Запись вебхука Zernio пишет только оператор кнопкой — крон её не вызывает.
@@ -165,7 +166,7 @@ beforeEach(() => {
 });
 
 const JOBS: Record<string, string[]> = {
-  "ensure-webhook": ["webhook", "vipWebhook"],
+  "ensure-webhook": ["webhook", "vipWebhook", "botAvatar"],
   broadcast: ["broadcast", "waBroadcast", "outbox", "orderNotify", "unanswered", "overdueTickets"],
   "cart-reminder": ["cartReminder"],
   "fulfillment-reminder": [
