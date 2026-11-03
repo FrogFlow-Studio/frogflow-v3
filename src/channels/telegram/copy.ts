@@ -463,7 +463,7 @@ export type Msg = {
 
 const ru: Msg = {
   courseOpened:
-    "🎓 Курс открыт ✅\n\nУроки — прямо здесь, в чате. Нажмите кнопку, чтобы начать. Вернуться к урокам можно в меню «🎓 Мои курсы».",
+    "Курс открыт ✅\n\nУроки приходят прямо сюда: видео, текст и задания. После урока нажмите «✅ Урок пройден» — бот покажет следующий. Все уроки — в меню «🎓 Мои курсы».",
   courseStartBtn: "▶️ Начать урок 1",
   courseSiteBtn: "🌐 Открыть на сайте",
   choosePayMethodNamed: (l) =>
@@ -928,7 +928,7 @@ const ru: Msg = {
 const kk: Msg = {
   ...ru,
   courseOpened:
-    "🎓 Курс ашылды ✅\n\nСабақтар — осы жерде, чатта. Бастау үшін батырманы басыңыз. Сабақтарға «🎓 Курстарым» мәзірінен қайта оралуға болады.",
+    "Курс ашылды ✅\n\nСабақтар осында келеді: бейне, мәтін және тапсырмалар. Сабақтан кейін «✅ Сабақ өтілді» батырмасын басыңыз — бот келесісін көрсетеді. Барлық сабақтар — «🎓 Курстарым» мәзірінде.",
   courseStartBtn: "▶️ 1-сабақты бастау",
   courseSiteBtn: "🌐 Сайтта ашу",
   payViaKaspiApipayBtn: "📱 Kaspi-де төлеу",
@@ -1286,7 +1286,7 @@ const kk: Msg = {
 const en: Msg = {
   ...ru,
   courseOpened:
-    "🎓 Your course is open ✅\n\nLessons are right here in the chat. Tap the button to start. You can come back to them any time via «🎓 My courses».",
+    "Your course is open ✅\n\nLessons come right here: video, text and tasks. After a lesson tap «✅ Lesson done» and the bot shows the next one. All lessons are in «🎓 My courses».",
   courseStartBtn: "▶️ Start lesson 1",
   courseSiteBtn: "🌐 Open on the website",
   payViaKaspiApipayBtn: "📱 Pay with Kaspi",
@@ -1672,7 +1672,7 @@ const en: Msg = {
 const uz: Msg = {
   ...ru,
   courseOpened:
-    "🎓 Kurs ochildi ✅\n\nDarslar shu yerda, chatda. Boshlash uchun tugmani bosing. Darslarga «🎓 Kurslarim» menyusidan qaytish mumkin.",
+    "Kurs ochildi ✅\n\nDarslar shu yerga keladi: video, matn va vazifalar. Darsdan keyin «✅ Dars o‘tildi» tugmasini bosing — bot keyingisini ko‘rsatadi. Barcha darslar — «🎓 Kurslarim» menyusida.",
   courseStartBtn: "▶️ 1-darsni boshlash",
   courseSiteBtn: "🌐 Saytda ochish",
   payViaKaspiApipayBtn: "📱 Kaspi orqali toʻlash",

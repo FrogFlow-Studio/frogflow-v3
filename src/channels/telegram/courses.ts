@@ -368,6 +368,9 @@ async function send(b: CourseBot, text: string, extra: Record<string, unknown> =
 /** Сколько кнопок «Сдать задание» показывать на курс: открытые несданные, по порядку. */
 const SUBMIT_BUTTONS_MAX = 3;
 
+import { moduleOf, progressBar, shortTitle } from "./course-format";
+export { moduleOf, progressBar, shortTitle };
+
 // ── «Мои курсы» ───────────────────────────────────────────────────────
 
 export async function showMyCourses(b: CourseBot): Promise<void> {
@@ -818,27 +821,6 @@ export async function showLesson(b: CourseBot, data: string): Promise<void> {
   // Видео, присланные продавцом боту, — прямо в чат, перед текстом урока с кнопками.
   await sendTgVideos(b, `${a.no}. ${l.title}`, tg);
   await send(b, body.slice(0, 4096), markup);
-}
-
-/** «▰▰▱▱▱▱▱▱▱▱» — пройдено из всего, 10 делений. */
-export function progressBar(done: number, total: number): string {
-  const n = total > 0 ? Math.round((Math.min(done, total) / total) * 10) : 0;
-  return "▰".repeat(n) + "▱".repeat(10 - n);
-}
-
-/** «Модуль 1 · 1.1. Знакомство» → «Модуль 1»; без модуля — null. */
-export function moduleOf(title: string): string | null {
-  const m = /^([^·\d]{1,20}\d{1,2})\s*·\s*\d/u.exec(title);
-  return m ? m[1]!.trim() : null;
-}
-
-/**
- * Название урока в чате без приставки модуля, если номер урока в нём есть:
- * «Модуль 1 · 1.1. Знакомство» → «1.1. Знакомство»; иначе «N. Название».
- */
-export function shortTitle(title: string, no: number): string {
-  const t = title.replace(/^[^·\d]{1,20}\d{1,2}\s*·\s*(?=\d)/u, "");
-  return /^\d/.test(t) ? t : `${no}. ${t}`;
 }
 
 /** «✅ Урок пройден» под уроком в чате (`lsd:<покупка>:<номер>`, курс в боте). */
