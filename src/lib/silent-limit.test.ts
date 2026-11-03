@@ -17,6 +17,9 @@ const SHOWN = "последние N на экране: список не обя�
 const BATCH = "пачка за запуск: остальное в следующий; обработанные из выборки уходят";
 
 const ALLOWED: Record<string, string[]> = {
+  "src/channels/telegram/update/start.ts": [
+    "курсы на первом экране /start: нужно «не больше трёх» — берём на один больше, чтобы узнать, что их больше",
+  ],
   "src/app/operator/platform-alerts.server.ts": [
     "проба тишины: нужно только «набралось ли INBOUND_ACTIVE_MIN входящих за неделю», не число",
   ],
