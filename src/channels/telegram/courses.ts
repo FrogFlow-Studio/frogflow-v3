@@ -887,6 +887,39 @@ export async function markLessonDone(b: CourseBot, data: string): Promise<void> 
 }
 
 /**
+ * Название урока в чате без приставки модуля, если номер урока в нём есть:
+ * «Модуль 1 · 1.1. Знакомство» → «1.1. Знакомство»; иначе «N. Название».
+ */
+export function shortTitle(title: string, no: number): string {
+  const t = title.replace(/^[^·\d]{1,20}\d{1,2}\s*·\s*(?=\d)/u, "");
+  return /^\d/.test(t) ? t : `${no}. ${t}`;
+}
+
+/** «✅ Урок пройден» под уроком в чате (`lsd:<покупка>:<номер>`, курс в боте). */
+export async function markLessonDone(b: CourseBot, data: string): Promise<void> {
+  const c = COPY[b.locale];
+  const [, itemId = "", noRaw = ""] = data.split(":");
+  const p = await ownPurchase(b, itemId);
+  if (!p) return;
+  const { markLesson, purchaseTimeline } = await import("@/core/courses/run.server");
+  const tl = purchaseTimeline(b.ctx, p);
+  const a = tl.access.find((x) => x.no === Number(noRaw));
+  if (!a?.open) return send(b, c.closed);
+  const run = await markLesson(b.ctx, p, a.lesson.id, true);
+  const open = tl.access.filter((x) => x.open);
+  const done = open.filter((x) => run.done.includes(x.lesson.id)).length;
+  const next = open.find((x) => !run.done.includes(x.lesson.id));
+  const rows: InlineButton[][] = next
+    ? [[{ text: c.continueBtn(next.no), callback_data: `lsn:${p.orderItemId}:${next.no}` }]]
+    : [[{ text: c.allLessonsBtn, callback_data: `lsl:${p.orderItemId}` }]];
+  await send(
+    b,
+    [c.doneOk(a.no, done, tl.access.length), ...(next ? [] : [c.allDone])].join("\n\n"),
+    { reply_markup: { inline_keyboard: rows } },
+  );
+}
+
+/**
  * Открытый урок до покупки: кнопка под карточкой курса, `opl:<товар>:<номер>`.
  * Отдаём только урок с галочкой «Открытый урок» и без задания; номер чужого
  * или закрытого урока — то же сообщение «закрыто», без содержимого. Молчим
