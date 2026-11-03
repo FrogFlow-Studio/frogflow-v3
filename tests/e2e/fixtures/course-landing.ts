@@ -13,3 +13,8 @@ export const LANDING_LESSONS = [
   "e2e00000-0000-4000-8000-000000001a12",
   "e2e00000-0000-4000-8000-000000001a13",
 ];
+/** Школа без витрины на сайте: открыта только страница курса с включённой «Страницей курса». */
+export const LANDING_BARE_ID = "e2e00000-0000-4000-8000-000000001b00";
+export const LANDING_BARE_SLUG = "e2e-lash-bare";
+export const LANDING_BARE_COURSE_ID = "e2e00000-0000-4000-8000-000000001b01";
+export const LANDING_BARE_PLAIN_ID = "e2e00000-0000-4000-8000-000000001b02";

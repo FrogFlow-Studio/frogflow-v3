@@ -49,3 +49,24 @@ test("курс без страницы выглядит как раньше", as
   await expect(page.getByTestId("course-landing-hero")).toHaveCount(0);
   await expect(page.getByText("Программа курса · уроков: 3")).toBeVisible();
 });
+
+test("школа без витрины: страница курса открыта, покупка в Telegram, корзины нет", async ({
+  page,
+}) => {
+  await page.goto(`/s/${F.LANDING_BARE_SLUG}/p/${F.LANDING_BARE_COURSE_ID}`);
+  const hero = page.getByTestId("course-landing-hero");
+  await expect(
+    hero.getByRole("heading", { level: 1, name: "Ресницы с нуля Л1", exact: true }),
+  ).toBeVisible();
+  await expect(hero.getByRole("link", { name: "Купить в Telegram", exact: true })).toHaveAttribute(
+    "href",
+    `https://t.me/${F.LANDING_BOT_USERNAME}?start=p_${F.LANDING_BARE_COURSE_ID}`,
+  );
+  await expect(page.getByRole("button", { name: "Купить на сайте", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "🛒 В корзину", exact: true })).toHaveCount(0);
+  await expect(page.getByTestId("landing-program")).toBeVisible();
+
+  // Курс без «Страницы курса» и любой другой товар — как раньше без витрины: не найдено.
+  const plain = await page.goto(`/s/${F.LANDING_BARE_SLUG}/p/${F.LANDING_BARE_PLAIN_ID}`);
+  expect(plain?.status()).toBe(404);
+});
