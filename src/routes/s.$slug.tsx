@@ -45,7 +45,7 @@ export const Route = createFileRoute("/s/$slug")({
             cover: loaderData.share.cover,
           })
         : [{ title: fallback }],
-      links: loaderData?.share.installable ? shopLinks(loaderData.slug) : [],
+      links: loaderData ? shopLinks(loaderData.slug, loaderData.share.installable) : [],
       scripts: [{ src: "https://telegram.org/js/telegram-web-app.js" }],
     };
   },

@@ -132,12 +132,13 @@ export const ICON_SIZES = [192, 512] as const;
 export type IconSize = (typeof ICON_SIZES)[number] | 180;
 
 /** Ссылки в <head>: иконка вкладки, манифест и иконка для iPhone. */
-export function shopLinks(slug: string) {
+export function shopLinks(slug: string, installable = true) {
   return [
     // Без своей иконки браузер возьмёт /favicon.ico — лягушку платформы.
-    { rel: "icon", type: "image/png", href: `/s/${slug}/icon/192` },
-    { rel: "manifest", href: `/s/${slug}/manifest.webmanifest` },
+    // Без type: это может быть и аватар бота (JPEG), и PNG в цвете магазина.
+    { rel: "icon", href: `/s/${slug}/icon/192` },
     { rel: "apple-touch-icon", href: `/s/${slug}/icon/180` },
+    ...(installable ? [{ rel: "manifest", href: `/s/${slug}/manifest.webmanifest` }] : []),
   ];
 }
 
@@ -158,7 +159,6 @@ export function shopManifest(shop: Pick<ShareShop, "slug" | "name" | "tagline" |
     icons: ICON_SIZES.map((size) => ({
       src: `/s/${shop.slug}/icon/${size}`,
       sizes: `${size}x${size}`,
-      type: "image/png",
       purpose: "any maskable",
     })),
   };
