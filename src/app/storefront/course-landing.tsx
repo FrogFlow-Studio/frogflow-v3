@@ -56,7 +56,7 @@ export function LandingHero(props: {
       <div className="mt-8 flex flex-wrap items-baseline gap-x-4 gap-y-2">
         <span className="text-3xl font-semibold">{props.price}</span>
         {props.lessons > 0 && (
-          <span className={`text-sm ${s.sub}`}>{t("landing.lessons", { n: props.lessons })}</span>
+          <span className={`text-base ${s.sub}`}>{t("landing.lessons", { n: props.lessons })}</span>
         )}
       </div>
       <div className="mt-6 flex flex-wrap gap-3">
@@ -65,7 +65,7 @@ export function LandingHero(props: {
             href={props.tgUrl}
             target="_blank"
             rel="noreferrer"
-            className={`${s.main} px-6 py-3 text-base`}
+            className={`${s.main} px-7 py-3.5 text-lg`}
           >
             {t("landing.buyTg")}
           </a>
@@ -74,19 +74,19 @@ export function LandingHero(props: {
           <button
             type="button"
             onClick={props.onBuySite}
-            className={`${props.tgUrl ? s.alt : s.main} px-6 py-3 text-base`}
+            className={`${props.tgUrl ? s.alt : s.main} px-7 py-3.5 text-lg`}
           >
             {t("landing.buySite")}
           </button>
         )}
       </div>
-      {props.freeLesson && <p className={`mt-4 text-sm ${s.sub}`}>🔓 {t("landing.free")}</p>}
+      {props.freeLesson && <p className={`mt-5 text-base ${s.sub}`}>🔓 {t("landing.free")}</p>}
     </section>
   );
 }
 
 const H2 = ({ children }: { children: ReactNode }) => (
-  <h2 className="mb-5 text-2xl font-semibold tracking-tight">{children}</h2>
+  <h2 className="mb-6 text-2xl font-semibold tracking-tight md:text-3xl">{children}</h2>
 );
 
 /** Блоки продавца по порядку; программа — из урока, её рисует страница товара. */
@@ -107,9 +107,9 @@ export function LandingBlocks(props: {
         <H2>{t("landing.learn")}</H2>
         <ul className="grid gap-x-8 gap-y-3 sm:grid-cols-2">
           {l.learn.map((x, i) => (
-            <li key={i} className="flex gap-3 text-base leading-snug">
+            <li key={i} className="flex gap-3 text-lg leading-snug">
               <span
-                className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent/15 text-sm text-accent"
+                className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent/15 text-sm text-accent"
                 aria-hidden
               >
                 ✓
@@ -129,26 +129,32 @@ export function LandingBlocks(props: {
     authors: () => (
       <section key="authors" className={gap("authors")} data-testid="landing-authors">
         <H2>{t("landing.authors")}</H2>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-2">
           {l.authors.map((a, i) => (
-            <div key={i} className="card p-5">
+            <div key={i} className="card flex gap-5 p-6">
               {a.photo ? (
                 <img
                   src={a.photo}
                   alt={a.name}
                   loading="lazy"
-                  className="mb-3 aspect-square w-full rounded-lg object-cover"
+                  className="h-24 w-24 shrink-0 rounded-full object-cover"
                 />
               ) : (
                 <div
-                  className="mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-accent/15 text-2xl font-semibold text-accent"
+                  className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-accent/15 text-3xl font-semibold text-accent"
                   aria-hidden
                 >
                   {a.name.slice(0, 1).toUpperCase() || "★"}
                 </div>
               )}
-              {a.name && <div className="font-semibold">{a.name}</div>}
-              {a.text && <p className="mt-1 text-sm whitespace-pre-line text-muted">{a.text}</p>}
+              <div className="min-w-0 self-center">
+                {a.name && <div className="text-xl font-semibold">{a.name}</div>}
+                {a.text && (
+                  <p className="mt-1.5 text-base leading-relaxed whitespace-pre-line text-muted">
+                    {a.text}
+                  </p>
+                )}
+              </div>
             </div>
           ))}
         </div>
@@ -182,7 +188,7 @@ export function LandingBlocks(props: {
         <H2>{t("landing.quotes")}</H2>
         <div className="grid gap-3 md:grid-cols-2">
           {l.quotes.map((q, i) => (
-            <blockquote key={i} className="card border-l-4 border-l-accent p-5 text-base">
+            <blockquote key={i} className="card border-l-4 border-l-accent p-6 text-lg">
               <p className="whitespace-pre-line">«{q.text}»</p>
               {q.name && <footer className="mt-2 text-muted">— {q.name}</footer>}
             </blockquote>
@@ -193,11 +199,11 @@ export function LandingBlocks(props: {
     faq: () => (
       <section key="faq" className={gap("faq")} data-testid="landing-faq">
         <H2>{t("landing.faq")}</H2>
-        <div className="space-y-2">
+        <div className="space-y-3">
           {l.faq.map((f, i) => (
-            <details key={i} className="card p-5">
-              <summary className="cursor-pointer font-medium">{f.q}</summary>
-              <p className="mt-3 text-base whitespace-pre-line text-muted">{f.a}</p>
+            <details key={i} className="card p-6">
+              <summary className="cursor-pointer text-lg font-medium">{f.q}</summary>
+              <p className="mt-3 text-lg leading-relaxed whitespace-pre-line text-muted">{f.a}</p>
             </details>
           ))}
         </div>
