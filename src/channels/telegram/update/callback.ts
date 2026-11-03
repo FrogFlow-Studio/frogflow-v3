@@ -58,6 +58,11 @@ export async function handleCallback(
     return adminDecision(ctx, api, from.id, chatId, data);
   if (data.startsWith("ost:") || data.startsWith("owr:") || data.startsWith("otr:"))
     return adminOrderButton(ctx, api, from.id, chatId, data);
+  // Урок из бота: «Посмотреть урок» и «Убрать это видео» под ответом продавцу.
+  if ((data.startsWith("lbv:") || data.startsWith("lbd:")) && ctx.tenant.modules.courses) {
+    const { lessonSellerButton } = await import("../lesson-by-bot");
+    return lessonSellerButton(ctx, api, from.id, chatId, data);
+  }
   // Урок из бота: продавец выбрал курс для присланной ссылки.
   if (data.startsWith("lbb:") && ctx.tenant.modules.courses) {
     const { lessonCourseButton } = await import("../lesson-by-bot");
