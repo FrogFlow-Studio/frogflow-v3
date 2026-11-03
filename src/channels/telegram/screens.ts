@@ -45,10 +45,13 @@ export function mainMenu(tenant: Tenant, locale: Locale, appUrl: string, sells =
   const keyboard: MenuButton[][] = [
     ...(school ? [[{ text: m.myCourses }]] : []),
     ...(sells
-      ? [
-          [{ text: school ? m.catalogCourses : m.catalog }, { text: m.search }],
-          [{ text: m.cart }, { text: m.myOrders }],
-        ]
+      ? school && tenant.settings.delivery?.course_in_bot === true
+        ? // Курс в боте: у школы пара курсов — поиск по каталогу лишний.
+          [[{ text: m.catalogCourses }, { text: m.cart }], [{ text: m.myOrders }]]
+        : [
+            [{ text: school ? m.catalogCourses : m.catalog }, { text: m.search }],
+            [{ text: m.cart }, { text: m.myOrders }],
+          ]
       : []),
     // «Информация» ведёт на юр. страницы — только при модуле legal_docs.
     tenant.modules.legal_docs

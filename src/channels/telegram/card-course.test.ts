@@ -4,7 +4,8 @@ import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Product } from "@/core/catalog/catalog";
 import { courseKey } from "@/core/courses/course";
 import { COURSE_MARKER_URL } from "@/core/courses/marker";
-import { productCard } from "./screens";
+import { mainMenu, productCard } from "./screens";
+import type { Tenant } from "@/core/tenant/types";
 
 /** Карточка курса в боте, когда курс проходят в чате (Lash Academy, 03.11.2026). */
 const BOT = "00000000-0000-0000-0000-0000000000c6";
@@ -80,5 +81,26 @@ describe("карточка курса в боте", () => {
     expect(card.caption.startsWith("📦 ")).toBe(true);
     expect(card.caption).toContain("🎓 Уроков в курсе: 3");
     expect(callbacks(card.keyboard)).toContainEqual(["➕ Добавить в корзину", `add:${P}`]);
+  });
+});
+
+describe("меню школы, курс в боте", () => {
+  const tenant = (inBot: boolean) =>
+    ({
+      vertical: "courses",
+      modules: { courses: true },
+      settings: inBot ? { delivery: { course_in_bot: true } } : {},
+    }) as unknown as Tenant;
+  const texts = (inBot: boolean) =>
+    mainMenu(tenant(inBot), "ru", "https://app.test")
+      .keyboard.flat()
+      .map((b) => b.text);
+
+  it("без «Поиска»; «Мои курсы», «Все курсы», корзина и заказы на месте", () => {
+    const on = texts(true);
+    const search = texts(false).find((t) => t.includes("Поиск"));
+    expect(search).toBeTruthy();
+    expect(on).not.toContain(search);
+    expect(on[0]).toBe("🎓 Мои курсы");
   });
 });
