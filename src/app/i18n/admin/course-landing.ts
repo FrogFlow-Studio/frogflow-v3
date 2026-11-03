@@ -15,7 +15,8 @@ export const ru = {
   "courseLanding.accentShop": "Как у витрины",
   "courseLanding.headline": "Заголовок",
   "courseLanding.short": "Короткая ссылка",
-  "courseLanding.shortHint": "Вместо длинного номера: латиница, цифры и дефис, например kurs или lash-online. Работает после сохранения, старая ссылка тоже открывается.",
+  "courseLanding.shortHint":
+    "Вместо длинного номера: латиница, цифры и дефис, например kurs или lash-online. Работает после сохранения, старая ссылка тоже открывается.",
   "courseLanding.headlineHint": "Пусто — название товара",
   "courseLanding.subtitle": "Подзаголовок",
   "courseLanding.blocks": "Блоки",
@@ -81,7 +82,8 @@ export const kk: SectionDict<typeof ru> = {
   "courseLanding.accentShop": "Витринадағыдай",
   "courseLanding.headline": "Тақырып",
   "courseLanding.short": "Қысқа сілтеме",
-  "courseLanding.shortHint": "Ұзын нөмірдің орнына: латын әріптері, сандар және сызықша, мысалы kurs немесе lash-online. Сақтағаннан кейін жұмыс істейді, ескі сілтеме де ашылады.",
+  "courseLanding.shortHint":
+    "Ұзын нөмірдің орнына: латын әріптері, сандар және сызықша, мысалы kurs немесе lash-online. Сақтағаннан кейін жұмыс істейді, ескі сілтеме де ашылады.",
   "courseLanding.headlineHint": "Бос болса — тауар атауы",
   "courseLanding.subtitle": "Тақырыпша",
   "courseLanding.blocks": "Блоктар",
@@ -148,7 +150,8 @@ export const en: SectionDict<typeof ru> = {
   "courseLanding.accentShop": "Same as the storefront",
   "courseLanding.headline": "Headline",
   "courseLanding.short": "Short link",
-  "courseLanding.shortHint": "Instead of the long number: Latin letters, digits and hyphens, e.g. kurs or lash-online. Works after saving; the old link still opens.",
+  "courseLanding.shortHint":
+    "Instead of the long number: Latin letters, digits and hyphens, e.g. kurs or lash-online. Works after saving; the old link still opens.",
   "courseLanding.headlineHint": "Empty — the product name",
   "courseLanding.subtitle": "Subtitle",
   "courseLanding.blocks": "Blocks",
@@ -214,7 +217,8 @@ export const uz: SectionDict<typeof ru> = {
   "courseLanding.accentShop": "Vitrinadagidek",
   "courseLanding.headline": "Sarlavha",
   "courseLanding.short": "Qisqa havola",
-  "courseLanding.shortHint": "Uzun raqam oʻrniga: lotin harflari, raqamlar va chiziqcha, masalan kurs yoki lash-online. Saqlangandan keyin ishlaydi, eski havola ham ochiladi.",
+  "courseLanding.shortHint":
+    "Uzun raqam oʻrniga: lotin harflari, raqamlar va chiziqcha, masalan kurs yoki lash-online. Saqlangandan keyin ishlaydi, eski havola ham ochiladi.",
   "courseLanding.headlineHint": "Boʻsh — mahsulot nomi",
   "courseLanding.subtitle": "Kichik sarlavha",
   "courseLanding.blocks": "Bloklar",

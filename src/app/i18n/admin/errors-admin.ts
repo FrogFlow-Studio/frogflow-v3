@@ -468,7 +468,8 @@ export const kk: SectionDict<typeof ru> = {
   "err.course.badTariff": "Тарифтің қолжетімділік мерзімі — 1-ден 3650 күнге дейін.",
   "err.course.badLesson": "{lesson}-сабақ бүлінген — оны өшіріп, қайта қосыңыз.",
   "err.course.tgVideoGone": "Бұл бейне сабақта енді жоқ — бетті жаңартыңыз.",
-  "err.course.shortBad": "Қысқа сілтеме — латын әріптері, сандар және сызықша, 2-ден 40 таңбаға дейін.",
+  "err.course.shortBad":
+    "Қысқа сілтеме — латын әріптері, сандар және сызықша, 2-ден 40 таңбаға дейін.",
   "err.course.shortTaken": "Бұл қысқа сілтеме басқа курста бар.",
   "err.broadcast.badSegment": "Сегмент толық толтырылмаған.",
   "err.broadcast.badSchedule": "Жіберу уақыты — бір минуттан 60 күнге дейін алда.",
@@ -976,7 +977,8 @@ export const uz: SectionDict<typeof ru> = {
   "err.course.badTariff": "Tarifning kirish muddati — 1 dan 3650 kungacha.",
   "err.course.badLesson": "{lesson}-dars buzilgan — uni oʻchirib, qaytadan qoʻshing.",
   "err.course.tgVideoGone": "Bu video darsda endi yoʻq — sahifani yangilang.",
-  "err.course.shortBad": "Qisqa havola — lotin harflari, raqamlar va chiziqcha, 2 dan 40 belgigacha.",
+  "err.course.shortBad":
+    "Qisqa havola — lotin harflari, raqamlar va chiziqcha, 2 dan 40 belgigacha.",
   "err.course.shortTaken": "Bu qisqa havola boshqa kursda band.",
   "err.broadcast.badSegment": "Segment to'liq to'ldirilmagan.",
   "err.broadcast.badSchedule": "Yuborish vaqti — bir daqiqadan 60 kungacha oldinda.",

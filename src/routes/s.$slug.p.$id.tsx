@@ -104,9 +104,7 @@ export const Route = createFileRoute("/s/$slug/p/$id")({
     return {
       meta: share,
       scripts: ld,
-      links: seoShop
-        ? [canonicalLink(productCanonical(seoShop.origin, seoShop.slug, pathId))]
-        : [],
+      links: seoShop ? [canonicalLink(productCanonical(seoShop.origin, seoShop.slug, pathId))] : [],
     };
   },
   component: ProductPageKeyed,
