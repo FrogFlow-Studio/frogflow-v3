@@ -103,7 +103,7 @@ Kalit topshiriladigan PDF’larga suv belgisini yoqadi: har bir sahifada kim sot
 
 ## Kurs botda {#course-in-bot}
 
-«Kurslar» moduli bilan mavjud. Yoqilgan — oʻquvchi kursni bot bilan chatda oʻtadi: toʻlovdan keyin «Kurs ochildi ✅» xabari «▶️ 1-darsni boshlash» (va «🌐 Saytda ochish») tugmasi bilan keladi, har bir dars ostida esa — «Keyingi dars →», agar keyingi dars jadval boʻyicha ochiq boʻlsa. Oʻchirilgan — toʻlovdan keyin avvalgidek kurs sahifasiga havola keladi. Odatda oʻchirilgan. Darhol saqlanadi.
+«Kurslar» moduli bilan mavjud. Yoqilgan — oʻquvchi kursni bot bilan chatda oʻtadi: toʻlovdan keyin «Kurs ochildi ✅» xabari «▶️ 1-darsni boshlash» (va «🌐 Saytda ochish») tugmasi bilan keladi, har bir dars ostida esa — «Keyingi dars →», agar keyingi dars jadval boʻyicha ochiq boʻlsa. Dars ostida yana «✅ Dars o‘tildi» va «📚 Barcha darslar»; «🎓 Kurslarim»da asosiy tugma — «▶️ Davom etish: N-dars» (birinchi o‘tilmagani), ro‘yxatda o‘tilgan darslar ✅ bilan belgilanadi. Oʻchirilgan — toʻlovdan keyin avvalgidek kurs sahifasiga havola keladi. Odatda oʻchirilgan. Darhol saqlanadi.
 
 ## Darslarni botga xabar orqali qo‘shish {#lessons-by-bot}
 
