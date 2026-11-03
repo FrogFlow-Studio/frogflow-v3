@@ -119,6 +119,7 @@ function ProductPage() {
     preview,
     course,
     landing,
+    cart: siteCart,
     waitlistUrl,
     onMarket,
   } = Route.useLoaderData();
@@ -356,7 +357,7 @@ function ProductPage() {
           freeLesson={freeLesson}
           tgUrl={canBuy ? tgBuy : null}
           onBuySite={
-            canBuy
+            canBuy && siteCart
               ? () => document.getElementById("buy")?.scrollIntoView({ behavior: "smooth" })
               : null
           }
@@ -539,6 +540,18 @@ function ProductPage() {
           <div id="buy" className="mt-5 flex scroll-mt-20 items-center gap-3">
             {course && !course.enrollOpen ? (
               <span className="badge">{t("product.course.closed")}</span>
+            ) : !siteCart ? (
+              // Школа без витрины: корзины на сайте нет, курс покупают в Telegram.
+              tgBuy && (
+                <a
+                  href={tgBuy}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="btn-primary px-5 py-2.5 text-base"
+                >
+                  {t("landing.buyTg")}
+                </a>
+              )
             ) : p.inStock || p.preorder ? (
               <>
                 <button className="btn-primary px-5 py-2.5 text-base" onClick={add}>
@@ -581,12 +594,14 @@ function ProductPage() {
                 )}
               </>
             )}
-            <FavoriteButton
-              id={p.id}
-              addLabel={t("fav.add")}
-              removeLabel={t("fav.remove")}
-              className="border border-line"
-            />
+            {siteCart && (
+              <FavoriteButton
+                id={p.id}
+                addLabel={t("fav.add")}
+                removeLabel={t("fav.remove")}
+                className="border border-line"
+              />
+            )}
             {msg && <span className="text-sm text-muted">{msg}</span>}
           </div>
           {writeUrl && (
