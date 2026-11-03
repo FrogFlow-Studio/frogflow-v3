@@ -51,6 +51,7 @@ type Copy = {
   doneOf: (done: number, total: number) => string;
   doneOk: (no: number, done: number, total: number) => string;
   allDone: string;
+  certBtn: string;
   channelBtn: string;
   prompt: (no: number, title: string, task: string) => string;
   sent: string;
@@ -110,6 +111,7 @@ const COPY: Record<Locale, Copy> = {
     doneOf: (done, total) => `пройдено ${done} из ${total}`,
     doneOk: (no, done, total) => `✅ Урок ${no} пройден. Пройдено: ${done} из ${total}.`,
     allDone: "🎉 Вы прошли все открытые уроки!",
+    certBtn: "🏅 Мой сертификат",
     channelBtn: "🔐 Вступить в канал курса",
     prompt: (no, title, task) =>
       `📝 <b>Урок ${no}. ${title}</b>\n\n${task}\n\n` +
@@ -177,6 +179,7 @@ const COPY: Record<Locale, Copy> = {
     doneOf: (done, total) => `${total} ішінен ${done} өтілді`,
     doneOk: (no, done, total) => `✅ ${no}-сабақ өтілді. Өтілгені: ${total} ішінен ${done}.`,
     allDone: "🎉 Барлық ашық сабақтарды өттіңіз!",
+    certBtn: "🏅 Менің сертификатым",
     channelBtn: "🔐 Курс арнасына кіру",
     prompt: (no, title, task) =>
       `📝 <b>${no}-сабақ. ${title}</b>\n\n${task}\n\n` +
@@ -244,6 +247,7 @@ const COPY: Record<Locale, Copy> = {
     doneOf: (done, total) => `${done} of ${total} done`,
     doneOk: (no, done, total) => `✅ Lesson ${no} done. Completed: ${done} of ${total}.`,
     allDone: "🎉 You’ve completed all open lessons!",
+    certBtn: "🏅 My certificate",
     channelBtn: "🔐 Join the course channel",
     prompt: (no, title, task) =>
       `📝 <b>Lesson ${no}. ${title}</b>\n\n${task}\n\n` +
@@ -312,6 +316,7 @@ const COPY: Record<Locale, Copy> = {
     doneOf: (done, total) => `${total} tadan ${done} ta o‘tildi`,
     doneOk: (no, done, total) => `✅ ${no}-dars o‘tildi. O‘tilgani: ${total} tadan ${done}.`,
     allDone: "🎉 Barcha ochiq darslarni o‘tdingiz!",
+    certBtn: "🏅 Mening sertifikatim",
     channelBtn: "🔐 Kurs kanaliga qo‘shilish",
     prompt: (no, title, task) =>
       `📝 <b>${no}-dars. ${title}</b>\n\n${task}\n\n` +
@@ -840,6 +845,20 @@ export async function markLessonDone(b: CourseBot, data: string): Promise<void> 
   const rows: InlineButton[][] = next
     ? [[{ text: c.continueBtn(next.no), callback_data: `lsn:${p.orderItemId}:${next.no}` }]]
     : [[{ text: c.allLessonsBtn, callback_data: `lsl:${p.orderItemId}` }]];
+  // Всё пройдено (и задания приняты, если они есть) — сертификат, как на странице курса.
+  if (!next && b.ctx.tenant.settings.slug) {
+    const { issueCertificate } = await import("@/core/courses/certificate.server");
+    const cert = await issueCertificate(b.ctx, p).catch(() => null);
+    if (cert) {
+      const { storefrontBase } = await import("@/core/tenant/custom-domain");
+      rows.unshift([
+        {
+          text: c.certBtn,
+          url: `${storefrontBase(b.ctx.tenant, b.ctx.appUrl)}/cert/${cert.certificate.code}`,
+        },
+      ]);
+    }
+  }
   await send(
     b,
     [c.doneOk(a.no, done, tl.access.length), ...(next ? [] : [c.allDone])].join("\n\n"),

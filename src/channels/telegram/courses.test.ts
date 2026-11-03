@@ -787,3 +787,35 @@ describe("курс в боте: первый экран /start (Lash Academy, 03
     expect(messages(calls)).toHaveLength(1);
   });
 });
+
+describe("курс в боте: финал", () => {
+  it("последний урок пройден, задания приняты — кнопка «🏅 Мой сертификат»", async () => {
+    const { ctx, db, api, calls } = school({}, { inBot: true, startedDaysAgo: 8 });
+    for (const l of course.lessons)
+      (db.tables.app_settings as Array<Record<string, unknown>>).push({
+        bot_id: T,
+        key: hwKey(ITEM, l.id),
+        value: JSON.stringify({
+          status: "accepted",
+          orderItemId: ITEM,
+          lessonId: l.id,
+          attempts: [{ at: "2026-10-01T10:00:00Z", text: "готово", files: [] }],
+        }),
+      });
+    await handleTelegramUpdate(ctx, api, press(`lsd:${ITEM}:1`, 1));
+    await handleTelegramUpdate(ctx, api, press(`lsd:${ITEM}:2`, 2));
+    const last = messages(calls).at(-1)!;
+    expect(String(last.text)).toContain("🎉 Вы прошли все открытые уроки!");
+    const cert = buttons(last).find((x) => x.text === "🏅 Мой сертификат");
+    expect(cert?.url).toMatch(/^https:\/\/app\.test\/s\/school\/cert\/[2-9A-HJ-NP-Z]{12}$/);
+  });
+
+  it("задания ещё не приняты — без сертификата", async () => {
+    const { ctx, api, calls } = school({}, { inBot: true, startedDaysAgo: 8 });
+    await handleTelegramUpdate(ctx, api, press(`lsd:${ITEM}:1`, 1));
+    await handleTelegramUpdate(ctx, api, press(`lsd:${ITEM}:2`, 2));
+    const last = messages(calls).at(-1)!;
+    expect(String(last.text)).toContain("🎉");
+    expect(buttons(last).map((x) => x.text)).not.toContain("🏅 Мой сертификат");
+  });
+});
