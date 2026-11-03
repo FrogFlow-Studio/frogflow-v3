@@ -44,6 +44,22 @@ vi.mock("@/core/tenant/resolve.server", () => ({
   resolveTenant: async () => tenant,
   tenantContext: () => ctx(),
 }));
+const downloads: Array<[string, unknown]> = [];
+vi.mock("@/core/db/client.server", () => ({
+  serviceDb: () => ({
+    storage: {
+      from: () => ({
+        download: async (key: string, opts?: unknown) => {
+          downloads.push([key, opts]);
+          return {
+            data: new Blob([new Uint8Array([0xff, 0xd8])], { type: "image/jpeg" }),
+            error: null,
+          };
+        },
+      }),
+    },
+  }),
+}));
 vi.mock("@tanstack/react-start/server", () => ({ getRequestUrl: () => new URL(requestUrl) }));
 vi.mock("@/config/env", () => ({ env: () => ({ APP_URL: "https://www.frogflow.tech" }) }));
 const approvedRating = vi.fn(async () => ({ avg: 4.5, count: 2 }));
@@ -111,6 +127,24 @@ describe("манифест и иконка витрины", () => {
       expect((await iconResponse("shop", bad)).status).toBe(404);
   });
 
+  it("у бота есть аватар — вкладка показывает его, уменьшенным до размера иконки", async () => {
+    settings.bot_avatar = JSON.stringify({
+      path: `${BOT}/brand/bot-avatar-AQAD1.jpg`,
+      uid: "AQAD1",
+      checkedAt: "2026-11-03T12:00:00Z",
+    });
+    downloads.length = 0;
+    const r = await iconResponse("shop", "192");
+    expect(r.headers.get("content-type")).toBe("image/jpeg");
+    expect(downloads).toEqual([
+      [
+        `${BOT}/brand/bot-avatar-AQAD1.jpg`,
+        { transform: { width: 192, height: 192, resize: "cover", quality: 85 } },
+      ],
+    ]);
+    delete settings.bot_avatar;
+  });
+
   it.each([
     ["клиент прежней платформы", () => (tenant.settings = { slug: "shop" } as Tenant["settings"])],
     ["архив", () => ((tenant as { archived: boolean }).archived = true)],
@@ -124,10 +158,10 @@ describe("манифест и иконка витрины", () => {
 });
 
 describe("магазин без витрины, только юр. страницы (shop + legal_docs)", () => {
-  it("манифест и иконки — 404, превью есть, но ставить на телефон нечего", async () => {
+  it("манифеста нет (ставить на телефон нечего), иконка вкладки и превью есть", async () => {
     tenant.modules = { shop: true, legal_docs: true } as Tenant["modules"];
     expect((await manifestResponse("shop")).status).toBe(404);
-    expect((await iconResponse("shop", "192")).status).toBe(404);
+    expect((await iconResponse("shop", "192")).status).toBe(200);
     const info = await shareInfo("shop");
     expect(info).toMatchObject({ installable: false, cover: null });
   });
