@@ -105,6 +105,9 @@ export const storeProductFn = createServerFn({ method: "GET" })
             (no, idx) => `/api/course-file/${data.slug}/${product.id}/${no}/${idx}`,
           )
         : null;
+    // Страница курса (core/courses/landing): блоки продавца; нет — товар как раньше.
+    const { storeLanding } = await import("@/core/courses/landing.server");
+    const landing = course ? await storeLanding(ctx, product.id) : null;
     // «Сообщить о поступлении»: ссылка в бота, только у товара без остатка (core/waitlist/link).
     const { waitlistLink } = await import("@/core/waitlist/link");
     const waitlistUrl = course
@@ -122,6 +125,7 @@ export const storeProductFn = createServerFn({ method: "GET" })
       related,
       preview,
       course,
+      landing,
       waitlistUrl,
       onMarket: shownOnMarketplace(ctx.tenant),
     };

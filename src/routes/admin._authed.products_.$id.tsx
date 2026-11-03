@@ -14,6 +14,7 @@ import {
 } from "@/app/admin/products.functions";
 import { adminT, intlLocale } from "@/app/i18n/admin";
 import { CourseCard, type CourseFlush } from "@/app/admin/course-card";
+import { CourseLandingCard } from "@/app/admin/course-landing-card";
 import { canEdit } from "@/core/auth/roles";
 import { Badge, Card, ErrorBox, Field, PageTitle, useAction } from "@/app/ui";
 import { imagePath } from "@/core/catalog/image-url";
@@ -503,6 +504,15 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
             {school && shop.modules.courses && p?.id && kind === "digital" && (
               <CourseCard productId={p.id} t={t} flushRef={courseFlush} />
             )}
+            {school && shop.modules.courses && p?.id && kind === "digital" && (
+              <CourseLandingCard
+                productId={p.id}
+                productName={String(p.name ?? "")}
+                botId={shop.botId}
+                slug={shop.slug}
+                t={t}
+              />
+            )}
 
             <Card
               title={t("product.card.kind")}
@@ -636,6 +646,15 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
             )}
             {!school && shop.modules.courses && p?.id && kind === "digital" && (
               <CourseCard productId={p.id} t={t} flushRef={courseFlush} />
+            )}
+            {!school && shop.modules.courses && p?.id && kind === "digital" && (
+              <CourseLandingCard
+                productId={p.id}
+                productName={String(p.name ?? "")}
+                botId={shop.botId}
+                slug={shop.slug}
+                t={t}
+              />
             )}
           </div>
           <div data-tab="price" {...panel("price")}>
