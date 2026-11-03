@@ -4,6 +4,7 @@ import { setEnvForTests } from "@/config/env";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { userKey } from "@/core/customers/customers";
 import { courseKey, type Course } from "@/core/courses/course";
+import { COURSE_MARKER_URL } from "@/core/courses/marker";
 import { hwKey, parseHomework } from "@/core/courses/homework";
 import { inviteKey } from "@/core/courses/channel.server";
 import type { TelegramApi } from "./api";
@@ -29,8 +30,16 @@ vi.mock("./course-notify", () => ({
   },
 }));
 
+const sellerNotes: string[] = [];
+vi.mock("./notify", async (orig) => ({
+  ...(await orig<typeof import("./notify")>()),
+  notifyAdminsHtml: vi.fn(async (_ctx: unknown, html: string) => {
+    sellerNotes.push(html);
+    return 1;
+  }),
+}));
 const { handleTelegramUpdate } = await import("./handle-update");
-const { shortTitle } = await import("./courses");
+const { moduleOf, progressBar, shortTitle } = await import("./courses");
 
 /**
  * Онлайн-школа в боте: «Мои курсы», сдача задания фото и альбомом прямо в
@@ -417,8 +426,9 @@ describe("курс в боте: «Следующий урок →» (settings.de
       { text: "Следующий урок 2 →", callback_data: `lsn:${ITEM}:2` },
     ]);
     await handleTelegramUpdate(ctx, api, press(`lsn:${ITEM}:2`, 2));
-    const second = messages(calls).at(-1)!;
-    expect(String(second.text)).toContain("2. Цвет");
+    // У второго урока есть видео из бота — урок приходит одним сообщением: видео с подписью.
+    const second = calls.filter(([m]) => m === "sendVideo").at(-1)![1];
+    expect(String(second.caption)).toContain("2. Цвет");
     // Последний урок — кнопки дальше нет.
     expect(nextBtn(second)).toEqual([]);
   });
@@ -698,5 +708,131 @@ describe("курс в боте: прохождение в чате (Lash Academy
   it("название без приставки модуля", () => {
     expect(shortTitle("Модуль 1 · 1.1. Знакомство", 1)).toBe("1.1. Знакомство");
     expect(shortTitle("Знакомство", 3)).toBe("3. Знакомство");
+  });
+});
+
+describe("курс в боте: оформление (Lash Academy, 03.11.2026)", () => {
+  it("урок с видео из бота — одно сообщение: видео, текст урока и кнопки в подписи", async () => {
+    const { ctx, api, calls } = school({}, { inBot: true, startedDaysAgo: 8 });
+    await handleTelegramUpdate(ctx, api, press(`lsn:${ITEM}:2`));
+    const sent = calls.filter(([m]) => m === "sendVideo" || m === "sendMessage");
+    expect(sent).toHaveLength(1);
+    const [, v] = sent[0]!;
+    expect(v).toMatchObject({
+      video: "BAACAgIAAxkBAAIfree3",
+      parse_mode: "HTML",
+      protect_content: true,
+    });
+    expect(String(v.caption).split("\n")[0]).toBe("📖 Урок 2 из 2");
+    expect(buttons(v).map((x) => x.text)).toContain("✅ Урок пройден");
+  });
+
+  it("выключено — видео отдельно, текст урока отдельным сообщением, как раньше", async () => {
+    const { ctx, api, calls } = school({}, { startedDaysAgo: 8 });
+    await handleTelegramUpdate(ctx, api, press(`lsn:${ITEM}:2`));
+    expect(calls.filter(([m]) => m === "sendVideo")[0]![1].caption).toBe("🎬 2. Цвет");
+    expect(messages(calls).at(-1)!.text).toContain("2. Цвет");
+  });
+
+  it("«Мои курсы» — одно сообщение на курс с полоской прогресса", async () => {
+    const { ctx, api, calls } = school({}, { inBot: true, startedDaysAgo: 8 });
+    await handleTelegramUpdate(ctx, api, text("🎓 Мои курсы"));
+    const ms = messages(calls);
+    expect(ms.map((m) => String(m.text).split("\n")[0])).toEqual(["🎓 <b>Аквагрим с нуля</b>"]);
+    expect(String(ms[0]!.text)).toContain("▱▱▱▱▱▱▱▱▱▱ пройдено 0 из 2");
+  });
+
+  it("полоска и модули", () => {
+    expect(progressBar(0, 9)).toBe("▱▱▱▱▱▱▱▱▱▱");
+    expect(progressBar(3, 9)).toBe("▰▰▰▱▱▱▱▱▱▱");
+    expect(progressBar(9, 9)).toBe("▰▰▰▰▰▰▰▰▰▰");
+    expect(moduleOf("Модуль 2 · 2.1. Подготовка")).toBe("Модуль 2");
+    expect(moduleOf("Кисти")).toBeNull();
+  });
+});
+
+describe("курс в боте: первый экран /start (Lash Academy, 03.11.2026)", () => {
+  it("купившей — после приветствия сразу её курс с «Продолжить»", async () => {
+    const { ctx, api, calls } = school({}, { inBot: true, startedDaysAgo: 8 });
+    await handleTelegramUpdate(ctx, api, text("/start"));
+    const last = messages(calls).at(-1)!;
+    expect(String(last.text).split("\n")[0]).toBe("🎓 <b>Аквагрим с нуля</b>");
+    expect(buttons(last)[0]!.text).toBe("▶️ Продолжить: урок 1");
+  });
+
+  it("новой ученице — после приветствия карточка курса с «Купить курс»", async () => {
+    const { ctx, db, api, calls } = school({}, { inBot: true });
+    db.tables.orders = [];
+    db.tables.order_items = [];
+    db.tables.products = [
+      {
+        id: P,
+        bot_id: T,
+        name: "Аквагрим с нуля",
+        description: "",
+        price: 10000,
+        currency: "KZT",
+        country_prices: {},
+        fulfillment_kind: "digital",
+        file_url: COURSE_MARKER_URL,
+        is_active: true,
+        sort_order: 0,
+        stock_quantity: null,
+        category_ids: [],
+        product_images: [],
+        product_variants: [],
+      },
+    ];
+    await handleTelegramUpdate(ctx, api, text("/start"));
+    const last = messages(calls).at(-1)!;
+    expect(String(last.text).startsWith("🎓 <b>Аквагрим с нуля</b>")).toBe(true);
+    expect(buttons(last).map((x) => x.text)).toContain("🎓 Купить курс");
+  });
+
+  it("выключено — /start как раньше, только приветствие", async () => {
+    const { ctx, api, calls } = school({}, { startedDaysAgo: 8 });
+    await handleTelegramUpdate(ctx, api, text("/start"));
+    expect(messages(calls)).toHaveLength(1);
+  });
+});
+
+describe("курс в боте: финал", () => {
+  afterEach(() => {
+    sellerNotes.length = 0;
+  });
+  it("последний урок пройден, задания приняты — кнопка «🏅 Мой сертификат»", async () => {
+    const { ctx, db, api, calls } = school({}, { inBot: true, startedDaysAgo: 8 });
+    for (const l of course.lessons)
+      (db.tables.app_settings as Array<Record<string, unknown>>).push({
+        bot_id: T,
+        key: hwKey(ITEM, l.id),
+        value: JSON.stringify({
+          status: "accepted",
+          orderItemId: ITEM,
+          lessonId: l.id,
+          attempts: [{ at: "2026-10-01T10:00:00Z", text: "готово", files: [] }],
+        }),
+      });
+    await handleTelegramUpdate(ctx, api, press(`lsd:${ITEM}:1`, 1));
+    await handleTelegramUpdate(ctx, api, press(`lsd:${ITEM}:2`, 2));
+    const last = messages(calls).at(-1)!;
+    expect(String(last.text)).toContain("🎉 Вы прошли все открытые уроки!");
+    const cert = buttons(last).find((x) => x.text === "🏅 Мой сертификат");
+    expect(cert?.url).toMatch(/^https:\/\/app\.test\/s\/school\/cert\/[2-9A-HJ-NP-Z]{12}$/);
+    // Продавцу — один раз: повторное нажатие сертификат не выдаёт заново.
+    expect(sellerNotes.filter((h) => h.includes("прошла курс"))).toEqual([
+      "🎓 Мария прошла курс «Аквагрим с нуля» и получила сертификат.",
+    ]);
+    await handleTelegramUpdate(ctx, api, press(`lsd:${ITEM}:2`, 3));
+    expect(sellerNotes.filter((h) => h.includes("прошла курс"))).toHaveLength(1);
+  });
+
+  it("задания ещё не приняты — без сертификата", async () => {
+    const { ctx, api, calls } = school({}, { inBot: true, startedDaysAgo: 8 });
+    await handleTelegramUpdate(ctx, api, press(`lsd:${ITEM}:1`, 1));
+    await handleTelegramUpdate(ctx, api, press(`lsd:${ITEM}:2`, 2));
+    const last = messages(calls).at(-1)!;
+    expect(String(last.text)).toContain("🎉");
+    expect(buttons(last).map((x) => x.text)).not.toContain("🏅 Мой сертификат");
   });
 });

@@ -432,6 +432,9 @@ export type Msg = {
   courseHomeworkDue: (course: string, no: number, title: string) => string;
   /** Курс пройден: просьба оценить (оценка 1–5 звёздами, затем текст). */
   courseReviewAsk: (course: string) => string;
+  /** Курс в боте: ученица несколько дней не проходила уроки. */
+  courseStalled: (course: string, no: number, title: string) => string;
+  courseContinueBtn: (no: number) => string;
   /** Напоминания об эфире потока (core/courses/live-remind): время в поясе магазина уже в строке. */
   courseLiveDay: (course: string, title: string, when: string) => string;
   courseLiveHour: (course: string, title: string, when: string) => string;
@@ -463,7 +466,7 @@ export type Msg = {
 
 const ru: Msg = {
   courseOpened:
-    "🎓 Курс открыт ✅\n\nУроки — прямо здесь, в чате. Нажмите кнопку, чтобы начать. Вернуться к урокам можно в меню «🎓 Мои курсы».",
+    "Курс открыт ✅\n\nУроки приходят прямо сюда: видео, текст и задания. После урока нажмите «✅ Урок пройден» — бот покажет следующий. Все уроки — в меню «🎓 Мои курсы».",
   courseStartBtn: "▶️ Начать урок 1",
   courseSiteBtn: "🌐 Открыть на сайте",
   choosePayMethodNamed: (l) =>
@@ -602,6 +605,9 @@ const ru: Msg = {
   courseLiveWatchBtn: "Смотреть запись",
   courseReviewAsk: (course) =>
     `🎓 Поздравляем с окончанием курса «${course}»! Оцените его — это займёт минуту:`,
+  courseStalled: (course, no, title) =>
+    `👋 Вы остановились на уроке ${no} «${title}» курса «${course}». Продолжим? Урок займёт пару минут.`,
+  courseContinueBtn: (no) => `▶️ Продолжить: урок ${no}`,
   courseHomeworkDue: (course, no, title) =>
     `📝 Напоминаем: задание урока ${no} «${title}» курса «${course}» ещё не сдано. Пришлите ответ — преподаватель ждёт.`,
   broadcastPick: "👇 Выберите материал:",
@@ -928,7 +934,7 @@ const ru: Msg = {
 const kk: Msg = {
   ...ru,
   courseOpened:
-    "🎓 Курс ашылды ✅\n\nСабақтар — осы жерде, чатта. Бастау үшін батырманы басыңыз. Сабақтарға «🎓 Курстарым» мәзірінен қайта оралуға болады.",
+    "Курс ашылды ✅\n\nСабақтар осында келеді: бейне, мәтін және тапсырмалар. Сабақтан кейін «✅ Сабақ өтілді» батырмасын басыңыз — бот келесісін көрсетеді. Барлық сабақтар — «🎓 Курстарым» мәзірінде.",
   courseStartBtn: "▶️ 1-сабақты бастау",
   courseSiteBtn: "🌐 Сайтта ашу",
   payViaKaspiApipayBtn: "📱 Kaspi-де төлеу",
@@ -1192,6 +1198,9 @@ const kk: Msg = {
   courseLiveWatchBtn: "Жазбаны көру",
   courseReviewAsk: (course) =>
     `🎓 «${course}» курсын аяқтағаныңызбен құттықтаймыз! Оны бағалаңыз — бір минут қана:`,
+  courseStalled: (course, no, title) =>
+    `👋 Сіз «${course}» курсының ${no}-сабағында «${title}» тоқтадыңыз. Жалғастырамыз ба?`,
+  courseContinueBtn: (no) => `▶️ Жалғастыру: ${no}-сабақ`,
   courseHomeworkDue: (course, no, title) =>
     `📝 Еске саламыз: «${course}» курсының ${no}-сабағы «${title}» тапсырмасы әлі тапсырылмаған. Жауабыңызды жіберіңіз — оқытушы күтуде.`,
   broadcastPick: "👇 Материалды таңдаңыз:",
@@ -1286,7 +1295,7 @@ const kk: Msg = {
 const en: Msg = {
   ...ru,
   courseOpened:
-    "🎓 Your course is open ✅\n\nLessons are right here in the chat. Tap the button to start. You can come back to them any time via «🎓 My courses».",
+    "Your course is open ✅\n\nLessons come right here: video, text and tasks. After a lesson tap «✅ Lesson done» and the bot shows the next one. All lessons are in «🎓 My courses».",
   courseStartBtn: "▶️ Start lesson 1",
   courseSiteBtn: "🌐 Open on the website",
   payViaKaspiApipayBtn: "📱 Pay with Kaspi",
@@ -1540,6 +1549,9 @@ const en: Msg = {
   courseLiveWatchBtn: "Watch the recording",
   courseReviewAsk: (course) =>
     `🎓 Congratulations on finishing “${course}”! Please rate it — it takes a minute:`,
+  courseStalled: (course, no, title) =>
+    `👋 You stopped at lesson ${no} “${title}” of “${course}”. Shall we continue? It takes a couple of minutes.`,
+  courseContinueBtn: (no) => `▶️ Continue: lesson ${no}`,
   courseHomeworkDue: (course, no, title) =>
     `📝 Reminder: the homework for lesson ${no} “${title}” of “${course}” hasn't been submitted yet. Send your answer — the teacher is waiting.`,
   broadcastPick: "👇 Pick an item:",
@@ -1672,7 +1684,7 @@ const en: Msg = {
 const uz: Msg = {
   ...ru,
   courseOpened:
-    "🎓 Kurs ochildi ✅\n\nDarslar shu yerda, chatda. Boshlash uchun tugmani bosing. Darslarga «🎓 Kurslarim» menyusidan qaytish mumkin.",
+    "Kurs ochildi ✅\n\nDarslar shu yerga keladi: video, matn va vazifalar. Darsdan keyin «✅ Dars o‘tildi» tugmasini bosing — bot keyingisini ko‘rsatadi. Barcha darslar — «🎓 Kurslarim» menyusida.",
   courseStartBtn: "▶️ 1-darsni boshlash",
   courseSiteBtn: "🌐 Saytda ochish",
   payViaKaspiApipayBtn: "📱 Kaspi orqali toʻlash",
@@ -1939,6 +1951,9 @@ const uz: Msg = {
   courseLiveWatchBtn: "Yozuvni ko‘rish",
   courseReviewAsk: (course) =>
     `🎓 «${course}» kursini tugatganingiz bilan tabriklaymiz! Uni baholang — bir daqiqa kifoya:`,
+  courseStalled: (course, no, title) =>
+    `👋 Siz «${course}» kursining ${no}-darsida «${title}» to‘xtadingiz. Davom etamizmi?`,
+  courseContinueBtn: (no) => `▶️ Davom etish: ${no}-dars`,
   courseHomeworkDue: (course, no, title) =>
     `📝 Eslatma: «${course}» kursining ${no}-darsi «${title}» vazifasi hali topshirilmagan. Javobingizni yuboring — o‘qituvchi kutmoqda.`,
   broadcastPick: "👇 Materialni tanlang:",

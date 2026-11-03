@@ -40,6 +40,8 @@ export async function addToCartButton(
     text: text.slice(0, 200),
     show_alert: r !== "ok",
   });
+  // «Купить курс» под карточкой курса (курс в боте): сразу корзина с кнопкой оформления.
+  if (r === "ok" && from === "c") return showCart(b);
   if (r === "ok")
     await send(b, `${b.m.added} · ${b.m.cart}`, {
       reply_markup: { inline_keyboard: [[{ text: b.m.cart, callback_data: "cart:show" }]] },

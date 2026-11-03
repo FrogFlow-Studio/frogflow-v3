@@ -48,8 +48,10 @@ type Copy = {
   siteBtn: string;
   doneBtn: string;
   lessonOf: (no: number, total: number) => string;
+  doneOf: (done: number, total: number) => string;
   doneOk: (no: number, done: number, total: number) => string;
   allDone: string;
+  certBtn: string;
   channelBtn: string;
   prompt: (no: number, title: string, task: string) => string;
   sent: string;
@@ -106,8 +108,10 @@ const COPY: Record<Locale, Copy> = {
     siteBtn: "🌐 Уроки на сайте",
     doneBtn: "✅ Урок пройден",
     lessonOf: (no, total) => `Урок ${no} из ${total}`,
+    doneOf: (done, total) => `пройдено ${done} из ${total}`,
     doneOk: (no, done, total) => `✅ Урок ${no} пройден. Пройдено: ${done} из ${total}.`,
     allDone: "🎉 Вы прошли все открытые уроки!",
+    certBtn: "🏅 Мой сертификат",
     channelBtn: "🔐 Вступить в канал курса",
     prompt: (no, title, task) =>
       `📝 <b>Урок ${no}. ${title}</b>\n\n${task}\n\n` +
@@ -172,8 +176,10 @@ const COPY: Record<Locale, Copy> = {
     siteBtn: "🌐 Сабақтар сайтта",
     doneBtn: "✅ Сабақ өтілді",
     lessonOf: (no, total) => `${total} ішінен ${no}-сабақ`,
+    doneOf: (done, total) => `${total} ішінен ${done} өтілді`,
     doneOk: (no, done, total) => `✅ ${no}-сабақ өтілді. Өтілгені: ${total} ішінен ${done}.`,
     allDone: "🎉 Барлық ашық сабақтарды өттіңіз!",
+    certBtn: "🏅 Менің сертификатым",
     channelBtn: "🔐 Курс арнасына кіру",
     prompt: (no, title, task) =>
       `📝 <b>${no}-сабақ. ${title}</b>\n\n${task}\n\n` +
@@ -238,8 +244,10 @@ const COPY: Record<Locale, Copy> = {
     siteBtn: "🌐 Lessons on the website",
     doneBtn: "✅ Lesson done",
     lessonOf: (no, total) => `Lesson ${no} of ${total}`,
+    doneOf: (done, total) => `${done} of ${total} done`,
     doneOk: (no, done, total) => `✅ Lesson ${no} done. Completed: ${done} of ${total}.`,
     allDone: "🎉 You’ve completed all open lessons!",
+    certBtn: "🏅 My certificate",
     channelBtn: "🔐 Join the course channel",
     prompt: (no, title, task) =>
       `📝 <b>Lesson ${no}. ${title}</b>\n\n${task}\n\n` +
@@ -305,8 +313,10 @@ const COPY: Record<Locale, Copy> = {
     siteBtn: "🌐 Darslar saytda",
     doneBtn: "✅ Dars o‘tildi",
     lessonOf: (no, total) => `${total} tadan ${no}-dars`,
+    doneOf: (done, total) => `${total} tadan ${done} ta o‘tildi`,
     doneOk: (no, done, total) => `✅ ${no}-dars o‘tildi. O‘tilgani: ${total} tadan ${done}.`,
     allDone: "🎉 Barcha ochiq darslarni o‘tdingiz!",
+    certBtn: "🏅 Mening sertifikatim",
     channelBtn: "🔐 Kurs kanaliga qo‘shilish",
     prompt: (no, title, task) =>
       `📝 <b>${no}-dars. ${title}</b>\n\n${task}\n\n` +
@@ -363,6 +373,9 @@ async function send(b: CourseBot, text: string, extra: Record<string, unknown> =
 /** Сколько кнопок «Сдать задание» показывать на курс: открытые несданные, по порядку. */
 const SUBMIT_BUTTONS_MAX = 3;
 
+import { moduleOf, progressBar, shortTitle } from "./course-format";
+export { moduleOf, progressBar, shortTitle };
+
 // ── «Мои курсы» ───────────────────────────────────────────────────────
 
 export async function showMyCourses(b: CourseBot): Promise<void> {
@@ -372,7 +385,7 @@ export async function showMyCourses(b: CourseBot): Promise<void> {
   if (courses.length === 0) return send(b, c.empty);
   // Курс в боте: проходят в чате — главная кнопка «Продолжить», сайт — ниже.
   const inBot = b.ctx.tenant.settings.delivery?.course_in_bot === true;
-  await send(b, c.header);
+  if (!inBot) await send(b, c.header);
   const fmt = new Intl.DateTimeFormat(b.locale, {
     day: "numeric",
     month: "long",
@@ -380,9 +393,10 @@ export async function showMyCourses(b: CourseBot): Promise<void> {
   });
   for (const k of courses) {
     const day = (iso: string) => fmt.format(new Date(iso));
-    const lines = [`<b>${escapeHtml(k.name)}</b>`];
+    const lines = [`${inBot ? "🎓 " : ""}<b>${escapeHtml(k.name)}</b>`];
     if (k.cohort) lines.push(c.cohort(escapeHtml(k.cohort.title), day(k.cohort.start)));
     if (k.beforeStart && k.cohort) lines.push(c.beforeStart(day(k.cohort.start)));
+    else if (inBot) lines.push(`${progressBar(k.done, k.total)} ${c.doneOf(k.done, k.total)}`);
     else lines.push(c.progress(k.open, k.total, k.done));
     if (k.expiresAt) lines.push((k.expired ? c.expired : c.expires)(day(k.expiresAt)));
     if (k.nextAt && !k.beforeStart) lines.push(c.next(day(k.nextAt)));
@@ -676,9 +690,24 @@ export async function showLessonList(b: CourseBot, data: string): Promise<void> 
   if (open.length === 0) return send(b, c.closed);
   const inBot = b.ctx.tenant.settings.delivery?.course_in_bot === true;
   const done = new Set(p.run?.done ?? []);
-  await send(b, c.lessonsHeader, {
+  const shown = open.slice(-20);
+  // Курс в боте: заголовки модулей текстом («Модуль 1 · …» в названиях уроков), уроки — кнопками.
+  const modules = inBot
+    ? [...new Set(shown.map((a) => moduleOf(a.lesson.title)).filter(Boolean))]
+    : [];
+  const header =
+    modules.length > 1
+      ? `${c.lessonsHeader}\n\n${modules
+          .map((m) => {
+            const ls = shown.filter((a) => moduleOf(a.lesson.title) === m);
+            const d = ls.filter((a) => done.has(a.lesson.id)).length;
+            return `<b>${escapeHtml(m!)}</b> · ${d}/${ls.length}`;
+          })
+          .join("\n")}`
+      : c.lessonsHeader;
+  await send(b, header, {
     reply_markup: {
-      inline_keyboard: open.slice(-20).map((a) => [
+      inline_keyboard: shown.map((a) => [
         {
           text: (inBot
             ? `${done.has(a.lesson.id) ? "✅" : "▫️"} ${shortTitle(a.lesson.title, a.no)}`
@@ -777,23 +806,35 @@ export async function showLesson(b: CourseBot, data: string): Promise<void> {
       ]);
     rows.push([{ text: c.allLessonsBtn, callback_data: `lsl:${p.orderItemId}` }]);
   }
+  const body = parts.join("\n\n");
+  const tg = l.tgVideos ?? [];
+  const markup = rows.length ? { reply_markup: { inline_keyboard: rows } } : {};
+  // Курс в боте: урок одним сообщением — последнее видео с текстом урока и
+  // кнопками в подписи (если текст влезает в подпись Telegram), прежние видео — перед ним.
+  if (inBot && tg.length > 0 && body.length <= CAPTION_MAX) {
+    await sendTgVideos(b, `${a.no}. ${l.title}`, tg.slice(0, -1), tg.length);
+    await b.api.call("sendVideo", {
+      chat_id: b.chatId,
+      video: tg.at(-1),
+      caption: body,
+      parse_mode: "HTML",
+      protect_content: true,
+      ...markup,
+    });
+    return;
+  }
   // Видео, присланные продавцом боту, — прямо в чат, перед текстом урока с кнопками.
-  await sendTgVideos(b, `${a.no}. ${l.title}`, l.tgVideos ?? []);
-  await send(
-    b,
-    parts.join("\n\n").slice(0, 4096),
-    rows.length ? { reply_markup: { inline_keyboard: rows } } : {},
-  );
+  await sendTgVideos(b, `${a.no}. ${l.title}`, tg);
+  await send(b, body.slice(0, 4096), markup);
 }
 
-/**
- * Название урока в чате без приставки модуля, если номер урока в нём есть:
- * «Модуль 1 · 1.1. Знакомство» → «1.1. Знакомство»; иначе «N. Название».
- */
-export function shortTitle(title: string, no: number): string {
-  const t = title.replace(/^[^·\d]{1,20}\d{1,2}\s*·\s*(?=\d)/u, "");
-  return /^\d/.test(t) ? t : `${no}. ${t}`;
-}
+/** Продавцу: ученица прошла курс и получила сертификат (курс в боте). */
+const FINISHED_NOTICE: Record<Locale, (who: string, course: string) => string> = {
+  ru: (who, course) => `🎓 ${who || "Ученица"} прошла курс «${course}» и получила сертификат.`,
+  kk: (who, course) => `🎓 ${who || "Оқушы"} «${course}» курсын өтіп, сертификат алды.`,
+  en: (who, course) => `🎓 ${who || "A student"} finished «${course}» and got the certificate.`,
+  uz: (who, course) => `🎓 ${who || "O‘quvchi"} «${course}» kursini tugatdi va sertifikat oldi.`,
+};
 
 /** «✅ Урок пройден» под уроком в чате (`lsd:<покупка>:<номер>`, курс в боте). */
 export async function markLessonDone(b: CourseBot, data: string): Promise<void> {
@@ -812,6 +853,32 @@ export async function markLessonDone(b: CourseBot, data: string): Promise<void> 
   const rows: InlineButton[][] = next
     ? [[{ text: c.continueBtn(next.no), callback_data: `lsn:${p.orderItemId}:${next.no}` }]]
     : [[{ text: c.allLessonsBtn, callback_data: `lsl:${p.orderItemId}` }]];
+  // Всё пройдено (и задания приняты, если они есть) — сертификат, как на странице курса.
+  if (!next && b.ctx.tenant.settings.slug) {
+    const { issueCertificate } = await import("@/core/courses/certificate.server");
+    const cert = await issueCertificate(b.ctx, p).catch(() => null);
+    // Сертификат выдан впервые (бронь кода — один победитель) — продавцу один раз.
+    if (cert?.created) {
+      const { sellerLocale } = await import("@/core/catalog/low-stock");
+      const { notifyAdminsHtml } = await import("./notify");
+      const who =
+        b.customer.firstName?.trim() || (b.customer.username ? `@${b.customer.username}` : "");
+      await notifyAdminsHtml(
+        b.ctx,
+        FINISHED_NOTICE[await sellerLocale(b.ctx)](escapeHtml(who), escapeHtml(p.name)),
+        { kind: "system" },
+      ).catch(() => 0);
+    }
+    if (cert) {
+      const { storefrontBase } = await import("@/core/tenant/custom-domain");
+      rows.unshift([
+        {
+          text: c.certBtn,
+          url: `${storefrontBase(b.ctx.tenant, b.ctx.appUrl)}/cert/${cert.certificate.code}`,
+        },
+      ]);
+    }
+  }
   await send(
     b,
     [c.doneOk(a.no, done, tl.access.length), ...(next ? [] : [c.allDone])].join("\n\n"),
@@ -858,12 +925,20 @@ export async function showOpenLesson(b: CourseBot, data: string): Promise<void> 
  * номер и название урока. `protect_content` — ученица не перешлёт и не
  * сохранит видео (запрет Telegram на пересылку и сохранение).
  */
-async function sendTgVideos(b: CourseBot, title: string, ids: string[]): Promise<void> {
+/** Подпись к видео в Telegram — до 1024 символов. */
+const CAPTION_MAX = 1024;
+
+async function sendTgVideos(
+  b: CourseBot,
+  title: string,
+  ids: string[],
+  total = ids.length,
+): Promise<void> {
   for (const [i, video] of ids.entries())
     await b.api.call("sendVideo", {
       chat_id: b.chatId,
       video,
-      caption: ("🎬 " + title + (ids.length > 1 ? ` · ${i + 1}/${ids.length}` : "")).slice(0, 1024),
+      caption: ("🎬 " + title + (total > 1 ? ` · ${i + 1}/${total}` : "")).slice(0, CAPTION_MAX),
       protect_content: true,
     });
 }

@@ -77,7 +77,7 @@ export function telegramMaterialSender(
         // Курс проходят в боте: одно понятное сообщение и кнопка первого урока (showLesson).
         const r = await api.call("sendMessage", {
           chat_id: chatId,
-          text: `${caption ? caption + "\n\n" : ""}${m.courseOpened}`,
+          text: `${caption ? caption.replace(/^📁 /u, "🎓 ") + "\n\n" : ""}${m.courseOpened}`,
           parse_mode: "HTML",
           reply_markup: {
             inline_keyboard: [
