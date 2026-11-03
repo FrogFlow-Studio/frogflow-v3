@@ -30,7 +30,7 @@ vi.mock("./course-notify", () => ({
 }));
 
 const { handleTelegramUpdate } = await import("./handle-update");
-const { shortTitle } = await import("./courses");
+const { moduleOf, progressBar, shortTitle } = await import("./courses");
 
 /**
  * Онлайн-школа в боте: «Мои курсы», сдача задания фото и альбомом прямо в
@@ -417,8 +417,9 @@ describe("курс в боте: «Следующий урок →» (settings.de
       { text: "Следующий урок 2 →", callback_data: `lsn:${ITEM}:2` },
     ]);
     await handleTelegramUpdate(ctx, api, press(`lsn:${ITEM}:2`, 2));
-    const second = messages(calls).at(-1)!;
-    expect(String(second.text)).toContain("2. Цвет");
+    // У второго урока есть видео из бота — урок приходит одним сообщением: видео с подписью.
+    const second = calls.filter(([m]) => m === "sendVideo").at(-1)![1];
+    expect(String(second.caption)).toContain("2. Цвет");
     // Последний урок — кнопки дальше нет.
     expect(nextBtn(second)).toEqual([]);
   });
@@ -698,5 +699,45 @@ describe("курс в боте: прохождение в чате (Lash Academy
   it("название без приставки модуля", () => {
     expect(shortTitle("Модуль 1 · 1.1. Знакомство", 1)).toBe("1.1. Знакомство");
     expect(shortTitle("Знакомство", 3)).toBe("3. Знакомство");
+  });
+});
+
+describe("курс в боте: оформление (Lash Academy, 03.11.2026)", () => {
+  it("урок с видео из бота — одно сообщение: видео, текст урока и кнопки в подписи", async () => {
+    const { ctx, api, calls } = school({}, { inBot: true, startedDaysAgo: 8 });
+    await handleTelegramUpdate(ctx, api, press(`lsn:${ITEM}:2`));
+    const sent = calls.filter(([m]) => m === "sendVideo" || m === "sendMessage");
+    expect(sent).toHaveLength(1);
+    const [, v] = sent[0]!;
+    expect(v).toMatchObject({
+      video: "BAACAgIAAxkBAAIfree3",
+      parse_mode: "HTML",
+      protect_content: true,
+    });
+    expect(String(v.caption).split("\n")[0]).toBe("📖 Урок 2 из 2");
+    expect(buttons(v).map((x) => x.text)).toContain("✅ Урок пройден");
+  });
+
+  it("выключено — видео отдельно, текст урока отдельным сообщением, как раньше", async () => {
+    const { ctx, api, calls } = school({}, { startedDaysAgo: 8 });
+    await handleTelegramUpdate(ctx, api, press(`lsn:${ITEM}:2`));
+    expect(calls.filter(([m]) => m === "sendVideo")[0]![1].caption).toBe("🎬 2. Цвет");
+    expect(messages(calls).at(-1)!.text).toContain("2. Цвет");
+  });
+
+  it("«Мои курсы» — одно сообщение на курс с полоской прогресса", async () => {
+    const { ctx, api, calls } = school({}, { inBot: true, startedDaysAgo: 8 });
+    await handleTelegramUpdate(ctx, api, text("🎓 Мои курсы"));
+    const ms = messages(calls);
+    expect(ms.map((m) => String(m.text).split("\n")[0])).toEqual(["🎓 <b>Аквагрим с нуля</b>"]);
+    expect(String(ms[0]!.text)).toContain("▱▱▱▱▱▱▱▱▱▱ пройдено 0 из 2");
+  });
+
+  it("полоска и модули", () => {
+    expect(progressBar(0, 9)).toBe("▱▱▱▱▱▱▱▱▱▱");
+    expect(progressBar(3, 9)).toBe("▰▰▰▱▱▱▱▱▱▱");
+    expect(progressBar(9, 9)).toBe("▰▰▰▰▰▰▰▰▰▰");
+    expect(moduleOf("Модуль 2 · 2.1. Подготовка")).toBe("Модуль 2");
+    expect(moduleOf("Кисти")).toBeNull();
   });
 });

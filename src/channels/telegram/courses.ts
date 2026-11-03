@@ -48,6 +48,7 @@ type Copy = {
   siteBtn: string;
   doneBtn: string;
   lessonOf: (no: number, total: number) => string;
+  doneOf: (done: number, total: number) => string;
   doneOk: (no: number, done: number, total: number) => string;
   allDone: string;
   channelBtn: string;
@@ -106,6 +107,7 @@ const COPY: Record<Locale, Copy> = {
     siteBtn: "🌐 Уроки на сайте",
     doneBtn: "✅ Урок пройден",
     lessonOf: (no, total) => `Урок ${no} из ${total}`,
+    doneOf: (done, total) => `пройдено ${done} из ${total}`,
     doneOk: (no, done, total) => `✅ Урок ${no} пройден. Пройдено: ${done} из ${total}.`,
     allDone: "🎉 Вы прошли все открытые уроки!",
     channelBtn: "🔐 Вступить в канал курса",
@@ -172,6 +174,7 @@ const COPY: Record<Locale, Copy> = {
     siteBtn: "🌐 Сабақтар сайтта",
     doneBtn: "✅ Сабақ өтілді",
     lessonOf: (no, total) => `${total} ішінен ${no}-сабақ`,
+    doneOf: (done, total) => `${total} ішінен ${done} өтілді`,
     doneOk: (no, done, total) => `✅ ${no}-сабақ өтілді. Өтілгені: ${total} ішінен ${done}.`,
     allDone: "🎉 Барлық ашық сабақтарды өттіңіз!",
     channelBtn: "🔐 Курс арнасына кіру",
@@ -238,6 +241,7 @@ const COPY: Record<Locale, Copy> = {
     siteBtn: "🌐 Lessons on the website",
     doneBtn: "✅ Lesson done",
     lessonOf: (no, total) => `Lesson ${no} of ${total}`,
+    doneOf: (done, total) => `${done} of ${total} done`,
     doneOk: (no, done, total) => `✅ Lesson ${no} done. Completed: ${done} of ${total}.`,
     allDone: "🎉 You’ve completed all open lessons!",
     channelBtn: "🔐 Join the course channel",
@@ -305,6 +309,7 @@ const COPY: Record<Locale, Copy> = {
     siteBtn: "🌐 Darslar saytda",
     doneBtn: "✅ Dars o‘tildi",
     lessonOf: (no, total) => `${total} tadan ${no}-dars`,
+    doneOf: (done, total) => `${total} tadan ${done} ta o‘tildi`,
     doneOk: (no, done, total) => `✅ ${no}-dars o‘tildi. O‘tilgani: ${total} tadan ${done}.`,
     allDone: "🎉 Barcha ochiq darslarni o‘tdingiz!",
     channelBtn: "🔐 Kurs kanaliga qo‘shilish",
@@ -372,7 +377,7 @@ export async function showMyCourses(b: CourseBot): Promise<void> {
   if (courses.length === 0) return send(b, c.empty);
   // Курс в боте: проходят в чате — главная кнопка «Продолжить», сайт — ниже.
   const inBot = b.ctx.tenant.settings.delivery?.course_in_bot === true;
-  await send(b, c.header);
+  if (!inBot) await send(b, c.header);
   const fmt = new Intl.DateTimeFormat(b.locale, {
     day: "numeric",
     month: "long",
@@ -380,9 +385,10 @@ export async function showMyCourses(b: CourseBot): Promise<void> {
   });
   for (const k of courses) {
     const day = (iso: string) => fmt.format(new Date(iso));
-    const lines = [`<b>${escapeHtml(k.name)}</b>`];
+    const lines = [`${inBot ? "🎓 " : ""}<b>${escapeHtml(k.name)}</b>`];
     if (k.cohort) lines.push(c.cohort(escapeHtml(k.cohort.title), day(k.cohort.start)));
     if (k.beforeStart && k.cohort) lines.push(c.beforeStart(day(k.cohort.start)));
+    else if (inBot) lines.push(`${progressBar(k.done, k.total)} ${c.doneOf(k.done, k.total)}`);
     else lines.push(c.progress(k.open, k.total, k.done));
     if (k.expiresAt) lines.push((k.expired ? c.expired : c.expires)(day(k.expiresAt)));
     if (k.nextAt && !k.beforeStart) lines.push(c.next(day(k.nextAt)));
@@ -676,9 +682,24 @@ export async function showLessonList(b: CourseBot, data: string): Promise<void> 
   if (open.length === 0) return send(b, c.closed);
   const inBot = b.ctx.tenant.settings.delivery?.course_in_bot === true;
   const done = new Set(p.run?.done ?? []);
-  await send(b, c.lessonsHeader, {
+  const shown = open.slice(-20);
+  // Курс в боте: заголовки модулей текстом («Модуль 1 · …» в названиях уроков), уроки — кнопками.
+  const modules = inBot
+    ? [...new Set(shown.map((a) => moduleOf(a.lesson.title)).filter(Boolean))]
+    : [];
+  const header =
+    modules.length > 1
+      ? `${c.lessonsHeader}\n\n${modules
+          .map((m) => {
+            const ls = shown.filter((a) => moduleOf(a.lesson.title) === m);
+            const d = ls.filter((a) => done.has(a.lesson.id)).length;
+            return `<b>${escapeHtml(m!)}</b> · ${d}/${ls.length}`;
+          })
+          .join("\n")}`
+      : c.lessonsHeader;
+  await send(b, header, {
     reply_markup: {
-      inline_keyboard: open.slice(-20).map((a) => [
+      inline_keyboard: shown.map((a) => [
         {
           text: (inBot
             ? `${done.has(a.lesson.id) ? "✅" : "▫️"} ${shortTitle(a.lesson.title, a.no)}`
@@ -777,13 +798,38 @@ export async function showLesson(b: CourseBot, data: string): Promise<void> {
       ]);
     rows.push([{ text: c.allLessonsBtn, callback_data: `lsl:${p.orderItemId}` }]);
   }
+  const body = parts.join("\n\n");
+  const tg = l.tgVideos ?? [];
+  const markup = rows.length ? { reply_markup: { inline_keyboard: rows } } : {};
+  // Курс в боте: урок одним сообщением — последнее видео с текстом урока и
+  // кнопками в подписи (если текст влезает в подпись Telegram), прежние видео — перед ним.
+  if (inBot && tg.length > 0 && body.length <= CAPTION_MAX) {
+    await sendTgVideos(b, `${a.no}. ${l.title}`, tg.slice(0, -1), tg.length);
+    await b.api.call("sendVideo", {
+      chat_id: b.chatId,
+      video: tg.at(-1),
+      caption: body,
+      parse_mode: "HTML",
+      protect_content: true,
+      ...markup,
+    });
+    return;
+  }
   // Видео, присланные продавцом боту, — прямо в чат, перед текстом урока с кнопками.
-  await sendTgVideos(b, `${a.no}. ${l.title}`, l.tgVideos ?? []);
-  await send(
-    b,
-    parts.join("\n\n").slice(0, 4096),
-    rows.length ? { reply_markup: { inline_keyboard: rows } } : {},
-  );
+  await sendTgVideos(b, `${a.no}. ${l.title}`, tg);
+  await send(b, body.slice(0, 4096), markup);
+}
+
+/** «▰▰▱▱▱▱▱▱▱▱» — пройдено из всего, 10 делений. */
+export function progressBar(done: number, total: number): string {
+  const n = total > 0 ? Math.round((Math.min(done, total) / total) * 10) : 0;
+  return "▰".repeat(n) + "▱".repeat(10 - n);
+}
+
+/** «Модуль 1 · 1.1. Знакомство» → «Модуль 1»; без модуля — null. */
+export function moduleOf(title: string): string | null {
+  const m = /^([^·\d]{1,20}\d{1,2})\s*·\s*\d/u.exec(title);
+  return m ? m[1]!.trim() : null;
 }
 
 /**
@@ -858,12 +904,20 @@ export async function showOpenLesson(b: CourseBot, data: string): Promise<void> 
  * номер и название урока. `protect_content` — ученица не перешлёт и не
  * сохранит видео (запрет Telegram на пересылку и сохранение).
  */
-async function sendTgVideos(b: CourseBot, title: string, ids: string[]): Promise<void> {
+/** Подпись к видео в Telegram — до 1024 символов. */
+const CAPTION_MAX = 1024;
+
+async function sendTgVideos(
+  b: CourseBot,
+  title: string,
+  ids: string[],
+  total = ids.length,
+): Promise<void> {
   for (const [i, video] of ids.entries())
     await b.api.call("sendVideo", {
       chat_id: b.chatId,
       video,
-      caption: ("🎬 " + title + (ids.length > 1 ? ` · ${i + 1}/${ids.length}` : "")).slice(0, 1024),
+      caption: ("🎬 " + title + (total > 1 ? ` · ${i + 1}/${total}` : "")).slice(0, CAPTION_MAX),
       protect_content: true,
     });
 }
