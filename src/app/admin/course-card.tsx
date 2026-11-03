@@ -1,5 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { channelStrangersFn, courseFn, saveCourseFn } from "@/app/admin/courses.functions";
+import {
+  channelStrangersFn,
+  courseFn,
+  removeLessonTgVideoFn,
+  saveCourseFn,
+  sendLessonTgVideoFn,
+} from "@/app/admin/courses.functions";
 import { uploadFile } from "@/app/admin/upload-client";
 import type { AdminT } from "@/app/i18n/admin";
 import { Card, ErrorBox, useAction } from "@/app/ui";
@@ -116,7 +122,53 @@ export function CourseCard({
       }
     }
   });
+  // Видео из бота (03.11.2026): посмотреть — бот пришлёт его продавцу; убрать — сразу, без «Сохранить».
+  const [tgNote, setTgNote] = useState<{ lessonId: string; text: string } | null>(null);
+  const sendTg = useAction(async (lessonId: string, fileId: string) => {
+    const r = await sendLessonTgVideoFn({ data: { productId, lessonId, fileId } });
+    setTgNote({
+      lessonId,
+      text: !r.sent
+        ? t("product.lessonTgNotSent")
+        : r.target === "you"
+          ? t("product.lessonTgSentYou")
+          : t("product.lessonTgSentChat"),
+    });
+  });
+  const removeTg = useAction(async (lessonId: string, fileId: string, title: string) => {
+    if (!window.confirm(t("product.lessonTgRemoveAsk", { title }))) return;
+    const { result } = await removeLessonTgVideoFn({ data: { productId, lessonId, fileId } });
+    // Остальные несохранённые правки формы не трогаем: убираем это видео (или пустой урок) и здесь.
+    seen.current = {
+      ...seen.current,
+      tgVideos: seen.current.tgVideos.filter((v) => v !== fileId),
+    };
+    setCourse(
+      (c) =>
+        c && {
+          ...c,
+          lessons:
+            result === "lessonRemoved"
+              ? c.lessons.filter((x) => x.id !== lessonId)
+              : c.lessons.map((x) =>
+                  x.id === lessonId
+                    ? { ...x, tgVideos: (x.tgVideos ?? []).filter((v) => v !== fileId) }
+                    : x,
+                ),
+        },
+    );
+    setTgNote({
+      lessonId,
+      text:
+        result === "lessonRemoved"
+          ? t("product.lessonTgLessonRemoved")
+          : t("product.lessonTgRemoved"),
+    });
+  });
   if (!course) return null;
+  const withTg = course.lessons
+    .map((l, i) => ({ no: i + 1, n: l.tgVideos?.length ?? 0 }))
+    .filter((x) => x.n > 0);
 
   const change = (next: Course) => {
     setSaved(false);
@@ -286,6 +338,14 @@ export function CourseCard({
       {course.lessons.length === 0 && (
         <p className="mb-2 text-sm text-muted">{t("product.courseEmpty")}</p>
       )}
+      {withTg.length > 0 && (
+        <p className="mb-2 text-xs text-muted" data-testid="lesson-tg-summary">
+          {t("product.lessonTgSummary", {
+            list: withTg.map((x) => `№${x.no}${x.n > 1 ? ` × ${x.n}` : ""}`).join(", "),
+          })}
+        </p>
+      )}
+      <ErrorBox error={sendTg.error ?? removeTg.error} />
       <ol className="space-y-3">
         {course.lessons.map((l, i) => {
           const day = lessonOpensAfterDays(course.schedule, i);
@@ -293,6 +353,11 @@ export function CourseCard({
             <li key={l.id} className="rounded border border-line p-3">
               <div className="mb-2 flex items-center gap-2">
                 <span className="text-sm font-medium tabular-nums">{i + 1}.</span>
+                {(l.tgVideos?.length ?? 0) > 0 && (
+                  <span className="badge shrink-0 text-xs">
+                    {t("product.lessonTgCount", { n: l.tgVideos!.length })}
+                  </span>
+                )}
                 <input
                   id={`lesson-title-${l.id}`}
                   className="input min-w-0 flex-1"
@@ -376,23 +441,35 @@ export function CourseCard({
                 </div>
               ))}
               {(l.tgVideos ?? []).map((v, k) => (
-                <div key={v} className="mb-2 flex items-center gap-2 text-sm">
-                  <span className="flex-1">{t("product.lessonTgVideo", { n: k + 1 })}</span>
+                <div
+                  key={v}
+                  className="mb-2 flex flex-wrap items-center gap-2 rounded bg-surface-2 px-2 py-1 text-sm"
+                  data-testid="lesson-tg-video"
+                >
+                  <span className="min-w-0 flex-1">{t("product.lessonTgVideo", { n: k + 1 })}</span>
                   <button
                     type="button"
-                    className="btn-ghost"
-                    aria-label={t("product.lessonVideoDelete")}
-                    onClick={() =>
-                      edit(i, (x) => ({
-                        ...x,
-                        tgVideos: (x.tgVideos ?? []).filter((_, j) => j !== k),
-                      }))
-                    }
+                    className="btn-ghost text-xs"
+                    disabled={sendTg.busy}
+                    onClick={() => void sendTg.run(l.id, v).catch(() => {})}
                   >
-                    ✕
+                    ▶️ {t("product.lessonTgSend")}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-ghost text-xs"
+                    disabled={removeTg.busy}
+                    onClick={() => void removeTg.run(l.id, v, l.title).catch(() => {})}
+                  >
+                    ✕ {t("product.lessonTgRemove")}
                   </button>
                 </div>
               ))}
+              {tgNote?.lessonId === l.id && (
+                <p className="mb-2 text-xs text-ok" role="status">
+                  {tgNote.text}
+                </p>
+              )}
               {(l.videos?.length ?? 0) < LESSON_VIDEOS_MAX - 1 && (
                 <button
                   type="button"

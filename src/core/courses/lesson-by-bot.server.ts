@@ -151,3 +151,24 @@ export async function removeBotVideo(
   });
   return true;
 }
+
+/**
+ * «Убрать» у видео из Telegram в карточке курса (03.11.2026, просьба Якова):
+ * урок — по id, видео — по file_id, а не по номерам: порядок уроков в
+ * открытой форме мог поменяться. Урок, где кроме видео ничего не было,
+ * убирается целиком (пустой урок курс не сохранит) — так же, как в боте.
+ */
+export async function removeLessonTgVideo(
+  ctx: TenantContext,
+  productId: string,
+  lessonId: string,
+  fileId: string,
+): Promise<"removed" | "lessonRemoved" | "gone"> {
+  const course = await getCourse(ctx, productId);
+  const no = course.lessons.findIndex((l) => l.id === lessonId) + 1;
+  const video = no ? (course.lessons[no - 1]!.tgVideos ?? []).indexOf(fileId) : -1;
+  if (video < 0) return "gone";
+  const before = course.lessons.length;
+  await removeBotVideo(ctx, productId, no, video, fileId.slice(-8));
+  return (await getCourse(ctx, productId)).lessons.length < before ? "lessonRemoved" : "removed";
+}

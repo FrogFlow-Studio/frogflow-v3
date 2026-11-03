@@ -391,3 +391,30 @@ export const saveCourseLandingFn = createServerFn({ method: "POST" })
     const { saveLanding } = await import("@/core/courses/landing.server");
     return saveLanding(ctx, data.productId, data.landing);
   });
+
+const tgVideo = z.object({
+  productId: z.string().uuid(),
+  lessonId: z.string().max(64),
+  fileId: z.string().min(1).max(200),
+});
+
+/** «Убрать» у видео урока, присланного боту: сразу, без общей кнопки «Сохранить». */
+export const removeLessonTgVideoFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => tgVideo.parse(d))
+  .handler(async ({ data }) => {
+    const ctx = await moduleAdmin("manager");
+    const { removeLessonTgVideo } = await import("@/core/courses/lesson-by-bot.server");
+    return { result: await removeLessonTgVideo(ctx, data.productId, data.lessonId, data.fileId) };
+  });
+
+/** «Прислать мне в Telegram»: посмотреть видео урока из бота. */
+export const sendLessonTgVideoFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => tgVideo.parse(d))
+  .handler(async ({ data }) => {
+    const ctx = await moduleAdmin("manager");
+    const { adminIdentity } = await import("@/app/auth/guards.server");
+    const me = await adminIdentity();
+    const isOwner = !!me && me.username === ctx.tenant.settings.admin?.username;
+    const { sendLessonTgVideo } = await import("./course-tg-video.server");
+    return sendLessonTgVideo(ctx, data.productId, data.lessonId, data.fileId, isOwner);
+  });
