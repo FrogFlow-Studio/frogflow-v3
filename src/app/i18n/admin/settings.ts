@@ -534,7 +534,7 @@ export const ru = {
   "settings.courseInBot.on": "Включено",
   "settings.courseInBot.off": "Выключено — после оплаты приходит ссылка на страницу курса",
   "settings.lessonsByBot.intro":
-    "Продавец присылает своему боту в личку видео (до 2 ГБ) или ссылку на видео с подписью — названием урока, например «1.2 Материалы», — бот добавляет урок в конец курса и отвечает «✅ Урок добавлен». Видео с той же подписью подряд попадают в один урок; ученица получает их прямо в чат, без пересылки. Если курсов несколько, бот спросит, в какой. Покупатели этого не видят.",
+    "Продавец присылает своему боту в личку видео (до 2 ГБ) или ссылку на видео с подписью — названием урока, например «1.2 Материалы», — бот добавляет урок в конец курса. Подпись с номером уже существующего урока («1.1») кладёт видео в этот урок, подпись как у последнего урока — тоже в него. Ученица получает видео прямо в чат, без пересылки. Если курсов несколько и номер не подсказывает, бот спросит, в какой. В ответе — кнопки «Посмотреть урок» и «Убрать это видео». Покупатели этого не видят.",
   "settings.lessonsByBot.switch": "Добавлять уроки сообщением боту",
   "settings.lessonsByBot.off": "Выключено — уроки добавляются только в панели",
   "settings.proofEta.intro":
@@ -1129,7 +1129,7 @@ export const kk: SectionDict<typeof ru> = {
   "settings.courseInBot.on": "Қосулы",
   "settings.courseInBot.off": "Өшірулі — төлемнен кейін курс бетіне сілтеме келеді",
   "settings.lessonsByBot.intro":
-    "Сатушы өз ботына жеке хабарламамен бейне (2 ГБ дейін) немесе бейне сілтемесін сабақ атауы жазылған жазумен жібереді, мысалы «1.2 Материалдар», — бот сабақты курстың соңына қосып, «✅ Сабақ қосылды» деп жауап береді. Бір жазумен қатарынан жіберілген бейнелер бір сабаққа түседі; оқушы оларды тікелей чатта алады, бөлісуге болмайды. Курс бірнешеу болса, бот қайсысына екенін сұрайды. Сатып алушылар мұны көрмейді.",
+    "Сатушы өз ботына жеке хабарламамен бейне (2 ГБ дейін) немесе бейне сілтемесін сабақ атауы жазылған жазумен жібереді, мысалы «1.2 Материалдар», — бот сабақты курстың соңына қосады. Бар сабақтың нөмірі бар жазу («1.1») бейнені сол сабаққа, соңғы сабақтың жазуымен бірдей жазу да соған қосады. Оқушы бейнені тікелей чатта алады, бөлісуге болмайды. Курс бірнешеу болып, нөмір көмектеспесе, бот қайсысына екенін сұрайды. Жауапта «Сабақты көру» және «Бұл бейнені алып тастау» батырмалары бар. Сатып алушылар мұны көрмейді.",
   "settings.lessonsByBot.switch": "Сабақтарды ботқа хабарламамен қосу",
   "settings.lessonsByBot.off": "Өшірулі — сабақтар тек панельде қосылады",
   "settings.proofEta.intro":
@@ -1718,7 +1718,7 @@ export const en: SectionDict<typeof ru> = {
   "settings.courseInBot.on": "On",
   "settings.courseInBot.off": "Off — after payment the student gets a link to the course page",
   "settings.lessonsByBot.intro":
-    "The seller sends their bot a private message with a video (up to 2 GB) or a video link, captioned with the lesson title, e.g. “1.2 Materials”, and the bot adds the lesson to the end of the course and replies “✅ Lesson added”. Videos with the same caption in a row go into one lesson; the student gets them right in the chat, without forwarding. With several courses the bot asks which one. Buyers don’t see this.",
+    "The seller sends their bot a private message with a video (up to 2 GB) or a video link, captioned with the lesson title, e.g. “1.2 Materials”, and the bot adds the lesson to the end of the course. A caption with the number of an existing lesson (“1.1”) puts the video into that lesson, and so does the same caption as the last lesson. The student gets the video right in the chat, without forwarding. With several courses, unless the number tells, the bot asks which one. The reply has the buttons “View lesson” and “Remove this video”. Buyers don’t see this.",
   "settings.lessonsByBot.switch": "Add lessons by messaging the bot",
   "settings.lessonsByBot.off": "Off — lessons are added only in the panel",
   "settings.proofEta.intro":
@@ -2318,7 +2318,7 @@ export const uz: SectionDict<typeof ru> = {
   "settings.courseInBot.on": "Yoqilgan",
   "settings.courseInBot.off": "Oʻchirilgan — toʻlovdan keyin kurs sahifasiga havola keladi",
   "settings.lessonsByBot.intro":
-    "Sotuvchi o‘z botiga shaxsiy xabarda video (2 GB gacha) yoki video havolasini dars nomi yozilgan izoh bilan yuboradi, masalan «1.2 Materiallar», — bot darsni kurs oxiriga qo‘shadi va «✅ Dars qo‘shildi» deb javob beradi. Bir xil izohli ketma-ket videolar bitta darsga tushadi; o‘quvchi ularni to‘g‘ridan-to‘g‘ri chatda oladi, ulashib bo‘lmaydi. Kurslar bir nechta bo‘lsa, bot qaysi biriga ekanini so‘raydi. Xaridorlar buni ko‘rmaydi.",
+    "Sotuvchi o‘z botiga shaxsiy xabarda video (2 GB gacha) yoki video havolasini dars nomi yozilgan izoh bilan yuboradi, masalan «1.2 Materiallar», — bot darsni kurs oxiriga qo‘shadi. Mavjud dars raqamli izoh («1.1») videoni shu darsga, oxirgi dars izohi bilan bir xil izoh ham unga qo‘shadi. O‘quvchi videoni to‘g‘ridan-to‘g‘ri chatda oladi, ulashib bo‘lmaydi. Kurslar bir nechta bo‘lsa va raqam yordam bermasa, bot qaysi biriga ekanini so‘raydi. Javobda «Darsni ko‘rish» va «Bu videoni olib tashlash» tugmalari bor. Xaridorlar buni ko‘rmaydi.",
   "settings.lessonsByBot.switch": "Darslarni botga xabar orqali qo‘shish",
   "settings.lessonsByBot.off": "O‘chirilgan — darslar faqat panelda qo‘shiladi",
   "settings.proofEta.intro":
