@@ -42,6 +42,14 @@ type Copy = {
   lessonFiles: string;
   submitBtn: (no: number) => string;
   nextLessonBtn: (no: number) => string;
+  /** «Курс в боте»: прохождение в чате. */
+  continueBtn: (no: number) => string;
+  allLessonsBtn: string;
+  siteBtn: string;
+  doneBtn: string;
+  lessonOf: (no: number, total: number) => string;
+  doneOk: (no: number, done: number, total: number) => string;
+  allDone: string;
   channelBtn: string;
   prompt: (no: number, title: string, task: string) => string;
   sent: string;
@@ -93,6 +101,13 @@ const COPY: Record<Locale, Copy> = {
     lessonFiles: "Материалы (ссылки действуют сутки):",
     submitBtn: (no) => `📝 Сдать задание — урок ${no}`,
     nextLessonBtn: (no) => `Следующий урок ${no} →`,
+    continueBtn: (no) => `▶️ Продолжить: урок ${no}`,
+    allLessonsBtn: "📚 Все уроки",
+    siteBtn: "🌐 Уроки на сайте",
+    doneBtn: "✅ Урок пройден",
+    lessonOf: (no, total) => `Урок ${no} из ${total}`,
+    doneOk: (no, done, total) => `✅ Урок ${no} пройден. Пройдено: ${done} из ${total}.`,
+    allDone: "🎉 Вы прошли все открытые уроки!",
     channelBtn: "🔐 Вступить в канал курса",
     prompt: (no, title, task) =>
       `📝 <b>Урок ${no}. ${title}</b>\n\n${task}\n\n` +
@@ -152,6 +167,13 @@ const COPY: Record<Locale, Copy> = {
     lessonFiles: "Материалдар (сілтемелер бір тәулік жарамды):",
     submitBtn: (no) => `📝 Тапсырманы тапсыру — ${no}-сабақ`,
     nextLessonBtn: (no) => `Келесі сабақ: ${no} →`,
+    continueBtn: (no) => `▶️ Жалғастыру: ${no}-сабақ`,
+    allLessonsBtn: "📚 Барлық сабақтар",
+    siteBtn: "🌐 Сабақтар сайтта",
+    doneBtn: "✅ Сабақ өтілді",
+    lessonOf: (no, total) => `${total} ішінен ${no}-сабақ`,
+    doneOk: (no, done, total) => `✅ ${no}-сабақ өтілді. Өтілгені: ${total} ішінен ${done}.`,
+    allDone: "🎉 Барлық ашық сабақтарды өттіңіз!",
     channelBtn: "🔐 Курс арнасына кіру",
     prompt: (no, title, task) =>
       `📝 <b>${no}-сабақ. ${title}</b>\n\n${task}\n\n` +
@@ -211,6 +233,13 @@ const COPY: Record<Locale, Copy> = {
     lessonFiles: "Materials (links work for 24 hours):",
     submitBtn: (no) => `📝 Submit homework — lesson ${no}`,
     nextLessonBtn: (no) => `Next lesson ${no} →`,
+    continueBtn: (no) => `▶️ Continue: lesson ${no}`,
+    allLessonsBtn: "📚 All lessons",
+    siteBtn: "🌐 Lessons on the website",
+    doneBtn: "✅ Lesson done",
+    lessonOf: (no, total) => `Lesson ${no} of ${total}`,
+    doneOk: (no, done, total) => `✅ Lesson ${no} done. Completed: ${done} of ${total}.`,
+    allDone: "🎉 You’ve completed all open lessons!",
     channelBtn: "🔐 Join the course channel",
     prompt: (no, title, task) =>
       `📝 <b>Lesson ${no}. ${title}</b>\n\n${task}\n\n` +
@@ -271,6 +300,13 @@ const COPY: Record<Locale, Copy> = {
     lessonFiles: "Materiallar (havolalar bir kun amal qiladi):",
     submitBtn: (no) => `📝 Vazifani topshirish — ${no}-dars`,
     nextLessonBtn: (no) => `Keyingi dars: ${no} →`,
+    continueBtn: (no) => `▶️ Davom etish: ${no}-dars`,
+    allLessonsBtn: "📚 Barcha darslar",
+    siteBtn: "🌐 Darslar saytda",
+    doneBtn: "✅ Dars o‘tildi",
+    lessonOf: (no, total) => `${total} tadan ${no}-dars`,
+    doneOk: (no, done, total) => `✅ ${no}-dars o‘tildi. O‘tilgani: ${total} tadan ${done}.`,
+    allDone: "🎉 Barcha ochiq darslarni o‘tdingiz!",
     channelBtn: "🔐 Kurs kanaliga qo‘shilish",
     prompt: (no, title, task) =>
       `📝 <b>${no}-dars. ${title}</b>\n\n${task}\n\n` +
@@ -334,6 +370,8 @@ export async function showMyCourses(b: CourseBot): Promise<void> {
   const { customerCourses } = await import("@/core/courses/mine.server");
   const courses = await customerCourses(b.ctx, b.customer);
   if (courses.length === 0) return send(b, c.empty);
+  // Курс в боте: проходят в чате — главная кнопка «Продолжить», сайт — ниже.
+  const inBot = b.ctx.tenant.settings.delivery?.course_in_bot === true;
   await send(b, c.header);
   const fmt = new Intl.DateTimeFormat(b.locale, {
     day: "numeric",
@@ -350,8 +388,16 @@ export async function showMyCourses(b: CourseBot): Promise<void> {
     if (k.nextAt && !k.beforeStart) lines.push(c.next(day(k.nextAt)));
     for (const h of k.homework) lines.push(c.hwLine(h.lessonNo, c.status[h.status ?? "none"]));
     const rows: InlineButton[][] = [];
-    if (k.url) rows.push([{ text: c.openBtn, url: k.url }]);
-    if (k.open > 0) rows.push([{ text: c.lessonsBtn, callback_data: `lsl:${k.orderItemId}` }]);
+    if (inBot) {
+      if (k.resume)
+        rows.push([
+          { text: c.continueBtn(k.resume), callback_data: `lsn:${k.orderItemId}:${k.resume}` },
+        ]);
+      if (k.open > 1) rows.push([{ text: c.allLessonsBtn, callback_data: `lsl:${k.orderItemId}` }]);
+    } else {
+      if (k.url) rows.push([{ text: c.openBtn, url: k.url }]);
+      if (k.open > 0) rows.push([{ text: c.lessonsBtn, callback_data: `lsl:${k.orderItemId}` }]);
+    }
     for (const h of k.homework
       .filter((h) => k.canSubmit && (h.status === null || h.status === "revise"))
       .slice(0, SUBMIT_BUTTONS_MAX))
@@ -361,6 +407,7 @@ export async function showMyCourses(b: CourseBot): Promise<void> {
     if (k.channel) rows.push([{ text: c.channelBtn, callback_data: `cinv:${k.orderItemId}` }]);
     if (k.chat) rows.push([{ text: c.chatBtn, callback_data: `cchat:${k.orderItemId}` }]);
     if (k.lives) rows.push([{ text: c.livesBtn, callback_data: `lv:${k.orderItemId}` }]);
+    if (inBot && k.url) rows.push([{ text: c.siteBtn, url: k.url }]);
     await send(b, lines.join("\n"), rows.length ? { reply_markup: { inline_keyboard: rows } } : {});
   }
 }
@@ -627,11 +674,16 @@ export async function showLessonList(b: CourseBot, data: string): Promise<void> 
   const { purchaseTimeline } = await import("@/core/courses/run.server");
   const open = purchaseTimeline(b.ctx, p).access.filter((a) => a.open);
   if (open.length === 0) return send(b, c.closed);
+  const inBot = b.ctx.tenant.settings.delivery?.course_in_bot === true;
+  const done = new Set(p.run?.done ?? []);
   await send(b, c.lessonsHeader, {
     reply_markup: {
       inline_keyboard: open.slice(-20).map((a) => [
         {
-          text: `${a.no}. ${a.lesson.title}`.slice(0, 60),
+          text: (inBot
+            ? `${done.has(a.lesson.id) ? "✅" : "▫️"} ${shortTitle(a.lesson.title, a.no)}`
+            : `${a.no}. ${a.lesson.title}`
+          ).slice(0, 60),
           callback_data: `lsn:${p.orderItemId}:${a.no}`,
         },
       ]),
@@ -689,7 +741,12 @@ export async function showLesson(b: CourseBot, data: string): Promise<void> {
   const a = tl.access.find((x) => x.no === Number(noRaw));
   if (!a?.open) return send(b, c.closed);
   const l = a.lesson;
-  const parts = [`📖 <b>${a.no}. ${escapeHtml(l.title)}</b>`];
+  const inBot = b.ctx.tenant.settings.delivery?.course_in_bot === true;
+  const parts = [
+    inBot
+      ? `📖 ${c.lessonOf(a.no, tl.access.length)}\n<b>${escapeHtml(shortTitle(l.title, a.no))}</b>`
+      : `📖 <b>${a.no}. ${escapeHtml(l.title)}</b>`,
+  ];
   if (l.text) parts.push(escapeHtml(l.text));
   const { isTenantStorageKey } = await import("@/core/storage/keys");
   const { signedFileUrl } = await import("@/core/orders/orders");
@@ -709,18 +766,56 @@ export async function showLesson(b: CourseBot, data: string): Promise<void> {
   if (l.homework && tl.tariff.homework)
     rows.push([{ text: c.submitBtn(a.no), callback_data: `hw:${p.orderItemId}:${a.no}` }]);
   if (l.quiz) rows.push([quizButton(b, p.orderItemId, a.no)]);
-  // Курс в боте (settings.delivery.course_in_bot): следующий открытый урок — одной кнопкой.
+  // Курс в боте (settings.delivery.course_in_bot): «Урок пройден», следующий урок, все уроки.
   const next = tl.access.find((x) => x.no === a.no + 1);
-  if (b.ctx.tenant.settings.delivery?.course_in_bot && next?.open)
-    rows.push([
-      { text: c.nextLessonBtn(next.no), callback_data: `lsn:${p.orderItemId}:${next.no}` },
-    ]);
+  if (inBot) {
+    if (!p.run?.done.includes(l.id))
+      rows.push([{ text: c.doneBtn, callback_data: `lsd:${p.orderItemId}:${a.no}` }]);
+    if (next?.open)
+      rows.push([
+        { text: c.nextLessonBtn(next.no), callback_data: `lsn:${p.orderItemId}:${next.no}` },
+      ]);
+    rows.push([{ text: c.allLessonsBtn, callback_data: `lsl:${p.orderItemId}` }]);
+  }
   // Видео, присланные продавцом боту, — прямо в чат, перед текстом урока с кнопками.
   await sendTgVideos(b, `${a.no}. ${l.title}`, l.tgVideos ?? []);
   await send(
     b,
     parts.join("\n\n").slice(0, 4096),
     rows.length ? { reply_markup: { inline_keyboard: rows } } : {},
+  );
+}
+
+/**
+ * Название урока в чате без приставки модуля, если номер урока в нём есть:
+ * «Модуль 1 · 1.1. Знакомство» → «1.1. Знакомство»; иначе «N. Название».
+ */
+export function shortTitle(title: string, no: number): string {
+  const t = title.replace(/^[^·\d]{1,20}\d{1,2}\s*·\s*(?=\d)/u, "");
+  return /^\d/.test(t) ? t : `${no}. ${t}`;
+}
+
+/** «✅ Урок пройден» под уроком в чате (`lsd:<покупка>:<номер>`, курс в боте). */
+export async function markLessonDone(b: CourseBot, data: string): Promise<void> {
+  const c = COPY[b.locale];
+  const [, itemId = "", noRaw = ""] = data.split(":");
+  const p = await ownPurchase(b, itemId);
+  if (!p) return;
+  const { markLesson, purchaseTimeline } = await import("@/core/courses/run.server");
+  const tl = purchaseTimeline(b.ctx, p);
+  const a = tl.access.find((x) => x.no === Number(noRaw));
+  if (!a?.open) return send(b, c.closed);
+  const run = await markLesson(b.ctx, p, a.lesson.id, true);
+  const open = tl.access.filter((x) => x.open);
+  const done = open.filter((x) => run.done.includes(x.lesson.id)).length;
+  const next = open.find((x) => !run.done.includes(x.lesson.id));
+  const rows: InlineButton[][] = next
+    ? [[{ text: c.continueBtn(next.no), callback_data: `lsn:${p.orderItemId}:${next.no}` }]]
+    : [[{ text: c.allLessonsBtn, callback_data: `lsl:${p.orderItemId}` }]];
+  await send(
+    b,
+    [c.doneOk(a.no, done, tl.access.length), ...(next ? [] : [c.allDone])].join("\n\n"),
+    { reply_markup: { inline_keyboard: rows } },
   );
 }
 

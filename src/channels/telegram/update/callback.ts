@@ -262,6 +262,10 @@ export async function handleCallback(
     const { showLessonList, showLesson } = await import("../courses");
     return data.startsWith("lsl:") ? showLessonList(b, data) : showLesson(b, data);
   }
+  if (data.startsWith("lsd:") && ctx.tenant.modules.courses) {
+    const { markLessonDone } = await import("../courses");
+    return markLessonDone(b, data);
+  }
   if (/^q[zad]:/.test(data) && ctx.tenant.modules.courses) {
     const { startQuiz, answerQuiz } = await import("../course-quiz");
     return data.startsWith("qz:")

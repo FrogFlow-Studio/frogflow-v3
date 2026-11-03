@@ -120,6 +120,12 @@ export async function startFlow(b: Bot, payload = "") {
     // Скрытый или удалённый товар: ни карточки, ни записи в лист ожидания.
     return void (await send(b, b.m.unavailable));
   }
+  // Ссылка «Смотреть в боте» у урока на сайте (видео урока есть только в боте): «Мои курсы».
+  if (payload === "courses" && b.ctx.tenant.modules.courses) {
+    if (!b.customer.state.locale)
+      await applyLocale(b, b.ctx.tenant.settings.default_locale ?? "ru");
+    return menuAction(b, "myCourses");
+  }
   if (payload.startsWith("p_")) {
     if (!b.customer.state.locale)
       await applyLocale(b, b.ctx.tenant.settings.default_locale ?? "ru");

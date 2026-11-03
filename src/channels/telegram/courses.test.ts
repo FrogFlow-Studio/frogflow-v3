@@ -30,6 +30,7 @@ vi.mock("./course-notify", () => ({
 }));
 
 const { handleTelegramUpdate } = await import("./handle-update");
+const { shortTitle } = await import("./courses");
 
 /**
  * Онлайн-школа в боте: «Мои курсы», сдача задания фото и альбомом прямо в
@@ -647,5 +648,55 @@ describe("эфиры потока в боте (Ш2)", () => {
     const b = buttons(messages(calls).at(-1));
     expect(b.map((x) => x.url)).toEqual(["https://rutube.ru/video/rec"]);
     expect(b[0]!.text).toContain("Смотреть запись");
+  });
+});
+
+describe("курс в боте: прохождение в чате (Lash Academy, 03.11.2026)", () => {
+  const cb = (m: Record<string, unknown>) =>
+    buttons(m).map((x) => [x.text, x.callback_data ?? x.url]);
+
+  it("«Мои курсы» — главная кнопка «Продолжить», потом все уроки, сайт ниже", async () => {
+    const { ctx, api, calls } = school({}, { inBot: true, startedDaysAgo: 8 });
+    await handleTelegramUpdate(ctx, api, text("🎓 Мои курсы"));
+    const rows = cb(messages(calls).at(-1)!);
+    expect(rows[0]).toEqual(["▶️ Продолжить: урок 1", `lsn:${ITEM}:1`]);
+    expect(rows[1]).toEqual(["📚 Все уроки", `lsl:${ITEM}`]);
+    expect(rows.at(-1)![0]).toBe("🌐 Уроки на сайте");
+  });
+
+  it("«✅ Урок пройден» отмечает урок, ведёт к следующему и ставит галочку в списке", async () => {
+    const { ctx, db, api, calls } = school({}, { inBot: true, startedDaysAgo: 8 });
+    await handleTelegramUpdate(ctx, api, press(`lsn:${ITEM}:1`, 1));
+    const lesson = messages(calls).at(-1)!;
+    expect(String(lesson.text).split("\n")[0]).toBe("📖 Урок 1 из 2");
+    expect(cb(lesson)).toContainEqual(["✅ Урок пройден", `lsd:${ITEM}:1`]);
+    await handleTelegramUpdate(ctx, api, press(`lsd:${ITEM}:1`, 2));
+    const ok = messages(calls).at(-1)!;
+    expect(ok.text).toBe("✅ Урок 1 пройден. Пройдено: 1 из 2.");
+    expect(cb(ok)).toEqual([["▶️ Продолжить: урок 2", `lsn:${ITEM}:2`]]);
+    const run = JSON.parse(
+      (db.tables.app_settings as Array<{ key: string; value: string }>).find(
+        (r) => r.key === `course_run_${ITEM}`,
+      )!.value,
+    ) as { done: string[] };
+    expect(run.done).toEqual([course.lessons[0]!.id]);
+    await handleTelegramUpdate(ctx, api, press(`lsl:${ITEM}`, 3));
+    expect(cb(messages(calls).at(-1)!).map(([t]) => String(t).split(" ")[0])).toEqual(["✅", "▫️"]);
+    // Пройденный урок открывается снова — без кнопки «Урок пройден».
+    await handleTelegramUpdate(ctx, api, press(`lsn:${ITEM}:1`, 4));
+    expect(cb(messages(calls).at(-1)!).map(([t]) => t)).not.toContain("✅ Урок пройден");
+  });
+
+  it("выключено — «Мои курсы» и урок как раньше", async () => {
+    const { ctx, api, calls } = school({}, { startedDaysAgo: 8 });
+    await handleTelegramUpdate(ctx, api, text("🎓 Мои курсы"));
+    expect(cb(messages(calls).at(-1)!)[0]![0]).toBe("📖 Открыть уроки");
+    await handleTelegramUpdate(ctx, api, press(`lsn:${ITEM}:1`, 2));
+    expect(cb(messages(calls).at(-1)!).map(([t]) => t)).not.toContain("✅ Урок пройден");
+  });
+
+  it("название без приставки модуля", () => {
+    expect(shortTitle("Модуль 1 · 1.1. Знакомство", 1)).toBe("1.1. Знакомство");
+    expect(shortTitle("Знакомство", 3)).toBe("3. Знакомство");
   });
 });

@@ -103,7 +103,7 @@ The switch turns on a watermark on delivered PDFs: every page shows who bought i
 
 ## Course in the bot {#course-in-bot}
 
-Available with the «Courses» module. On: the student takes the course right in the bot chat — after payment they get «Your course is open ✅» with a «▶️ Start lesson 1» button (and «🌐 Open on the website»), and every lesson ends with «Next lesson →» when the next lesson is already open on schedule. Off: after payment the student gets a link to the course page, as before. Off by default. Saved immediately.
+Available with the «Courses» module. On: the student takes the course right in the bot chat — after payment they get «Your course is open ✅» with a «▶️ Start lesson 1» button (and «🌐 Open on the website»), and every lesson ends with «Next lesson →» when the next lesson is already open on schedule. Under the lesson there are also «✅ Lesson done» and «📚 All lessons»; in «🎓 My courses» the main button is «▶️ Continue: lesson N» (the first one not done), and done lessons are marked ✅ in the list. Off: after payment the student gets a link to the course page, as before. Off by default. Saved immediately.
 
 ## Lessons by messaging the bot {#lessons-by-bot}
 

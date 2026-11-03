@@ -14,6 +14,7 @@ import {
   type Lesson,
   HOMEWORK_DAYS_MAX,
 } from "@/core/courses/course";
+import { courseSeen, type CourseSeen } from "@/core/courses/lesson-by-bot";
 import { LessonListAdd } from "@/app/admin/lesson-list-add";
 import { LessonQuizEditor } from "@/app/admin/lesson-quiz-editor";
 import { ChannelField } from "./course/channel";
@@ -45,6 +46,12 @@ export function CourseCard({
   // Правки, ещё не записанные в базу: их сохранит общая кнопка товара.
   const latest = useRef<Course | null>(null);
   const dirty = useRef(false);
+  // Что карточка видела из базы: уроки и видео, присланные боту позже, сохранение не затрёт.
+  const seen = useRef<CourseSeen>({ lessons: [], tgVideos: [] });
+  const loaded = (c: Course) => {
+    seen.current = courseSeen(c);
+    setCourse(c);
+  };
   useEffect(() => {
     latest.current = course;
   }, [course]);
@@ -52,8 +59,11 @@ export function CourseCard({
     if (!flushRef) return;
     flushRef.current = async () => {
       if (!dirty.current || !latest.current) return;
-      await saveCourseFn({ data: { productId, course: latest.current } });
+      const r = await saveCourseFn({
+        data: { productId, course: latest.current, seen: seen.current },
+      });
       dirty.current = false;
+      loaded(r.course);
       setSaved(true);
     };
     return () => {
@@ -67,13 +77,24 @@ export function CourseCard({
   );
   const loadStrangers = () => channelStrangersFn().then(setStrangers, () => setStrangers(null));
   useEffect(() => {
-    void courseFn({ data: { productId } }).then(setCourse);
+    void courseFn({ data: { productId } }).then(loaded);
     void loadStrangers();
+    // Вернулись на вкладку (например, после отправки видео боту) — свежие уроки,
+    // если несохранённых правок нет.
+    const refresh = () => {
+      if (document.visibilityState !== "visible" || dirty.current) return;
+      void courseFn({ data: { productId } }).then((c) => {
+        if (!dirty.current) loaded(c);
+      });
+    };
+    document.addEventListener("visibilitychange", refresh);
+    return () => document.removeEventListener("visibilitychange", refresh);
   }, [productId]);
   const save = useAction(async () => {
     if (!course) return;
-    await saveCourseFn({ data: { productId, course } });
+    const r = await saveCourseFn({ data: { productId, course, seen: seen.current } });
     dirty.current = false;
+    loaded(r.course);
     setSaved(true);
     await loadStrangers();
   });

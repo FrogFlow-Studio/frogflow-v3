@@ -34,6 +34,10 @@ export type MyCourse = {
   total: number;
   open: number;
   done: number;
+  /** С какого урока продолжить: первый открытый непройденный (иначе последний открытый); null — открытых нет. */
+  resume: number | null;
+  /** Номера пройденных уроков: галочки в списке уроков бота. */
+  doneNos: number[];
   /** Когда откроется следующий урок (ISO); null — открыты все. */
   nextAt: string | null;
   homework: MyCourseHomework[];
@@ -113,6 +117,8 @@ export async function customerCourses(
         total: i.course.lessons.length,
         open: open.length,
         done: (run?.done ?? []).filter((id) => open.some((a) => a.lesson.id === id)).length,
+        resume: (open.find((a) => !run?.done.includes(a.lesson.id)) ?? open.at(-1))?.no ?? null,
+        doneNos: open.filter((a) => run?.done.includes(a.lesson.id)).map((a) => a.no),
         nextAt: tl.expired ? null : (nextOpening(access)?.opensAt ?? null),
         homework: [] as MyCourseHomework[],
         canSubmit: tl.tariff.homework,

@@ -463,6 +463,7 @@ const ru = {
   "course.lockedTask": "Откроется после задания к уроку {n}",
   "course.openLink": "Открыть материал",
   "course.videoInBot": "Видео этого урока — в Telegram-боте магазина: откройте урок там.",
+  "course.watchInBot": "▶️ Смотреть в боте",
   "course.markDone": "Отметить пройденным",
   "course.done": "✓ Пройден",
   "course.linkHint":
@@ -1053,6 +1054,7 @@ const kk: Dict = {
   "course.lockedTask": "{n}-сабақтың тапсырмасынан кейін ашылады",
   "course.openLink": "Материалды ашу",
   "course.videoInBot": "Бұл сабақтың бейнесі — дүкеннің Telegram-ботында: сабақты сонда ашыңыз.",
+  "course.watchInBot": "▶️ Ботта көру",
   "course.markDone": "Өтілді деп белгілеу",
   "course.done": "✓ Өтілді",
   "course.linkHint":
@@ -1636,6 +1638,7 @@ const en: Dict = {
   "course.lockedTask": "Opens after the homework of lesson {n}",
   "course.openLink": "Open material",
   "course.videoInBot": "This lesson’s video is in the shop’s Telegram bot: open the lesson there.",
+  "course.watchInBot": "▶️ Watch in the bot",
   "course.markDone": "Mark as completed",
   "course.done": "✓ Completed",
   "course.linkHint": "File links work for one day — reopen the page to get new ones.",
@@ -2225,6 +2228,7 @@ const uz: Dict = {
   "course.lockedTask": "{n}-dars vazifasidan keyin ochiladi",
   "course.openLink": "Materialni ochish",
   "course.videoInBot": "Bu dars videosi — do‘konning Telegram-botida: darsni o‘sha yerda oching.",
+  "course.watchInBot": "▶️ Botda ko‘rish",
   "course.markDone": "Oʻtildi deb belgilash",
   "course.done": "✓ Oʻtildi",
   "course.linkHint":
