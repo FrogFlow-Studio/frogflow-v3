@@ -192,7 +192,24 @@ function CoursePage() {
                     {t("course.openLink")}
                   </a>
                 )}
-                {l.inBot > 0 && <p className="text-muted">🎬 {t("course.videoInBot")}</p>}
+                {l.inBot > 0 && (
+                  <p className="text-muted">
+                    🎬 {t("course.videoInBot")}
+                    {view.bot && (
+                      <>
+                        {" "}
+                        <a
+                          href={`https://t.me/${view.bot}?start=courses`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-accent hover:underline"
+                        >
+                          {t("course.watchInBot")}
+                        </a>
+                      </>
+                    )}
+                  </p>
+                )}
                 {l.more.map((v, i) => (
                   <div key={`v${i}`} className="space-y-2">
                     {v.embed && (

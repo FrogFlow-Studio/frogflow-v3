@@ -16,6 +16,7 @@ import {
   COHORTS_MAX,
   LOCAL_DAY_RE,
   LOCAL_START_RE,
+  type Course,
 } from "@/core/courses/course";
 import {
   QUIZ_ATTEMPTS_MAX,
@@ -115,12 +116,31 @@ const course = z.object({
 });
 
 export const saveCourseFn = createServerFn({ method: "POST" })
-  .validator((d: unknown) => z.object({ productId: z.string().uuid(), course }).parse(d))
+  .validator((d: unknown) =>
+    z
+      .object({
+        productId: z.string().uuid(),
+        course,
+        // Что карточка видела при загрузке: присланное боту позже не затирается.
+        seen: z
+          .object({
+            lessons: z.array(z.string().max(64)).max(LESSONS_MAX * 2),
+            tgVideos: z.array(z.string().max(200)).max(LESSONS_MAX * LESSON_VIDEOS_MAX),
+          })
+          .optional(),
+      })
+      .parse(d),
+  )
   .handler(async ({ data }) => {
     const ctx = await moduleAdmin("manager");
-    const { saveCourse } = await import("@/core/courses/course.server");
-    await saveCourse(ctx, data.productId, data.course);
-    return { ok: true };
+    const { getCourse, saveCourse } = await import("@/core/courses/course.server");
+    let next: Course = data.course;
+    if (data.seen) {
+      const { keepBotAdditions } = await import("@/core/courses/lesson-by-bot");
+      next = keepBotAdditions(await getCourse(ctx, data.productId), next, data.seen);
+    }
+    await saveCourse(ctx, data.productId, next);
+    return { ok: true, course: await getCourse(ctx, data.productId) };
   });
 
 /** Варианты товара — тарифы курса: название и id. */

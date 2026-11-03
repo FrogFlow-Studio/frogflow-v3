@@ -62,3 +62,38 @@ export function lessonIndexByNumber(titles: string[], num: string): number {
     : new RegExp(`^(?:(?:урок|сабақ|lesson|dars)\\s*№?\\s*)?${esc}(?!\\d|\\.\\d)`, "i");
   return titles.findIndex((t) => re.test(t));
 }
+
+/** Что карточка курса в панели видела при загрузке: уроки и видео из бота. */
+export type CourseSeen = { lessons: string[]; tgVideos: string[] };
+
+export function courseSeen(c: { lessons: Array<{ id: string; tgVideos?: string[] }> }): CourseSeen {
+  return {
+    lessons: c.lessons.map((l) => l.id),
+    tgVideos: c.lessons.flatMap((l) => l.tgVideos ?? []),
+  };
+}
+
+/**
+ * Сохранение из панели поверх уроков, присланных боту, пока страница была
+ * открыта (03.11.2026: видео из чата пропадало после правки курса на сайте).
+ * Продавец удалил то, что видел, — удалено; чего он не видел (новое видео в
+ * уроке, новый урок из бота), остаётся.
+ */
+export function keepBotAdditions<
+  L extends { id: string; tgVideos?: string[] },
+  C extends { lessons: L[] },
+>(stored: C, incoming: C, seen: CourseSeen): C {
+  const seenLessons = new Set(seen.lessons);
+  const seenVideos = new Set(seen.tgVideos);
+  const byId = new Map(stored.lessons.map((l) => [l.id, l]));
+  const lessons = incoming.lessons.map((l) => {
+    const mine = l.tgVideos ?? [];
+    const extra = (byId.get(l.id)?.tgVideos ?? []).filter(
+      (v) => !seenVideos.has(v) && !mine.includes(v),
+    );
+    return extra.length ? { ...l, tgVideos: [...mine, ...extra] } : l;
+  });
+  const ids = new Set(incoming.lessons.map((l) => l.id));
+  const added = stored.lessons.filter((l) => !seenLessons.has(l.id) && !ids.has(l.id));
+  return { ...incoming, lessons: [...lessons, ...added] };
+}

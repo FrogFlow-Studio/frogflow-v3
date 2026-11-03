@@ -72,6 +72,8 @@ const TUTOR_SHOWN = 5;
 
 export type CourseView = {
   name: string;
+  /** Бот магазина: у урока с видео из Telegram — ссылка «Смотреть в боте». */
+  bot: string | null;
   lessons: Array<{
     id: string;
     no: number;
@@ -198,6 +200,7 @@ export async function courseView(
   const cert = await issueCertificate(ctx, { ...p, run }, now).catch(() => null);
   return {
     name: p.name,
+    bot: ctx.tenant.settings.telegram?.username?.replace(/^@/, "") || null,
     lessons,
     doneCount: lessons.filter((l) => l.done).length,
     channel: Boolean(p.course.channel) && tl.tariff.channel && !tl.expired,
