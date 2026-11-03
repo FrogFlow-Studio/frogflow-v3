@@ -426,7 +426,11 @@ export function CourseLandingCard({
         {order.map((b, i) => {
           const shown = !l.hidden.includes(b);
           return (
-            <details key={b} className="rounded border border-line" data-testid={`landing-edit-${b}`}>
+            <details
+              key={b}
+              className="rounded border border-line"
+              data-testid={`landing-edit-${b}`}
+            >
               <summary className="flex cursor-pointer items-center gap-2 p-2 text-sm">
                 <span className={`flex-1 font-medium ${shown ? "" : "text-muted line-through"}`}>
                   {t(`courseLanding.block.${b}`)}
