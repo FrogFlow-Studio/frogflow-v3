@@ -385,6 +385,25 @@ export function CourseLandingCard({
             onChange={(e) => set("subtitle", e.target.value)}
           />
         </label>
+        {slug && (
+          <label className="block text-sm sm:col-span-2">
+            <span className="label">{t("courseLanding.short")}</span>
+            <span className="flex items-center gap-1">
+              <span className="shrink-0 text-muted">/s/{slug}/p/</span>
+              <input
+                className="input w-full"
+                value={l.short ?? ""}
+                maxLength={40}
+                placeholder="kurs"
+                data-testid="landing-short"
+                onChange={(e) =>
+                  set("short", e.target.value.toLowerCase().replace(/\s+/g, "-") || null)
+                }
+              />
+            </span>
+            <span className="mt-1 block text-xs text-muted">{t("courseLanding.shortHint")}</span>
+          </label>
+        )}
         <div className="text-sm">
           <span className="label">{t("courseLanding.theme")}</span>
           <div className="flex flex-wrap gap-2">

@@ -100,12 +100,18 @@ export function shopMeta(shop: ShareShop): Meta[] {
 }
 
 /** Теги страницы товара; картинка — первое фото товара, иначе картинка витрины. */
-export function productMeta(p: ShareProduct, shop: ShareShop | null): Meta[] {
+export function productMeta(
+  p: ShareProduct,
+  shop: ShareShop | null,
+  /** Страница курса: короткая ссылка, заголовок и подзаголовок продавца. */
+  landing?: { short: string | null; headline: string; subtitle: string } | null,
+): Meta[] {
   const origin = shop?.origin ?? "";
-  const url = shop ? `${shopUrl(shop)}/p/${p.id}` : "";
+  const url = shop ? `${shopUrl(shop)}/p/${landing?.short ?? p.id}` : "";
+  const name = landing?.headline || p.name;
   return card({
-    title: shop ? `${p.name} — ${shop.name}` : p.name,
-    description: shareText(p.description),
+    title: shop ? `${name} — ${shop.name}` : name,
+    description: shareText(landing?.subtitle || p.description),
     url,
     image: origin ? absoluteUrl(origin, p.images[0] ?? shop?.cover) : null,
     imageAlt: p.name,

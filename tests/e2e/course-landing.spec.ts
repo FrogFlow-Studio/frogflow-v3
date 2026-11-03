@@ -41,6 +41,30 @@ test("страница курса: шапка, кнопки, блоки по п�
   await expect(page.getByRole("button", { name: "🛒 В корзину", exact: true })).toBeInViewport();
 });
 
+test("короткая ссылка курса открывает ту же страницу, адрес в превью — короткий", async ({
+  page,
+}) => {
+  await page.goto(`/s/${F.LANDING_SHOP_SLUG}/p/lash-l1`);
+  const hero = page.getByTestId("course-landing-hero");
+  await expect(
+    hero.getByRole("heading", { level: 1, name: "Ресницы с нуля Л1", exact: true }),
+  ).toBeVisible();
+  await expect(page).toHaveURL(new RegExp(`/s/${F.LANDING_SHOP_SLUG}/p/lash-l1$`));
+  await expect(page.locator('meta[property="og:url"]')).toHaveAttribute(
+    "content",
+    new RegExp(`/s/${F.LANDING_SHOP_SLUG}/p/lash-l1$`),
+  );
+  await expect(page.locator('meta[property="og:title"]')).toHaveAttribute(
+    "content",
+    /^Ресницы с нуля Л1 — /,
+  );
+  // Школа без витрины: короткая ссылка тоже работает, чужая — «не найдено».
+  await page.goto(`/s/${F.LANDING_BARE_SLUG}/p/lash-l1`);
+  await expect(hero.getByRole("link", { name: "Купить в Telegram", exact: true })).toBeVisible();
+  const none = await page.goto(`/s/${F.LANDING_BARE_SLUG}/p/net-takoi`);
+  expect(none?.status()).toBe(404);
+});
+
 test("курс без страницы выглядит как раньше", async ({ page }) => {
   await page.goto(`/s/${F.LANDING_SHOP_SLUG}/p/${F.LANDING_PLAIN_ID}`);
   await expect(

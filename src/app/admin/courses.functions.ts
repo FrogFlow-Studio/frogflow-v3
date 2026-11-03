@@ -364,6 +364,8 @@ const landing = z.object({
   accent: z.string().regex(ACCENT_RE).nullable(),
   headline: z.string().max(LL.headline),
   subtitle: z.string().max(LL.subtitle),
+  // Проверка формы и занятости — в saveLanding (понятный отказ продавцу).
+  short: z.string().max(64).nullable().default(null),
   order: z.array(z.enum(LANDING_BLOCKS)).max(LANDING_BLOCKS.length),
   hidden: z.array(z.enum(LANDING_BLOCKS)).max(LANDING_BLOCKS.length),
   authors: z

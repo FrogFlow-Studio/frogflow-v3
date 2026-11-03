@@ -15,7 +15,7 @@ import { OfferNote, OfferPrice } from "@/app/storefront/offer";
 import { pageBadge } from "@/core/catalog/lead-time";
 import { ProductReviews } from "@/app/storefront/reviews";
 import { LandingBlocks, LandingHero, landingStyle } from "@/app/storefront/course-landing";
-import { programModules } from "@/core/courses/landing";
+import { isProductUuid, programModules } from "@/core/courses/landing";
 import { RecentlyViewed, useRememberViewed } from "@/app/storefront/recent";
 import { ListNavBar, SwipeArea, useListNav } from "@/app/storefront/list-nav";
 import { productMeta } from "@/core/storefront/share";
@@ -39,12 +39,16 @@ export const Route = createFileRoute("/s/$slug/p/$id")({
   validateSearch: (raw: Record<string, unknown>): { q?: string; cat?: string } =>
     parseSearchReturn(raw) ?? {},
   loader: async ({ params }) => {
+    // Короткая ссылка курса (/p/kurs): номер товара узнаём со страницей, разметка — следом.
+    const byId = isProductUuid(params.id);
+    const seoOf = (id: string) =>
+      // Разметка для поиска не должна ронять страницу товара.
+      storeProductSeoFn({ data: { slug: params.slug, id } }).catch(() => null);
     const [page, seo] = await Promise.all([
       storeProductFn({ data: { slug: params.slug, id: params.id } }),
-      // Разметка для поиска не должна ронять страницу товара.
-      storeProductSeoFn({ data: { slug: params.slug, id: params.id } }).catch(() => null),
+      byId ? seoOf(params.id) : null,
     ]);
-    return { ...page, seo };
+    return { ...page, seo: byId ? seo : await seoOf(page.product.id) };
   },
   head: ({ loaderData, matches }) => {
     const shop = matches.find((m) => (m.routeId as string) === "/s/$slug")?.loaderData as
@@ -71,7 +75,10 @@ export const Route = createFileRoute("/s/$slug/p/$id")({
             cover: shop.share.cover,
           }
         : null,
+      loaderData.landing,
     );
+    // Страница курса с короткой ссылкой — её и считаем адресом страницы.
+    const pathId = loaderData.landing?.short ?? loaderData.product.id;
     // Разметка товара — только если он виден в каталоге витрины (как в карте сайта).
     const ld =
       seoShop && loaderData.seo?.listed
@@ -97,9 +104,7 @@ export const Route = createFileRoute("/s/$slug/p/$id")({
     return {
       meta: share,
       scripts: ld,
-      links: seoShop
-        ? [canonicalLink(productCanonical(seoShop.origin, seoShop.slug, loaderData.product.id))]
-        : [],
+      links: seoShop ? [canonicalLink(productCanonical(seoShop.origin, seoShop.slug, pathId))] : [],
     };
   },
   component: ProductPageKeyed,
