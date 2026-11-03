@@ -43,7 +43,7 @@ function shop(photos: Array<{ file_unique_id: string; width: number }>) {
   const ctx = { tenant, db } as unknown as TenantContext;
   const calls: string[] = [];
   const api: TelegramApi = {
-    call: async <R,>(m: string) => {
+    call: async <R>(m: string) => {
       calls.push(m);
       const result =
         m === "getMe"
@@ -101,9 +101,9 @@ describe("аватар бота для витрины", () => {
 
     // Через сутки фото то же — не перекачиваем.
     uploads.length = 0;
-    expect(
-      await syncBotAvatar(x.tenant, NOW + 25 * 3600_000, { api: x.api, ctx: x.ctx }),
-    ).toEqual({ action: "unchanged" });
+    expect(await syncBotAvatar(x.tenant, NOW + 25 * 3600_000, { api: x.api, ctx: x.ctx })).toEqual({
+      action: "unchanged",
+    });
     expect(uploads).toEqual([]);
     fetchMock.mockRestore();
   });
