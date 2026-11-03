@@ -191,7 +191,7 @@ function ProductPage() {
           {t("product.course.program", { n: course.lessons.length })}
         </h2>
       )}
-      <p className={landing ? "mb-4 text-sm text-muted" : "mb-3 text-xs text-muted"}>
+      <p className={landing ? "mb-5 text-base text-muted" : "mb-3 text-xs text-muted"}>
         {course.everyDays
           ? t("product.course.drip", { n: course.everyDays })
           : course.afterTask
@@ -205,17 +205,17 @@ function ProductPage() {
       {landing ? (
         <>
           {programModules(course.lessons).map((g, gi) => (
-            <div key={gi} className={`card p-5${gi ? " mt-3" : ""}`}>
-              {g.title && <h3 className="mb-3 text-base font-semibold">{g.title}</h3>}
-              <ol className="space-y-2 text-base">
+            <div key={gi} className={`card p-6${gi ? " mt-4" : ""}`}>
+              {g.title && <h3 className="mb-4 text-xl font-semibold">{g.title}</h3>}
+              <ol className="space-y-3 text-lg">
                 {g.lessons.map((l) => (
                   <li key={l.no} className="flex gap-3">
                     <span className="w-6 shrink-0 text-right text-muted tabular-nums">{l.no}.</span>
                     <div className="min-w-0 flex-1">
                       <span>{l.short}</span>
                       {l.open && (
-                        <details className="mt-1 rounded border border-line p-2">
-                          <summary className="cursor-pointer text-xs">
+                        <details className="mt-2 rounded-lg border border-line p-3">
+                          <summary className="cursor-pointer text-sm">
                             🔓 {t("product.course.openLesson")}
                           </summary>
                           {l.open.text && (
@@ -368,7 +368,7 @@ function ProductPage() {
       <div
         className={
           landing
-            ? "mt-10 grid gap-10 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-14"
+            ? "mt-10 grid gap-10 lg:grid-cols-[minmax(0,1fr)_24rem] lg:gap-16"
             : "mt-3 grid gap-6 md:grid-cols-2"
         }
       >
@@ -431,8 +431,10 @@ function ProductPage() {
               />
               {p.description && (
                 <section className="mt-14">
-                  <h2 className="mb-4 text-2xl font-semibold">{t("product.description")}</h2>
-                  <p className="text-base leading-relaxed whitespace-pre-line">{p.description}</p>
+                  <h2 className="mb-5 text-2xl font-semibold tracking-tight md:text-3xl">
+                    {t("product.description")}
+                  </h2>
+                  <p className="text-lg leading-relaxed whitespace-pre-line">{p.description}</p>
                 </section>
               )}
             </>
@@ -440,9 +442,9 @@ function ProductPage() {
         </div>
         <SwipeArea nav={nav} className={landing ? "order-2" : undefined}>
           {/* На странице курса название и цена — в шапке; здесь карточка покупки. */}
-          <div className={landing ? "card p-6 lg:sticky lg:top-24" : "contents"}>
+          <div className={landing ? "card p-6 lg:sticky lg:top-24 lg:p-8" : "contents"}>
             {landing ? (
-              <h2 className="text-lg font-semibold">{p.name}</h2>
+              <h2 className="text-xl leading-snug font-semibold">{p.name}</h2>
             ) : (
               <h1 className="text-2xl font-semibold">{p.name}</h1>
             )}
@@ -457,7 +459,9 @@ function ProductPage() {
                 </span>
               )}
             </div>
-            <div className="mt-3 text-2xl font-semibold">
+            <div
+              className={landing ? "mt-4 text-3xl font-semibold" : "mt-3 text-2xl font-semibold"}
+            >
               <OfferPrice
                 price={price}
                 oldPrice={chosen ? chosen.oldPrice : (p.offer?.oldPrice ?? null)}
@@ -538,7 +542,7 @@ function ProductPage() {
               </div>
             )}
             {course && tariff && (
-              <div className="mt-4 space-y-1 text-sm">
+              <div className={`mt-4 space-y-1 ${landing ? "text-base" : "text-sm"}`}>
                 {course.cohort && (
                   <div className="font-medium">
                     {t("product.course.cohort", {
@@ -565,7 +569,10 @@ function ProductPage() {
                 </ul>
               </div>
             )}
-            <div id="buy" className="mt-5 flex scroll-mt-20 items-center gap-3">
+            <div
+              id="buy"
+              className={`flex scroll-mt-20 items-center gap-3 ${landing ? "mt-6" : "mt-5"}`}
+            >
               {course && !course.enrollOpen ? (
                 <span className="badge">{t("product.course.closed")}</span>
               ) : !siteCart ? (
@@ -575,14 +582,17 @@ function ProductPage() {
                     href={tgBuy}
                     target="_blank"
                     rel="noreferrer"
-                    className="btn-primary px-5 py-2.5 text-base"
+                    className={`btn-primary text-base ${landing ? "flex-1 py-3.5 text-lg" : "px-5 py-2.5"}`}
                   >
                     {t("landing.buyTg")}
                   </a>
                 )
               ) : p.inStock || p.preorder ? (
                 <>
-                  <button className="btn-primary px-5 py-2.5 text-base" onClick={add}>
+                  <button
+                    className={`btn-primary text-base ${landing ? "flex-1 py-3.5 text-lg" : "px-5 py-2.5"}`}
+                    onClick={add}
+                  >
                     {t("product.addToCart")}
                   </button>
                   {!p.preorder && p.lowLeft !== null && (
@@ -637,12 +647,18 @@ function ProductPage() {
                 href={writeUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="btn-secondary mt-3 inline-flex px-4 py-2"
+                className={
+                  landing
+                    ? "btn-secondary mt-3 flex w-full py-3 text-base"
+                    : "btn-secondary mt-3 inline-flex px-4 py-2"
+                }
               >
                 {t("product.writeShop")}
               </a>
             )}
-            <ul className="mt-5 space-y-1.5 text-sm text-muted">
+            <ul
+              className={`text-muted ${landing ? "mt-6 space-y-2 text-base" : "mt-5 space-y-1.5 text-sm"}`}
+            >
               {course ? (
                 <li>{t("product.course.instant")}</li>
               ) : p.kind === "digital" ? (
@@ -704,8 +720,16 @@ function ProductPage() {
       )}
       <ProductReviews slug={slug} productId={p.id} />
       {related.length > 0 && (
-        <section className="mt-10">
-          <h2 className="mb-3 text-sm font-semibold text-muted">{t("product.related")}</h2>
+        <section className={landing ? "mt-16" : "mt-10"}>
+          <h2
+            className={
+              landing
+                ? "mb-6 text-2xl font-semibold tracking-tight md:text-3xl"
+                : "mb-3 text-sm font-semibold text-muted"
+            }
+          >
+            {t("product.related")}
+          </h2>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {related.map((r) => (
               <Link
