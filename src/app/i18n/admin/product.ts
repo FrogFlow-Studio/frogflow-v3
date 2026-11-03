@@ -147,6 +147,18 @@ export const ru = {
   "product.lessonVideoAdd": "+ Ещё видео",
   "product.lessonTgVideo": "🎬 Видео из Telegram №{n} — бот пришлёт его ученице прямо в чат",
   "product.lessonVideoMore": "Ещё одна ссылка на видео, https://…",
+  "product.lessonTgCount": "🎬 из бота: {n}",
+  "product.lessonTgSend": "Прислать мне в Telegram",
+  "product.lessonTgSentYou": "Видео отправлено вам в Telegram",
+  "product.lessonTgSentChat": "Видео отправлено в чат уведомлений магазина",
+  "product.lessonTgNotSent":
+    "Не удалось отправить: у бота нет вашего чата. Напишите боту /start и попробуйте ещё раз.",
+  "product.lessonTgRemove": "Убрать",
+  "product.lessonTgRemoveAsk":
+    "Убрать это видео из урока «{title}»? Ученицы перестанут его получать.",
+  "product.lessonTgRemoved": "Видео убрано",
+  "product.lessonTgLessonRemoved": "Видео убрано, а пустой урок удалён",
+  "product.lessonTgSummary": "Видео из бота: {list}",
   "product.lessonVideoDelete": "Убрать видео",
   "product.courseCohorts": "Потоки (необязательно)",
   "product.courseCohortsHint":
@@ -398,6 +410,18 @@ export const kk: SectionDict<typeof ru> = {
   "product.lessonVideoAdd": "+ Тағы бейне",
   "product.lessonTgVideo": "🎬 Telegram-нан №{n} бейне — бот оны оқушыға тікелей чатқа жібереді",
   "product.lessonVideoMore": "Тағы бір бейне сілтемесі, https://…",
+  "product.lessonTgCount": "🎬 боттан: {n}",
+  "product.lessonTgSend": "Маған Telegram-ға жіберу",
+  "product.lessonTgSentYou": "Бейне сізге Telegram-ға жіберілді",
+  "product.lessonTgSentChat": "Бейне дүкеннің хабарлама чатына жіберілді",
+  "product.lessonTgNotSent":
+    "Жіберілмеді: ботта сіздің чатыңыз жоқ. Ботқа /start жазып, қайталап көріңіз.",
+  "product.lessonTgRemove": "Алып тастау",
+  "product.lessonTgRemoveAsk":
+    "Бұл бейнені «{title}» сабағынан алып тастау керек пе? Оқушылар оны енді алмайды.",
+  "product.lessonTgRemoved": "Бейне алынды",
+  "product.lessonTgLessonRemoved": "Бейне алынды, бос сабақ өшірілді",
+  "product.lessonTgSummary": "Боттан бейне: {list}",
   "product.lessonVideoDelete": "Бейнені алып тастау",
   "product.courseCohorts": "Ағындар (міндетті емес)",
   "product.courseCohortsHint":
@@ -649,6 +673,18 @@ export const en: SectionDict<typeof ru> = {
   "product.lessonTgVideo":
     "🎬 Telegram video #{n} — the bot sends it to the student right in the chat",
   "product.lessonVideoMore": "One more video link, https://…",
+  "product.lessonTgCount": "🎬 from the bot: {n}",
+  "product.lessonTgSend": "Send to my Telegram",
+  "product.lessonTgSentYou": "The video was sent to your Telegram",
+  "product.lessonTgSentChat": "The video was sent to the shop’s notification chat",
+  "product.lessonTgNotSent":
+    "Not sent: the bot has no chat with you. Send /start to the bot and try again.",
+  "product.lessonTgRemove": "Remove",
+  "product.lessonTgRemoveAsk":
+    "Remove this video from the lesson “{title}”? Students will stop receiving it.",
+  "product.lessonTgRemoved": "Video removed",
+  "product.lessonTgLessonRemoved": "Video removed, and the empty lesson was deleted",
+  "product.lessonTgSummary": "Videos from the bot: {list}",
   "product.lessonVideoDelete": "Remove video",
   "product.courseCohorts": "Cohorts (optional)",
   "product.courseCohortsHint":
@@ -897,6 +933,18 @@ export const uz: SectionDict<typeof ru> = {
   "product.lessonTgVideo":
     "🎬 Telegram’dan №{n} video — bot uni o‘quvchiga to‘g‘ridan-to‘g‘ri chatga yuboradi",
   "product.lessonVideoMore": "Yana bitta video havolasi, https://…",
+  "product.lessonTgCount": "🎬 botdan: {n}",
+  "product.lessonTgSend": "Menga Telegramga yuborish",
+  "product.lessonTgSentYou": "Video sizga Telegramga yuborildi",
+  "product.lessonTgSentChat": "Video doʻkonning bildirishnomalar chatiga yuborildi",
+  "product.lessonTgNotSent":
+    "Yuborilmadi: botda sizning chatingiz yoʻq. Botga /start yozing va qayta urinib koʻring.",
+  "product.lessonTgRemove": "Olib tashlash",
+  "product.lessonTgRemoveAsk":
+    "Bu videoni «{title}» darsidan olib tashlaysizmi? Oʻquvchilar uni endi olmaydi.",
+  "product.lessonTgRemoved": "Video olib tashlandi",
+  "product.lessonTgLessonRemoved": "Video olib tashlandi, boʻsh dars oʻchirildi",
+  "product.lessonTgSummary": "Botdan videolar: {list}",
   "product.lessonVideoDelete": "Videoni olib tashlash",
   "product.courseCohorts": "Oqimlar (ixtiyoriy)",
   "product.courseCohortsHint":

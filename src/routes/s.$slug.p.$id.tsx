@@ -14,6 +14,8 @@ import { Breadcrumbs } from "@/app/storefront/breadcrumbs";
 import { OfferNote, OfferPrice } from "@/app/storefront/offer";
 import { pageBadge } from "@/core/catalog/lead-time";
 import { ProductReviews } from "@/app/storefront/reviews";
+import { LandingBlocks, LandingHero, landingStyle } from "@/app/storefront/course-landing";
+import { programModules } from "@/core/courses/landing";
 import { RecentlyViewed, useRememberViewed } from "@/app/storefront/recent";
 import { ListNavBar, SwipeArea, useListNav } from "@/app/storefront/list-nav";
 import { productMeta } from "@/core/storefront/share";
@@ -111,7 +113,15 @@ function ProductPageKeyed() {
 }
 
 function ProductPage() {
-  const { product: p, related, preview, course, waitlistUrl, onMarket } = Route.useLoaderData();
+  const {
+    product: p,
+    related,
+    preview,
+    course,
+    landing,
+    waitlistUrl,
+    onMarket,
+  } = Route.useLoaderData();
   const { slug } = Route.useParams();
   const shop = useLoaderData({ from: "/s/$slug" });
   useRememberViewed(slug, p.id);
@@ -131,7 +141,10 @@ function ProductPage() {
   const [img, setImg] = useState(0);
   const frame = usePhotoFrame();
   // Просмотр фото на весь экран (Т6): фото товара или страницы примера.
-  const [viewer, setViewer] = useState<{ set: "photos" | "preview"; i: number } | null>(null);
+  const [viewer, setViewer] = useState<{
+    set: "photos" | "preview" | "works";
+    i: number;
+  } | null>(null);
   const fromSearch = parseSearchReturn(Route.useSearch());
   const [variant, setVariant] = useState<string | null>(p.variants[0]?.id ?? null);
   const [msg, setMsg] = useState<string | null>(null);
@@ -169,8 +182,144 @@ function ProductPage() {
     setMsg(r === "ok" ? t("product.addedToCart") : t("catalog.mixed"));
     setTimeout(() => setMsg(null), 2000);
   };
-  return (
+  const program = course ? (
     <>
+      {/* На странице курса заголовок «Программа курса» — у блока. */}
+      {!landing && (
+        <h2 className="mb-1 text-sm font-semibold">
+          {t("product.course.program", { n: course.lessons.length })}
+        </h2>
+      )}
+      <p className="mb-3 text-xs text-muted">
+        {course.everyDays
+          ? t("product.course.drip", { n: course.everyDays })
+          : course.afterTask
+            ? t(
+                course.afterTask === "submitted"
+                  ? "product.course.afterSubmit"
+                  : "product.course.afterAccept",
+              )
+            : t("product.course.all")}
+      </p>
+      {landing ? (
+        <>
+          {programModules(course.lessons).map((g, gi) => (
+            <div key={gi} className={gi ? "mt-4" : ""}>
+              {g.title && <h3 className="mb-1 text-sm font-semibold">{g.title}</h3>}
+              <ol className="space-y-1 text-sm">
+                {g.lessons.map((l) => (
+                  <li key={l.no} className="flex gap-2">
+                    <span className="w-6 shrink-0 text-right text-muted tabular-nums">{l.no}.</span>
+                    <div className="min-w-0 flex-1">
+                      <span>{l.short}</span>
+                      {l.open && (
+                        <details className="mt-1 rounded border border-line p-2">
+                          <summary className="cursor-pointer text-xs">
+                            🔓 {t("product.course.openLesson")}
+                          </summary>
+                          {l.open.text && (
+                            <p className="mt-2 whitespace-pre-line text-sm">{l.open.text}</p>
+                          )}
+                          {l.open.tgVideos.length > 0 && (
+                            <p className="mt-2 text-sm text-muted">
+                              🎬 {t("product.course.videoInBot")}
+                            </p>
+                          )}
+                          {l.open.links.map((link, i, all) => (
+                            <a
+                              key={`v${i}`}
+                              className="mt-2 block text-sm underline"
+                              href={link}
+                              target="_blank"
+                              rel="noreferrer noopener"
+                            >
+                              ▶️ {t("product.course.openLink")}
+                              {all.length > 1 ? ` ${i + 1}` : ""}
+                            </a>
+                          ))}
+                          {l.open.files.map((f) => (
+                            <a
+                              key={f.url}
+                              className="mt-1 block text-sm underline"
+                              href={f.url}
+                              target="_blank"
+                              rel="noreferrer noopener"
+                            >
+                              📎 {f.name}
+                            </a>
+                          ))}
+                        </details>
+                      )}
+                    </div>
+                    {l.homework && (
+                      <span className="shrink-0 text-xs text-muted">
+                        📝 {t("product.course.hw")}
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ol>
+            </div>
+          ))}
+        </>
+      ) : (
+        <ol className="space-y-1 text-sm">
+          {course.lessons.map((l) => (
+            <li key={l.no} className="flex gap-2">
+              <span className="w-6 shrink-0 text-right text-muted tabular-nums">{l.no}.</span>
+              <div className="min-w-0 flex-1">
+                <span>{l.title}</span>
+                {l.open && (
+                  <details className="mt-1 rounded border border-line p-2">
+                    <summary className="cursor-pointer text-xs">
+                      🔓 {t("product.course.openLesson")}
+                    </summary>
+                    {l.open.text && (
+                      <p className="mt-2 whitespace-pre-line text-sm">{l.open.text}</p>
+                    )}
+                    {l.open.tgVideos.length > 0 && (
+                      <p className="mt-2 text-sm text-muted">🎬 {t("product.course.videoInBot")}</p>
+                    )}
+                    {l.open.links.map((link, i, all) => (
+                      <a
+                        key={`v${i}`}
+                        className="mt-2 block text-sm underline"
+                        href={link}
+                        target="_blank"
+                        rel="noreferrer noopener"
+                      >
+                        ▶️ {t("product.course.openLink")}
+                        {all.length > 1 ? ` ${i + 1}` : ""}
+                      </a>
+                    ))}
+                    {l.open.files.map((f) => (
+                      <a
+                        key={f.url}
+                        className="mt-1 block text-sm underline"
+                        href={f.url}
+                        target="_blank"
+                        rel="noreferrer noopener"
+                      >
+                        📎 {f.name}
+                      </a>
+                    ))}
+                  </details>
+                )}
+              </div>
+              {l.homework && (
+                <span className="shrink-0 text-xs text-muted">📝 {t("product.course.hw")}</span>
+              )}
+            </li>
+          ))}
+        </ol>
+      )}
+    </>
+  ) : null;
+  const freeLesson = Boolean(course?.lessons.some((l) => l.open));
+  const tgBuy = shop.botUsername ? `https://t.me/${shop.botUsername}?start=p_${p.id}` : null;
+  const canBuy = !(course && !course.enrollOpen) && (p.inStock || p.preorder);
+  return (
+    <div style={landingStyle(landing)}>
       {fromSearch && (
         <p className="mb-2 text-sm">
           {fromSearch.cat ? (
@@ -198,8 +347,27 @@ function ProductPage() {
       )}
       <Breadcrumbs slug={slug} shop={shop} categoryIds={p.categoryIds} leaf={p.name} t={t} />
       <ListNavBar nav={nav} />
-      <div className="mt-3 grid gap-6 md:grid-cols-2">
-        <div>
+      {landing && (
+        <LandingHero
+          landing={landing}
+          title={p.name}
+          price={formatMoneyUi(price, currency)}
+          lessons={course?.lessons.length ?? 0}
+          freeLesson={freeLesson}
+          tgUrl={canBuy ? tgBuy : null}
+          onBuySite={
+            canBuy
+              ? () => document.getElementById("buy")?.scrollIntoView({ behavior: "smooth" })
+              : null
+          }
+          t={t}
+        />
+      )}
+      {/* Страница курса без фото: шапка уже есть, пустое поле фото не рисуем. */}
+      <div
+        className={`grid gap-6 ${landing ? "mt-6" : "mt-3"} ${landing && !p.images.length ? "max-w-2xl" : "md:grid-cols-2"}`}
+      >
+        <div className={landing && !p.images.length ? "hidden" : undefined}>
           {p.images.length > 1 && (
             // Телефон: фото листаются пальцем (scroll-snap), без JS-кода жестов.
             <div
@@ -248,7 +416,12 @@ function ProductPage() {
           )}
         </div>
         <SwipeArea nav={nav}>
-          <h1 className="text-2xl font-semibold">{p.name}</h1>
+          {landing ? (
+            // Заголовок страницы — в шапке курса; здесь — название товара у кнопки покупки.
+            <h2 className="text-2xl font-semibold">{p.name}</h2>
+          ) : (
+            <h1 className="text-2xl font-semibold">{p.name}</h1>
+          )}
           <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted">
             <span className="badge">{t(pageBadge(p))}</span>
             {p.rating && (
@@ -363,7 +536,7 @@ function ProductPage() {
               </ul>
             </div>
           )}
-          <div className="mt-5 flex items-center gap-3">
+          <div id="buy" className="mt-5 flex scroll-mt-20 items-center gap-3">
             {course && !course.enrollOpen ? (
               <span className="badge">{t("product.course.closed")}</span>
             ) : p.inStock || p.preorder ? (
@@ -450,74 +623,14 @@ function ProductPage() {
           )}
         </SwipeArea>
       </div>
-      {course && (
-        <section className="mt-10">
-          <h2 className="mb-1 text-sm font-semibold">
-            {t("product.course.program", { n: course.lessons.length })}
-          </h2>
-          <p className="mb-3 text-xs text-muted">
-            {course.everyDays
-              ? t("product.course.drip", { n: course.everyDays })
-              : course.afterTask
-                ? t(
-                    course.afterTask === "submitted"
-                      ? "product.course.afterSubmit"
-                      : "product.course.afterAccept",
-                  )
-                : t("product.course.all")}
-          </p>
-          <ol className="space-y-1 text-sm">
-            {course.lessons.map((l) => (
-              <li key={l.no} className="flex gap-2">
-                <span className="w-6 shrink-0 text-right text-muted tabular-nums">{l.no}.</span>
-                <div className="min-w-0 flex-1">
-                  <span>{l.title}</span>
-                  {l.open && (
-                    <details className="mt-1 rounded border border-line p-2">
-                      <summary className="cursor-pointer text-xs">
-                        🔓 {t("product.course.openLesson")}
-                      </summary>
-                      {l.open.text && (
-                        <p className="mt-2 whitespace-pre-line text-sm">{l.open.text}</p>
-                      )}
-                      {l.open.tgVideos.length > 0 && (
-                        <p className="mt-2 text-sm text-muted">
-                          🎬 {t("product.course.videoInBot")}
-                        </p>
-                      )}
-                      {l.open.links.map((link, i, all) => (
-                        <a
-                          key={`v${i}`}
-                          className="mt-2 block text-sm underline"
-                          href={link}
-                          target="_blank"
-                          rel="noreferrer noopener"
-                        >
-                          ▶️ {t("product.course.openLink")}
-                          {all.length > 1 ? ` ${i + 1}` : ""}
-                        </a>
-                      ))}
-                      {l.open.files.map((f) => (
-                        <a
-                          key={f.url}
-                          className="mt-1 block text-sm underline"
-                          href={f.url}
-                          target="_blank"
-                          rel="noreferrer noopener"
-                        >
-                          📎 {f.name}
-                        </a>
-                      ))}
-                    </details>
-                  )}
-                </div>
-                {l.homework && (
-                  <span className="shrink-0 text-xs text-muted">📝 {t("product.course.hw")}</span>
-                )}
-              </li>
-            ))}
-          </ol>
-        </section>
+      {course && !landing && <section className="mt-10">{program}</section>}
+      {landing && (
+        <LandingBlocks
+          landing={landing}
+          program={program}
+          onPhoto={(i) => setViewer({ set: "works", i })}
+          t={t}
+        />
       )}
       {preview.length > 0 && (
         <section className="mt-10">
@@ -581,11 +694,17 @@ function ProductPage() {
       )}
       <RecentlyViewed slug={slug} exclude={p.id} />
       <PhotoViewer
-        images={viewer?.set === "preview" ? preview : p.images}
+        images={
+          viewer?.set === "preview"
+            ? preview
+            : viewer?.set === "works"
+              ? (landing?.works ?? [])
+              : p.images
+        }
         index={viewer?.i ?? null}
         alt={viewer?.set === "preview" ? `${p.name} — ${t("product.preview")}` : p.name}
         onClose={() => setViewer(null)}
       />
-    </>
+    </div>
   );
 }

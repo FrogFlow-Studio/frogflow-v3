@@ -24,6 +24,7 @@ import * as workspace from "./admin/workspace";
 import * as homework from "./admin/homework";
 import * as school4 from "./admin/school4";
 import * as courseWizard from "./admin/course-wizard";
+import * as courseLanding from "./admin/course-landing";
 import * as analytics from "./admin/analytics";
 import * as chat from "./admin/chat";
 import * as outbox from "./admin/outbox";
@@ -508,6 +509,7 @@ const ru = {
   ...homework.ru,
   ...school4.ru,
   ...courseWizard.ru,
+  ...courseLanding.ru,
   ...analytics.ru,
   ...chat.ru,
   ...outbox.ru,
@@ -1747,6 +1749,7 @@ const kk: Dict = {
   ...homework.kk,
   ...school4.kk,
   ...courseWizard.kk,
+  ...courseLanding.kk,
   ...analytics.kk,
   ...chat.kk,
   ...outbox.kk,
@@ -1845,6 +1848,7 @@ const en: Dict = {
   ...homework.en,
   ...school4.en,
   ...courseWizard.en,
+  ...courseLanding.en,
   ...analytics.en,
   ...chat.en,
   ...outbox.en,
@@ -1943,6 +1947,7 @@ const uz: Dict = {
   ...homework.uz,
   ...school4.uz,
   ...courseWizard.uz,
+  ...courseLanding.uz,
   ...analytics.uz,
   ...chat.uz,
   ...outbox.uz,

@@ -27,6 +27,7 @@ import {
   QUIZ_TEXT_MAX,
 } from "@/core/courses/lesson-quiz";
 import { LIVE_LINK_MAX, LIVE_TITLE_MAX } from "@/core/courses/live";
+import { ACCENT_RE, LANDING_BLOCKS, LANDING_LIMITS, LANDING_THEMES } from "@/core/courses/landing";
 
 /**
  * Уроки курса (модуль courses) в карточке цифрового товара. Смотреть может
@@ -346,3 +347,74 @@ export const schoolLaunchFn = createServerFn({ method: "GET" }).handler(async ()
   const input = await schoolLaunchInput(ctx);
   return { steps: launchSteps(input), hints: launchHints(input) };
 });
+
+/** Страница курса на витрине (core/courses/landing): прочитать. */
+export const courseLandingFn = createServerFn({ method: "GET" })
+  .validator((d: unknown) => z.object({ productId: z.string().uuid() }).parse(d))
+  .handler(async ({ data }) => {
+    const ctx = await moduleAdmin();
+    const { getLanding } = await import("@/core/courses/landing.server");
+    return getLanding(ctx, data.productId);
+  });
+
+const LL = LANDING_LIMITS;
+const landing = z.object({
+  on: z.boolean(),
+  theme: z.enum(LANDING_THEMES),
+  accent: z.string().regex(ACCENT_RE).nullable(),
+  headline: z.string().max(LL.headline),
+  subtitle: z.string().max(LL.subtitle),
+  order: z.array(z.enum(LANDING_BLOCKS)).max(LANDING_BLOCKS.length),
+  hidden: z.array(z.enum(LANDING_BLOCKS)).max(LANDING_BLOCKS.length),
+  authors: z
+    .array(
+      z.object({
+        photo: z.string().max(512).nullable(),
+        name: z.string().max(LL.authorName),
+        text: z.string().max(LL.authorText),
+      }),
+    )
+    .max(LL.authors),
+  learn: z.array(z.string().max(LL.learnItem)).max(LL.learn),
+  works: z.array(z.string().max(512)).max(LL.works),
+  quotes: z
+    .array(z.object({ name: z.string().max(LL.quoteName), text: z.string().max(LL.quoteText) }))
+    .max(LL.quotes),
+  faq: z.array(z.object({ q: z.string().max(LL.faqQ), a: z.string().max(LL.faqA) })).max(LL.faq),
+});
+
+/** Страница курса: сохранить (менеджер и выше). */
+export const saveCourseLandingFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ productId: z.string().uuid(), landing }).parse(d))
+  .handler(async ({ data }) => {
+    const ctx = await moduleAdmin("manager");
+    const { saveLanding } = await import("@/core/courses/landing.server");
+    return saveLanding(ctx, data.productId, data.landing);
+  });
+
+const tgVideo = z.object({
+  productId: z.string().uuid(),
+  lessonId: z.string().max(64),
+  fileId: z.string().min(1).max(200),
+});
+
+/** «Убрать» у видео урока, присланного боту: сразу, без общей кнопки «Сохранить». */
+export const removeLessonTgVideoFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => tgVideo.parse(d))
+  .handler(async ({ data }) => {
+    const ctx = await moduleAdmin("manager");
+    const { removeLessonTgVideo } = await import("@/core/courses/lesson-by-bot.server");
+    return { result: await removeLessonTgVideo(ctx, data.productId, data.lessonId, data.fileId) };
+  });
+
+/** «Прислать мне в Telegram»: посмотреть видео урока из бота. */
+export const sendLessonTgVideoFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => tgVideo.parse(d))
+  .handler(async ({ data }) => {
+    const ctx = await moduleAdmin("manager");
+    const { adminIdentity } = await import("@/app/auth/guards.server");
+    const me = await adminIdentity();
+    const isOwner = !!me && me.username === ctx.tenant.settings.admin?.username;
+    const { sendLessonTgVideo } = await import("./course-tg-video.server");
+    return sendLessonTgVideo(ctx, data.productId, data.lessonId, data.fileId, isOwner);
+  });
