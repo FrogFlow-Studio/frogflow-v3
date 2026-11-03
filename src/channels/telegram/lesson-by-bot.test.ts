@@ -319,4 +319,30 @@ describe("урок сообщением боту", () => {
     await handleTelegramUpdate(ctx, api, video(BUYER, "Моё", "BAACAgIAAxkBAAIvid9"));
     expect(lessons()).toHaveLength(1);
   });
+
+  it("видео файлом с подписью — урок с видео из Telegram; видео с той же подписью — в тот же урок", async () => {
+    const { ctx, api, lessons, said } = shop();
+    await handleTelegramUpdate(ctx, api, video(SELLER, "1.2 Материалы", "BAACAgIAAxkBAAIvid1", 1));
+    await handleTelegramUpdate(ctx, api, video(SELLER, "1.2 Материалы", "BAACAgIAAxkBAAIvid2", 2));
+    await handleTelegramUpdate(ctx, api, video(SELLER, "1.2 Материалы", "BAACAgIAAxkBAAIvid2", 3));
+    const ls = lessons();
+    expect(ls).toHaveLength(2);
+    expect(ls[1]).toMatchObject({
+      title: "1.2 Материалы",
+      link: null,
+      tgVideos: ["BAACAgIAAxkBAAIvid1", "BAACAgIAAxkBAAIvid2"],
+    });
+    const texts = said().map((m) => m.text);
+    expect(texts).toEqual([
+      "✅ Урок 2 «1.2 Материалы» добавлен в курс «Ресницы с нуля».",
+      "✅ Ещё одно видео добавлено в урок 2 «1.2 Материалы» курса «Ресницы с нуля».",
+      "Этот урок уже есть в курсе — второй раз не добавляю.",
+    ]);
+  });
+
+  it("видео от покупателя — не урок", async () => {
+    const { ctx, api, lessons } = shop();
+    await handleTelegramUpdate(ctx, api, video(BUYER, "Моё", "BAACAgIAAxkBAAIvid9"));
+    expect(lessons()).toHaveLength(1);
+  });
 });
