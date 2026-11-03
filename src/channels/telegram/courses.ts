@@ -828,6 +828,14 @@ export async function showLesson(b: CourseBot, data: string): Promise<void> {
   await send(b, body.slice(0, 4096), markup);
 }
 
+/** Продавцу: ученица прошла курс и получила сертификат (курс в боте). */
+const FINISHED_NOTICE: Record<Locale, (who: string, course: string) => string> = {
+  ru: (who, course) => `🎓 ${who || "Ученица"} прошла курс «${course}» и получила сертификат.`,
+  kk: (who, course) => `🎓 ${who || "Оқушы"} «${course}» курсын өтіп, сертификат алды.`,
+  en: (who, course) => `🎓 ${who || "A student"} finished «${course}» and got the certificate.`,
+  uz: (who, course) => `🎓 ${who || "O‘quvchi"} «${course}» kursini tugatdi va sertifikat oldi.`,
+};
+
 /** «✅ Урок пройден» под уроком в чате (`lsd:<покупка>:<номер>`, курс в боте). */
 export async function markLessonDone(b: CourseBot, data: string): Promise<void> {
   const c = COPY[b.locale];
@@ -849,6 +857,18 @@ export async function markLessonDone(b: CourseBot, data: string): Promise<void> 
   if (!next && b.ctx.tenant.settings.slug) {
     const { issueCertificate } = await import("@/core/courses/certificate.server");
     const cert = await issueCertificate(b.ctx, p).catch(() => null);
+    // Сертификат выдан впервые (бронь кода — один победитель) — продавцу один раз.
+    if (cert?.created) {
+      const { sellerLocale } = await import("@/core/catalog/low-stock");
+      const { notifyAdminsHtml } = await import("./notify");
+      const who =
+        b.customer.firstName?.trim() || (b.customer.username ? `@${b.customer.username}` : "");
+      await notifyAdminsHtml(
+        b.ctx,
+        FINISHED_NOTICE[await sellerLocale(b.ctx)](escapeHtml(who), escapeHtml(p.name)),
+        { kind: "system" },
+      ).catch(() => 0);
+    }
     if (cert) {
       const { storefrontBase } = await import("@/core/tenant/custom-domain");
       rows.unshift([

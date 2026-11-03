@@ -30,6 +30,14 @@ vi.mock("./course-notify", () => ({
   },
 }));
 
+const sellerNotes: string[] = [];
+vi.mock("./notify", async (orig) => ({
+  ...(await orig<typeof import("./notify")>()),
+  notifyAdminsHtml: vi.fn(async (_ctx: unknown, html: string) => {
+    sellerNotes.push(html);
+    return 1;
+  }),
+}));
 const { handleTelegramUpdate } = await import("./handle-update");
 const { moduleOf, progressBar, shortTitle } = await import("./courses");
 
@@ -789,6 +797,9 @@ describe("курс в боте: первый экран /start (Lash Academy, 03
 });
 
 describe("курс в боте: финал", () => {
+  afterEach(() => {
+    sellerNotes.length = 0;
+  });
   it("последний урок пройден, задания приняты — кнопка «🏅 Мой сертификат»", async () => {
     const { ctx, db, api, calls } = school({}, { inBot: true, startedDaysAgo: 8 });
     for (const l of course.lessons)
@@ -808,6 +819,12 @@ describe("курс в боте: финал", () => {
     expect(String(last.text)).toContain("🎉 Вы прошли все открытые уроки!");
     const cert = buttons(last).find((x) => x.text === "🏅 Мой сертификат");
     expect(cert?.url).toMatch(/^https:\/\/app\.test\/s\/school\/cert\/[2-9A-HJ-NP-Z]{12}$/);
+    // Продавцу — один раз: повторное нажатие сертификат не выдаёт заново.
+    expect(sellerNotes.filter((h) => h.includes("прошла курс"))).toEqual([
+      "🎓 Мария прошла курс «Аквагрим с нуля» и получила сертификат.",
+    ]);
+    await handleTelegramUpdate(ctx, api, press(`lsd:${ITEM}:2`, 3));
+    expect(sellerNotes.filter((h) => h.includes("прошла курс"))).toHaveLength(1);
   });
 
   it("задания ещё не приняты — без сертификата", async () => {
