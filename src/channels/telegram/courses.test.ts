@@ -4,6 +4,7 @@ import { setEnvForTests } from "@/config/env";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { userKey } from "@/core/customers/customers";
 import { courseKey, type Course } from "@/core/courses/course";
+import { COURSE_MARKER_URL } from "@/core/courses/marker";
 import { hwKey, parseHomework } from "@/core/courses/homework";
 import { inviteKey } from "@/core/courses/channel.server";
 import type { TelegramApi } from "./api";
@@ -739,5 +740,50 @@ describe("курс в боте: оформление (Lash Academy, 03.11.2026)"
     expect(progressBar(9, 9)).toBe("▰▰▰▰▰▰▰▰▰▰");
     expect(moduleOf("Модуль 2 · 2.1. Подготовка")).toBe("Модуль 2");
     expect(moduleOf("Кисти")).toBeNull();
+  });
+});
+
+describe("курс в боте: первый экран /start (Lash Academy, 03.11.2026)", () => {
+  it("купившей — после приветствия сразу её курс с «Продолжить»", async () => {
+    const { ctx, api, calls } = school({}, { inBot: true, startedDaysAgo: 8 });
+    await handleTelegramUpdate(ctx, api, text("/start"));
+    const last = messages(calls).at(-1)!;
+    expect(String(last.text).split("\n")[0]).toBe("🎓 <b>Аквагрим с нуля</b>");
+    expect(buttons(last)[0]!.text).toBe("▶️ Продолжить: урок 1");
+  });
+
+  it("новой ученице — после приветствия карточка курса с «Купить курс»", async () => {
+    const { ctx, db, api, calls } = school({}, { inBot: true });
+    db.tables.orders = [];
+    db.tables.order_items = [];
+    db.tables.products = [
+      {
+        id: P,
+        bot_id: T,
+        name: "Аквагрим с нуля",
+        description: "",
+        price: 10000,
+        currency: "KZT",
+        country_prices: {},
+        fulfillment_kind: "digital",
+        file_url: COURSE_MARKER_URL,
+        is_active: true,
+        sort_order: 0,
+        stock_quantity: null,
+        category_ids: [],
+        product_images: [],
+        product_variants: [],
+      },
+    ];
+    await handleTelegramUpdate(ctx, api, text("/start"));
+    const last = messages(calls).at(-1)!;
+    expect(String(last.text).startsWith("🎓 <b>Аквагрим с нуля</b>")).toBe(true);
+    expect(buttons(last).map((x) => x.text)).toContain("🎓 Купить курс");
+  });
+
+  it("выключено — /start как раньше, только приветствие", async () => {
+    const { ctx, api, calls } = school({}, { startedDaysAgo: 8 });
+    await handleTelegramUpdate(ctx, api, text("/start"));
+    expect(messages(calls)).toHaveLength(1);
   });
 });

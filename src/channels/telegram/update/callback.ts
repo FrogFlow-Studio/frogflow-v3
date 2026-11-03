@@ -29,7 +29,7 @@ import { allPriceCountries } from "@/core/pricing/all-prices";
 import { deliverInLanguage, reorderFrom } from "./orders";
 import { showBalancePayment } from "./payments";
 import { adminDecision, adminOrderButton } from "./seller";
-import { applyLocale, optOutReply } from "./start";
+import { applyLocale, courseStartScreen, optOutReply } from "./start";
 import { payButton } from "./callback-pay";
 import { addToCartButton, cartOptionButton, checkoutStepButton } from "./callback-checkout";
 import { reviewButton, subscriptionButton } from "./callback-orders";
@@ -114,7 +114,10 @@ export async function handleCallback(
 
   if (data.startsWith("locale:")) {
     const l = data.slice(7);
-    if (isLocale(l)) await applyLocale(b, l);
+    if (isLocale(l)) {
+      await applyLocale(b, l);
+      await courseStartScreen(b);
+    }
     return;
   }
   // Язык материалов до оформления — только на этом шаге: старые кнопки
