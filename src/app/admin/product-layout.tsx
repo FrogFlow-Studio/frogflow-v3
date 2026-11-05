@@ -88,7 +88,7 @@ export function SaveBar({
   return (
     <div
       data-testid="product-savebar"
-      className="sticky bottom-0 z-20 -mx-4 mt-6 flex flex-wrap items-center justify-between gap-2 border-t border-line bg-surface px-4 py-3"
+      className="sticky bottom-14 z-20 -mx-4 mt-6 flex md:bottom-0 flex-wrap items-center justify-between gap-2 border-t border-line bg-surface px-4 py-3"
     >
       <span className={`text-sm ${dirty ? "text-warn" : "text-muted"}`} role="status">
         {dirty ? t("product.bar.unsaved") : t("product.bar.clean")}

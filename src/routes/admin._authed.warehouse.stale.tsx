@@ -4,7 +4,7 @@ import { useState } from "react";
 import { staleFn } from "@/app/admin/stock-reports.functions";
 import { adminT } from "@/app/i18n/admin";
 import { Card, Empty, PageTitle } from "@/app/ui";
-import { formatMoney } from "@/core/money/money";
+import { formatMoneyUi } from "@/core/money/money";
 import { STALE_DEFAULT_DAYS, STALE_OFFER_MAX } from "@/core/stock/stale-const";
 
 const PAGE = 50;
@@ -15,7 +15,8 @@ export const Route = createFileRoute("/admin/_authed/warehouse/stale")({
     return { days: Number.isInteger(n) && n >= 7 && n <= 365 ? n : undefined };
   },
   beforeLoad: ({ context }) => {
-    if (!context.shop.modules.warehouse) throw redirect({ to: "/admin" });
+    if (!context.shop.modules.warehouse)
+      throw redirect({ to: "/admin/locked/$module", params: { module: "warehouse" } });
   },
   loaderDeps: ({ search }) => ({ days: search.days }),
   loader: ({ deps }) => staleFn({ data: { days: deps.days } }),
@@ -81,7 +82,7 @@ function StalePage() {
         <p className="mt-3 text-sm">
           {t("stale.total", {
             n: report.products.length,
-            sum: formatMoney(report.frozenTotal, report.currency),
+            sum: formatMoneyUi(report.frozenTotal, report.currency),
           })}
         </p>
         {report.unknownCost > 0 && (
@@ -91,7 +92,7 @@ function StalePage() {
       {report.products.length === 0 ? (
         <Empty>{t("stale.empty", { days: report.days })}</Empty>
       ) : (
-        <div className="mt-4 rounded-lg border border-line bg-surface">
+        <div className="mt-4 overflow-x-auto rounded-lg border border-line bg-surface">
           {canOffer && (
             <div className="flex flex-wrap items-center gap-3 border-b border-line p-3">
               <button
@@ -147,10 +148,10 @@ function StalePage() {
                   </td>
                   <td className="text-right tabular-nums">{p.stock}</td>
                   <td className="text-right tabular-nums">
-                    {p.unitCost === null ? "—" : formatMoney(p.unitCost, report.currency)}
+                    {p.unitCost === null ? "—" : formatMoneyUi(p.unitCost, report.currency)}
                   </td>
                   <td className="text-right tabular-nums">
-                    {p.frozen === null ? "—" : formatMoney(p.frozen, report.currency)}
+                    {p.frozen === null ? "—" : formatMoneyUi(p.frozen, report.currency)}
                   </td>
                 </tr>
               ))}

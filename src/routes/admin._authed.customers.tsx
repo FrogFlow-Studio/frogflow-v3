@@ -3,7 +3,7 @@ import { canEdit } from "@/core/auth/roles";
 import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { z } from "zod";
-import { customersFn, setBlockedFn } from "@/app/admin/customers.functions";
+import { blockedListFn, customersFn, setBlockedFn } from "@/app/admin/customers.functions";
 import { adminT, intlLocale } from "@/app/i18n/admin";
 import { CustomerSegments } from "@/app/admin/customer-segments";
 import { EmptyState } from "@/app/ui/states";
@@ -12,12 +12,15 @@ import { Badge, Empty, ErrorBox, PageTitle, useAction } from "@/app/ui";
 export const Route = createFileRoute("/admin/_authed/customers")({
   validateSearch: z.object({ q: z.string().optional() }),
   loaderDeps: ({ search }) => search,
-  loader: ({ deps }) => customersFn({ data: deps }),
+  loader: async ({ deps }) => {
+    const [rows, blocked] = await Promise.all([customersFn({ data: deps }), blockedListFn()]);
+    return { rows, blocked };
+  },
   component: CustomersPage,
 });
 
 function CustomersPage() {
-  const rows = Route.useLoaderData();
+  const { rows, blocked } = Route.useLoaderData();
   const { shop } = Route.useRouteContext();
   const t = adminT(shop.locale);
   const { q } = Route.useSearch();
@@ -27,12 +30,20 @@ function CustomersPage() {
   const [segmentShown, setSegmentShown] = useState(false);
   // Консультант без продаж (BOVI): баллов и сегментов по покупкам у него нет.
   const sells = shop.sells !== false;
-  const block = useAction(async (r: (typeof rows)[number], blocked: boolean) => {
-    await setBlockedFn({
-      data: { telegramId: r.telegram_id, blocked, username: r.username, firstName: r.first_name },
-    });
-    await router.invalidate();
-  });
+  const block = useAction(
+    async (
+      r: { telegram_id: number; username: string | null; first_name: string | null },
+      blocked: boolean,
+    ) => {
+      await setBlockedFn({
+        data: { telegramId: r.telegram_id, blocked, username: r.username, firstName: r.first_name },
+      });
+      await router.invalidate();
+    },
+  );
+  // Кого нет в списке выше (блок из v1 у человека без записи покупателя, или он не попал в 200 новых).
+  const shownIds = new Set(rows.map((r) => r.telegram_id));
+  const blockedHidden = blocked.filter((b) => !shownIds.has(b.telegram_id));
   return (
     <>
       <PageTitle
@@ -65,7 +76,7 @@ function CustomersPage() {
         }}
       >
         <input
-          className="input w-64"
+          className="input min-w-0 flex-1 md:w-64 md:flex-none"
           placeholder={t("customers.searchPlaceholder")}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -73,6 +84,32 @@ function CustomersPage() {
         <button className="btn-secondary">{t("common.search")}</button>
       </form>
       <ErrorBox error={block.error} />
+      {shop.modules.blocked && !segmentShown && !q && blockedHidden.length > 0 && (
+        <div className="card mb-4">
+          <h3 className="mb-1 font-medium">
+            {t("customers.blockedList", { n: blockedHidden.length })}
+          </h3>
+          <p className="mb-2 text-xs text-muted">{t("customers.blockedListHint")}</p>
+          <ul className="space-y-1">
+            {blockedHidden.map((b) => (
+              <li key={b.telegram_id} className="flex items-center justify-between gap-2 text-sm">
+                <span>
+                  {b.first_name || "—"}{" "}
+                  {b.username && <span className="text-muted">@{b.username}</span>}{" "}
+                  <span className="text-muted">ID {b.telegram_id}</span>
+                </span>
+                <button
+                  className="btn-ghost text-xs"
+                  disabled={block.busy}
+                  onClick={() => void block.run(b, false).catch(() => {})}
+                >
+                  {t("customers.unblock")}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       {segmentShown ? null : rows.length === 0 ? (
         q ? (
           <Empty>{t("customers.empty")}</Empty>
@@ -90,7 +127,7 @@ function CustomersPage() {
         )
       ) : (
         <div className="card overflow-x-auto">
-          <table className="table">
+          <table className="table table-cards">
             <thead>
               <tr>
                 <th>{t("customers.col.customer")}</th>
@@ -108,7 +145,7 @@ function CustomersPage() {
             <tbody>
               {rows.map((r) => (
                 <tr key={r.user_key}>
-                  <td>
+                  <td className="cell-main">
                     <Link
                       to="/admin/customers/$key"
                       params={{ key: r.user_key }}
@@ -120,11 +157,17 @@ function CustomersPage() {
                     {r.blocked && <Badge tone="danger">{t("customers.blocked")}</Badge>}
                   </td>
                   <td className="text-muted">{r.platform}</td>
-                  <td className="text-muted">
+                  <td
+                    className={`cell-break break-words text-muted ${r.contact_phone || r.email ? "" : "cell-phone-hide"}`}
+                  >
                     {[r.contact_phone, r.email].filter(Boolean).join(" · ") || "—"}
                   </td>
-                  {sells && <td className="text-right tabular-nums">{r.loyalty_points}</td>}
-                  <td className="text-muted">
+                  {sells && (
+                    <td className="text-right tabular-nums" data-label={t("customers.col.points")}>
+                      {r.loyalty_points}
+                    </td>
+                  )}
+                  <td className="text-muted" data-label={t("customers.col.since")}>
                     {new Date(r.created_at).toLocaleDateString(intlLocale(shop.locale))}
                   </td>
                   {shop.modules.blocked && (

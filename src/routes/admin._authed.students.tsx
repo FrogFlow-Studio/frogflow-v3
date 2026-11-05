@@ -1,6 +1,6 @@
 import { HelpTip } from "@/app/admin/help-panel";
 import { CourseFunnel } from "@/app/admin/course-funnel";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useState } from "react";
 import { schoolStudentsFn } from "@/app/admin/courses.functions";
 import { Badge, Card, Empty, PageTitle } from "@/app/ui";
@@ -13,6 +13,10 @@ import { canEdit } from "@/core/auth/roles";
  * в карточке курса.
  */
 export const Route = createFileRoute("/admin/_authed/students")({
+  beforeLoad: ({ context }) => {
+    if (!context.shop.modules.courses)
+      throw redirect({ to: "/admin/locked/$module", params: { module: "courses" } });
+  },
   loader: () => schoolStudentsFn(),
   component: StudentsPage,
 });
@@ -45,6 +49,7 @@ function StudentsPage() {
             {courses.length > 1 && (
               <select
                 className="input w-auto"
+                aria-label={t("students.allCourses")}
                 value={course}
                 onChange={(e) => setCourse(e.target.value)}
               >
@@ -100,7 +105,7 @@ function StudentsPage() {
                           key={s.orderItemId}
                           className="flex flex-wrap items-center gap-x-3 gap-y-1 py-1.5"
                         >
-                          <span className="min-w-0 flex-1 truncate">
+                          <span className="min-w-[10rem] flex-1 truncate">
                             {s.buyer ?? `#${s.orderNo}`}
                             {s.tariff ? ` · ${s.tariff}` : ""}
                             {s.cohort ? ` · ${s.cohort}` : ""}

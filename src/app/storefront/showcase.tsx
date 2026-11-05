@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { usePhotoFrame } from "@/app/storefront/photo-frame";
 import { imageSrcSet } from "@/core/catalog/image-url";
-import { formatMoney } from "@/core/money/money";
+import { formatMoneyUi } from "@/core/money/money";
 import type { ShowcaseSection } from "@/core/storefront/showcase.server";
 import { useStorefrontLocale } from "./locale";
 
@@ -61,7 +61,7 @@ export function ShowcaseBlocks({ slug, sections }: { slug: string; sections: Sho
                   )}
                   <div className="p-2 text-xs">
                     <div className="line-clamp-2">{p.name}</div>
-                    <div className="mt-1 font-semibold">{formatMoney(p.price, p.currency)}</div>
+                    <div className="mt-1 font-semibold">{formatMoneyUi(p.price, p.currency)}</div>
                   </div>
                 </Link>
               ))}

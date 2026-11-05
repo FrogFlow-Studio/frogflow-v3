@@ -326,7 +326,7 @@ function ModulesPage() {
                             ? t("modules.connectFor", {
                                 price: d.price.toLocaleString(locale),
                               })
-                            : t("modules.connect")}
+                            : t("modules.askEnable")}
                       </button>
                     )}
                   </li>

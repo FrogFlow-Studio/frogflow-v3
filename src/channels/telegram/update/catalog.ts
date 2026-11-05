@@ -128,6 +128,10 @@ export async function sendProductCard(b: Bot, p: Product) {
     : base;
   if (!photo) {
     await send(b, caption, { reply_markup: keyboard });
+  } else if (caption.length > 1024) {
+    // Длинная карточка (программа курса): обрезка подписи рвёт HTML — фото отдельно, текст с кнопками следом.
+    await b.api.call("sendPhoto", { chat_id: b.chatId, photo });
+    await send(b, caption.slice(0, 4096), { reply_markup: keyboard });
   } else {
     await sendPhotoOrText(
       b.api,

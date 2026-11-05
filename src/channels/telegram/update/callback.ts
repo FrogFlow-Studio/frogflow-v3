@@ -29,7 +29,7 @@ import { allPriceCountries } from "@/core/pricing/all-prices";
 import { deliverInLanguage, reorderFrom } from "./orders";
 import { showBalancePayment } from "./payments";
 import { adminDecision, adminOrderButton } from "./seller";
-import { applyLocale, optOutReply } from "./start";
+import { applyLocale, courseStartScreen, optOutReply } from "./start";
 import { payButton } from "./callback-pay";
 import { addToCartButton, cartOptionButton, checkoutStepButton } from "./callback-checkout";
 import { reviewButton, subscriptionButton } from "./callback-orders";
@@ -58,6 +58,16 @@ export async function handleCallback(
     return adminDecision(ctx, api, from.id, chatId, data);
   if (data.startsWith("ost:") || data.startsWith("owr:") || data.startsWith("otr:"))
     return adminOrderButton(ctx, api, from.id, chatId, data);
+  // Урок из бота: «Посмотреть урок» и «Убрать это видео» под ответом продавцу.
+  if ((data.startsWith("lbv:") || data.startsWith("lbd:")) && ctx.tenant.modules.courses) {
+    const { lessonSellerButton } = await import("../lesson-by-bot");
+    return lessonSellerButton(ctx, api, from.id, chatId, data);
+  }
+  // Урок из бота: продавец выбрал курс для присланной ссылки.
+  if (data.startsWith("lbb:") && ctx.tenant.modules.courses) {
+    const { lessonCourseButton } = await import("../lesson-by-bot");
+    return lessonCourseButton(ctx, api, from.id, chatId, data, cq.message?.reply_to_message);
+  }
   // Проверка домашнего задания из уведомления преподавателю (онлайн-школа).
   if ((data.startsWith("hwa:") || data.startsWith("hwv:")) && ctx.tenant.modules.courses) {
     const { homeworkDecision } = await import("../homework-review");
@@ -104,7 +114,10 @@ export async function handleCallback(
 
   if (data.startsWith("locale:")) {
     const l = data.slice(7);
-    if (isLocale(l)) await applyLocale(b, l);
+    if (isLocale(l)) {
+      await applyLocale(b, l);
+      await courseStartScreen(b);
+    }
     return;
   }
   // Язык материалов до оформления — только на этом шаге: старые кнопки
@@ -251,6 +264,10 @@ export async function handleCallback(
   if ((data.startsWith("lsl:") || data.startsWith("lsn:")) && ctx.tenant.modules.courses) {
     const { showLessonList, showLesson } = await import("../courses");
     return data.startsWith("lsl:") ? showLessonList(b, data) : showLesson(b, data);
+  }
+  if (data.startsWith("lsd:") && ctx.tenant.modules.courses) {
+    const { markLessonDone } = await import("../courses");
+    return markLessonDone(b, data);
   }
   if (/^q[zad]:/.test(data) && ctx.tenant.modules.courses) {
     const { startQuiz, answerQuiz } = await import("../course-quiz");

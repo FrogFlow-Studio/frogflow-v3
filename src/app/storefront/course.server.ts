@@ -72,6 +72,8 @@ const TUTOR_SHOWN = 5;
 
 export type CourseView = {
   name: string;
+  /** Бот магазина: у урока с видео из Telegram — ссылка «Смотреть в боте». */
+  bot: string | null;
   lessons: Array<{
     id: string;
     no: number;
@@ -86,6 +88,10 @@ export type CourseView = {
     link: string | null;
     /** Адрес встроенного плеера для ссылки на видео (core/courses/video); иначе null. */
     embed: string | null;
+    /** Ещё видео открытого урока после первого (`Lesson.videos`); у закрытого — пусто. */
+    more: Array<{ link: string; embed: string | null }>;
+    /** Сколько видео урока есть только в боте (присланы продавцом в Telegram). */
+    inBot: number;
     files: Array<{ name: string; url: string }>;
     /** Тест к уроку (без верных ответов); null — у урока его нет. */
     quiz: LessonQuizView | null;
@@ -168,6 +174,8 @@ export async function courseView(
       text: a.open ? a.lesson.text : "",
       link: a.open ? a.lesson.link : null,
       embed: a.open && a.lesson.link ? videoEmbed(a.lesson.link) : null,
+      more: a.open ? (a.lesson.videos ?? []).map((v) => ({ link: v, embed: videoEmbed(v) })) : [],
+      inBot: a.open ? (a.lesson.tgVideos?.length ?? 0) : 0,
       files,
       quiz,
       homework:
@@ -192,6 +200,7 @@ export async function courseView(
   const cert = await issueCertificate(ctx, { ...p, run }, now).catch(() => null);
   return {
     name: p.name,
+    bot: ctx.tenant.settings?.telegram?.username?.replace(/^@/, "") || null,
     lessons,
     doneCount: lessons.filter((l) => l.done).length,
     channel: Boolean(p.course.channel) && tl.tariff.channel && !tl.expired,

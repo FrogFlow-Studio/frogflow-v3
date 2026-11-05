@@ -35,6 +35,16 @@ export const customersFn = createServerFn({ method: "GET" })
     return (await import("@/core/orders/admin")).listCustomers(ctx, data.q);
   });
 
+/**
+ * Чёрный список целиком — и те, кого нет среди покупателей (блок из v1).
+ * Модуль выключен — пусто: тогда блок и не действует (customers.isBlocked).
+ */
+export const blockedListFn = createServerFn({ method: "GET" }).handler(async () => {
+  const ctx = await admin();
+  if (!ctx.tenant.modules.blocked) return [];
+  return (await import("@/core/orders/admin")).listBlocked(ctx);
+});
+
 /** Карточка покупателя: профиль, заказы, обращения, заявки, чат, теги и заметка продавца. */
 export const customerCardFn = createServerFn({ method: "GET" })
   .validator((d: unknown) => z.object({ key: z.string().min(1).max(200) }).parse(d))

@@ -16,6 +16,8 @@ export function InboxFilters({
   search,
   onSearch,
   onChange,
+  open = false,
+  onToggle,
 }: {
   t: AdminT;
   filter: InboxFilter;
@@ -23,7 +25,12 @@ export function InboxFilters({
   search: string;
   onSearch: (q: string) => void;
   onChange: (f: InboxFilter) => void;
+  /** Телефон: развёрнуты ли вкладки и фильтры (на компьютере видны всегда). */
+  open?: boolean;
+  onToggle?: () => void;
 }) {
+  const narrowed =
+    filter.status !== "open" || filter.who !== "all" || filter.channel !== "all" || filter.unread;
   const tab = (active: boolean) =>
     `rounded-md px-3 py-1 text-sm ${active ? "bg-surface-2 font-medium" : "text-muted hover:bg-surface-2/60"}`;
   const statuses = [
@@ -38,59 +45,75 @@ export function InboxFilters({
   ] as const;
   return (
     <div className="mb-3 flex flex-wrap items-center gap-2">
-      <div className="flex gap-1">
-        {statuses.map(([v, label]) => (
-          <button
-            key={v}
-            type="button"
-            className={tab(filter.status === v)}
-            onClick={() => onChange({ ...filter, status: v })}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-      <button
-        type="button"
-        aria-pressed={Boolean(filter.unread)}
-        className={tab(Boolean(filter.unread))}
-        onClick={() => onChange({ ...filter, unread: !filter.unread })}
-      >
-        {`${t("chat.fUnread")} · ${counts.unread}`}
-      </button>
-      <span className="self-center">
-        <HelpTip article="chat" anchor="filters" />
-      </span>
       <input
         type="search"
-        className="input h-8 w-48 py-0 text-sm"
+        className="input h-8 min-w-0 flex-1 py-0 text-sm md:w-48 md:flex-none"
         value={search}
         placeholder={t("chat.search")}
         aria-label={t("chat.search")}
         onChange={(e) => onSearch(e.target.value)}
       />
-      <select
-        className="input h-8 w-auto py-0 text-sm"
-        value={filter.who}
-        onChange={(e) => onChange({ ...filter, who: e.target.value as InboxFilter["who"] })}
+      {/* Телефон: сразу список диалогов, вкладки и фильтры — за кнопкой. */}
+      <button
+        type="button"
+        className="btn-secondary h-8 py-0 text-sm md:hidden"
+        aria-expanded={open}
+        onClick={onToggle}
       >
-        {whos.map(([v, label]) => (
-          <option key={v} value={v}>
-            {label}
-          </option>
-        ))}
-      </select>
-      <select
-        className="input h-8 w-auto py-0 text-sm"
-        value={filter.channel}
-        onChange={(e) => onChange({ ...filter, channel: e.target.value as InboxFilter["channel"] })}
+        {t("common.filters")}
+        {narrowed && !open ? " •" : ""}
+      </button>
+      <div
+        className={`${open ? "flex w-full flex-wrap items-center gap-2" : "hidden"} md:contents`}
       >
-        {CHANNELS.map(([v, label]) => (
-          <option key={v} value={v}>
-            {v === "all" ? t(label as "chat.chAll") : label}
-          </option>
-        ))}
-      </select>
+        <div className="flex gap-1">
+          {statuses.map(([v, label]) => (
+            <button
+              key={v}
+              type="button"
+              className={tab(filter.status === v)}
+              onClick={() => onChange({ ...filter, status: v })}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <button
+          type="button"
+          aria-pressed={Boolean(filter.unread)}
+          className={tab(Boolean(filter.unread))}
+          onClick={() => onChange({ ...filter, unread: !filter.unread })}
+        >
+          {`${t("chat.fUnread")} · ${counts.unread}`}
+        </button>
+        <span className="self-center">
+          <HelpTip article="chat" anchor="filters" />
+        </span>
+        <select
+          className="input h-8 w-auto py-0 text-sm"
+          value={filter.who}
+          onChange={(e) => onChange({ ...filter, who: e.target.value as InboxFilter["who"] })}
+        >
+          {whos.map(([v, label]) => (
+            <option key={v} value={v}>
+              {label}
+            </option>
+          ))}
+        </select>
+        <select
+          className="input h-8 w-auto py-0 text-sm"
+          value={filter.channel}
+          onChange={(e) =>
+            onChange({ ...filter, channel: e.target.value as InboxFilter["channel"] })
+          }
+        >
+          {CHANNELS.map(([v, label]) => (
+            <option key={v} value={v}>
+              {v === "all" ? t(label as "chat.chAll") : label}
+            </option>
+          ))}
+        </select>
+      </div>
     </div>
   );
 }

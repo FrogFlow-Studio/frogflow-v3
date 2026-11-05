@@ -73,7 +73,21 @@ export function telegramMaterialSender(
       const mat = materials[i]!;
       const caption = i === 0 ? `📁 <b>${escapeHtml(item.name_snapshot)}</b>` : "";
       let ok = false;
-      if (mat.url) {
+      if (mat.url && mat.lessonsInBot) {
+        // Курс проходят в боте: одно понятное сообщение и кнопка первого урока (showLesson).
+        const r = await api.call("sendMessage", {
+          chat_id: chatId,
+          text: `${caption ? caption.replace(/^📁 /u, "🎓 ") + "\n\n" : ""}${m.courseOpened}`,
+          parse_mode: "HTML",
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: m.courseStartBtn, callback_data: `lsn:${mat.lessonsInBot}:1` }],
+              [{ text: m.courseSiteBtn, url: mat.url }],
+            ],
+          },
+        });
+        ok = r.ok;
+      } else if (mat.url) {
         const r = await api.call("sendMessage", {
           chat_id: chatId,
           text: `${caption ? caption + "\n\n" : ""}<a href="${mat.url}">${m.fileLink}</a>`,

@@ -2,12 +2,14 @@ import { createFileRoute } from "@tanstack/react-router";
 import { storeGiveawayFn } from "@/app/storefront/giveaway.functions";
 import { useStorefrontLocale } from "@/app/storefront/locale";
 import { intlLocale } from "@/app/i18n/admin";
+import { StorePageMissing } from "@/app/storefront/missing";
 
 /** Итоги розыгрыша: условия, число участников, победители со скрытыми именами, зерно и хеш для проверки. */
 export const Route = createFileRoute("/s/$slug/giveaway/$id")({
   loader: ({ params }) => storeGiveawayFn({ data: { slug: params.slug, id: params.id } }),
   head: () => ({ meta: [{ name: "robots", content: "noindex" }] }),
   component: GiveawayPage,
+  notFoundComponent: StorePageMissing,
 });
 
 function GiveawayPage() {

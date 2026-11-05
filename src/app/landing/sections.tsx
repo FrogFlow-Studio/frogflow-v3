@@ -451,7 +451,16 @@ export function Pricing({
           price: formatTenge(ADDON_MONTHLY_PRICE.ai_pack),
         })}
       </p>
-      <TariffCalculator t={t} signup={signup} niche={niche} page={page} />
+      {/* Один вид цен на первом экране тарифов: калькулятор — по нажатию. */}
+      <details className="group mt-8">
+        <summary className="inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-md border border-line px-4 py-2 text-sm font-semibold hover:border-accent">
+          {t("calc.open")}
+          <span aria-hidden className="transition-transform group-open:rotate-180">
+            ▾
+          </span>
+        </summary>
+        <TariffCalculator t={t} signup={signup} niche={niche} page={page} />
+      </details>
     </section>
   );
 }

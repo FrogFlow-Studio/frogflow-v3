@@ -4,7 +4,7 @@ import { profitFn } from "@/app/admin/cost.functions";
 import type { AdminT } from "@/app/i18n/admin";
 import { Card, ErrorBox } from "@/app/ui";
 import { DataTable } from "@/app/ui/charts";
-import { formatMoney } from "@/core/money/money";
+import { formatMoneyUi } from "@/core/money/money";
 import type { ProfitReport } from "@/core/profit/report";
 
 const PREVIEW_ROWS = 10;
@@ -29,7 +29,7 @@ export function ProfitCard({ days, loc, t }: { days: 7 | 30 | 90; loc: string; t
         <p className="text-sm text-muted">{t("profit.loading")}</p>
       </Card>
     );
-  const money = (v: number) => formatMoney(v, rep.currency);
+  const money = (v: number) => formatMoneyUi(v, rep.currency);
   const rows = all ? rep.products : rep.products.slice(0, PREVIEW_ROWS);
   return (
     <Card title={t("profit.title")}>
@@ -64,7 +64,7 @@ export function ProfitCard({ days, loc, t }: { days: 7 | 30 | 90; loc: string; t
               {t("profit.other", {
                 cur: rep.currency,
                 list: rep.otherCurrencies
-                  .map((c) => `${formatMoney(c.revenue, c.currency)} (${c.orders})`)
+                  .map((c) => `${formatMoneyUi(c.revenue, c.currency)} (${c.orders})`)
                   .join(" · "),
               })}
             </p>

@@ -5,7 +5,7 @@ import { reportT, type ReportKey } from "@/app/market/report-i18n";
 import { reportFormFn, submitReportFn } from "@/app/market/report.functions";
 import { solveChallenge } from "@/app/signup/challenge-solve";
 import { ErrorBox, Field, useAction } from "@/app/ui";
-import { SUPPORTED_LOCALES, type Locale } from "@/core/i18n/locale";
+import { SUPPORTED_LOCALES, type Locale, langLabel } from "@/core/i18n/locale";
 import { REPORT_REASONS } from "@/core/marketplace/report";
 
 /**
@@ -89,7 +89,7 @@ function ReportPage() {
               search={{ ...search, lang: l }}
               className={l === locale ? "font-medium" : "text-muted"}
             >
-              {l.toUpperCase()}
+              {langLabel(l)}
             </Link>
           ))}
         </nav>

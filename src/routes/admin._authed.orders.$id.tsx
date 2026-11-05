@@ -6,7 +6,7 @@ import { orderActionFn, orderFn, orderNoteFn, orderTrackingFn } from "@/app/admi
 import { adminT, intlLocale, type AdminKey } from "@/app/i18n/admin";
 import { Badge, Card, ErrorBox, Field, useAction } from "@/app/ui";
 import { describeOrderEvent } from "@/core/orders/events";
-import { formatMoney } from "@/core/money/money";
+import { formatMoneyUi } from "@/core/money/money";
 import { displayNo, itemLanguages } from "@/core/orders/pure";
 import { orderBlocks } from "@/core/orders/blocks";
 import { orderMoney } from "@/core/orders/money";
@@ -15,7 +15,7 @@ import { closedHandover, defaultHandoverStep } from "@/core/orders/handover";
 import { slotOf } from "@/core/fulfillment/slots";
 import { ApprovalCard, CourierCard, FulfillmentEditor } from "@/app/admin/order-cards";
 import { MoneyBlock } from "@/app/admin/order-money";
-import { OrderStatus } from "./admin._authed.orders";
+import { OrderStatus } from "@/app/admin/order-status";
 
 export const Route = createFileRoute("/admin/_authed/orders/$id")({
   loader: ({ params }) => orderFn({ data: { id: Number(params.id) } }),
@@ -302,21 +302,21 @@ function OrderPage() {
                       </div>
                     </td>
                     <td className="text-right whitespace-nowrap tabular-nums">
-                      {i.quantity} × {formatMoney(i.price_snapshot, o.currency)}
+                      {i.quantity} × {formatMoneyUi(i.price_snapshot, o.currency)}
                     </td>
                   </tr>
                 ))}
                 <tr>
                   <td className="font-medium">{t("common.total")}</td>
                   <td className="text-right font-medium tabular-nums">
-                    {formatMoney(o.total, o.currency)}
+                    {formatMoneyUi(o.total, o.currency)}
                   </td>
                 </tr>
               </tbody>
             </table>
             {Number(o.discount_amount) > 0 && (
               <p className="mt-1 text-xs text-muted">
-                {t("order.discount", { sum: formatMoney(o.discount_amount, o.currency) })}
+                {t("order.discount", { sum: formatMoneyUi(o.discount_amount, o.currency) })}
               </p>
             )}
           </Card>

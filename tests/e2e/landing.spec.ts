@@ -66,7 +66,10 @@ test("калькулятор тарифа: каналы и годовая опл
 }) => {
   const errors = await watch(page);
   await page.goto("/for/cakes");
+  // Калькулятор свёрнут под карточками тарифов (один вид цен), раскрывается кнопкой.
   const calc = page.getByTestId("tariff-calc");
+  await expect(calc).toBeHidden();
+  await page.locator("summary", { hasText: "Рассчитать тариф для своего магазина" }).click();
   await expect(calc.getByText("Рекомендуем Basic")).toBeVisible();
   await expect(calc.getByText(/^9\s900\s₸ в месяц$/)).toBeVisible();
   // Instagram у кондитерской — с Pro, на Basic это доплата 5 000.
@@ -191,4 +194,14 @@ test("иконки: /favicon.ico и иконки манифеста отдают
     `/s/${F.SHOP_SLUG}/icon/192`,
   );
   await expect(page.locator('head link[rel="manifest"]')).toHaveCount(1);
+});
+
+test("главная не подгружает словарь панели и статьи справки", async ({ request }) => {
+  // Аудит 02.11: 79 файлов, ≈1,1 МБ; из них словарь панели 421 КБ и справка 373 КБ.
+  const html = await (await request.get("/")).text();
+  const preloads = [...html.matchAll(/modulepreload" href="\/assets\/([^"]+)"/g)].map(
+    (m) => m[1] ?? "",
+  );
+  expect(preloads.length).toBeGreaterThan(0);
+  expect(preloads.filter((f) => /^(admin|articles|storefront)-[\w-]{8}\.js$/.test(f))).toEqual([]);
 });

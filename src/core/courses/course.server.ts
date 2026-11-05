@@ -11,6 +11,7 @@ import {
   hasCourseContent,
   LESSON_FILES_MAX,
   LESSONS_MAX,
+  lessonLinks,
   parseCourse,
   type Course,
   type CourseProblem,
@@ -116,16 +117,22 @@ export async function saveCourse(
   if (problem) throw problemError(problem);
   const clean: Course = {
     schedule: course.schedule,
-    lessons: course.lessons.map((l) => ({
-      id: l.id,
-      title: l.title.trim(),
-      text: l.text.trim(),
-      files: l.files.map((f) => ({ path: f.path, name: f.name?.trim() || null })),
-      link: l.link?.trim() || null,
-      ...(l.homework?.trim() ? { homework: l.homework.trim() } : {}),
-      ...(l.preview ? { preview: true } : {}),
-      ...(l.quiz ? { quiz: cleanQuiz(l.quiz) } : {}),
-    })),
+    lessons: course.lessons.map((l) => {
+      // Первое видео — в `link` (его читают v1 и старые места), остальные — в `videos`.
+      const [link = null, ...videos] = lessonLinks(l).map((v) => v.trim());
+      return {
+        id: l.id,
+        title: l.title.trim(),
+        text: l.text.trim(),
+        files: l.files.map((f) => ({ path: f.path, name: f.name?.trim() || null })),
+        link,
+        ...(videos.length ? { videos } : {}),
+        ...(l.tgVideos?.length ? { tgVideos: l.tgVideos } : {}),
+        ...(l.homework?.trim() ? { homework: l.homework.trim() } : {}),
+        ...(l.preview ? { preview: true } : {}),
+        ...(l.quiz ? { quiz: cleanQuiz(l.quiz) } : {}),
+      };
+    }),
     ...(course.channel?.trim() ? { channel: course.channel.trim() } : {}),
     ...(course.cohorts?.length
       ? {

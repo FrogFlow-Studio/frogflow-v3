@@ -100,10 +100,12 @@ describe("установка витрины на телефон", () => {
       ["/s/didaktika/icon/512", "512x512"],
     ]);
     expect(shopLinks("didaktika")).toEqual([
-      { rel: "icon", type: "image/png", href: "/s/didaktika/icon/192" },
-      { rel: "manifest", href: "/s/didaktika/manifest.webmanifest" },
+      { rel: "icon", href: "/s/didaktika/icon/192" },
       { rel: "apple-touch-icon", href: "/s/didaktika/icon/180" },
+      { rel: "manifest", href: "/s/didaktika/manifest.webmanifest" },
     ]);
+    // Школа без витрины: иконка вкладки своя, но ставить на телефон нечего.
+    expect(shopLinks("didaktika", false).map((l) => l.rel)).toEqual(["icon", "apple-touch-icon"]);
   });
 
   it("короткое имя: целиком, первое слово или обрезка", () => {

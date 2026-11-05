@@ -3,7 +3,6 @@ import { z } from "zod";
 import { adminShopFn } from "@/app/admin/shop.functions";
 import { deliveryLabelsFn, packingBatchFn } from "@/app/admin/batch.functions";
 import { PackingSheet } from "@/app/admin/packing-view";
-import { adminErrorText } from "@/app/i18n/user-error";
 import { adminT, intlLocale } from "@/app/i18n/admin";
 
 /**
@@ -34,6 +33,9 @@ export const Route = createFileRoute("/admin/print-batch")({
         ? { shop, slips: await packingBatchFn({ data }), labels: null, error: null }
         : { shop, slips: null, labels: await deliveryLabelsFn({ data }), error: null };
     } catch (e) {
+      // Словарь админки — только при ошибке: статический импорт в загрузчике тянет его
+      // в общий код всех страниц сайта.
+      const { adminErrorText } = await import("@/app/i18n/user-error");
       return { shop, slips: null, labels: null, error: adminErrorText(shop.locale, e) };
     }
   },

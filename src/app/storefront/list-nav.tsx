@@ -241,7 +241,15 @@ export function ListNavBar({ nav }: { nav: ListNav }) {
  * Область свайпа к соседнему товару — всё, кроме фото: там свайп листает фото товара.
  * Элементы с собственной горизонтальной прокруткой помечаются `data-no-swipe`.
  */
-export function SwipeArea({ nav, children }: { nav: ListNav; children: ReactNode }) {
+export function SwipeArea({
+  nav,
+  children,
+  className,
+}: {
+  nav: ListNav;
+  children: ReactNode;
+  className?: string;
+}) {
   const start = useRef<{ x: number; y: number } | null>(null);
   const onStart = (e: TouchEvent) => {
     const touch = e.touches[0];
@@ -260,7 +268,7 @@ export function SwipeArea({ nav, children }: { nav: ListNav; children: ReactNode
     if (dir) nav.go(dir);
   };
   return (
-    <div onTouchStart={onStart} onTouchEnd={onEnd} data-testid="list-swipe">
+    <div onTouchStart={onStart} onTouchEnd={onEnd} data-testid="list-swipe" className={className}>
       {children}
     </div>
   );

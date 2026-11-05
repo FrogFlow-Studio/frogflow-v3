@@ -138,15 +138,13 @@ export function pctDelta(current: number, previous: number): number | null {
   return Math.round(((current - previous) / previous) * 1000) / 10;
 }
 
-/** 1 284 → «1,3 тыс.», 4 200 000 → «4,2 млн» — для плиток, не для таблиц. */
-export function compactNumber(n: number): string {
-  const abs = Math.abs(n);
-  if (abs >= 1_000_000) return `${trim(n / 1_000_000)} млн`;
-  if (abs >= 10_000) return `${trim(n / 1_000)} тыс.`;
-  return Math.round(n).toLocaleString("ru");
-}
-function trim(x: number): string {
-  return (Math.round(x * 10) / 10).toLocaleString("ru", { maximumFractionDigits: 1 });
+/**
+ * 1 284 → «1 284», 12 900 → «12,9 тыс.», 4 200 000 → «4,2 млн» — для плиток и
+ * осей, не для таблиц. `intl` — язык панели (ru, kk, en-GB, uz).
+ */
+export function compactNumber(n: number, intl = "ru"): string {
+  if (Math.abs(n) < 10_000) return Math.round(n).toLocaleString(intl);
+  return new Intl.NumberFormat(intl, { notation: "compact", maximumFractionDigits: 1 }).format(n);
 }
 
 /** Красивые деления оси: 0 / 1 000 / 2 000, не больше `max` штук. */

@@ -14,7 +14,8 @@ import { Badge, Card, ErrorBox, PageTitle, useAction } from "@/app/ui";
 
 export const Route = createFileRoute("/admin/_authed/warehouse/stocktake")({
   beforeLoad: ({ context }) => {
-    if (!context.shop.modules.warehouse) throw redirect({ to: "/admin" });
+    if (!context.shop.modules.warehouse)
+      throw redirect({ to: "/admin/locked/$module", params: { module: "warehouse" } });
   },
   loader: () => stocktakeFn({ data: { page: 0, q: "" } }),
   component: StocktakePage,

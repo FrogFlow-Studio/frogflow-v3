@@ -1,6 +1,6 @@
 import { HelpTip } from "@/app/admin/help-panel";
 import { roleAllows } from "@/core/auth/roles";
-import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useRouter, redirect } from "@tanstack/react-router";
 import { useState } from "react";
 import {
   homeworkQueueFn,
@@ -25,6 +25,10 @@ import { adminT, intlLocale, type AdminT } from "@/app/i18n/admin";
  * с отзывом. Работы на проверке — первыми, по давности сдачи.
  */
 export const Route = createFileRoute("/admin/_authed/homework")({
+  beforeLoad: ({ context }) => {
+    if (!context.shop.modules.courses)
+      throw redirect({ to: "/admin/locked/$module", params: { module: "courses" } });
+  },
   loader: () => homeworkQueueFn(),
   component: HomeworkPage,
 });

@@ -18,8 +18,9 @@ const RAW = import.meta.glob("../../../docs/help/*.md", {
   eager: true,
 }) as Record<string, string>;
 
-export const HELP_GROUPS = ["start", "guide", "trouble"] as const;
-export type HelpGroup = (typeof HELP_GROUPS)[number];
+import { HELP_GROUPS, type HelpGroup } from "./groups";
+
+export { HELP_GROUPS, type HelpGroup };
 
 export type HelpArticle = {
   slug: string;

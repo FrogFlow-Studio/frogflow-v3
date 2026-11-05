@@ -26,7 +26,8 @@ export const Route = createFileRoute("/admin/_authed/reviews")({
     page: z.coerce.number().int().min(1).max(10_000).optional(),
   }),
   beforeLoad: ({ context }) => {
-    if (!context.shop.modules.review_request) throw redirect({ to: "/admin" });
+    if (!context.shop.modules.review_request)
+      throw redirect({ to: "/admin/locked/$module", params: { module: "review_request" } });
   },
   loaderDeps: ({ search }) => search,
   loader: ({ deps }) =>
@@ -80,6 +81,7 @@ function ReviewsPage() {
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <select
           className="input w-40"
+          aria-label={t("reviews.filterAll")}
           value={search.rating ?? ""}
           onChange={(e) =>
             void navigate({

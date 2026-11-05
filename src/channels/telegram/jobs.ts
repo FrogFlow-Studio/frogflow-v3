@@ -546,6 +546,24 @@ export async function runCourseLessons(tenant: Tenant) {
         });
         return r.ok;
       }
+      if (x.kind === "stalled") {
+        const r = await tg.call("sendMessage", {
+          chat_id: x.telegramId,
+          text: escapeHtml(m.courseStalled(x.course, x.lessonNo, x.title)),
+          parse_mode: "HTML",
+          reply_markup: {
+            inline_keyboard: [
+              [
+                {
+                  text: m.courseContinueBtn(x.lessonNo),
+                  callback_data: `lsn:${x.itemId}:${x.lessonNo}`,
+                },
+              ],
+            ],
+          },
+        });
+        return r.ok;
+      }
       const text =
         x.kind === "pre"
           ? m.coursePreStart(x.course, x.days, day.format(new Date(x.start)))

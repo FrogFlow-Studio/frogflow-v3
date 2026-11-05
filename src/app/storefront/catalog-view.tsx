@@ -1,3 +1,4 @@
+import { NoPhoto } from "@/app/storefront/no-photo";
 import { Link, useLoaderData, useNavigate } from "@tanstack/react-router";
 import { usePhotoFrame } from "@/app/storefront/photo-frame";
 import { imageSrcSet } from "@/core/catalog/image-url";
@@ -20,7 +21,7 @@ import { SmartSearchResults } from "@/app/storefront/smart-search";
 import { useCatalogReturn } from "@/app/storefront/list-nav";
 import type { ListQuery } from "@/core/storefront/list-context";
 import { formatRatingSummary } from "@/core/reviews/pure";
-import { formatMoney } from "@/core/money/money";
+import { formatMoneyUi } from "@/core/money/money";
 import { localeFlags } from "@/core/i18n/locale";
 import { categoryChips } from "@/core/storefront/categories";
 import { CATALOG_SORTS, parseCatalogSort } from "@/core/storefront/sort";
@@ -669,11 +670,7 @@ export function CatalogView({
                     decoding="async"
                   />
                 ) : (
-                  <div
-                    className={`flex ${frame.box} items-center justify-center bg-surface-2 text-4xl`}
-                  >
-                    {p.kind === "digital" ? "📄" : "📦"}
-                  </div>
+                  <NoPhoto name={p.name} className={frame.box} />
                 )}
                 <span className="absolute top-2 left-2 rounded-md bg-surface/90 px-2 py-0.5 text-[11px] font-medium backdrop-blur">
                   {(() => {
@@ -712,8 +709,8 @@ export function CatalogView({
                     {p.bundle.available
                       ? p.bundle.saving !== null
                         ? t("bundle.saving", {
-                            saving: formatMoney(p.bundle.saving, p.currency),
-                            separate: formatMoney(p.bundle.separateTotal ?? 0, p.currency),
+                            saving: formatMoneyUi(p.bundle.saving, p.currency),
+                            separate: formatMoneyUi(p.bundle.separateTotal ?? 0, p.currency),
                           })
                         : t("bundle.partsCount", { n: p.bundle.parts.length })
                       : t("bundle.unavailable")}
@@ -724,8 +721,8 @@ export function CatalogView({
                     {formatRatingSummary(p.rating.avg, p.rating.count)}
                   </div>
                 )}
-                <div className="mt-auto flex items-center justify-between gap-2 pt-3">
-                  <span className="text-sm font-semibold">
+                <div className="mt-auto flex flex-wrap items-center justify-between gap-2 pt-3">
+                  <span className="text-sm font-semibold whitespace-nowrap">
                     <OfferPrice
                       price={p.price}
                       oldPrice={p.offer?.oldPrice ?? null}
@@ -750,7 +747,7 @@ export function CatalogView({
                     </Link>
                   ) : (
                     <button
-                      className="btn-primary px-2.5 py-1 text-xs"
+                      className="btn-primary px-2.5 py-1 text-xs whitespace-nowrap"
                       onClick={() => {
                         const r = cart.add({
                           productId: p.id,

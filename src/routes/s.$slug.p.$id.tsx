@@ -1,3 +1,4 @@
+import { NoPhoto } from "@/app/storefront/no-photo";
 import { publicHeaders } from "@/app/cache-policy";
 import { createFileRoute, Link, useLoaderData } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
@@ -7,12 +8,14 @@ import { useCart } from "@/app/storefront/cart";
 import { FavoriteButton } from "@/app/storefront/favorites";
 import { useStorefrontLocale } from "@/app/storefront/locale";
 import { reviewsWord } from "@/app/i18n/storefront";
-import { formatMoney } from "@/core/money/money";
+import { formatMoneyUi } from "@/core/money/money";
 import { intlLocale } from "@/app/i18n/admin";
 import { Breadcrumbs } from "@/app/storefront/breadcrumbs";
 import { OfferNote, OfferPrice } from "@/app/storefront/offer";
 import { pageBadge } from "@/core/catalog/lead-time";
 import { ProductReviews } from "@/app/storefront/reviews";
+import { LandingBlocks, LandingHero, landingStyle } from "@/app/storefront/course-landing";
+import { isProductUuid, programModules } from "@/core/courses/landing";
 import { RecentlyViewed, useRememberViewed } from "@/app/storefront/recent";
 import { ListNavBar, SwipeArea, useListNav } from "@/app/storefront/list-nav";
 import { productMeta } from "@/core/storefront/share";
@@ -28,6 +31,7 @@ import {
   breadcrumbJsonLd,
   storefrontCrumbs,
 } from "@/core/storefront/seo";
+import { StorePageMissing } from "@/app/storefront/missing";
 
 export const Route = createFileRoute("/s/$slug/p/$id")({
   headers: publicHeaders,
@@ -35,12 +39,16 @@ export const Route = createFileRoute("/s/$slug/p/$id")({
   validateSearch: (raw: Record<string, unknown>): { q?: string; cat?: string } =>
     parseSearchReturn(raw) ?? {},
   loader: async ({ params }) => {
+    // Короткая ссылка курса (/p/kurs): номер товара узнаём со страницей, разметка — следом.
+    const byId = isProductUuid(params.id);
+    const seoOf = (id: string) =>
+      // Разметка для поиска не должна ронять страницу товара.
+      storeProductSeoFn({ data: { slug: params.slug, id } }).catch(() => null);
     const [page, seo] = await Promise.all([
       storeProductFn({ data: { slug: params.slug, id: params.id } }),
-      // Разметка для поиска не должна ронять страницу товара.
-      storeProductSeoFn({ data: { slug: params.slug, id: params.id } }).catch(() => null),
+      byId ? seoOf(params.id) : null,
     ]);
-    return { ...page, seo };
+    return { ...page, seo: byId ? seo : await seoOf(page.product.id) };
   },
   head: ({ loaderData, matches }) => {
     const shop = matches.find((m) => (m.routeId as string) === "/s/$slug")?.loaderData as
@@ -67,7 +75,10 @@ export const Route = createFileRoute("/s/$slug/p/$id")({
             cover: shop.share.cover,
           }
         : null,
+      loaderData.landing,
     );
+    // Страница курса с короткой ссылкой — её и считаем адресом страницы.
+    const pathId = loaderData.landing?.short ?? loaderData.product.id;
     // Разметка товара — только если он виден в каталоге витрины (как в карте сайта).
     const ld =
       seoShop && loaderData.seo?.listed
@@ -93,12 +104,11 @@ export const Route = createFileRoute("/s/$slug/p/$id")({
     return {
       meta: share,
       scripts: ld,
-      links: seoShop
-        ? [canonicalLink(productCanonical(seoShop.origin, seoShop.slug, loaderData.product.id))]
-        : [],
+      links: seoShop ? [canonicalLink(productCanonical(seoShop.origin, seoShop.slug, pathId))] : [],
     };
   },
   component: ProductPageKeyed,
+  notFoundComponent: StorePageMissing,
 });
 
 /** Другой товар — новая страница: выбранные фото и вариант не переносятся при листании. */
@@ -108,7 +118,16 @@ function ProductPageKeyed() {
 }
 
 function ProductPage() {
-  const { product: p, related, preview, course, waitlistUrl, onMarket } = Route.useLoaderData();
+  const {
+    product: p,
+    related,
+    preview,
+    course,
+    landing,
+    cart: siteCart,
+    waitlistUrl,
+    onMarket,
+  } = Route.useLoaderData();
   const { slug } = Route.useParams();
   const shop = useLoaderData({ from: "/s/$slug" });
   useRememberViewed(slug, p.id);
@@ -128,7 +147,10 @@ function ProductPage() {
   const [img, setImg] = useState(0);
   const frame = usePhotoFrame();
   // Просмотр фото на весь экран (Т6): фото товара или страницы примера.
-  const [viewer, setViewer] = useState<{ set: "photos" | "preview"; i: number } | null>(null);
+  const [viewer, setViewer] = useState<{
+    set: "photos" | "preview" | "works";
+    i: number;
+  } | null>(null);
   const fromSearch = parseSearchReturn(Route.useSearch());
   const [variant, setVariant] = useState<string | null>(p.variants[0]?.id ?? null);
   const [msg, setMsg] = useState<string | null>(null);
@@ -166,8 +188,144 @@ function ProductPage() {
     setMsg(r === "ok" ? t("product.addedToCart") : t("catalog.mixed"));
     setTimeout(() => setMsg(null), 2000);
   };
-  return (
+  const program = course ? (
     <>
+      {/* На странице курса заголовок «Программа курса» — у блока. */}
+      {!landing && (
+        <h2 className="mb-1 text-sm font-semibold">
+          {t("product.course.program", { n: course.lessons.length })}
+        </h2>
+      )}
+      <p className={landing ? "mb-5 text-base text-muted" : "mb-3 text-xs text-muted"}>
+        {course.everyDays
+          ? t("product.course.drip", { n: course.everyDays })
+          : course.afterTask
+            ? t(
+                course.afterTask === "submitted"
+                  ? "product.course.afterSubmit"
+                  : "product.course.afterAccept",
+              )
+            : t("product.course.all")}
+      </p>
+      {landing ? (
+        <>
+          {programModules(course.lessons).map((g, gi) => (
+            <div key={gi} className={`card p-6${gi ? " mt-4" : ""}`}>
+              {g.title && <h3 className="mb-4 text-xl font-semibold">{g.title}</h3>}
+              <ol className="space-y-3 text-lg">
+                {g.lessons.map((l) => (
+                  <li key={l.no} className="flex gap-3">
+                    <span className="w-6 shrink-0 text-right text-muted tabular-nums">{l.no}.</span>
+                    <div className="min-w-0 flex-1">
+                      <span>{l.short}</span>
+                      {l.open && (
+                        <details className="mt-2 rounded-lg border border-line p-3">
+                          <summary className="cursor-pointer text-sm">
+                            🔓 {t("product.course.openLesson")}
+                          </summary>
+                          {l.open.text && (
+                            <p className="mt-2 whitespace-pre-line text-sm">{l.open.text}</p>
+                          )}
+                          {l.open.tgVideos.length > 0 && (
+                            <p className="mt-2 text-sm text-muted">
+                              🎬 {t("product.course.videoInBot")}
+                            </p>
+                          )}
+                          {l.open.links.map((link, i, all) => (
+                            <a
+                              key={`v${i}`}
+                              className="mt-2 block text-sm underline"
+                              href={link}
+                              target="_blank"
+                              rel="noreferrer noopener"
+                            >
+                              ▶️ {t("product.course.openLink")}
+                              {all.length > 1 ? ` ${i + 1}` : ""}
+                            </a>
+                          ))}
+                          {l.open.files.map((f) => (
+                            <a
+                              key={f.url}
+                              className="mt-1 block text-sm underline"
+                              href={f.url}
+                              target="_blank"
+                              rel="noreferrer noopener"
+                            >
+                              📎 {f.name}
+                            </a>
+                          ))}
+                        </details>
+                      )}
+                    </div>
+                    {l.homework && (
+                      <span className="shrink-0 text-xs text-muted">
+                        📝 {t("product.course.hw")}
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ol>
+            </div>
+          ))}
+        </>
+      ) : (
+        <ol className="space-y-1 text-sm">
+          {course.lessons.map((l) => (
+            <li key={l.no} className="flex gap-2">
+              <span className="w-6 shrink-0 text-right text-muted tabular-nums">{l.no}.</span>
+              <div className="min-w-0 flex-1">
+                <span>{l.title}</span>
+                {l.open && (
+                  <details className="mt-1 rounded border border-line p-2">
+                    <summary className="cursor-pointer text-xs">
+                      🔓 {t("product.course.openLesson")}
+                    </summary>
+                    {l.open.text && (
+                      <p className="mt-2 whitespace-pre-line text-sm">{l.open.text}</p>
+                    )}
+                    {l.open.tgVideos.length > 0 && (
+                      <p className="mt-2 text-sm text-muted">🎬 {t("product.course.videoInBot")}</p>
+                    )}
+                    {l.open.links.map((link, i, all) => (
+                      <a
+                        key={`v${i}`}
+                        className="mt-2 block text-sm underline"
+                        href={link}
+                        target="_blank"
+                        rel="noreferrer noopener"
+                      >
+                        ▶️ {t("product.course.openLink")}
+                        {all.length > 1 ? ` ${i + 1}` : ""}
+                      </a>
+                    ))}
+                    {l.open.files.map((f) => (
+                      <a
+                        key={f.url}
+                        className="mt-1 block text-sm underline"
+                        href={f.url}
+                        target="_blank"
+                        rel="noreferrer noopener"
+                      >
+                        📎 {f.name}
+                      </a>
+                    ))}
+                  </details>
+                )}
+              </div>
+              {l.homework && (
+                <span className="shrink-0 text-xs text-muted">📝 {t("product.course.hw")}</span>
+              )}
+            </li>
+          ))}
+        </ol>
+      )}
+    </>
+  ) : null;
+  const freeLesson = Boolean(course?.lessons.some((l) => l.open));
+  const tgBuy = shop.botUsername ? `https://t.me/${shop.botUsername}?start=p_${p.id}` : null;
+  const canBuy = !(course && !course.enrollOpen) && (p.inStock || p.preorder);
+  return (
+    <div style={landingStyle(landing)}>
       {fromSearch && (
         <p className="mb-2 text-sm">
           {fromSearch.cat ? (
@@ -195,8 +353,31 @@ function ProductPage() {
       )}
       <Breadcrumbs slug={slug} shop={shop} categoryIds={p.categoryIds} leaf={p.name} t={t} />
       <ListNavBar nav={nav} />
-      <div className="mt-3 grid gap-6 md:grid-cols-2">
-        <div>
+      {landing && (
+        <LandingHero
+          landing={landing}
+          title={p.name}
+          price={formatMoneyUi(price, currency)}
+          lessons={course?.lessons.length ?? 0}
+          freeLesson={freeLesson}
+          tgUrl={canBuy ? tgBuy : null}
+          onBuySite={
+            canBuy && siteCart
+              ? () => document.getElementById("buy")?.scrollIntoView({ behavior: "smooth" })
+              : null
+          }
+          t={t}
+        />
+      )}
+      {/* Страница курса: слева фото и блоки продавца, справа — карточка покупки (липкая на компьютере). */}
+      <div
+        className={
+          landing
+            ? "mt-10 grid gap-10 lg:grid-cols-[minmax(0,1fr)_24rem] lg:gap-16"
+            : "mt-3 grid gap-6 md:grid-cols-2"
+        }
+      >
+        <div className={landing ? "order-1 min-w-0" : undefined}>
           {p.images.length > 1 && (
             // Телефон: фото листаются пальцем (scroll-snap), без JS-кода жестов.
             <div
@@ -226,12 +407,10 @@ function ProductPage() {
             >
               <img src={p.images[img]} alt={p.name} className={`${frame.img} rounded-lg`} />
             </button>
-          ) : (
-            <div
-              className={`flex ${frame.box} items-center justify-center rounded-lg bg-surface-2 text-5xl`}
-            >
-              📦
-            </div>
+          ) : landing ? null : (
+            // Телефон: без фото поле не показываем — название и цена сразу сверху.
+            // Страница курса без фото начинается с блоков: пустое поле там только мешает.
+            <NoPhoto name={p.name} className={`${frame.box} rounded-lg max-md:hidden`} />
           )}
           {p.images.length > 1 && (
             <div className="mt-2 flex gap-2 overflow-x-auto max-md:hidden">
@@ -246,203 +425,262 @@ function ProductPage() {
               ))}
             </div>
           )}
+          {landing && (
+            <>
+              <LandingBlocks
+                landing={landing}
+                program={program}
+                onPhoto={(i) => setViewer({ set: "works", i })}
+                first={p.images.length === 0}
+                t={t}
+              />
+              {p.description && (
+                <section className="mt-14">
+                  <h2 className="mb-5 text-2xl font-semibold tracking-tight md:text-3xl">
+                    {t("product.description")}
+                  </h2>
+                  <p className="text-lg leading-relaxed whitespace-pre-line">{p.description}</p>
+                </section>
+              )}
+            </>
+          )}
         </div>
-        <SwipeArea nav={nav}>
-          <h1 className="text-2xl font-semibold">{p.name}</h1>
-          <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted">
-            <span className="badge">{t(pageBadge(p))}</span>
-            {p.rating && (
-              <span>
-                ★ {p.rating.avg.toFixed(1)} · {p.rating.count} {reviewsWord(locale, p.rating.count)}
-              </span>
-            )}
-          </div>
-          <div className="mt-3 text-2xl font-semibold">
-            <OfferPrice
-              price={price}
-              oldPrice={chosen ? chosen.oldPrice : (p.offer?.oldPrice ?? null)}
-              currency={currency}
-              offer={p.offer}
-            />
-          </div>
-          {p.offer && <OfferNote offer={p.offer} className="mt-1 block text-sm text-accent" />}
-          {p.leadTimeDays ? (
-            <div className="mt-1 text-sm text-muted">
-              {t("product.leadTime", { n: p.leadTimeDays })}
-            </div>
-          ) : null}
-          {p.kind === "digital" && (p.files?.length ?? 0) > 0 ? (
-            <div className="mt-3">
-              <div className="label">{t("product.filesTitle")}</div>
-              <ul className="space-y-1 text-sm">
-                {p.files!.map((f, i) => (
-                  <li key={i} className="flex items-baseline gap-2">
-                    <span aria-hidden>📄</span>
-                    <span className="min-w-0 flex-1 break-words">
-                      {f.name || t("product.fileUnnamed")}
-                    </span>
-                    {p.languages.length > 1 && (
-                      <span className="shrink-0 text-xs text-muted">
-                        {f.lang === "kk" ? "KZ" : f.lang.toUpperCase()}
-                      </span>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : (
-            p.kind === "digital" &&
-            p.languages.length > 0 && (
-              <div className="mt-1 text-sm text-muted">
-                {t("product.files", { langs: p.languages.map((l) => l.toUpperCase()).join(", ") })}
-              </div>
-            )
-          )}
-          {p.variants.length > 0 && (
-            <div className="mt-4">
-              <div className="label">{t("product.variant")}</div>
-              <div className="flex flex-wrap gap-2">
-                {p.variants.map((v) => (
-                  <button
-                    key={v.id}
-                    onClick={() => setVariant(v.id)}
-                    className={`badge cursor-pointer px-3 py-1.5 text-sm ${variant === v.id ? "border-accent bg-accent/10 text-accent" : ""}`}
-                  >
-                    {v.name} · {formatMoney(v.price, v.currency)}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-          {p.bundle && (
-            <div className="mt-4 space-y-1 text-sm" data-testid="bundle-parts">
-              <div className="label">{t("bundle.contains")}</div>
-              <ul className="space-y-0.5">
-                {p.bundle.parts.map((part, i) => (
-                  <li key={i}>
-                    {part.name}
-                    {part.variantName ? ` (${part.variantName})` : ""} × {part.qty}
-                  </li>
-                ))}
-              </ul>
-              {p.bundle.saving !== null && (
-                <div className="font-medium text-accent">
-                  {t("bundle.saving", {
-                    saving: formatMoney(p.bundle.saving, p.currency),
-                    separate: formatMoney(p.bundle.separateTotal ?? 0, p.currency),
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-          {course && tariff && (
-            <div className="mt-4 space-y-1 text-sm">
-              {course.cohort && (
-                <div className="font-medium">
-                  {t("product.course.cohort", {
-                    title: course.cohort.title,
-                    date: courseDate(course.cohort.start),
-                  })}
-                </div>
-              )}
-              <div className="label">{t("product.course.includes")}</div>
-              <ul className="space-y-0.5">
-                {course.lessons.some((l) => l.homework) && (
-                  <li>
-                    {tariff.homework
-                      ? t("product.course.incHomework")
-                      : t("product.course.noHomework")}
-                  </li>
-                )}
-                {course.channel && tariff.channel && <li>{t("product.course.incChannel")}</li>}
-                <li>
-                  {tariff.accessDays
-                    ? t("product.course.access", { n: tariff.accessDays })
-                    : t("product.course.accessForever")}
-                </li>
-              </ul>
-            </div>
-          )}
-          <div className="mt-5 flex items-center gap-3">
-            {course && !course.enrollOpen ? (
-              <span className="badge">{t("product.course.closed")}</span>
-            ) : p.inStock || p.preorder ? (
-              <>
-                <button className="btn-primary px-5 py-2.5 text-base" onClick={add}>
-                  {t("product.addToCart")}
-                </button>
-                {!p.preorder && p.lowLeft !== null && (
-                  <span className="badge" role="status">
-                    {t("product.lowLeft", { n: p.lowLeft })}
-                  </span>
-                )}
-                {p.preorder && (
-                  <span className="badge">
-                    {p.preorder.from
-                      ? t("product.preorder", {
-                          date: new Date(`${p.preorder.from}T12:00:00`).toLocaleDateString(
-                            intlLocale(locale),
-                            { day: "numeric", month: "long", year: "numeric" },
-                          ),
-                        })
-                      : t("product.preorderNoDate")}
-                  </span>
-                )}
-              </>
+        <SwipeArea nav={nav} className={landing ? "order-2" : undefined}>
+          {/* На странице курса название и цена — в шапке; здесь карточка покупки. */}
+          <div className={landing ? "card p-6 lg:sticky lg:top-24 lg:p-8" : "contents"}>
+            {landing ? (
+              <h2 className="text-xl leading-snug font-semibold">{p.name}</h2>
             ) : (
-              <>
-                <span className="badge">
-                  {p.bundle && !p.bundle.available
-                    ? t("bundle.unavailable")
-                    : t("product.outOfStock")}
+              <h1 className="text-2xl font-semibold">{p.name}</h1>
+            )}
+            <div
+              className={`mt-2 flex flex-wrap items-center gap-2 text-sm text-muted${landing ? " hidden" : ""}`}
+            >
+              <span className="badge">{t(pageBadge(p))}</span>
+              {p.rating && (
+                <span>
+                  ★ {p.rating.avg.toFixed(1)} · {p.rating.count}{" "}
+                  {reviewsWord(locale, p.rating.count)}
                 </span>
-                {waitlistUrl && !p.bundle && (
+              )}
+            </div>
+            <div
+              className={landing ? "mt-4 text-3xl font-semibold" : "mt-3 text-2xl font-semibold"}
+            >
+              <OfferPrice
+                price={price}
+                oldPrice={chosen ? chosen.oldPrice : (p.offer?.oldPrice ?? null)}
+                currency={currency}
+                offer={p.offer}
+              />
+            </div>
+            {p.offer && <OfferNote offer={p.offer} className="mt-1 block text-sm text-accent" />}
+            {p.leadTimeDays ? (
+              <div className="mt-1 text-sm text-muted">
+                {t("product.leadTime", { n: p.leadTimeDays })}
+              </div>
+            ) : null}
+            {p.kind === "digital" && (p.files?.length ?? 0) > 0 ? (
+              <div className="mt-3">
+                <div className="label">{t("product.filesTitle")}</div>
+                <ul className="space-y-1 text-sm">
+                  {p.files!.map((f, i) => (
+                    <li key={i} className="flex items-baseline gap-2">
+                      <span aria-hidden>📄</span>
+                      <span className="min-w-0 flex-1 break-words">
+                        {f.name || t("product.fileUnnamed")}
+                      </span>
+                      {p.languages.length > 1 && (
+                        <span className="shrink-0 text-xs text-muted">
+                          {f.lang === "kk" ? "KZ" : f.lang.toUpperCase()}
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              p.kind === "digital" &&
+              p.languages.length > 0 && (
+                <div className="mt-1 text-sm text-muted">
+                  {t("product.files", {
+                    langs: p.languages.map((l) => l.toUpperCase()).join(", "),
+                  })}
+                </div>
+              )
+            )}
+            {p.variants.length > 0 && (
+              <div className="mt-4">
+                <div className="label">{t("product.variant")}</div>
+                <div className="flex flex-wrap gap-2">
+                  {p.variants.map((v) => (
+                    <button
+                      key={v.id}
+                      onClick={() => setVariant(v.id)}
+                      className={`badge cursor-pointer px-3 py-1.5 text-sm ${variant === v.id ? "border-accent bg-accent/10 text-accent" : ""}`}
+                    >
+                      {v.name} · {formatMoneyUi(v.price, v.currency)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {p.bundle && (
+              <div className="mt-4 space-y-1 text-sm" data-testid="bundle-parts">
+                <div className="label">{t("bundle.contains")}</div>
+                <ul className="space-y-0.5">
+                  {p.bundle.parts.map((part, i) => (
+                    <li key={i}>
+                      {part.name}
+                      {part.variantName ? ` (${part.variantName})` : ""} × {part.qty}
+                    </li>
+                  ))}
+                </ul>
+                {p.bundle.saving !== null && (
+                  <div className="font-medium text-accent">
+                    {t("bundle.saving", {
+                      saving: formatMoneyUi(p.bundle.saving, p.currency),
+                      separate: formatMoneyUi(p.bundle.separateTotal ?? 0, p.currency),
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+            {course && tariff && (
+              <div className={`mt-4 space-y-1 ${landing ? "text-base" : "text-sm"}`}>
+                {course.cohort && (
+                  <div className="font-medium">
+                    {t("product.course.cohort", {
+                      title: course.cohort.title,
+                      date: courseDate(course.cohort.start),
+                    })}
+                  </div>
+                )}
+                <div className="label">{t("product.course.includes")}</div>
+                <ul className="space-y-0.5">
+                  {course.lessons.some((l) => l.homework) && (
+                    <li>
+                      {tariff.homework
+                        ? t("product.course.incHomework")
+                        : t("product.course.noHomework")}
+                    </li>
+                  )}
+                  {course.channel && tariff.channel && <li>{t("product.course.incChannel")}</li>}
+                  <li>
+                    {tariff.accessDays
+                      ? t("product.course.access", { n: tariff.accessDays })
+                      : t("product.course.accessForever")}
+                  </li>
+                </ul>
+              </div>
+            )}
+            <div
+              id="buy"
+              className={`flex scroll-mt-20 items-center gap-3 ${landing ? "mt-6" : "mt-5"}`}
+            >
+              {course && !course.enrollOpen ? (
+                <span className="badge">{t("product.course.closed")}</span>
+              ) : !siteCart ? (
+                // Школа без витрины: корзины на сайте нет, курс покупают в Telegram.
+                tgBuy && (
                   <a
-                    href={waitlistUrl}
+                    href={tgBuy}
                     target="_blank"
                     rel="noreferrer"
-                    className="btn-secondary px-4 py-2"
+                    className={`btn-primary text-base ${landing ? "flex-1 py-3.5 text-lg" : "px-5 py-2.5"}`}
                   >
-                    {t("product.notify")}
+                    {t("landing.buyTg")}
                   </a>
-                )}
-              </>
+                )
+              ) : p.inStock || p.preorder ? (
+                <>
+                  <button
+                    className={`btn-primary text-base ${landing ? "flex-1 py-3.5 text-lg" : "px-5 py-2.5"}`}
+                    onClick={add}
+                  >
+                    {t("product.addToCart")}
+                  </button>
+                  {!p.preorder && p.lowLeft !== null && (
+                    <span className="badge" role="status">
+                      {t("product.lowLeft", { n: p.lowLeft })}
+                    </span>
+                  )}
+                  {p.preorder && (
+                    <span className="badge">
+                      {p.preorder.from
+                        ? t("product.preorder", {
+                            date: new Date(`${p.preorder.from}T12:00:00`).toLocaleDateString(
+                              intlLocale(locale),
+                              { day: "numeric", month: "long", year: "numeric" },
+                            ),
+                          })
+                        : t("product.preorderNoDate")}
+                    </span>
+                  )}
+                </>
+              ) : (
+                <>
+                  <span className="badge">
+                    {p.bundle && !p.bundle.available
+                      ? t("bundle.unavailable")
+                      : t("product.outOfStock")}
+                  </span>
+                  {waitlistUrl && !p.bundle && (
+                    <a
+                      href={waitlistUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="btn-secondary px-4 py-2"
+                    >
+                      {t("product.notify")}
+                    </a>
+                  )}
+                </>
+              )}
+              {siteCart && (
+                <FavoriteButton
+                  id={p.id}
+                  addLabel={t("fav.add")}
+                  removeLabel={t("fav.remove")}
+                  className="border border-line"
+                />
+              )}
+              {msg && <span className="text-sm text-muted">{msg}</span>}
+            </div>
+            {writeUrl && (
+              <a
+                href={writeUrl}
+                target="_blank"
+                rel="noreferrer"
+                className={
+                  landing
+                    ? "btn-secondary mt-3 flex w-full py-3 text-base"
+                    : "btn-secondary mt-3 inline-flex px-4 py-2"
+                }
+              >
+                {t("product.writeShop")}
+              </a>
             )}
-            <FavoriteButton
-              id={p.id}
-              addLabel={t("fav.add")}
-              removeLabel={t("fav.remove")}
-              className="border border-line"
-            />
-            {msg && <span className="text-sm text-muted">{msg}</span>}
-          </div>
-          {writeUrl && (
-            <a
-              href={writeUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="btn-secondary mt-3 inline-flex px-4 py-2"
+            <ul
+              className={`text-muted ${landing ? "mt-6 space-y-2 text-base" : "mt-5 space-y-1.5 text-sm"}`}
             >
-              {t("product.writeShop")}
-            </a>
-          )}
-          <ul className="mt-5 space-y-1.5 text-sm text-muted">
-            {course ? (
-              <li>{t("product.course.instant")}</li>
-            ) : p.kind === "digital" ? (
-              <>
-                <li>{t("product.digitalInstant")}</li>
-                <li>{t("product.digitalResend")}</li>
-              </>
-            ) : (
-              <>
-                <li>{t("product.physicalDate")}</li>
-                <li>{t("product.physicalDelivery")}</li>
-              </>
-            )}
-            <li>{t("product.payment")}</li>
-          </ul>
-          {p.description && (
+              {course ? (
+                <li>{t("product.course.instant")}</li>
+              ) : p.kind === "digital" ? (
+                <>
+                  <li>{t("product.digitalInstant")}</li>
+                  <li>{t("product.digitalResend")}</li>
+                </>
+              ) : (
+                <>
+                  <li>{t("product.physicalDate")}</li>
+                  <li>{t("product.physicalDelivery")}</li>
+                </>
+              )}
+              <li>{t("product.payment")}</li>
+            </ul>
+          </div>
+          {!landing && p.description && (
             <div className="mt-6 border-t border-line pt-5">
               <h2 className="mb-2 text-sm font-semibold">{t("product.description")}</h2>
               <p className="text-sm leading-relaxed whitespace-pre-line">{p.description}</p>
@@ -450,68 +688,7 @@ function ProductPage() {
           )}
         </SwipeArea>
       </div>
-      {course && (
-        <section className="mt-10">
-          <h2 className="mb-1 text-sm font-semibold">
-            {t("product.course.program", { n: course.lessons.length })}
-          </h2>
-          <p className="mb-3 text-xs text-muted">
-            {course.everyDays
-              ? t("product.course.drip", { n: course.everyDays })
-              : course.afterTask
-                ? t(
-                    course.afterTask === "submitted"
-                      ? "product.course.afterSubmit"
-                      : "product.course.afterAccept",
-                  )
-                : t("product.course.all")}
-          </p>
-          <ol className="space-y-1 text-sm">
-            {course.lessons.map((l) => (
-              <li key={l.no} className="flex gap-2">
-                <span className="w-6 shrink-0 text-right text-muted tabular-nums">{l.no}.</span>
-                <div className="min-w-0 flex-1">
-                  <span>{l.title}</span>
-                  {l.open && (
-                    <details className="mt-1 rounded border border-line p-2">
-                      <summary className="cursor-pointer text-xs">
-                        🔓 {t("product.course.openLesson")}
-                      </summary>
-                      {l.open.text && (
-                        <p className="mt-2 whitespace-pre-line text-sm">{l.open.text}</p>
-                      )}
-                      {l.open.link && (
-                        <a
-                          className="mt-2 block text-sm underline"
-                          href={l.open.link}
-                          target="_blank"
-                          rel="noreferrer noopener"
-                        >
-                          ▶️ {t("product.course.openLink")}
-                        </a>
-                      )}
-                      {l.open.files.map((f) => (
-                        <a
-                          key={f.url}
-                          className="mt-1 block text-sm underline"
-                          href={f.url}
-                          target="_blank"
-                          rel="noreferrer noopener"
-                        >
-                          📎 {f.name}
-                        </a>
-                      ))}
-                    </details>
-                  )}
-                </div>
-                {l.homework && (
-                  <span className="shrink-0 text-xs text-muted">📝 {t("product.course.hw")}</span>
-                )}
-              </li>
-            ))}
-          </ol>
-        </section>
-      )}
+      {course && !landing && <section className="mt-10">{program}</section>}
       {preview.length > 0 && (
         <section className="mt-10">
           <h2 className="mb-3 text-sm font-semibold text-muted">{t("product.preview")}</h2>
@@ -548,8 +725,16 @@ function ProductPage() {
       )}
       <ProductReviews slug={slug} productId={p.id} />
       {related.length > 0 && (
-        <section className="mt-10">
-          <h2 className="mb-3 text-sm font-semibold text-muted">{t("product.related")}</h2>
+        <section className={landing ? "mt-16" : "mt-10"}>
+          <h2
+            className={
+              landing
+                ? "mb-6 text-2xl font-semibold tracking-tight md:text-3xl"
+                : "mb-3 text-sm font-semibold text-muted"
+            }
+          >
+            {t("product.related")}
+          </h2>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {related.map((r) => (
               <Link
@@ -565,7 +750,7 @@ function ProductPage() {
                 )}
                 <div className="p-2 text-xs">
                   <div className="line-clamp-2">{r.name}</div>
-                  <div className="mt-1 font-semibold">{formatMoney(r.price, r.currency)}</div>
+                  <div className="mt-1 font-semibold">{formatMoneyUi(r.price, r.currency)}</div>
                 </div>
               </Link>
             ))}
@@ -574,11 +759,17 @@ function ProductPage() {
       )}
       <RecentlyViewed slug={slug} exclude={p.id} />
       <PhotoViewer
-        images={viewer?.set === "preview" ? preview : p.images}
+        images={
+          viewer?.set === "preview"
+            ? preview
+            : viewer?.set === "works"
+              ? (landing?.works ?? [])
+              : p.images
+        }
         index={viewer?.i ?? null}
         alt={viewer?.set === "preview" ? `${p.name} — ${t("product.preview")}` : p.name}
         onClose={() => setViewer(null)}
       />
-    </>
+    </div>
   );
 }

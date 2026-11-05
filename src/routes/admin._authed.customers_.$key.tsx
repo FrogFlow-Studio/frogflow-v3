@@ -13,8 +13,8 @@ import {
 import { adjustPointsFn } from "@/app/admin/loyalty.functions";
 import { adminT, intlLocale, type AdminKey } from "@/app/i18n/admin";
 import { Badge, Card, ErrorBox, Field, PageTitle, useAction } from "@/app/ui";
-import { formatMoney } from "@/core/money/money";
-import { OrderStatus } from "./admin._authed.orders";
+import { formatMoneyUi } from "@/core/money/money";
+import { OrderStatus } from "@/app/admin/order-status";
 
 export const Route = createFileRoute("/admin/_authed/customers_/$key")({
   loader: ({ params }) => customerCardFn({ data: { key: params.key } }),
@@ -81,7 +81,7 @@ function CustomerCardPage() {
     </div>
   );
   const spent = Object.entries(c.stats.totals)
-    .map(([cur, sum]) => formatMoney(sum, cur))
+    .map(([cur, sum]) => formatMoneyUi(sum, cur))
     .join(" + ");
 
   return (
@@ -301,7 +301,7 @@ function CustomerCardPage() {
                       {c.linked.length > 0 && <span className="text-muted"> · {o.platform}</span>}
                     </span>
                     <span className="flex items-center gap-2">
-                      {formatMoney(o.total, o.currency)}
+                      {formatMoneyUi(o.total, o.currency)}
                       <OrderStatus status={o.status} />
                     </span>
                   </Link>

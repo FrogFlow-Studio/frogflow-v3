@@ -21,7 +21,8 @@ import { HelpTip } from "@/app/admin/help-panel";
  */
 export const Route = createFileRoute("/admin/_authed/knowledge")({
   beforeLoad: ({ context }) => {
-    if (!context.shop.pricelist) throw redirect({ to: "/admin" });
+    if (!context.shop.pricelist)
+      throw redirect({ to: "/admin/locked/$module", params: { module: "pricelist" } });
   },
   loader: () => pricelistFn(),
   component: KnowledgePage,
@@ -170,7 +171,7 @@ function KnowledgePage(): ReactElement {
                     disabled={dirty && !isOpen}
                     onClick={() => open(a.id)}
                   >
-                    <span className="min-w-0 flex-1 font-medium">
+                    <span className="min-w-[12rem] flex-1 font-medium break-words">
                       {a.title || t("ws.kb.untitled")}
                     </span>
                     {a.tags.length > 0 ? (

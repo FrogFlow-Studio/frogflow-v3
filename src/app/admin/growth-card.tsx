@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import type { AdminT } from "@/app/i18n/admin";
 import { Card } from "@/app/ui";
-import { formatMoney } from "@/core/money/money";
+import { formatMoneyUi } from "@/core/money/money";
 import type { Growth, Trio } from "@/core/overview/growth";
 
 function Delta({ v, t }: { v: Trio; t: AdminT }) {
@@ -36,7 +36,7 @@ export function GrowthCard({
               [
                 [
                   "growth.card.revenue",
-                  formatMoney(growth.revenue.cur, growth.currency),
+                  formatMoneyUi(growth.revenue.cur, growth.currency),
                   growth.revenue,
                 ],
                 ["growth.card.orders", String(growth.orders.cur), growth.orders],

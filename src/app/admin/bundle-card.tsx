@@ -9,7 +9,7 @@ import { ProductSearch } from "@/app/admin/product-picker";
 import type { AdminT } from "@/app/i18n/admin";
 import { Card, ErrorBox, useAction } from "@/app/ui";
 import { BUNDLE_MAX_ITEMS } from "@/core/bundles/limits";
-import { formatMoney } from "@/core/money/money";
+import { formatMoneyUi } from "@/core/money/money";
 
 type View = Awaited<ReturnType<typeof productBundleFn>>["view"];
 type Row = {
@@ -89,7 +89,7 @@ export function BundleCard({ productId, t }: { productId: string; t: AdminT }) {
         : [...cur, { ...x, qty: 1, state: "ok" }],
     );
   if (!loaded) return null;
-  const money = (n: number) => formatMoney(n, view?.currency ?? "KZT");
+  const money = (n: number) => formatMoneyUi(n, view?.currency ?? "KZT");
   return (
     <Card title={t("bundle.card")}>
       <p className="mb-3 text-xs text-muted">{t("bundle.hint")}</p>

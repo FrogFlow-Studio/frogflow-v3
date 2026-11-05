@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { adminSearchFn } from "@/app/admin/customers.functions";
 import { adminT } from "@/app/i18n/admin";
 import type { Locale } from "@/core/i18n/locale";
-import { formatMoney } from "@/core/money/money";
+import { formatMoneyUi } from "@/core/money/money";
 import { searchSettings } from "@/app/admin/settings/palette";
 import { searchSections } from "@/core/search/search-sections";
 
@@ -115,7 +115,7 @@ export function CommandPalette({
         ...settingItems,
         ...res.orders.map((o) => ({
           label: `#${o.no} · ${o.name}`,
-          hint: formatMoney(o.total, o.currency),
+          hint: formatMoneyUi(o.total, o.currency),
           go: () => void navigate({ to: "/admin/orders/$id", params: { id: String(o.id) } }),
         })),
         ...res.products.map((p) => ({

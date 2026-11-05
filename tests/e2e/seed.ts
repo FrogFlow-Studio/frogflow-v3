@@ -14,6 +14,7 @@ import { seedShop } from "./seed/shop.ts";
 import { seedStorefront } from "./seed/storefront.ts";
 import { seedVip } from "./seed/vip.ts";
 import { seedSchool } from "./seed/school.ts";
+import { seedCourseLanding } from "./seed/course-landing.ts";
 import { seedLeads } from "./seed/leads.ts";
 import { seedShop4Waitlist } from "./seed/shop4-waitlist.ts";
 import { seedShop4Filters } from "./seed/shop4-filters.ts";
@@ -87,6 +88,7 @@ export function seedDb(): StubDb {
   seedConsultant(db, now);
   seedCommentToDm(db, now);
   seedSchool(db, now);
+  seedCourseLanding(db, now);
   seedLeads(db, now);
   seedShop4Waitlist(db, now);
   seedShop4Chat(db, now);

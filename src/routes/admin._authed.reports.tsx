@@ -3,7 +3,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { centerReportFn, reportKindsFn } from "@/app/admin/reports.functions";
 import { adminT, type AdminKey } from "@/app/i18n/admin";
 import { Empty, PageTitle } from "@/app/ui";
-import { formatMoney } from "@/core/money/money";
+import { formatMoneyUi } from "@/core/money/money";
 import {
   delta,
   REPORT_KINDS,
@@ -29,7 +29,7 @@ export const Route = createFileRoute("/admin/_authed/reports")({
   component: ReportsPage,
 });
 
-const value = (m: Metric, n: number) => (m.currency ? formatMoney(n, m.currency) : String(n));
+const value = (m: Metric, n: number) => (m.currency ? formatMoneyUi(n, m.currency) : String(n));
 
 function ReportsPage() {
   const { kinds, report } = Route.useLoaderData();
@@ -58,19 +58,21 @@ function ReportsPage() {
             </>
           }
         />
-        <div className="mb-3 flex flex-wrap items-center gap-2" role="tablist">
+        <div className="mb-3 flex flex-wrap items-center gap-2">
           <HelpTip article="reports" anchor="kinds" />
-          {kinds.map((k) => (
-            <button
-              key={k}
-              role="tab"
-              aria-selected={report.kind === k}
-              className={`btn-ghost text-sm ${report.kind === k ? "font-medium text-accent" : ""}`}
-              onClick={() => go({ kind: k, days: report.days as Search["days"] })}
-            >
-              {t(`reports.kind.${k}` as AdminKey)}
-            </button>
-          ))}
+          <div className="flex flex-wrap items-center gap-2" role="tablist">
+            {kinds.map((k) => (
+              <button
+                key={k}
+                role="tab"
+                aria-selected={report.kind === k}
+                className={`btn-ghost text-sm ${report.kind === k ? "font-medium text-accent" : ""}`}
+                onClick={() => go({ kind: k, days: report.days as Search["days"] })}
+              >
+                {t(`reports.kind.${k}` as AdminKey)}
+              </button>
+            ))}
+          </div>
         </div>
         <div className="mb-3 flex flex-wrap gap-2">
           {REPORT_PERIODS.map((d) => (
