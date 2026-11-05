@@ -100,6 +100,13 @@ export const SETTINGS_REGISTRY: readonly SettingsEntry[] = [
   E({ id: "community", theme: "shop", title: "settings.community.title" }),
   E({ id: "watermark", sellsOnly: true, theme: "shop", title: "settings.watermark.title" }),
   E({
+    id: "course-in-bot",
+    sellsOnly: true,
+    theme: "shop",
+    module: "courses",
+    title: "settings.courseInBot.title",
+  }),
+  E({
     id: "gift-wrap",
     sellsOnly: true,
     theme: "shop",

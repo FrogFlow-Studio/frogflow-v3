@@ -13,9 +13,9 @@ import { adminT, intlLocale, type AdminKey, type AdminT } from "@/app/i18n/admin
 import { schoolLaunchFn, schoolOverviewFn } from "@/app/admin/courses.functions";
 import { verticalTitleKey } from "@/app/i18n/admin/catalog";
 import { Badge, Card, Empty, ErrorBox, PageTitle, Stat, useAction } from "@/app/ui";
-import { formatMoney } from "@/core/money/money";
+import { formatMoneyUi } from "@/core/money/money";
 import { displayNo } from "@/core/orders/pure";
-import { OrderStatus } from "./admin._authed.orders";
+import { OrderStatus } from "@/app/admin/order-status";
 import { nextSetupStep, setupProgress, type SetupStep } from "@/app/admin/setup";
 import { TIER_TITLES } from "@/core/plans/registry";
 import type { LimitNotice } from "@/core/plans/tenant";
@@ -113,16 +113,7 @@ function Dashboard() {
               t={t}
             />
           )}
-          {sells && d.pace && <PaceCard pace={d.pace} t={t} />}
-          {sells && (
-            <GrowthCard
-              growth={d.growth}
-              analytics={buildAdminNav(shop).groups.some((g) =>
-                g.items.some((i) => i.to === "/admin/analytics"),
-              )}
-              t={t}
-            />
-          )}
+          {/* Сначала дела, потом цифры: «Что сделать сегодня» — сразу под «Ждёт вас». */}
           {shop.role !== "accountant" && !d.workspace && (
             <TodayCard
               // «Ждёт вас» уже показывает чеки, диалоги и обращения: здесь их нет.
@@ -132,6 +123,16 @@ function Dashboard() {
               modules={shop.modules}
               todos={d.todos}
               canEdit={roleAllows(shop.role, "manager")}
+            />
+          )}
+          {sells && d.pace && <PaceCard pace={d.pace} t={t} />}
+          {sells && (
+            <GrowthCard
+              growth={d.growth}
+              analytics={buildAdminNav(shop).groups.some((g) =>
+                g.items.some((i) => i.to === "/admin/analytics"),
+              )}
+              t={t}
             />
           )}
         </div>
@@ -290,23 +291,14 @@ function Dashboard() {
               {sells && shop.role !== "accountant" && (
                 <>
                   <Stat
-                    label={t("today.rev1")}
-                    value={formatMoney(d.rev1.total, d.rev1.currency)}
-                  />
-                  <Stat
                     label={t("today.rev7")}
-                    value={formatMoney(d.rev7.total, d.rev7.currency)}
+                    value={formatMoneyUi(d.rev7.total, d.rev7.currency)}
                     hint={t("overview.paidOrders", { n: d.rev7.orders })}
                   />
                 </>
               )}
               {sells && (
                 <>
-                  <Stat
-                    label={t("overview.revenue30")}
-                    value={formatMoney(d.rev30.total, d.rev30.currency)}
-                    hint={t("overview.paidOrders", { n: d.rev30.orders })}
-                  />
                   <Stat label={t("overview.productsOnSale")} value={d.products} />
                 </>
               )}
@@ -352,7 +344,7 @@ function Dashboard() {
                               </Link>
                             </td>
                             <td>{o.display_name}</td>
-                            <td className="tabular-nums">{formatMoney(o.total, o.currency)}</td>
+                            <td className="tabular-nums">{formatMoneyUi(o.total, o.currency)}</td>
                             <td>
                               <OrderStatus status={o.status} />
                             </td>

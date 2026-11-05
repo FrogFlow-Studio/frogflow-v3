@@ -25,6 +25,7 @@ export function ReadinessCard({ r, t }: { r: Readiness; t: AdminT }) {
     <Card title={t("product.ready.title")}>
       <div
         role="progressbar"
+        aria-label={t("product.ready.title")}
         aria-valuenow={r.percent}
         aria-valuemin={0}
         aria-valuemax={100}

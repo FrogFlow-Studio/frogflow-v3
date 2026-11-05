@@ -3,7 +3,7 @@ import { trialOrderFn } from "@/app/admin/onboarding.functions";
 import type { AdminKey, AdminT } from "@/app/i18n/admin";
 import { ErrorBox, useAction } from "@/app/ui";
 import type { TrialResult } from "@/core/orders/trial";
-import { formatMoney } from "@/core/money/money";
+import { formatMoneyUi } from "@/core/money/money";
 
 /**
  * Кнопка «Пробный заказ» (Р4): проверка оформления без заказа в базе. Показывает,
@@ -38,8 +38,8 @@ export function TrialOrder({ t }: { t: AdminT }) {
               </p>
               <p className="text-muted">
                 {t("trial.sum", {
-                  total: formatMoney(res.total, res.currency),
-                  due: formatMoney(res.dueNow, res.currency),
+                  total: formatMoneyUi(res.total, res.currency),
+                  due: formatMoneyUi(res.dueNow, res.currency),
                 })}
               </p>
               {res.issues.length > 0 && (

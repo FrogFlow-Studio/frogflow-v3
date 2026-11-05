@@ -30,7 +30,12 @@ export async function courseMaterials(
   // Канал — через страницу курса (`join=1`): приглашение личное и одно на
   // покупку, его выпускает страница в момент перехода, а не выдача заранее.
   return [
-    { path: null, name: COURSE_LINK_NAME, url },
+    {
+      path: null,
+      name: COURSE_LINK_NAME,
+      url,
+      ...(ctx.tenant.settings.delivery?.course_in_bot ? { lessonsInBot: item.id } : {}),
+    },
     ...(course.channel
       ? [{ path: null, name: COURSE_CHANNEL_LINK_NAME, url: `${url}&join=1` }]
       : []),

@@ -17,6 +17,7 @@ import { intlLocale } from "@/app/i18n/admin";
 import type { Locale } from "@/core/i18n/locale";
 import type { StorefrontT } from "@/app/i18n/storefront";
 import { ErrorBox, useAction } from "@/app/ui";
+import { StorePageMissing } from "@/app/storefront/missing";
 
 /**
  * Купленный курс: покупатель приходит по ссылке из сообщения о выдаче
@@ -36,6 +37,7 @@ export const Route = createFileRoute("/s/$slug/course/$itemId")({
   // Видео урока во встроенном плеере: во фреймах — только белый список хостов.
   headers: () => ({ "Content-Security-Policy": COURSE_PAGE_CSP }),
   component: CoursePage,
+  notFoundComponent: StorePageMissing,
 });
 
 function CoursePage() {
@@ -190,6 +192,47 @@ function CoursePage() {
                     {t("course.openLink")}
                   </a>
                 )}
+                {l.inBot > 0 && (
+                  <p className="text-muted">
+                    🎬 {t("course.videoInBot")}
+                    {view.bot && (
+                      <>
+                        {" "}
+                        <a
+                          href={`https://t.me/${view.bot}?start=courses`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-accent hover:underline"
+                        >
+                          {t("course.watchInBot")}
+                        </a>
+                      </>
+                    )}
+                  </p>
+                )}
+                {l.more.map((v, i) => (
+                  <div key={`v${i}`} className="space-y-2">
+                    {v.embed && (
+                      <iframe
+                        src={v.embed}
+                        title={`${l.title} · ${i + 2}`}
+                        className="aspect-video w-full rounded-md border-0"
+                        loading="lazy"
+                        allow="autoplay; fullscreen; picture-in-picture"
+                        allowFullScreen
+                        referrerPolicy="strict-origin-when-cross-origin"
+                      />
+                    )}
+                    <a
+                      href={v.link}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-accent hover:underline"
+                    >
+                      {t("course.openLink")} {i + 2}
+                    </a>
+                  </div>
+                ))}
                 {l.files.length > 0 && (
                   <ul className="space-y-1">
                     {l.files.map((f) => (

@@ -155,7 +155,7 @@ export interface RoomOptions {
   username?: string;
   /** Instagram/WhatsApp: почта платформы настроена, письма — в mailbox. */
   mail?: boolean;
-  /** Instagram/WhatsApp: присланное фото скачивается (чек принимается). */
+  /** Присланное фото скачивается (чек принимается): Instagram/WhatsApp и Telegram. */
   receipts?: boolean;
   /**
    * Instagram/WhatsApp: ответы бота появляются в ленте Zernio (tail) как исходящие,
@@ -578,10 +578,27 @@ function directRoom(o: RoomOptions): Room {
               ? new Response(TINY_JPEG, { headers: { "content-type": "image/jpeg" } })
               : realFetch(input, init),
           );
+        // Явный `gapMs` — разрыв между приходами в очередь диалога, а не между
+        // запусками: первый вебхук холодно подгружает модули (сотни мс), и
+        // остальные, запущенные по таймеру, догоняли его и вставали в очередь
+        // одновременно — сценарий проверял не то и падал на гонке записи.
+        const queued = () => {
+          const st = (db.tables.bot_users?.[0]?.state ?? {}) as Record<string, unknown>;
+          const c = (st.consultant ?? {}) as { inbox?: unknown[]; recent?: unknown[] };
+          return (c.inbox?.length ?? 0) + (c.recent?.length ?? 0);
+        };
+        const before = queued();
+        const arrived = async (n: number) => {
+          for (const end = Date.now() + 5_000; queued() < before + n && Date.now() < end;)
+            await new Promise((r) => setTimeout(r, 2));
+        };
         try {
           await Promise.all(
             hooks.map(async (h, k) => {
-              await new Promise((r) => setTimeout(r, k * (i.gapMs ?? 20)));
+              if (i.gapMs != null && k > 0) {
+                await arrived(k);
+                await new Promise((r) => setTimeout(r, i.gapMs));
+              } else await new Promise((r) => setTimeout(r, k * 20));
               await handleZernioMessage(ctx, h as never, transport);
             }),
           );
@@ -652,8 +669,12 @@ function telegramRoom(o: RoomOptions): Room {
   const api = {
     call: vi.fn(async (method: string, payload: Record<string, unknown> = {}) => {
       calls.push([method, payload]);
+      // Фото чека скачивается (receipts): файл — маленький JPEG по data:-адресу.
+      if (method === "getFile" && o.receipts)
+        return { ok: true, result: { file_path: "photos/receipt.jpg" } };
       return { ok: true, result: {} };
     }),
+    fileUrl: () => "data:image/jpeg;base64,/9j/4AECAw==",
   } as unknown as TelegramApi;
   let updateId = 0;
   let lastUpdate: Record<string, unknown> | null = null;

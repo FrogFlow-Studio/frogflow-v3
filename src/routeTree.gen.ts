@@ -136,9 +136,11 @@ import { Route as SSlugSitemapDotxmlRouteImport } from './routes/s.$slug_.sitema
 import { Route as SSlugSwDotjsRouteImport } from './routes/s.$slug_.sw[.]js'
 import { Route as AdminAuthedCustomersKeyRouteImport } from './routes/admin._authed.customers_.$key'
 import { Route as AdminAuthedHelpSectionRouteImport } from './routes/admin._authed.help_.$section'
+import { Route as AdminAuthedLockedModuleRouteImport } from './routes/admin._authed.locked.$module'
 import { Route as AdminAuthedOrdersIdRouteImport } from './routes/admin._authed.orders.$id'
 import { Route as AdminAuthedOrdersNewRouteImport } from './routes/admin._authed.orders.new'
 import { Route as AdminAuthedProductsIdRouteImport } from './routes/admin._authed.products_.$id'
+import { Route as AdminAuthedProductsNewCourseRouteImport } from './routes/admin._authed.products_.new-course'
 import { Route as AdminAuthedWarehouseIndexRouteImport } from './routes/admin._authed.warehouse.index'
 import { Route as AdminAuthedWarehouseJournalRouteImport } from './routes/admin._authed.warehouse.journal'
 import { Route as AdminAuthedWarehouseReceiptsRouteImport } from './routes/admin._authed.warehouse.receipts'
@@ -808,6 +810,11 @@ const AdminAuthedHelpSectionRoute = AdminAuthedHelpSectionRouteImport.update({
   path: '/help/$section',
   getParentRoute: () => AdminAuthedRoute,
 } as any)
+const AdminAuthedLockedModuleRoute = AdminAuthedLockedModuleRouteImport.update({
+  id: '/locked/$module',
+  path: '/locked/$module',
+  getParentRoute: () => AdminAuthedRoute,
+} as any)
 const AdminAuthedOrdersIdRoute = AdminAuthedOrdersIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -823,6 +830,12 @@ const AdminAuthedProductsIdRoute = AdminAuthedProductsIdRouteImport.update({
   path: '/products/$id',
   getParentRoute: () => AdminAuthedRoute,
 } as any)
+const AdminAuthedProductsNewCourseRoute =
+  AdminAuthedProductsNewCourseRouteImport.update({
+    id: '/products_/new-course',
+    path: '/products/new-course',
+    getParentRoute: () => AdminAuthedRoute,
+  } as any)
 const AdminAuthedWarehouseIndexRoute =
   AdminAuthedWarehouseIndexRouteImport.update({
     id: '/warehouse/',
@@ -1107,9 +1120,11 @@ export interface FileRoutesByFullPath {
   '/s/$slug/': typeof SSlugIndexRoute
   '/admin/customers/$key': typeof AdminAuthedCustomersKeyRoute
   '/admin/help/$section': typeof AdminAuthedHelpSectionRoute
+  '/admin/locked/$module': typeof AdminAuthedLockedModuleRoute
   '/admin/orders/$id': typeof AdminAuthedOrdersIdRoute
   '/admin/orders/new': typeof AdminAuthedOrdersNewRoute
   '/admin/products/$id': typeof AdminAuthedProductsIdRoute
+  '/admin/products/new-course': typeof AdminAuthedProductsNewCourseRoute
   '/admin/warehouse/journal': typeof AdminAuthedWarehouseJournalRoute
   '/admin/warehouse/receipts': typeof AdminAuthedWarehouseReceiptsRoute
   '/admin/warehouse/requests': typeof AdminAuthedWarehouseRequestsRoute
@@ -1262,9 +1277,11 @@ export interface FileRoutesByTo {
   '/s/$slug': typeof SSlugIndexRoute
   '/admin/customers/$key': typeof AdminAuthedCustomersKeyRoute
   '/admin/help/$section': typeof AdminAuthedHelpSectionRoute
+  '/admin/locked/$module': typeof AdminAuthedLockedModuleRoute
   '/admin/orders/$id': typeof AdminAuthedOrdersIdRoute
   '/admin/orders/new': typeof AdminAuthedOrdersNewRoute
   '/admin/products/$id': typeof AdminAuthedProductsIdRoute
+  '/admin/products/new-course': typeof AdminAuthedProductsNewCourseRoute
   '/admin/warehouse/journal': typeof AdminAuthedWarehouseJournalRoute
   '/admin/warehouse/receipts': typeof AdminAuthedWarehouseReceiptsRoute
   '/admin/warehouse/requests': typeof AdminAuthedWarehouseRequestsRoute
@@ -1424,9 +1441,11 @@ export interface FileRoutesById {
   '/s/$slug/': typeof SSlugIndexRoute
   '/admin/_authed/customers_/$key': typeof AdminAuthedCustomersKeyRoute
   '/admin/_authed/help_/$section': typeof AdminAuthedHelpSectionRoute
+  '/admin/_authed/locked/$module': typeof AdminAuthedLockedModuleRoute
   '/admin/_authed/orders/$id': typeof AdminAuthedOrdersIdRoute
   '/admin/_authed/orders/new': typeof AdminAuthedOrdersNewRoute
   '/admin/_authed/products_/$id': typeof AdminAuthedProductsIdRoute
+  '/admin/_authed/products_/new-course': typeof AdminAuthedProductsNewCourseRoute
   '/admin/_authed/warehouse/journal': typeof AdminAuthedWarehouseJournalRoute
   '/admin/_authed/warehouse/receipts': typeof AdminAuthedWarehouseReceiptsRoute
   '/admin/_authed/warehouse/requests': typeof AdminAuthedWarehouseRequestsRoute
@@ -1585,9 +1604,11 @@ export interface FileRouteTypes {
     | '/s/$slug/'
     | '/admin/customers/$key'
     | '/admin/help/$section'
+    | '/admin/locked/$module'
     | '/admin/orders/$id'
     | '/admin/orders/new'
     | '/admin/products/$id'
+    | '/admin/products/new-course'
     | '/admin/warehouse/journal'
     | '/admin/warehouse/receipts'
     | '/admin/warehouse/requests'
@@ -1740,9 +1761,11 @@ export interface FileRouteTypes {
     | '/s/$slug'
     | '/admin/customers/$key'
     | '/admin/help/$section'
+    | '/admin/locked/$module'
     | '/admin/orders/$id'
     | '/admin/orders/new'
     | '/admin/products/$id'
+    | '/admin/products/new-course'
     | '/admin/warehouse/journal'
     | '/admin/warehouse/receipts'
     | '/admin/warehouse/requests'
@@ -1901,9 +1924,11 @@ export interface FileRouteTypes {
     | '/s/$slug/'
     | '/admin/_authed/customers_/$key'
     | '/admin/_authed/help_/$section'
+    | '/admin/_authed/locked/$module'
     | '/admin/_authed/orders/$id'
     | '/admin/_authed/orders/new'
     | '/admin/_authed/products_/$id'
+    | '/admin/_authed/products_/new-course'
     | '/admin/_authed/warehouse/journal'
     | '/admin/_authed/warehouse/receipts'
     | '/admin/_authed/warehouse/requests'
@@ -2875,6 +2900,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAuthedHelpSectionRouteImport
       parentRoute: typeof AdminAuthedRoute
     }
+    '/admin/_authed/locked/$module': {
+      id: '/admin/_authed/locked/$module'
+      path: '/locked/$module'
+      fullPath: '/admin/locked/$module'
+      preLoaderRoute: typeof AdminAuthedLockedModuleRouteImport
+      parentRoute: typeof AdminAuthedRoute
+    }
     '/admin/_authed/orders/$id': {
       id: '/admin/_authed/orders/$id'
       path: '/$id'
@@ -2894,6 +2926,13 @@ declare module '@tanstack/react-router' {
       path: '/products/$id'
       fullPath: '/admin/products/$id'
       preLoaderRoute: typeof AdminAuthedProductsIdRouteImport
+      parentRoute: typeof AdminAuthedRoute
+    }
+    '/admin/_authed/products_/new-course': {
+      id: '/admin/_authed/products_/new-course'
+      path: '/products/new-course'
+      fullPath: '/admin/products/new-course'
+      preLoaderRoute: typeof AdminAuthedProductsNewCourseRouteImport
       parentRoute: typeof AdminAuthedRoute
     }
     '/admin/_authed/warehouse/': {
@@ -3162,7 +3201,9 @@ interface AdminAuthedRouteChildren {
   AdminAuthedIndexRoute: typeof AdminAuthedIndexRoute
   AdminAuthedCustomersKeyRoute: typeof AdminAuthedCustomersKeyRoute
   AdminAuthedHelpSectionRoute: typeof AdminAuthedHelpSectionRoute
+  AdminAuthedLockedModuleRoute: typeof AdminAuthedLockedModuleRoute
   AdminAuthedProductsIdRoute: typeof AdminAuthedProductsIdRoute
+  AdminAuthedProductsNewCourseRoute: typeof AdminAuthedProductsNewCourseRoute
   AdminAuthedWarehouseJournalRoute: typeof AdminAuthedWarehouseJournalRoute
   AdminAuthedWarehouseReceiptsRoute: typeof AdminAuthedWarehouseReceiptsRoute
   AdminAuthedWarehouseRequestsRoute: typeof AdminAuthedWarehouseRequestsRoute
@@ -3220,7 +3261,9 @@ const AdminAuthedRouteChildren: AdminAuthedRouteChildren = {
   AdminAuthedIndexRoute: AdminAuthedIndexRoute,
   AdminAuthedCustomersKeyRoute: AdminAuthedCustomersKeyRoute,
   AdminAuthedHelpSectionRoute: AdminAuthedHelpSectionRoute,
+  AdminAuthedLockedModuleRoute: AdminAuthedLockedModuleRoute,
   AdminAuthedProductsIdRoute: AdminAuthedProductsIdRoute,
+  AdminAuthedProductsNewCourseRoute: AdminAuthedProductsNewCourseRoute,
   AdminAuthedWarehouseJournalRoute: AdminAuthedWarehouseJournalRoute,
   AdminAuthedWarehouseReceiptsRoute: AdminAuthedWarehouseReceiptsRoute,
   AdminAuthedWarehouseRequestsRoute: AdminAuthedWarehouseRequestsRoute,

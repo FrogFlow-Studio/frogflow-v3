@@ -10,14 +10,16 @@ import { TgLoginBox, useTgLogin } from "@/app/storefront/tg-login";
 import { useSavedAddresses } from "@/app/storefront/my-addresses";
 import { webAddressSaveFn } from "@/app/storefront/tg-login.functions";
 import { addrT } from "@/app/i18n/storefront-addr";
-import { formatMoney } from "@/core/money/money";
+import { formatMoneyUi } from "@/core/money/money";
 import { Empty, ErrorBox, Field, useAction } from "@/app/ui";
 import { freeDeliveryHint } from "@/core/fulfillment/free-delivery-hint";
 import { describeClosed, isClosedDay } from "@/core/fulfillment/closed-days";
+import { StorePageMissing } from "@/app/storefront/missing";
 
 export const Route = createFileRoute("/s/$slug/checkout")({
   loader: ({ params }) => webCheckoutInfoFn({ data: { slug: params.slug } }),
   component: CheckoutPage,
+  notFoundComponent: StorePageMissing,
 });
 
 /** Оформление на сайте: контакты и страна оплаты → заказ → страница заказа с оплатой. */
@@ -162,13 +164,13 @@ function CheckoutPage() {
               {l.name}
               {l.qty > 1 ? ` × ${l.qty}` : ""}
             </span>
-            <span className="tabular-nums">{formatMoney(l.price * l.qty, l.currency)}</span>
+            <span className="tabular-nums">{formatMoneyUi(l.price * l.qty, l.currency)}</span>
           </li>
         ))}
       </ul>
       <div className="mb-4 flex items-center justify-between text-lg font-semibold">
         <span>{t("cart.total")}</span>
-        <span className="tabular-nums">{formatMoney(cart.total, cart.currency)}</span>
+        <span className="tabular-nums">{formatMoneyUi(cart.total, cart.currency)}</span>
       </div>
       <form
         className="card space-y-4 p-5"
@@ -285,7 +287,7 @@ function CheckoutPage() {
                       {z.name} (
                       {reached(z)
                         ? t("checkout.freeDelivery.word")
-                        : `+${formatMoney(z.fee.amount, z.fee.currency)}`}
+                        : `+${formatMoneyUi(z.fee.amount, z.fee.currency)}`}
                       )
                     </option>
                   ))}
@@ -296,18 +298,18 @@ function CheckoutPage() {
               <p className="text-sm text-muted" role="status" data-testid="free-delivery-hint">
                 {freeDeliveryHint(cart.total, hintFrom.amount, promoTyped) === "reached"
                   ? t("checkout.freeDelivery.reached", {
-                      from: formatMoney(hintFrom.amount, hintFrom.currency),
+                      from: formatMoneyUi(hintFrom.amount, hintFrom.currency),
                     })
                   : freeDeliveryHint(cart.total, hintFrom.amount, promoTyped) === "promo"
                     ? t("checkout.freeDelivery.promo", {
-                        from: formatMoney(hintFrom.amount, hintFrom.currency),
+                        from: formatMoneyUi(hintFrom.amount, hintFrom.currency),
                       })
                     : t("checkout.freeDelivery.left", {
-                        left: formatMoney(
+                        left: formatMoneyUi(
                           Math.ceil(hintFrom.amount - cart.total),
                           hintFrom.currency,
                         ),
-                        from: formatMoney(hintFrom.amount, hintFrom.currency),
+                        from: formatMoneyUi(hintFrom.amount, hintFrom.currency),
                       })}
               </p>
             )}
@@ -397,7 +399,7 @@ function CheckoutPage() {
                   <label className="flex items-center gap-2 text-sm">
                     <input type="checkbox" name="giftWrap" />
                     {t("checkout.giftWrap", {
-                      price: formatMoney(info.giftWrap.amount, info.giftWrap.currency),
+                      price: formatMoneyUi(info.giftWrap.amount, info.giftWrap.currency),
                     })}
                   </label>
                 )}
@@ -446,8 +448,8 @@ function CheckoutPage() {
         {shortfall > 0 && minOrder && (
           <p className="rounded-md border border-warn/40 bg-warn/5 p-3 text-sm" role="status">
             {t("checkout.error.belowMin", {
-              min: formatMoney(minOrder.amount, minOrder.currency),
-              short: formatMoney(shortfall, minOrder.currency),
+              min: formatMoneyUi(minOrder.amount, minOrder.currency),
+              short: formatMoneyUi(shortfall, minOrder.currency),
             })}
           </p>
         )}

@@ -84,6 +84,14 @@ export async function handleMessage(
   // Чек по счёту оператора от владельца бота — до гварда паузы: счёт и
   // выставляется как раз тогда, когда бот приостановлен за просрочку.
   if ((msg.photo || msg.document) && (await ownerInvoiceProof(ctx, api, msg))) return;
+  // Продавец прислал ссылку на видео с подписью — урок в курс (переключатель lessons_by_bot).
+  if (
+    ctx.tenant.settings.delivery?.lessons_by_bot &&
+    (msg.text || msg.caption || msg.video || msg.document)
+  ) {
+    const { lessonBySeller } = await import("../lesson-by-bot");
+    if (await lessonBySeller(ctx, api, msg)) return;
+  }
 
   if (await isBlocked(ctx, from.id)) return;
   if (ctx.tenant.status !== "active") {

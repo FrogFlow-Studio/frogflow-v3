@@ -1,5 +1,11 @@
-import { useEffect, useState } from "react";
-import { channelStrangersFn, courseFn, saveCourseFn } from "@/app/admin/courses.functions";
+import { useEffect, useRef, useState } from "react";
+import {
+  channelStrangersFn,
+  courseFn,
+  removeLessonTgVideoFn,
+  saveCourseFn,
+  sendLessonTgVideoFn,
+} from "@/app/admin/courses.functions";
 import { uploadFile } from "@/app/admin/upload-client";
 import type { AdminT } from "@/app/i18n/admin";
 import { Card, ErrorBox, useAction } from "@/app/ui";
@@ -8,11 +14,13 @@ import {
   DRIP_DAYS_MIN,
   LESSON_FILES_MAX,
   LESSONS_MAX,
+  LESSON_VIDEOS_MAX,
   lessonOpensAfterDays,
   type Course,
   type Lesson,
   HOMEWORK_DAYS_MAX,
 } from "@/core/courses/course";
+import { courseSeen, type CourseSeen } from "@/core/courses/lesson-by-bot";
 import { LessonListAdd } from "@/app/admin/lesson-list-add";
 import { LessonQuizEditor } from "@/app/admin/lesson-quiz-editor";
 import { ChannelField } from "./course/channel";
@@ -22,12 +30,52 @@ import { Students, Strangers } from "./course/students";
 
 /**
  * Уроки курса в карточке цифрового товара (модуль courses): порядок,
- * текст, файлы, ссылка и расписание открытия. Сохраняется отдельной кнопкой,
- * как «С этим предлагать».
+ * текст, файлы, ссылка и расписание открытия. Сохраняется своей кнопкой, а
+ * несохранённые правки уроков — ещё и общей кнопкой товара: `flushRef`
+ * отдаёт странице товара функцию, которую та вызывает перед сохранением
+ * товара (иначе ссылка на видео, вписанная в урок, терялась при «Сохранить»
+ * внизу страницы — так и было у продавца 02.11.2026).
  */
-export function CourseCard({ productId, t }: { productId: string; t: AdminT }) {
+export type CourseFlush = { current: (() => Promise<void>) | null };
+
+export function CourseCard({
+  productId,
+  t,
+  flushRef,
+}: {
+  productId: string;
+  t: AdminT;
+  flushRef?: CourseFlush;
+}) {
   const [course, setCourse] = useState<Course | null>(null);
   const [saved, setSaved] = useState(false);
+  // Правки, ещё не записанные в базу: их сохранит общая кнопка товара.
+  const latest = useRef<Course | null>(null);
+  const dirty = useRef(false);
+  // Что карточка видела из базы: уроки и видео, присланные боту позже, сохранение не затрёт.
+  const seen = useRef<CourseSeen>({ lessons: [], tgVideos: [] });
+  const loaded = (c: Course) => {
+    seen.current = courseSeen(c);
+    setCourse(c);
+  };
+  useEffect(() => {
+    latest.current = course;
+  }, [course]);
+  useEffect(() => {
+    if (!flushRef) return;
+    flushRef.current = async () => {
+      if (!dirty.current || !latest.current) return;
+      const r = await saveCourseFn({
+        data: { productId, course: latest.current, seen: seen.current },
+      });
+      dirty.current = false;
+      loaded(r.course);
+      setSaved(true);
+    };
+    return () => {
+      flushRef.current = null;
+    };
+  }, [flushRef, productId]);
   const [uploading, setUploading] = useState<string | null>(null);
   // «В канале без доступа» — один обход на карточку, не по разу на каждый чат.
   const [strangers, setStrangers] = useState<Awaited<ReturnType<typeof channelStrangersFn>> | null>(
@@ -35,12 +83,24 @@ export function CourseCard({ productId, t }: { productId: string; t: AdminT }) {
   );
   const loadStrangers = () => channelStrangersFn().then(setStrangers, () => setStrangers(null));
   useEffect(() => {
-    void courseFn({ data: { productId } }).then(setCourse);
+    void courseFn({ data: { productId } }).then(loaded);
     void loadStrangers();
+    // Вернулись на вкладку (например, после отправки видео боту) — свежие уроки,
+    // если несохранённых правок нет.
+    const refresh = () => {
+      if (document.visibilityState !== "visible" || dirty.current) return;
+      void courseFn({ data: { productId } }).then((c) => {
+        if (!dirty.current) loaded(c);
+      });
+    };
+    document.addEventListener("visibilitychange", refresh);
+    return () => document.removeEventListener("visibilitychange", refresh);
   }, [productId]);
   const save = useAction(async () => {
     if (!course) return;
-    await saveCourseFn({ data: { productId, course } });
+    const r = await saveCourseFn({ data: { productId, course, seen: seen.current } });
+    dirty.current = false;
+    loaded(r.course);
     setSaved(true);
     await loadStrangers();
   });
@@ -62,14 +122,62 @@ export function CourseCard({ productId, t }: { productId: string; t: AdminT }) {
       }
     }
   });
+  // Видео из бота (03.11.2026): посмотреть — бот пришлёт его продавцу; убрать — сразу, без «Сохранить».
+  const [tgNote, setTgNote] = useState<{ lessonId: string; text: string } | null>(null);
+  const sendTg = useAction(async (lessonId: string, fileId: string) => {
+    const r = await sendLessonTgVideoFn({ data: { productId, lessonId, fileId } });
+    setTgNote({
+      lessonId,
+      text: !r.sent
+        ? t("product.lessonTgNotSent")
+        : r.target === "you"
+          ? t("product.lessonTgSentYou")
+          : t("product.lessonTgSentChat"),
+    });
+  });
+  const removeTg = useAction(async (lessonId: string, fileId: string, title: string) => {
+    if (!window.confirm(t("product.lessonTgRemoveAsk", { title }))) return;
+    const { result } = await removeLessonTgVideoFn({ data: { productId, lessonId, fileId } });
+    // Остальные несохранённые правки формы не трогаем: убираем это видео (или пустой урок) и здесь.
+    seen.current = {
+      ...seen.current,
+      tgVideos: seen.current.tgVideos.filter((v) => v !== fileId),
+    };
+    setCourse(
+      (c) =>
+        c && {
+          ...c,
+          lessons:
+            result === "lessonRemoved"
+              ? c.lessons.filter((x) => x.id !== lessonId)
+              : c.lessons.map((x) =>
+                  x.id === lessonId
+                    ? { ...x, tgVideos: (x.tgVideos ?? []).filter((v) => v !== fileId) }
+                    : x,
+                ),
+        },
+    );
+    setTgNote({
+      lessonId,
+      text:
+        result === "lessonRemoved"
+          ? t("product.lessonTgLessonRemoved")
+          : t("product.lessonTgRemoved"),
+    });
+  });
   if (!course) return null;
+  const withTg = course.lessons
+    .map((l, i) => ({ no: i + 1, n: l.tgVideos?.length ?? 0 }))
+    .filter((x) => x.n > 0);
 
   const change = (next: Course) => {
     setSaved(false);
+    dirty.current = true;
     setCourse(next);
   };
   function edit(index: number, f: (l: Lesson) => Lesson) {
     setSaved(false);
+    dirty.current = true;
     setCourse((c) => c && { ...c, lessons: c.lessons.map((l, i) => (i === index ? f(l) : l)) });
   }
   const move = (index: number, by: -1 | 1) => {
@@ -230,6 +338,14 @@ export function CourseCard({ productId, t }: { productId: string; t: AdminT }) {
       {course.lessons.length === 0 && (
         <p className="mb-2 text-sm text-muted">{t("product.courseEmpty")}</p>
       )}
+      {withTg.length > 0 && (
+        <p className="mb-2 text-xs text-muted" data-testid="lesson-tg-summary">
+          {t("product.lessonTgSummary", {
+            list: withTg.map((x) => `№${x.no}${x.n > 1 ? ` × ${x.n}` : ""}`).join(", "),
+          })}
+        </p>
+      )}
+      <ErrorBox error={sendTg.error ?? removeTg.error} />
       <ol className="space-y-3">
         {course.lessons.map((l, i) => {
           const day = lessonOpensAfterDays(course.schedule, i);
@@ -237,6 +353,11 @@ export function CourseCard({ productId, t }: { productId: string; t: AdminT }) {
             <li key={l.id} className="rounded border border-line p-3">
               <div className="mb-2 flex items-center gap-2">
                 <span className="text-sm font-medium tabular-nums">{i + 1}.</span>
+                {(l.tgVideos?.length ?? 0) > 0 && (
+                  <span className="badge shrink-0 text-xs">
+                    {t("product.lessonTgCount", { n: l.tgVideos!.length })}
+                  </span>
+                )}
                 <input
                   id={`lesson-title-${l.id}`}
                   className="input min-w-0 flex-1"
@@ -290,6 +411,75 @@ export function CourseCard({ productId, t }: { productId: string; t: AdminT }) {
                 value={l.link ?? ""}
                 onChange={(e) => edit(i, (x) => ({ ...x, link: e.target.value.trim() || null }))}
               />
+              {(l.videos ?? []).map((v, k) => (
+                <div key={k} className="mb-2 flex gap-2">
+                  <input
+                    id={`lesson-video-${l.id}-${k}`}
+                    className="input"
+                    type="url"
+                    placeholder={t("product.lessonVideoMore")}
+                    value={v}
+                    onChange={(e) =>
+                      edit(i, (x) => ({
+                        ...x,
+                        videos: (x.videos ?? []).map((y, j) =>
+                          j === k ? e.target.value.trim() : y,
+                        ),
+                      }))
+                    }
+                  />
+                  <button
+                    type="button"
+                    className="btn-ghost"
+                    aria-label={t("product.lessonVideoDelete")}
+                    onClick={() =>
+                      edit(i, (x) => ({ ...x, videos: (x.videos ?? []).filter((_, j) => j !== k) }))
+                    }
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+              {(l.tgVideos ?? []).map((v, k) => (
+                <div
+                  key={v}
+                  className="mb-2 flex flex-wrap items-center gap-2 rounded bg-surface-2 px-2 py-1 text-sm"
+                  data-testid="lesson-tg-video"
+                >
+                  <span className="min-w-0 flex-1">{t("product.lessonTgVideo", { n: k + 1 })}</span>
+                  <button
+                    type="button"
+                    className="btn-ghost text-xs"
+                    disabled={sendTg.busy}
+                    onClick={() => void sendTg.run(l.id, v).catch(() => {})}
+                  >
+                    ▶️ {t("product.lessonTgSend")}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-ghost text-xs"
+                    disabled={removeTg.busy}
+                    onClick={() => void removeTg.run(l.id, v, l.title).catch(() => {})}
+                  >
+                    ✕ {t("product.lessonTgRemove")}
+                  </button>
+                </div>
+              ))}
+              {tgNote?.lessonId === l.id && (
+                <p className="mb-2 text-xs text-ok" role="status">
+                  {tgNote.text}
+                </p>
+              )}
+              {(l.videos?.length ?? 0) < LESSON_VIDEOS_MAX - 1 && (
+                <button
+                  type="button"
+                  id={`lesson-video-add-${l.id}`}
+                  className="btn-ghost mb-2 text-sm"
+                  onClick={() => edit(i, (x) => ({ ...x, videos: [...(x.videos ?? []), ""] }))}
+                >
+                  {t("product.lessonVideoAdd")}
+                </button>
+              )}
               <label className="mb-2 flex items-start gap-2 text-sm">
                 <input
                   id={`lesson-preview-${l.id}`}

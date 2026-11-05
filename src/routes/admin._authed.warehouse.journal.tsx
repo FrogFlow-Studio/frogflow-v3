@@ -8,7 +8,8 @@ import { STOCK_REASONS } from "@/core/catalog/stock-history";
 
 export const Route = createFileRoute("/admin/_authed/warehouse/journal")({
   beforeLoad: ({ context }) => {
-    if (!context.shop.modules.warehouse) throw redirect({ to: "/admin" });
+    if (!context.shop.modules.warehouse)
+      throw redirect({ to: "/admin/locked/$module", params: { module: "warehouse" } });
   },
   loader: () => journalFn({ data: { page: 0, filter: {} } }),
   component: JournalPage,

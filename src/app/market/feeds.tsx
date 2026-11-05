@@ -6,17 +6,16 @@ import { marketT } from "@/app/market/i18n";
 import type { Locale } from "@/core/i18n/locale";
 import type { MarketItem } from "@/core/marketplace/items";
 import { MARKET_RECENT_KEY, parseViews } from "@/core/marketplace/views";
+import { formatMoneyUi } from "@/core/money/money";
 
 /** Лента карточек: на телефоне в один столбец, дальше в два; без горизонтальной прокрутки. */
 export function FeedList({
   title,
   items,
-  locale,
   testId,
 }: {
   title: string;
   items: MarketItem[];
-  locale: Locale;
   testId: string;
 }) {
   if (items.length === 0) return null;
@@ -43,9 +42,7 @@ export function FeedList({
               >
                 {i.name}
               </Link>
-              <p className="text-sm">
-                {new Intl.NumberFormat(locale).format(i.price)} {i.currency}
-              </p>
+              <p className="text-sm">{formatMoneyUi(i.price, i.currency)}</p>
               <p className="mt-0.5 truncate text-xs text-muted">{i.shopName}</p>
             </div>
           </li>
@@ -88,9 +85,9 @@ export function MarketFeeds({
   }, []);
   return (
     <>
-      <FeedList title={t("feed.recent")} items={recent} locale={locale} testId="feed-recent" />
-      <FeedList title={t("feed.fresh")} items={fresh} locale={locale} testId="feed-fresh" />
-      <FeedList title={t("feed.popular")} items={popular} locale={locale} testId="feed-popular" />
+      <FeedList title={t("feed.recent")} items={recent} testId="feed-recent" />
+      <FeedList title={t("feed.fresh")} items={fresh} testId="feed-fresh" />
+      <FeedList title={t("feed.popular")} items={popular} testId="feed-popular" />
     </>
   );
 }

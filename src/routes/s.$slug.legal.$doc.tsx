@@ -3,6 +3,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { legalFn } from "@/app/storefront/storefront.functions";
 import { useStorefrontLocale } from "@/app/storefront/locale";
 import type { StorefrontKey } from "@/app/i18n/storefront";
+import { StorePageMissing } from "@/app/storefront/missing";
 
 const TITLES: Record<string, StorefrontKey> = {
   offer: "legal.offer",
@@ -18,6 +19,7 @@ export const Route = createFileRoute("/s/$slug/legal/$doc")({
       data: { slug: params.slug, doc: params.doc as "offer" | "privacy" | "requisites" | "about" },
     }),
   component: LegalPage,
+  notFoundComponent: StorePageMissing,
 });
 
 function LegalPage() {

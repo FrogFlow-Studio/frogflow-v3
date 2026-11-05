@@ -274,7 +274,17 @@ export async function receiveProof(b: Bot, msg: TelegramMessage, orderId: number
   }
 
   b.customer = await setState(b.ctx, b.customer, { ...b.customer.state, mode: "idle" });
-  await send(b, b.m.proofReceived(no), { reply_markup: mainMenu(b) });
+  // «Кто и когда проверит чек» (delivery.proof_eta) — вместо «Ожидайте подтверждения».
+  const eta = b.ctx.tenant.settings.delivery?.proof_eta
+    ? (await import("@/core/orders/proof-eta")).proofEtaText(b.locale, {
+        no,
+        checker: b.ctx.tenant.settings.delivery.proof_checker,
+        workHours: b.ctx.tenant.settings.work_hours,
+        now: new Date(),
+        timezone: b.ctx.timezone,
+      })
+    : null;
+  await send(b, eta ?? b.m.proofReceived(no), { reply_markup: mainMenu(b) });
   if (reviewReason) await notifyAdminNewOrder(b.ctx, b.api, res.order, proof, { reviewReason });
   else await notifyAdminNewOrder(b.ctx, b.api, res.order, proof);
 }

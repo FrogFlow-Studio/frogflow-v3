@@ -1,4 +1,4 @@
-import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useRouter, redirect } from "@tanstack/react-router";
 import { useState } from "react";
 import { saveSettingsFn } from "@/app/admin/settings.functions";
 import {
@@ -19,6 +19,10 @@ import { imagePath } from "@/core/catalog/image-url";
 import { uploadFile } from "@/app/admin/upload-client";
 
 export const Route = createFileRoute("/admin/_authed/vip")({
+  beforeLoad: ({ context }) => {
+    if (!context.shop.modules.vip)
+      throw redirect({ to: "/admin/locked/$module", params: { module: "vip" } });
+  },
   loader: () => vipStateFn(),
   component: VipPage,
 });

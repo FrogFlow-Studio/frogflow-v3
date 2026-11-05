@@ -119,16 +119,39 @@ export async function manifestResponse(slug: string): Promise<Response> {
   });
 }
 
-/** /s/<slug>/icon/<размер> — PNG в цвете магазина. */
+/**
+ * /s/<slug>/icon/<размер> — иконка вкладки и телефона: аватар Telegram-бота
+ * (core/storefront/bot-avatar), его нет или не скачался — PNG в цвете магазина.
+ * Вкладке иконка нужна и школе без витрины («info»), поэтому не только «catalog».
+ */
 export async function iconResponse(slug: string, rawSize: string): Promise<Response> {
   const size = Number(rawSize);
   if (!/^\d{3}$/.test(rawSize) || !SIZES.has(size)) return notFound();
-  const t = await openShop(slug, "catalog");
+  const t = await openShop(slug, "info");
   if (!t) return notFound();
   const { tenantContext } = await import("@/core/tenant/resolve.server");
-  const s = await getSettings(tenantContext(t), ["storefront_accent"]);
+  const { BOT_AVATAR_KEY, parseBotAvatar } = await import("@/core/storefront/bot-avatar");
+  const s = await getSettings(tenantContext(t), ["storefront_accent", BOT_AVATAR_KEY]);
+  // Аватар меняется раз в сутки, а не навсегда: кэш короче, чем у картинок товаров.
+  const cache = "public, max-age=3600";
+  const avatar = parseBotAvatar(s[BOT_AVATAR_KEY] ?? null, t.id);
+  if (avatar?.path) {
+    const { serviceDb } = await import("@/core/db/client.server");
+    const storage = serviceDb().storage.from("product-images");
+    let file = (
+      await storage.download(avatar.path, {
+        transform: { width: size, height: size, resize: "cover", quality: 85 },
+      })
+    ).data;
+    // Тариф без преобразований — оригинал: браузер сам уменьшит.
+    file ??= (await storage.download(avatar.path)).data;
+    if (file)
+      return new Response(file, {
+        headers: { "content-type": file.type || "image/jpeg", "cache-control": cache },
+      });
+  }
   return new Response(new Uint8Array(shopIconPng(size, s.storefront_accent ?? null)), {
-    headers: { "content-type": "image/png", "cache-control": "public, max-age=86400" },
+    headers: { "content-type": "image/png", "cache-control": cache },
   });
 }
 

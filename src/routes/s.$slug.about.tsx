@@ -5,6 +5,7 @@ import { useStorefrontLocale } from "@/app/storefront/locale";
 import { aboutCanonical, aboutJsonLd } from "@/core/storefront/about";
 import { canonicalLink, jsonLdScript } from "@/core/storefront/seo";
 import { shareText } from "@/core/storefront/share";
+import { StorePageMissing } from "@/app/storefront/missing";
 
 export const Route = createFileRoute("/s/$slug/about")({
   headers: publicHeaders,
@@ -44,6 +45,7 @@ export const Route = createFileRoute("/s/$slug/about")({
     };
   },
   component: AboutPage,
+  notFoundComponent: StorePageMissing,
 });
 
 function AboutPage() {

@@ -342,21 +342,53 @@ export async function listCustomers(
     .order("created_at", { ascending: false })
     .limit(limit);
   if (q?.trim()) {
-    const s = q.trim().replace(/[%_,()]/g, " ");
+    // «@ник» — ник в базе без собачки.
+    const s = q
+      .trim()
+      .replace(/^@+/, "")
+      .replace(/[%_,()]/g, " ");
     query = query.or(
       `username.ilike.%${s}%,first_name.ilike.%${s}%,last_name.ilike.%${s}%,contact_phone.ilike.%${s}%`,
     );
   }
-  const [{ data, error }, { data: blocked }] = await Promise.all([
-    query,
-    ctx.db.from("blocked_users").select("telegram_id"),
-  ]);
+  const [{ data, error }, blocked] = await Promise.all([query, listBlocked(ctx)]);
   if (error) throw serverFailure(error.message);
-  const b = new Set((blocked ?? []).map((r) => Number(r.telegram_id)));
+  const b = new Set(blocked.map((r) => r.telegram_id));
   return (data ?? []).map((r) => ({
     ...r,
     telegram_id: Number(r.telegram_id),
     blocked: b.has(Number(r.telegram_id)),
+  }));
+}
+
+export type BlockedRow = {
+  telegram_id: number;
+  username: string | null;
+  first_name: string | null;
+  reason: string | null;
+};
+
+/**
+ * Весь чёрный список клиента, постранично. Отдельно от «Покупателей»: бот
+ * проверяет блок раньше, чем заводит покупателя (telegram/update/message.ts),
+ * поэтому у заблокированного часто нет строки в bot_users и иначе его не снять. Не прочиталось — `serverFailure`, а не «никого нет».
+ */
+export async function listBlocked(ctx: TenantContext): Promise<BlockedRow[]> {
+  const rows = await pageAll(
+    (from, to) =>
+      ctx.db
+        .from("blocked_users")
+        .select("telegram_id, username, first_name, reason")
+        .eq("bot_id", ctx.tenant.id)
+        .order("telegram_id")
+        .range(from, to),
+    "Покупатели: чёрный список",
+  );
+  return rows.map((r) => ({
+    telegram_id: Number(r.telegram_id),
+    username: r.username ?? null,
+    first_name: r.first_name ?? null,
+    reason: r.reason ?? null,
   }));
 }
 

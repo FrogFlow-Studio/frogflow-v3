@@ -1,3 +1,4 @@
+import { moduleOf, shortTitle } from "./course-format";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Tenant } from "@/core/tenant/types";
 import { shownLeadDays } from "@/core/catalog/lead-time";
@@ -44,10 +45,13 @@ export function mainMenu(tenant: Tenant, locale: Locale, appUrl: string, sells =
   const keyboard: MenuButton[][] = [
     ...(school ? [[{ text: m.myCourses }]] : []),
     ...(sells
-      ? [
-          [{ text: school ? m.catalogCourses : m.catalog }, { text: m.search }],
-          [{ text: m.cart }, { text: m.myOrders }],
-        ]
+      ? school && tenant.settings.delivery?.course_in_bot === true
+        ? // Курс в боте: у школы пара курсов — поиск по каталогу лишний.
+          [[{ text: m.catalogCourses }, { text: m.cart }], [{ text: m.myOrders }]]
+        : [
+            [{ text: school ? m.catalogCourses : m.catalog }, { text: m.search }],
+            [{ text: m.cart }, { text: m.myOrders }],
+          ]
       : []),
     // «Информация» ведёт на юр. страницы — только при модуле legal_docs.
     tenant.modules.legal_docs
@@ -236,7 +240,30 @@ export async function productCard(
             callback_data: `opl:${p.id}:${l.no}`,
           },
         ]);
-      caption += `\n${COURSE_CARD[locale].lessons(course.lessons.length)}`;
+      const inBot = t.settings.delivery?.course_in_bot === true;
+      if (inBot) {
+        // Курс в боте: шапка курса и программа — модули с числом уроков или список уроков.
+        caption = caption.replace(/^📦 /u, "🎓 ");
+        const cc = COURSE_CARD[locale];
+        const mods = [...new Set(course.lessons.map((l) => moduleOf(l.title)))];
+        const program = mods.every(Boolean)
+          ? mods.map((m) => {
+              const ls = course.lessons.filter((l) => moduleOf(l.title) === m);
+              return `<b>${escapeHtml(m!)}</b>\n${ls.map((l) => `   ${escapeHtml(shortTitle(l.title, l.no))}`).join("\n")}`;
+            })
+          : course.lessons.slice(0, 15).map((l) => escapeHtml(shortTitle(l.title, l.no)));
+        caption += `\n\n📚 <b>${cc.program(course.lessons.length)}</b>\n${program.join("\n")}\n\n${cc.inChat}`;
+        // Кнопка покупки курса — «Купить курс», после нажатия сразу корзина с оформлением.
+        keyboard = {
+          inline_keyboard: (keyboard.inline_keyboard ?? []).map((row) =>
+            row.map((btn) =>
+              "callback_data" in btn && btn.callback_data === `add:${p.id}`
+                ? { text: cc.buy, callback_data: `add:${p.id}::c` }
+                : btn,
+            ),
+          ),
+        };
+      } else caption += `\n${COURSE_CARD[locale].lessons(course.lessons.length)}`;
       if (course.cohort) {
         const day = new Intl.DateTimeFormat(locale, {
           day: "numeric",
@@ -263,6 +290,9 @@ const COURSE_CARD: Record<
     start: (title: string, day: string) => string;
     closed: string;
     openLesson: (no: number, title: string) => string;
+    program: (n: number) => string;
+    inChat: string;
+    buy: string;
   }
 > = {
   ru: {
@@ -270,23 +300,36 @@ const COURSE_CARD: Record<
     start: (title, day) => `🗓 Поток «${title}» — старт ${day}`,
     closed: "Набор закрыт",
     openLesson: (no, title) => `Открытый урок ${no}: ${title}`,
+    program: (n) =>
+      `Программа · ${n} ${n % 10 === 1 && n % 100 !== 11 ? "урок" : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? "урока" : "уроков"}`,
+    inChat: "📲 Уроки приходят прямо в этот чат: видео, текст и задания. Проходите в своём темпе.",
+    buy: "🎓 Купить курс",
   },
   kk: {
     lessons: (n) => `🎓 Курстағы сабақтар: ${n}`,
     start: (title, day) => `🗓 «${title}» ағыны — басталуы ${day}`,
     closed: "Қабылдау жабық",
     openLesson: (no, title) => `Ашық сабақ ${no}: ${title}`,
+    program: (n) => `Бағдарлама · ${n} сабақ`,
+    inChat: "📲 Сабақтар осы чатқа келеді: бейне, мәтін және тапсырмалар. Өз қарқыныңызбен өтіңіз.",
+    buy: "🎓 Курсты сатып алу",
   },
   en: {
     lessons: (n) => `🎓 Lessons in the course: ${n}`,
     start: (title, day) => `🗓 Cohort «${title}» — starts ${day}`,
     closed: "Enrolment closed",
     openLesson: (no, title) => `Open lesson ${no}: ${title}`,
+    program: (n) => `Programme · ${n} lesson${n === 1 ? "" : "s"}`,
+    inChat: "📲 Lessons come right into this chat: video, text and tasks. Go at your own pace.",
+    buy: "🎓 Buy the course",
   },
   uz: {
     lessons: (n) => `🎓 Kursdagi darslar: ${n}`,
     start: (title, day) => `🗓 «${title}» oqimi — boshlanishi ${day}`,
     closed: "Qabul yopilgan",
     openLesson: (no, title) => `Ochiq dars ${no}: ${title}`,
+    program: (n) => `Dastur · ${n} ta dars`,
+    inChat: "📲 Darslar shu chatga keladi: video, matn va vazifalar. O‘z sur’atingizda o‘ting.",
+    buy: "🎓 Kursni sotib olish",
   },
 };

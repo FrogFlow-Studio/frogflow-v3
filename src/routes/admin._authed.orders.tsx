@@ -14,12 +14,13 @@ import { z } from "zod";
 import { ordersFn } from "@/app/admin/orders.functions";
 import { assembleOrdersFn, orderBatchCountFn } from "@/app/admin/batch.functions";
 import { useLiveOrders } from "@/app/admin/live-orders";
+import { OrderStatus } from "@/app/admin/order-status";
 import { adminT, intlLocale, type AdminKey } from "@/app/i18n/admin";
-import { Badge, Empty, ErrorBox, PageTitle, useAction } from "@/app/ui";
+import { Empty, ErrorBox, PageTitle, useAction } from "@/app/ui";
 import { usePullToRefresh } from "@/app/ui/pull-to-refresh";
 import { EmptyState } from "@/app/ui/states";
 import { BATCH_MAX } from "@/core/orders/batch-pure";
-import { formatMoney } from "@/core/money/money";
+import { formatMoneyUi } from "@/core/money/money";
 import { displayNo } from "@/core/orders/pure";
 
 const search = z.object({
@@ -40,45 +41,6 @@ export const Route = createFileRoute("/admin/_authed/orders")({
   loader: ({ deps }) => ordersFn({ data: deps }),
   component: OrdersPage,
 });
-
-const STATUS_TONE: Record<string, "neutral" | "ok" | "warn" | "danger" | "accent"> = {
-  awaiting_payment: "neutral",
-  awaiting_confirmation: "warn",
-  delivering: "accent",
-  delivered: "ok",
-  paid: "accent",
-  accepted: "accent",
-  in_production: "accent",
-  ready: "warn",
-  rejected: "danger",
-  cancelled: "danger",
-  refunded: "danger",
-};
-
-const STATUS_KEYS = [
-  "awaiting_payment",
-  "awaiting_confirmation",
-  "delivering",
-  "delivered",
-  "paid",
-  "accepted",
-  "in_production",
-  "ready",
-  "rejected",
-  "cancelled",
-  "refunded",
-] as const;
-
-export function OrderStatus({ status }: { status: string }) {
-  const { shop } = useRouteContext({ from: "/admin/_authed" });
-  const t = adminT(shop.locale);
-  const known = (STATUS_KEYS as readonly string[]).includes(status);
-  return (
-    <Badge tone={STATUS_TONE[status] ?? "neutral"}>
-      {known ? t(`orders.status.${status as (typeof STATUS_KEYS)[number]}`) : status}
-    </Badge>
-  );
-}
 
 /** `paymentsOnly` — роль «просмотр»: заказы с контактами ей не выгружаются, «Оплаты» без них — да. */
 function ExportButton({ paymentsOnly = false }: { paymentsOnly?: boolean }) {
@@ -529,12 +491,12 @@ function OrdersPage() {
                       </div>
                       <div className="mt-2 flex items-center justify-between gap-2">
                         <span className="tabular-nums font-medium">
-                          {formatMoney(o.total, o.currency)}
+                          {formatMoneyUi(o.total, o.currency)}
                           {o.fulfillment_kind === "physical" &&
                             Number(o.paid_amount) > 0 &&
                             Number(o.paid_amount) < Number(o.total) && (
                               <span className="ml-1 text-xs font-normal text-muted">
-                                {t("physical.paid")} {formatMoney(o.paid_amount, o.currency)}
+                                {t("physical.paid")} {formatMoneyUi(o.paid_amount, o.currency)}
                               </span>
                             )}
                         </span>

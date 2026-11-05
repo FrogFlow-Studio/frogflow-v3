@@ -33,7 +33,7 @@ test("сборка пачкой: фильтр, листы, этикетки, о�
   await expect(slips.getByRole("heading", { name: "Упаковочный лист", exact: true })).toHaveCount(
     3,
   );
-  await expect(slips.getByText("5000")).toHaveCount(0);
+  await expect(slips.getByText(/5\s?000/)).toHaveCount(0);
 
   // Этикетки: только доставка (Анна и Борис), самовывоз Веры посчитан отдельно.
   const labelsHref = await bar

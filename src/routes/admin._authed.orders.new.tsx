@@ -4,7 +4,7 @@ import { useState } from "react";
 import { createManualOrderFn, manualOrderFormFn } from "@/app/admin/orders.functions";
 import { adminT } from "@/app/i18n/admin";
 import { ErrorBox, Field, useAction } from "@/app/ui";
-import { formatMoney } from "@/core/money/money";
+import { formatMoneyUi } from "@/core/money/money";
 import { addDaysToIso } from "@/core/fulfillment/pure";
 import { isClosedDay } from "@/core/fulfillment/closed-days";
 
@@ -123,7 +123,7 @@ function ManualOrderPage() {
                           <option key={x.id} value={x.id}>
                             {x.name}
                             {x.variants.length === 0
-                              ? ` · ${formatMoney(x.price, x.currency)}`
+                              ? ` · ${formatMoneyUi(x.price, x.currency)}`
                               : ""}
                             {x.stock !== null ? ` (${x.stock})` : ""}
                           </option>
@@ -140,7 +140,7 @@ function ManualOrderPage() {
                           <option value="">{t("manual.variant")}</option>
                           {p.variants.map((v) => (
                             <option key={v.id} value={v.id}>
-                              {v.name} · {formatMoney(v.price, p.currency)}
+                              {v.name} · {formatMoneyUi(v.price, p.currency)}
                             </option>
                           ))}
                         </select>
@@ -228,7 +228,7 @@ function ManualOrderPage() {
                       <option value="">{t("physical.zonePick")}</option>
                       {zones.map((z) => (
                         <option key={z.id} value={z.id}>
-                          {z.name} · {formatMoney(z.price, z.currency)}
+                          {z.name} · {formatMoneyUi(z.price, z.currency)}
                         </option>
                       ))}
                     </select>
@@ -256,7 +256,7 @@ function ManualOrderPage() {
               />
             </Field>
             <p className="font-medium tabular-nums">
-              {t("manual.total", { sum: formatMoney(total, currency) })}
+              {t("manual.total", { sum: formatMoneyUi(total, currency) })}
             </p>
             <ErrorBox error={create.error} />
             <button className="btn-primary" disabled={create.busy}>

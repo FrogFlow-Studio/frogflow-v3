@@ -2,7 +2,7 @@ import { useState } from "react";
 import { giveawayResultsFn } from "@/app/admin/giveaways.functions";
 import type { AdminT } from "@/app/i18n/admin";
 import { ErrorBox, useAction } from "@/app/ui";
-import { formatMoney } from "@/core/money/money";
+import { formatMoneyUi } from "@/core/money/money";
 
 type Results = Awaited<ReturnType<typeof giveawayResultsFn>>;
 
@@ -42,7 +42,7 @@ export function GiveawayResults({ id, t, locale }: { id: string; t: AdminT; loca
           <li>
             {money.length
               ? t("giveaways.results.revenue", {
-                  sum: money.map(([cur, v]) => formatMoney(v.revenue, cur)).join(" · "),
+                  sum: money.map(([cur, v]) => formatMoneyUi(v.revenue, cur)).join(" · "),
                 })
               : t("giveaways.results.noRevenue")}
           </li>

@@ -132,10 +132,7 @@ function Landing() {
         <section className="bg-[radial-gradient(70%_90%_at_85%_40%,#0f1d09_0%,transparent_60%)]">
           <div className="mx-auto grid w-full max-w-[1440px] items-center gap-12 px-4 xl:gap-20 xl:px-8 pt-12 pb-16 md:grid-cols-[1.12fr_0.88fr] md:pt-16 md:pb-20">
             <div className="min-w-0">
-              <p className="text-xs font-semibold tracking-[0.3em] text-accent uppercase">
-                {t("hero.kicker")}
-              </p>
-              <h1 className="mt-4 font-display text-[38px] leading-[1.02] font-bold text-balance md:text-[64px] xl:text-[78px]">
+              <h1 className="font-display text-[38px] leading-[1.02] font-bold text-balance md:text-[64px] xl:text-[78px]">
                 {titleHead} {titleTail && <span className="text-accent">{titleTail}</span>}
               </h1>
               <p className="mt-6 max-w-xl text-lg xl:max-w-2xl xl:text-xl text-muted">

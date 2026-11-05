@@ -81,14 +81,39 @@ export const storeCatalogFn = createServerFn({ method: "GET" })
   });
 
 export const storeProductFn = createServerFn({ method: "GET" })
-  .validator((d: unknown) => z.object({ slug, id: z.string().uuid() }).parse(d))
+  // id — номер товара или короткая ссылка страницы курса (/p/kurs, core/courses/landing).
+  .validator((d: unknown) => z.object({ slug, id: z.string().min(1).max(64) }).parse(d))
   .handler(async ({ data }) => {
-    const ctx = await shopCtx(data.slug, "catalog");
+    // Каталог открыт (витрина или Mini App) — любой товар. Иначе у школы
+    // (модуль courses) открыта только страница курса с включённой «Страницей
+    // курса на сайте» (03.11.2026): это её лендинг, а корзины и каталога нет —
+    // купить можно в Telegram.
+    const { resolveTenant, tenantContext } = await import("@/core/tenant/resolve.server");
+    const { storefrontOpen } = await import("@/core/storefront/access");
+    const t = await resolveTenant({ by: "slug", value: data.slug });
+    if (!t) throw notFound();
+    const catalog = storefrontOpen(t, "catalog");
+    if (!catalog && !storefrontOpen(t, "course")) throw notFound();
+    const ctx = tenantContext(t);
     const { storeProduct, storeRelated } = await import("@/core/storefront/catalog");
-    const product = await storeProduct(ctx, data.id);
-    if (!product) throw shownError((await shopT(ctx))("error.productNotFound"));
+    const { isProductUuid } = await import("@/core/courses/landing");
+    let id: string | null = data.id;
+    if (!isProductUuid(id)) {
+      const { productByShort } = await import("@/core/courses/landing.server");
+      id = storefrontOpen(t, "course") ? await productByShort(ctx, id) : null;
+      if (!id) throw notFound();
+    }
+    const product = await storeProduct(ctx, id);
+    if (!product) {
+      if (!catalog) throw notFound();
+      throw shownError((await shopT(ctx))("error.productNotFound"));
+    }
+    if (!catalog) {
+      const { storeLanding } = await import("@/core/courses/landing.server");
+      if (product.kind !== "digital" || !(await storeLanding(ctx, product.id))) throw notFound();
+    }
     // «Похожие»: тема, затем ключевые слова, затем категория (core/storefront/related).
-    const related = await storeRelated(ctx, product);
+    const related = catalog ? await storeRelated(ctx, product) : [];
     // Пример цифрового товара (core/catalog/preview): публичные картинки.
     const { loadPreview } = await import("@/core/catalog/preview");
     const { imageUrl } = await import("@/core/catalog/catalog");
@@ -105,6 +130,9 @@ export const storeProductFn = createServerFn({ method: "GET" })
             (no, idx) => `/api/course-file/${data.slug}/${product.id}/${no}/${idx}`,
           )
         : null;
+    // Страница курса (core/courses/landing): блоки продавца; нет — товар как раньше.
+    const { storeLanding } = await import("@/core/courses/landing.server");
+    const landing = course ? await storeLanding(ctx, product.id) : null;
     // «Сообщить о поступлении»: ссылка в бота, только у товара без остатка (core/waitlist/link).
     const { waitlistLink } = await import("@/core/waitlist/link");
     const waitlistUrl = course
@@ -122,6 +150,9 @@ export const storeProductFn = createServerFn({ method: "GET" })
       related,
       preview,
       course,
+      landing,
+      /** Корзина и каталог на сайте: нет — у школы без витрины покупают в Telegram. */
+      cart: catalog,
       waitlistUrl,
       onMarket: shownOnMarketplace(ctx.tenant),
     };

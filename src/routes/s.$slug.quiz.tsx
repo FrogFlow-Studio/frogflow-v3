@@ -3,13 +3,15 @@ import { usePhotoFrame } from "@/app/storefront/photo-frame";
 import { useState } from "react";
 import { storeQuizFn, storeQuizResultFn } from "@/app/storefront/quiz.functions";
 import { useStorefrontLocale } from "@/app/storefront/locale";
-import { formatMoney } from "@/core/money/money";
+import { formatMoneyUi } from "@/core/money/money";
 import type { StoreProduct } from "@/core/storefront/catalog";
 import { Empty, ErrorBox, useAction } from "@/app/ui";
+import { StorePageMissing } from "@/app/storefront/missing";
 
 export const Route = createFileRoute("/s/$slug/quiz")({
   loader: ({ params }) => storeQuizFn({ data: { slug: params.slug } }),
   component: QuizPage,
+  notFoundComponent: StorePageMissing,
 });
 
 /**
@@ -69,7 +71,7 @@ function QuizPage() {
                   )}
                   <div className="p-3 text-sm">
                     <div className="font-medium">{p.name}</div>
-                    <div className="text-muted">{formatMoney(p.price, p.currency)}</div>
+                    <div className="text-muted">{formatMoneyUi(p.price, p.currency)}</div>
                   </div>
                 </Link>
               ))}

@@ -6347,4 +6347,43 @@ export const SCENARIOS: Scenario[] = [
     },
     steps: [{ say: { text: "Евро" }, expect: { silent: true } }],
   },
+  {
+    id: "proof-eta-tg-ru",
+    title:
+      "чек в Telegram при «кто и когда проверит чек»: бот называет проверяющую и что ответ придёт сюда, без «ожидайте»",
+    origin:
+      "Lash Academy 02.11: ученице после чека непонятно, чего ждать («ждите проверки»); предложение 5 из разбора курса",
+    channel: "telegram",
+    locale: "ru",
+    products: PRODUCTS,
+    tenantSettings: { delivery: { proof_eta: true, proof_checker: "Айс" } },
+    receipts: true,
+    state: { mode: "awaiting_proof", pending_order_id: 82 },
+    arrange: paidOrder({ status: "awaiting_payment" }),
+    steps: [
+      {
+        say: { photo: true },
+        expect: {
+          says: [
+            "✅ Чек по заказу #82 получен. Айс проверит его и подтвердит заказ. Как только чек проверят, бот сразу напишет сюда",
+          ],
+          notSays: [(c) => c.proofReceived(82)],
+          state: { mode: "idle" },
+        },
+      },
+    ],
+  },
+  {
+    id: "proof-eta-off-tg-ru",
+    title: "чек в Telegram без переключателя — как раньше: «Ожидайте подтверждения продавца»",
+    origin:
+      "переключатель delivery.proof_eta по умолчанию выключен — у других магазинов текст прежний",
+    channel: "telegram",
+    locale: "ru",
+    products: PRODUCTS,
+    receipts: true,
+    state: { mode: "awaiting_proof", pending_order_id: 82 },
+    arrange: paidOrder({ status: "awaiting_payment" }),
+    steps: [{ say: { photo: true }, expect: { says: [(c) => c.proofReceived(82)] } }],
+  },
 ];

@@ -33,3 +33,35 @@ test("уроки списком: строки становятся урокам�
   await expect(teacher.getByText("Строка 3: ссылка должна начинаться с https://")).toBeVisible();
   await teacher.close();
 });
+
+/**
+ * Ссылка на видео, вписанная в урок, сохраняется и общей кнопкой товара внизу
+ * страницы, а не только кнопкой в карточке курса (02.11.2026 продавец вписал
+ * YouTube, нажал нижнее «Сохранить» — ссылка пропала).
+ */
+test("ссылка урока сохраняется общей кнопкой «Сохранить» товара", async ({ browser }) => {
+  const teacher = await browser.newPage();
+  await teacher.goto("/admin/login");
+  await teacher.locator('input[name="username"]').fill(F.SCHOOL_SELLER_LOGIN);
+  await teacher.locator('input[name="password"]').fill(F.SCHOOL_SELLER_PASSWORD);
+  await teacher.getByRole("button", { name: "Войти", exact: true }).click();
+  await expect(teacher).toHaveURL(/\/admin$/);
+  await teacher.goto(`/admin/products/${F.SCHOOL_COURSE_ID}`);
+  const link = teacher.locator(`#lesson-link-${F.SCHOOL_LESSON_2}`);
+  await expect(link).toBeVisible();
+  await link.fill("https://youtu.be/AbCdEfGhIjK");
+
+  // Нижняя панель «Сохранить / Отменить» (липкая; на телефоне над нижним меню).
+  // Клик событием: у длинной формы курса Playwright на телефоне промахивается
+  // по липкой панели при прокрутке, хотя кнопка видна (проверено скриншотом).
+  const bar = teacher.getByTestId("product-savebar");
+  await expect(bar.getByRole("button", { name: "Сохранить", exact: true })).toBeInViewport();
+  await bar.getByRole("button", { name: "Сохранить", exact: true }).dispatchEvent("click");
+  await expect(teacher).toHaveURL(/\/admin\/products$/);
+
+  await teacher.goto(`/admin/products/${F.SCHOOL_COURSE_ID}`);
+  await expect(teacher.locator(`#lesson-link-${F.SCHOOL_LESSON_2}`)).toHaveValue(
+    "https://youtu.be/AbCdEfGhIjK",
+  );
+  await teacher.close();
+});

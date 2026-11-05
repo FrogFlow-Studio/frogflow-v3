@@ -5,13 +5,14 @@ import { useState } from "react";
 import { createLeadFn, pipelineFn, updateLeadFn } from "@/app/admin/pipeline.functions";
 import { adminT, intlLocale, type AdminT } from "@/app/i18n/admin";
 import { ErrorBox, Field, PageTitle, useAction } from "@/app/ui";
-import { formatMoney } from "@/core/money/money";
+import { formatMoneyUi } from "@/core/money/money";
 import type { BoardCard } from "@/core/pipeline/board";
 import { PIPELINE_STAGES, type PipelineStage } from "@/core/pipeline/stages";
 
 export const Route = createFileRoute("/admin/_authed/pipeline")({
   beforeLoad: ({ context }) => {
-    if (!context.shop.modules.crm_pipeline) throw redirect({ to: "/admin" });
+    if (!context.shop.modules.crm_pipeline)
+      throw redirect({ to: "/admin/locked/$module", params: { module: "crm_pipeline" } });
   },
   loader: () => pipelineFn(),
   component: PipelinePage,
@@ -22,7 +23,7 @@ function columnSum(cards: BoardCard[]): string {
   const by = new Map<string, number>();
   for (const c of cards)
     if (c.amount && c.currency) by.set(c.currency, (by.get(c.currency) ?? 0) + c.amount);
-  return [...by].map(([cur, n]) => formatMoney(n, cur)).join(" + ");
+  return [...by].map(([cur, n]) => formatMoneyUi(n, cur)).join(" + ");
 }
 
 function PipelinePage() {
@@ -92,7 +93,7 @@ function PipelinePage() {
 function Amount({ card }: { card: BoardCard }) {
   return card.amount && card.currency ? (
     <div className="text-sm font-medium tabular-nums">
-      {formatMoney(card.amount, card.currency)}
+      {formatMoneyUi(card.amount, card.currency)}
     </div>
   ) : null;
 }

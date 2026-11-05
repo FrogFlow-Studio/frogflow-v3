@@ -25,7 +25,8 @@ test("консультант без продаж: покупатели без б
   await page.goto("/admin/customers");
   const row = page.getByRole("link", { name: F.BOVI_LEFT_BUYER_NAME, exact: true });
   await expect(row).toBeVisible();
-  await expect(page.locator("thead").getByText("Канал", { exact: true })).toBeVisible();
+  // На телефоне шапка таблицы скрыта (строки — карточки): колонка есть в разметке.
+  await expect(page.locator("thead").getByText("Канал", { exact: true })).toBeAttached();
   await expect(page.locator("thead").getByText("Баллы", { exact: true })).toHaveCount(0);
   await expect(page.getByRole("region", { name: "Сегменты покупателей", exact: true })).toHaveCount(
     0,
@@ -125,7 +126,7 @@ test("продающий магазин: баллы, заказы, «Спаси�
   const errors = await watch(page);
   await login(page, F.SELLER_LOGIN, F.SELLER_PASSWORD);
   await page.goto("/admin/customers");
-  await expect(page.locator("thead").getByText("Баллы", { exact: true })).toBeVisible();
+  await expect(page.locator("thead").getByText("Баллы", { exact: true })).toBeAttached();
   await page.goto("/admin/customers/telegram:e2e-panel");
   await expect(page.getByRole("heading", { name: "Покупки", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Заказы", exact: true })).toBeVisible();

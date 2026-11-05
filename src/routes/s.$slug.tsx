@@ -1,5 +1,5 @@
 import type React from "react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { rememberWebSource } from "@/app/storefront/source";
 import { sendVisit, trackVisit } from "@/app/storefront/visit-track";
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
@@ -12,12 +12,15 @@ import { MarketBand } from "@/app/storefront/market-band";
 import { TelegramBackButton } from "@/app/storefront/telegram-back";
 import { InstallPrompt } from "@/app/storefront/install";
 import { StorefrontLocaleProvider, useStorefrontLocale } from "@/app/storefront/locale";
-import { storefrontT } from "@/app/i18n/storefront";
 import { ThemeToggle } from "@/app/ui";
 import { activeTab, miniAppTabs, type MiniAppTab } from "@/core/storefront/tabs";
 import { themeClass } from "@/core/storefront/design";
 import { showMobileCartBar } from "@/core/storefront/mobile";
-import { formatMoney } from "@/core/money/money";
+import { formatMoneyUi } from "@/core/money/money";
+import { StoreMissing } from "@/app/storefront/missing";
+
+/** Заголовок вкладки, пока данных магазина нет (как `meta.shop` в словаре витрины). */
+const SHOP_TITLE: Record<string, string> = { ru: "Магазин", kk: "Дүкен", en: "Shop", uz: "Do‘kon" };
 
 export const Route = createFileRoute("/s/$slug")({
   loader: async ({ params }) => {
@@ -25,10 +28,12 @@ export const Route = createFileRoute("/s/$slug")({
       storeInfoFn({ data: { slug: params.slug } }),
       storeShareFn({ data: { slug: params.slug } }),
     ]);
-    return { ...info, share };
+    // Нет фото товаров для превью ссылки — аватар бота, а не пустая карточка.
+    return { ...info, share: { ...share, cover: share.cover ?? info.logo } };
   },
   head: ({ loaderData }) => {
-    const fallback = storefrontT(loaderData?.locale ?? "ru")("meta.shop");
+    // Без словаря витрины: заголовок `head` идёт в общий код всех страниц сайта.
+    const fallback = SHOP_TITLE[loaderData?.locale ?? "ru"] ?? SHOP_TITLE.ru;
     return {
       meta: loaderData
         ? shopMeta({
@@ -40,17 +45,12 @@ export const Route = createFileRoute("/s/$slug")({
             cover: loaderData.share.cover,
           })
         : [{ title: fallback }],
-      links: loaderData?.share.installable ? shopLinks(loaderData.slug) : [],
+      links: loaderData ? shopLinks(loaderData.slug, loaderData.share.installable) : [],
       scripts: [{ src: "https://telegram.org/js/telegram-web-app.js" }],
     };
   },
   component: StoreLayout,
-  notFoundComponent: () => (
-    <main className="mx-auto max-w-md px-4 py-20 text-center">
-      <h1 className="text-lg font-semibold">Магазин не найден</h1>
-      <p className="mt-2 text-sm text-muted">Проверьте адрес — возможно, ссылка устарела.</p>
-    </main>
-  ),
+  notFoundComponent: StoreMissing,
 });
 
 function initials(name: string): string {
@@ -61,6 +61,28 @@ function initials(name: string): string {
       .slice(0, 2)
       .map((w) => w[0]!.toUpperCase())
       .join("") || "🛍"
+  );
+}
+
+/** Аватар бота из Telegram; нет фото или не загрузилось — кружок с буквами. */
+function ShopAvatar({ name, logo }: { name: string; logo: string | null }) {
+  const [broken, setBroken] = useState(false);
+  if (logo && !broken)
+    return (
+      <img
+        src={`${logo}?w=320`}
+        alt=""
+        width={40}
+        height={40}
+        className="h-10 w-10 shrink-0 rounded-full border border-line object-cover"
+        onError={() => setBroken(true)}
+        data-testid="shop-avatar"
+      />
+    );
+  return (
+    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-accent text-sm font-semibold text-accent-fg">
+      {initials(name)}
+    </span>
   );
 }
 
@@ -110,9 +132,7 @@ function StoreFrame() {
             params={{ slug: shop.slug }}
             className="flex min-w-0 items-center gap-3"
           >
-            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-accent text-sm font-semibold text-accent-fg">
-              {initials(shop.name)}
-            </span>
+            <ShopAvatar name={shop.name} logo={shop.logo} />
             <span className="min-w-0">
               <span className="block truncate text-base font-semibold">{shop.name}</span>
               {shop.tagline && (
@@ -290,17 +310,21 @@ function MobileCartBar({ slug }: { slug: string }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   if (!showMobileCartBar(pathname, slug, cart.count)) return null;
   return (
-    <Link
-      to="/s/$slug/cart"
-      params={{ slug }}
-      data-testid="mobile-cart-bar"
-      className="btn-primary fixed inset-x-3 bottom-3 z-20 flex justify-between pb-[env(safe-area-inset-bottom)] shadow-lg sm:hidden"
-    >
-      <span>
-        🛒 {t("layout.cart")} · {cart.count}
-      </span>
-      <span>{formatMoney(cart.total, cart.currency)}</span>
-    </Link>
+    <>
+      {/* Место под липкой кнопкой: подвал и последний блок не прячутся под ней. */}
+      <div className="h-20 sm:hidden" aria-hidden />
+      <Link
+        to="/s/$slug/cart"
+        params={{ slug }}
+        data-testid="mobile-cart-bar"
+        className="btn-primary fixed inset-x-3 bottom-3 z-20 flex justify-between pb-[env(safe-area-inset-bottom)] shadow-lg sm:hidden"
+      >
+        <span>
+          🛒 {t("layout.cart")} · {cart.count}
+        </span>
+        <span>{formatMoneyUi(cart.total, cart.currency)}</span>
+      </Link>
+    </>
   );
 }
 

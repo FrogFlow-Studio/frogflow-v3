@@ -3,7 +3,7 @@ import { usePhotoFrame } from "@/app/storefront/photo-frame";
 import { useEffect, useState } from "react";
 import { storeFavoritesFn } from "@/app/storefront/catalog.functions";
 import { useStorefrontLocale } from "@/app/storefront/locale";
-import { formatMoney } from "@/core/money/money";
+import { formatMoneyUi } from "@/core/money/money";
 import type { StoreProduct } from "@/core/storefront/catalog";
 import { orderRecent, parseRecent, pushRecent } from "@/core/storefront/recent";
 import { MARKET_RECENT_KEY, parseViews, pushView } from "@/core/marketplace/views";
@@ -75,7 +75,7 @@ export function RecentlyViewed({ slug, exclude }: { slug: string; exclude?: stri
             )}
             <div className="p-2 text-xs">
               <div className="line-clamp-2">{p.name}</div>
-              <div className="mt-1 font-semibold">{formatMoney(p.price, p.currency)}</div>
+              <div className="mt-1 font-semibold">{formatMoneyUi(p.price, p.currency)}</div>
             </div>
           </Link>
         ))}

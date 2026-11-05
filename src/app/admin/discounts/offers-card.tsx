@@ -265,84 +265,88 @@ export function OffersCard() {
         <p className="mt-3 text-sm text-muted">{t("discounts.offers.empty")}</p>
       )}
       {data && data.offers.length > 0 && (
-        <table className="table mt-3">
-          <thead>
-            <tr>
-              <th>{t("discounts.offers.product")}</th>
-              <th>{t("discounts.offers.discount")}</th>
-              <th>{t("discounts.offers.period")}</th>
-              <th>{t("discounts.offers.sold")}</th>
-              <th>{t("discounts.col.status")}</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.offers.map((o) => {
-              const running =
-                Date.parse(o.starts_at) <= now && now < Date.parse(o.ends_at) && (o.left ?? 1) > 0;
-              const planned = Date.parse(o.starts_at) > now;
-              return (
-                <tr key={o.id}>
-                  <td>
-                    {o.category_id
-                      ? `${t("discounts.offers.scopeCategory")}: ${catName.get(o.category_id) ?? "—"}`
-                      : (name.get(o.product_id) ?? "—")}
-                  </td>
-                  <td className="tabular-nums">
-                    {o.new_price != null ? `${o.new_price} (−${o.percent}%)` : `−${o.percent}%`}
-                  </td>
-                  <td className="text-muted">
-                    {when(o.starts_at)} — {when(o.ends_at)}
-                  </td>
-                  <td className="tabular-nums">
-                    {o.category_id ? "—" : o.sold}
-                    {o.limit != null && ` / ${o.limit}`}
-                  </td>
-                  <td>
-                    {running ? (
-                      <Badge tone="ok">{t("discounts.offers.running")}</Badge>
-                    ) : planned ? (
-                      <Badge>{t("discounts.offers.planned")}</Badge>
-                    ) : (
-                      <Badge>{t("discounts.offers.ended")}</Badge>
-                    )}
-                  </td>
-                  <td className="text-right whitespace-nowrap">
-                    <button className="btn-ghost text-xs" onClick={() => edit(o)}>
-                      {t("common.edit")}
-                    </button>
-                    {(running || planned) && shop.modules.broadcasts && !o.announced_at && (
-                      <button
-                        className="btn-ghost text-xs"
-                        disabled={announce.busy}
-                        onClick={() => void announce.run(o.id).catch(() => {})}
-                      >
-                        {t("discounts.offers.announce")}
+        <div className="-mx-1 overflow-x-auto px-1">
+          <table className="table mt-3">
+            <thead>
+              <tr>
+                <th>{t("discounts.offers.product")}</th>
+                <th>{t("discounts.offers.discount")}</th>
+                <th>{t("discounts.offers.period")}</th>
+                <th>{t("discounts.offers.sold")}</th>
+                <th>{t("discounts.col.status")}</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.offers.map((o) => {
+                const running =
+                  Date.parse(o.starts_at) <= now &&
+                  now < Date.parse(o.ends_at) &&
+                  (o.left ?? 1) > 0;
+                const planned = Date.parse(o.starts_at) > now;
+                return (
+                  <tr key={o.id}>
+                    <td>
+                      {o.category_id
+                        ? `${t("discounts.offers.scopeCategory")}: ${catName.get(o.category_id) ?? "—"}`
+                        : (name.get(o.product_id) ?? "—")}
+                    </td>
+                    <td className="tabular-nums">
+                      {o.new_price != null ? `${o.new_price} (−${o.percent}%)` : `−${o.percent}%`}
+                    </td>
+                    <td className="text-muted">
+                      {when(o.starts_at)} — {when(o.ends_at)}
+                    </td>
+                    <td className="tabular-nums">
+                      {o.category_id ? "—" : o.sold}
+                      {o.limit != null && ` / ${o.limit}`}
+                    </td>
+                    <td>
+                      {running ? (
+                        <Badge tone="ok">{t("discounts.offers.running")}</Badge>
+                      ) : planned ? (
+                        <Badge>{t("discounts.offers.planned")}</Badge>
+                      ) : (
+                        <Badge>{t("discounts.offers.ended")}</Badge>
+                      )}
+                    </td>
+                    <td className="text-right whitespace-nowrap">
+                      <button className="btn-ghost text-xs" onClick={() => edit(o)}>
+                        {t("common.edit")}
                       </button>
-                    )}
-                    {o.announced_at && <Badge>{t("discounts.offers.announced")}</Badge>}
-                    {(running || planned) && (
+                      {(running || planned) && shop.modules.broadcasts && !o.announced_at && (
+                        <button
+                          className="btn-ghost text-xs"
+                          disabled={announce.busy}
+                          onClick={() => void announce.run(o.id).catch(() => {})}
+                        >
+                          {t("discounts.offers.announce")}
+                        </button>
+                      )}
+                      {o.announced_at && <Badge>{t("discounts.offers.announced")}</Badge>}
+                      {(running || planned) && (
+                        <button
+                          className="btn-ghost text-xs"
+                          disabled={end.busy}
+                          onClick={() => void end.run(o.id).catch(() => {})}
+                        >
+                          {t("discounts.offers.end")}
+                        </button>
+                      )}
                       <button
-                        className="btn-ghost text-xs"
-                        disabled={end.busy}
-                        onClick={() => void end.run(o.id).catch(() => {})}
+                        className="btn-ghost text-xs text-danger"
+                        disabled={del.busy}
+                        onClick={() => void del.run(o.id).catch(() => {})}
                       >
-                        {t("discounts.offers.end")}
+                        {t("common.delete")}
                       </button>
-                    )}
-                    <button
-                      className="btn-ghost text-xs text-danger"
-                      disabled={del.busy}
-                      onClick={() => void del.run(o.id).catch(() => {})}
-                    >
-                      {t("common.delete")}
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       )}
     </Card>
   );

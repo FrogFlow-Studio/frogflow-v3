@@ -101,6 +101,18 @@ FrogFlow do‘konlarining umumiy katalogi, unda xaridorlar do‘konlarni o‘zla
 
 Kalit topshiriladigan PDF’larga suv belgisini yoqadi: har bir sahifada kim sotib olgani (lotincha ismi, @login yoki pochta) va buyurtma raqami yoziladi. Katalogdagi asl nusxa o‘zgarmaydi. O‘chirilgan — PDF belgisiz ketadi. Standart holatda o‘chirilgan. Darhol saqlanadi.
 
+## Kurs botda {#course-in-bot}
+
+«Kurslar» moduli bilan mavjud. Yoqilgan — oʻquvchi kursni bot bilan chatda oʻtadi: toʻlovdan keyin «Kurs ochildi ✅» xabari «▶️ 1-darsni boshlash» (va «🌐 Saytda ochish») tugmasi bilan keladi, har bir dars ostida esa — «Keyingi dars →», agar keyingi dars jadval boʻyicha ochiq boʻlsa. Dars ostida yana «✅ Dars o‘tildi» va «📚 Barcha darslar»; «🎓 Kurslarim»da asosiy tugma — «▶️ Davom etish: N-dars» (birinchi o‘tilmagani), ro‘yxatda o‘tilgan darslar ✅ bilan belgilanadi, ro‘yxat ustida — modullar va ularning progressi. Botga yuborilgan videoli dars bitta xabar bo‘lib keladi: video, ostida matn va tugmalar (matn Telegram izohiga sig‘sa — 1024 belgigacha). Kurs progressi — chiziq bilan. Botdagi kurs kartochkasi dasturni modullar bo‘yicha va darhol savatni ochadigan «🎓 Kursni sotib olish» tugmasini ko‘rsatadi. /start darhol kursni ko‘rsatadi (sotib olganga — «Davom etish»), oxirgi darsdan keyin «🏅 Mening sertifikatim» keladi, sotuvchiga esa o‘quvchi kursni tugatgani haqida xabar. O‘quvchi 3 kun dars belgilamasa, bot bir marta eslatadi. Oʻchirilgan — toʻlovdan keyin avvalgidek kurs sahifasiga havola keladi. Odatda oʻchirilgan. Darhol saqlanadi.
+
+## Darslarni botga xabar orqali qo‘shish {#lessons-by-bot}
+
+«Kurs botda» kartochkasida. Yoqilgan bo‘lsa — sotuvchi (egasi yoki do‘kon bildirishnomalarini oladigan kishi) botga shaxsiy xabarda izohli video havolasini yuboradi, masalan «1.2 Materiallar https://youtu.be/…». Bot shu havola va izohdagi nom bilan darsni kurs oxiriga qo‘shadi (izoh bo‘lmasa — «N-dars») va «✅ N-dars qo‘shildi» deb javob beradi. Darslari bor kurslar bir nechta bo‘lsa, bot tugmalar bilan qaysi biriga ekanini so‘raydi. Xuddi shu havola ikkinchi marta qo‘shilmaydi. Matn, fayllar va vazifa panelda qo‘shiladi. Standart holatda o‘chirilgan. Videoning o‘zini ham fayl sifatida yuborish mumkin (2 GB gacha): bot uni Telegram’da eslab qoladi va o‘quvchiga ulashish taqiqi bilan to‘g‘ridan-to‘g‘ri chatga yuboradi; FrogFlow’da fayl saqlanmaydi, kurs saytida uning o‘rniga «video — botda» yozuvi. Izoh boshidagi dars raqami («1.1», «1.2 Materiallar», «Dars 3») videoni yoki havolani yangi dars yaratmasdan nomida shu raqam bor darsga qo‘shadi; oxirgi dars izohi bilan bir xil izoh ham unga yana video qo‘shadi (darsda 10 tagacha). Bu raqamli dars faqat bitta kursda bo‘lsa, bot qaysi kurs ekanini so‘ramaydi. Javobda o‘quvchilar darsni qayerda ko‘rishi hamda «👁 Darsni ko‘rish» (bot darsni o‘quvchi oladigandek yuboradi) va «🗑 Bu videoni olib tashlash» (bo‘sh qolgan dars butunlay olib tashlanadi) tugmalari bor.
+
+## Chekni kim va qachon tekshiradi {#proof-eta}
+
+«Kurs botda» kartochkasida. Yoqilgan bo‘lsa — xaridor Telegram’da chek yuborganda bot «Sotuvchi tasdig‘ini kuting» o‘rniga chekni kim va qachon tekshirishini yozadi: ish vaqtida — «bugun 20:00 gacha», ochilishdan oldin — «bugun 10:00 dan keyin», yopilgandan keyin — «ertaga 10:00 dan keyin». Vaqt «Bot matnlari»dagi ish vaqtidan olinadi; bo‘lmasa — vaqtsiz. Ism — «Chekni kim tekshiradi» maydoni; bo‘sh bo‘lsa — «Sotuvchi». Oxirida bot tekshiruvdan so‘ng darhol shu chatga yozishini qo‘shadi. Standart holatda o‘chirilgan.
+
 ## Sovg‘a qadog‘i {#gift-wrap}
 
 «To‘plamlar va sovg‘alar» moduli bo‘lganda, faqat jismoniy buyurtmalar uchun bor.

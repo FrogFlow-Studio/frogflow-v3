@@ -25,7 +25,8 @@ test("шаблон магазина: выбор типа создаёт кате
 
   await page.getByRole("button", { name: /Товары с доставкой/ }).click();
   await expect(page.getByTestId("shop-kind-card")).toHaveCount(0);
-  await expect(page.getByRole("option", { name: "Хиты", exact: true })).toHaveCount(1);
-  await expect(page.getByRole("option", { name: "Подарки", exact: true })).toHaveCount(1);
+  // На телефоне фильтр категорий спрятан за «Фильтры» — ищем варианты в разметке.
+  await expect(page.locator("option", { hasText: /^Хиты$/ })).toHaveCount(1);
+  await expect(page.locator("option", { hasText: /^Подарки$/ })).toHaveCount(1);
   expect(errors).toEqual([]);
 });

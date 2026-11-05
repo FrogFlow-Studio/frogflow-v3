@@ -1,3 +1,4 @@
+import { cleanChecker } from "@/core/orders/proof-checker";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { shownError } from "@/lib/shown-error";
@@ -53,6 +54,10 @@ export const settingsFn = createServerFn({ method: "GET" }).handler(async () => 
     ownerTelegramId: ctx.tenant.ownerTelegramId,
     timezone: ctx.tenant.settings.timezone ?? null,
     pdfWatermark: ctx.tenant.settings.delivery?.pdf_watermark === true,
+    courseInBot: ctx.tenant.settings.delivery?.course_in_bot === true,
+    lessonsByBot: ctx.tenant.settings.delivery?.lessons_by_bot === true,
+    proofEta: ctx.tenant.settings.delivery?.proof_eta === true,
+    proofChecker: ctx.tenant.settings.delivery?.proof_checker ?? "",
     recentKeys,
     smartSearchKey: platformHasKey(),
     ocrKey: receiptReaderConfigured(),
@@ -81,6 +86,35 @@ export const setPdfWatermarkFn = createServerFn({ method: "POST" })
     const { patchTenantSettings } = await import("@/core/tenant/resolve.server");
     await patchTenantSettings(ctx.tenant.id, { delivery: { pdf_watermark: data.enabled } });
     return { ok: true, enabled: data.enabled };
+  });
+
+/** Курс проходят в боте (bots.settings.delivery.course_in_bot): выдача и уроки — кнопками в чате. */
+export const setCourseInBotFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        enabled: z.boolean().optional(),
+        lessonsByBot: z.boolean().optional(),
+        proofEta: z.boolean().optional(),
+        proofChecker: z.string().max(200).optional(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await adminLevel();
+    const { patchTenantSettings } = await import("@/core/tenant/resolve.server");
+    // Курс в боте и уроки сообщением боту — два переключателя одной карточки.
+    await patchTenantSettings(ctx.tenant.id, {
+      delivery: {
+        ...(data.enabled !== undefined ? { course_in_bot: data.enabled } : {}),
+        ...(data.lessonsByBot !== undefined ? { lessons_by_bot: data.lessonsByBot } : {}),
+        ...(data.proofEta !== undefined ? { proof_eta: data.proofEta } : {}),
+        ...(data.proofChecker !== undefined
+          ? { proof_checker: cleanChecker(data.proofChecker) ?? "" }
+          : {}),
+      },
+    });
+    return { ok: true };
   });
 
 export const saveSettingsFn = createServerFn({ method: "POST" })

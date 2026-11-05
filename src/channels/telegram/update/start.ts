@@ -120,6 +120,12 @@ export async function startFlow(b: Bot, payload = "") {
     // Скрытый или удалённый товар: ни карточки, ни записи в лист ожидания.
     return void (await send(b, b.m.unavailable));
   }
+  // Ссылка «Смотреть в боте» у урока на сайте (видео урока есть только в боте): «Мои курсы».
+  if (payload === "courses" && b.ctx.tenant.modules.courses) {
+    if (!b.customer.state.locale)
+      await applyLocale(b, b.ctx.tenant.settings.default_locale ?? "ru");
+    return menuAction(b, "myCourses");
+  }
   if (payload.startsWith("p_")) {
     if (!b.customer.state.locale)
       await applyLocale(b, b.ctx.tenant.settings.default_locale ?? "ru");
@@ -132,6 +138,39 @@ export async function startFlow(b: Bot, payload = "") {
     return;
   }
   await applyLocale(b, b.ctx.tenant.settings.default_locale ?? "ru");
+  await courseStartScreen(b);
+}
+
+/** Сколько карточек курсов показать сразу после приветствия. */
+const START_COURSES_MAX = 3;
+
+/**
+ * Курс в боте (settings.delivery.course_in_bot): после приветствия по /start —
+ * сразу курс, а не только меню. Купившей — «Мои курсы» с «Продолжить», остальным —
+ * карточки курсов (до трёх) с программой и «Купить курс».
+ */
+export async function courseStartScreen(b: Bot): Promise<void> {
+  if (!b.ctx.tenant.modules.courses || b.ctx.tenant.settings.delivery?.course_in_bot !== true)
+    return;
+  const { customerCourses } = await import("@/core/courses/mine.server");
+  if ((await customerCourses(b.ctx, b.customer)).length > 0) return showMyCourses(b);
+  const { COURSE_MARKER_URL } = await import("@/core/courses/marker");
+  const { data, error } = await b.ctx.db
+    .from("products")
+    .select("id")
+    .eq("is_active", true)
+    .eq("file_url", COURSE_MARKER_URL)
+    .order("sort_order")
+    .order("id")
+    .limit(START_COURSES_MAX + 1);
+  // Не прочитали — приветствие с меню уже ушло, этого достаточно.
+  if (error) return void console.error(`[telegram] курсы для /start: ${error.message}`);
+  // Больше трёх курсов — пусть выбирает в каталоге.
+  if (!data?.length || data.length > START_COURSES_MAX) return;
+  for (const { id } of data) {
+    const p = await getProduct(b.ctx, id);
+    if (p) await sendProductCard(b, p);
+  }
 }
 
 export async function applyLocale(b: Bot, locale: Locale) {

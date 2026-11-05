@@ -2,7 +2,7 @@ import { HelpTip } from "@/app/admin/help-panel";
 import { useRouteContext } from "@tanstack/react-router";
 import { adminT, intlLocale } from "@/app/i18n/admin";
 import { Badge, Card } from "@/app/ui";
-import { formatMoney } from "@/core/money/money";
+import { formatMoneyUi } from "@/core/money/money";
 import { orderMoney, type MoneyFlag, type MoneyRow } from "@/core/orders/money";
 import { PaymentCard, RefundCard, type Order } from "./order-cards";
 
@@ -43,7 +43,7 @@ export function MoneyBlock({
   const t = adminT(shop.locale);
   const methodLabel = (m: string) =>
     m === "receipt" ? t("money.method.receipt") : m === "manual" ? t("money.method.manual") : m;
-  const fmt = (n: number, cur = o.currency) => formatMoney(n, cur);
+  const fmt = (n: number, cur = o.currency) => formatMoneyUi(n, cur);
   const physical = o.fulfillment_kind === "physical";
   const when = (at: string) =>
     new Date(at).toLocaleString(intlLocale(shop.locale), {

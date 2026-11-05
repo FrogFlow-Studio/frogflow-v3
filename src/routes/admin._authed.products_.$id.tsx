@@ -1,7 +1,7 @@
 import { HelpTip } from "@/app/admin/help-panel";
 import { createFileRoute, Link, useBlocker, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { convertViaUsd, formatMoney } from "@/core/money/money";
+import { convertViaUsd, formatMoneyUi } from "@/core/money/money";
 import { ReadinessCard } from "@/app/admin/product-readiness";
 import { ProductToc, SaveBar, SectionHeading, useActiveSection } from "@/app/admin/product-layout";
 import { productReadiness } from "@/core/catalog/readiness";
@@ -13,7 +13,8 @@ import {
   saveProductFn,
 } from "@/app/admin/products.functions";
 import { adminT, intlLocale } from "@/app/i18n/admin";
-import { CourseCard } from "@/app/admin/course-card";
+import { CourseCard, type CourseFlush } from "@/app/admin/course-card";
+import { CourseLandingCard } from "@/app/admin/course-landing-card";
 import { canEdit } from "@/core/auth/roles";
 import { Badge, Card, ErrorBox, Field, PageTitle, useAction } from "@/app/ui";
 import { imagePath } from "@/core/catalog/image-url";
@@ -115,7 +116,10 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
   const [uploading, setUploading] = useState<Progress | null>(null);
   const [uploadError, setUploadError] = useState<unknown>(null);
 
+  const courseFlush: CourseFlush = useRef<(() => Promise<void>) | null>(null);
   const save = useAction(async (f: FormData) => {
+    // Несохранённые уроки курса — до товара: упадёт запись курса, страница не уйдёт.
+    await courseFlush.current?.();
     const countryPrices: Record<string, number> = {};
     for (const code of [...countries.map((c) => c.code), ...(ruCardPrice ? ["RU"] : [])]) {
       const v = Number(f.get(`cp_${code}`));
@@ -298,7 +302,7 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
           code: c.code,
           name: c.name,
           flag,
-          amount: formatMoney(manual, c.currency),
+          amount: formatMoneyUi(manual, c.currency),
           tag: t("product.pricePreviewManual"),
           isManual: true,
         };
@@ -309,7 +313,7 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
             code: c.code,
             name: c.name,
             flag,
-            amount: formatMoney(basePrice, c.currency),
+            amount: formatMoneyUi(basePrice, c.currency),
             tag: t("product.pricePreviewBase"),
             isManual: false,
           };
@@ -321,7 +325,7 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
               code: c.code,
               name: c.name,
               flag,
-              amount: `≈ ${formatMoney(converted, c.currency)}`,
+              amount: `≈ ${formatMoneyUi(converted, c.currency)}`,
               tag: t("product.pricePreviewAuto"),
               isManual: false,
             };
@@ -333,7 +337,9 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
         name: c.name,
         flag,
         amount:
-          basePrice !== null && basePrice > 0 && isBase ? formatMoney(basePrice, c.currency) : "—",
+          basePrice !== null && basePrice > 0 && isBase
+            ? formatMoneyUi(basePrice, c.currency)
+            : "—",
         tag: isBase ? t("product.pricePreviewBase") : t("product.pricePreviewAuto"),
         isManual: false,
       };
@@ -496,7 +502,16 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
               </div>
             </Card>
             {school && shop.modules.courses && p?.id && kind === "digital" && (
-              <CourseCard productId={p.id} t={t} />
+              <CourseCard productId={p.id} t={t} flushRef={courseFlush} />
+            )}
+            {school && shop.modules.courses && p?.id && kind === "digital" && (
+              <CourseLandingCard
+                productId={p.id}
+                productName={String(p.name ?? "")}
+                botId={shop.botId}
+                slug={shop.slug}
+                t={t}
+              />
             )}
 
             <Card
@@ -630,7 +645,16 @@ function ProductEditorBody({ onReset }: { onReset: () => void }) {
               <PreviewCard productId={p.id} t={t} botId={shop.botId} />
             )}
             {!school && shop.modules.courses && p?.id && kind === "digital" && (
-              <CourseCard productId={p.id} t={t} />
+              <CourseCard productId={p.id} t={t} flushRef={courseFlush} />
+            )}
+            {!school && shop.modules.courses && p?.id && kind === "digital" && (
+              <CourseLandingCard
+                productId={p.id}
+                productName={String(p.name ?? "")}
+                botId={shop.botId}
+                slug={shop.slug}
+                t={t}
+              />
             )}
           </div>
           <div data-tab="price" {...panel("price")}>

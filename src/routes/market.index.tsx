@@ -9,7 +9,7 @@ import { marketHeadLinks } from "@/app/market/seo";
 import { rememberMarketBack } from "@/app/market/back";
 import { FeedList } from "@/app/market/feeds";
 import { marketT } from "@/app/market/i18n";
-import { SUPPORTED_LOCALES, type Locale } from "@/core/i18n/locale";
+import { SUPPORTED_LOCALES, type Locale, langLabel } from "@/core/i18n/locale";
 
 /** Площадка FrogFlow: каталог магазинов, согласившихся показываться (В7). Без входа. */
 export const Route = createFileRoute("/market/")({
@@ -75,7 +75,7 @@ function MarketPage() {
               search={{ ...search, lang: l }}
               className={l === locale ? "font-medium" : "text-muted"}
             >
-              {l.toUpperCase()}
+              {langLabel(l)}
             </Link>
           ))}
         </nav>
@@ -96,13 +96,7 @@ function MarketPage() {
         <>
           <p className="mt-1 text-sm text-muted">{t("lead")}</p>
           {data.collections.map((c) => (
-            <FeedList
-              key={c.id}
-              title={c.title}
-              items={c.items}
-              locale={locale}
-              testId={`collection-${c.id}`}
-            />
+            <FeedList key={c.id} title={c.title} items={c.items} testId={`collection-${c.id}`} />
           ))}
           <FilterForm action="/market" openLabel={t("filter.open")} closeLabel={t("filter.apply")}>
             {lang && <input type="hidden" name="lang" value={lang} />}

@@ -24,7 +24,7 @@ The button is there if the export module is connected, and is visible to a manag
 
 A segment answers the question "who is in it". You launch a broadcast or a promotion yourself — a segment sends nothing.
 
-- Ready-made: "Bought 2+ times", "Not bought for 60 days", "VIP (tag “VIP”)".
+- Ready-made: "Bought 2+ times", "Not bought for 60 days", "Tag “VIP”" (people you tagged “VIP” in their card yourself). If the VIP club is connected, there is also "VIP club": everyone in the club now, everyone who was (a paid subscription ended), and everyone who wrote to the VIP bot without paying. Each person is marked "in the club", "was in the club" or "wrote to the VIP bot". "Wrote to the VIP bot" means they chose a language there, got a tariff or left a payment request.
 - Choose a segment — you see "In the segment: …" and a table with the number of orders and the last purchase. The "unsubscribed" mark means the person opted out of broadcasts.
 - "Show all customers" returns the usual list.
 
@@ -39,6 +39,8 @@ A segment answers the question "who is in it". You launch a broadcast or a promo
 ## Block {#block}
 
 The button is there if the blocking module is connected, and works only for buyers from Telegram. A blocked person is marked "blocked", and the bot stops answering them. "Unblock" returns things as they were.
+
+The bot does not answer a blocked person, so they may be missing from the main list. Such people are shown in a separate "Blocked" box above the list: name, @username, Telegram ID and an "Unblock" button. In search you can type a username with or without "@".
 
 ## Customer card {#card}
 
