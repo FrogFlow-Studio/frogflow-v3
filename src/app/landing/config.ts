@@ -94,15 +94,15 @@ export const CLIENTS: LandingClient[] = [
   {
     name: "AATeach",
     stat: {
-      value: "1 100+",
+      value: "1 900+",
       label: { ru: "заказов", kk: "тапсырыс", en: "orders", uz: "buyurtma" },
     },
     url: "https://t.me/maga21zzzbot",
     note: {
-      ru: "дидактика для педагогов · 450+ товаров, 1 100+ заказов",
-      kk: "педагогтерге арналған дидактика · 450+ тауар, 1 100+ тапсырыс",
-      en: "teaching materials · 450+ products, 1,100+ orders",
-      uz: "o‘qituvchilar uchun didaktika · 450+ mahsulot, 1 100+ buyurtma",
+      ru: "дидактика для педагогов · 520+ товаров, 1 900+ заказов",
+      kk: "педагогтерге арналған дидактика · 520+ тауар, 1 900+ тапсырыс",
+      en: "teaching materials · 520+ products, 1,900+ orders",
+      uz: "o‘qituvchilar uchun didaktika · 520+ mahsulot, 1 900+ buyurtma",
     },
   },
   {
@@ -118,24 +118,24 @@ export const CLIENTS: LandingClient[] = [
     },
     url: "https://t.me/razvivashka_kaz_bot",
     note: {
-      ru: "развивающие материалы, магазин и VIP-бот · 180+ VIP-подписчиков, 370+ покупателей",
-      kk: "дамытушы материалдар, дүкен және VIP-бот · 180+ VIP-жазылушы, 370+ сатып алушы",
-      en: "early learning materials, shop and VIP bot · 180+ VIP subscribers, 370+ customers",
-      uz: "rivojlantiruvchi materiallar, do‘kon va VIP-bot · 180+ VIP-obunachi, 370+ xaridor",
+      ru: "развивающие материалы, магазин и VIP-бот · 180+ VIP-подписчиков, 380+ покупателей",
+      kk: "дамытушы материалдар, дүкен және VIP-бот · 180+ VIP-жазылушы, 380+ сатып алушы",
+      en: "early learning materials, shop and VIP bot · 180+ VIP subscribers, 380+ customers",
+      uz: "rivojlantiruvchi materiallar, do‘kon va VIP-bot · 180+ VIP-obunachi, 380+ xaridor",
     },
   },
   {
     name: "Дидактика 03",
     stat: {
-      value: "650+",
+      value: "840+",
       label: { ru: "покупателей", kk: "сатып алушы", en: "customers", uz: "xaridor" },
     },
     url: "https://t.me/didaktika_03_bot",
     note: {
-      ru: "магазин материалов и VIP-бот · 120+ заказов, 650+ покупателей",
-      kk: "материалдар дүкені және VIP-бот · 120+ тапсырыс, 650+ сатып алушы",
-      en: "materials shop and VIP bot · 120+ orders, 650+ customers",
-      uz: "materiallar do‘koni va VIP-bot · 120+ buyurtma, 650+ xaridor",
+      ru: "магазин материалов и VIP-бот · 130+ заказов, 840+ покупателей",
+      kk: "материалдар дүкені және VIP-бот · 130+ тапсырыс, 840+ сатып алушы",
+      en: "materials shop and VIP bot · 130+ orders, 840+ customers",
+      uz: "materiallar do‘koni va VIP-bot · 130+ buyurtma, 840+ xaridor",
     },
   },
   {
