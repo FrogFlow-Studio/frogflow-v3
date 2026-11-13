@@ -62,7 +62,8 @@ describe("свои задачи продавца", () => {
       doneBy: "helper",
       doneAt: "2026-10-08T12:00:00.000Z",
     });
-    expect(await setTodoDone(ctx, id(1), false, "helper")).toBe(true);
+    // Время фиксировано: без него отметка 08.10 через 30 дней чистится pruneDone и тест падал.
+    expect(await setTodoDone(ctx, id(1), false, "helper", at("2026-10-08T13:00:00Z"))).toBe(true);
     expect(stored(db)[0]!.done).toBe(false);
     expect(stored(db)[0]!.doneAt).toBeUndefined();
     expect(await removeTodo(ctx, id(1))).toBe(true);
