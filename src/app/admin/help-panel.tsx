@@ -165,17 +165,18 @@ export function HelpTip({ article, anchor }: { article: string; anchor?: string 
 }
 
 /** «?» у заголовка страницы: статья, объявившая адрес этой страницы в `pages:`. */
-export function PageHelp() {
+export function PageHelp({ print3d = false }: { print3d?: boolean }) {
   const ctx = useContext(Ctx);
   const path = useRouterState({ select: (s) => s.location.pathname });
   if (!ctx) return null;
+  const studioPage = print3d && (path === "/admin" || path === "/admin/settings");
   return (
     <button
       type="button"
       className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-line text-sm text-muted hover:border-accent hover:text-accent"
       aria-label={ctx.page}
       title={ctx.page}
-      onClick={() => ctx.open({ path })}
+      onClick={() => ctx.open(studioPage ? { slug: "settings-shop", anchor: "print3d" } : { path })}
     >
       ?
     </button>

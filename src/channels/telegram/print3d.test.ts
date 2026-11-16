@@ -38,12 +38,13 @@ afterEach(() => vi.unstubAllGlobals());
 
 type Call = { method: string; payload: Record<string, unknown> };
 
-function studio(opts: { ready?: boolean } = {}) {
+function studio(opts: { ready?: boolean; auto?: boolean } = {}) {
   const db: FakeDb = fakeDb({ unique: { app_settings: [["bot_id", "key"]] } });
   db.tables.app_settings = [
     { bot_id: T, key: "admin_chat_id", value: GROUP },
     { bot_id: T, key: "print3d_sheet_url", value: SHEET },
     ...(opts.ready ? [{ bot_id: T, key: "print3d_ready_notify", value: "true" }] : []),
+    ...(opts.auto ? [{ bot_id: T, key: "print3d_auto_accept", value: "true" }] : []),
   ];
   const ctx = {
     tenant: { id: T, vertical: "print3d", settings: {}, modules: {}, ownerTelegramId: null },
@@ -72,6 +73,111 @@ function dm(from: number, text: string): TelegramMessage {
 const to = (calls: Call[], chat: string | number) =>
   calls.filter((c) => String(c.payload.chat_id) === String(chat));
 const body = (c: Call) => String(c.payload.text ?? c.payload.caption ?? "");
+
+describe("студия 3D-печати: подтверждение заказа из таблицы по телефону", () => {
+  const locale = async () => "ru" as const;
+  const share = (id: number, contactId = id, number = "+7 701 111 22 33"): TelegramMessage => ({
+    ...dm(id, ""),
+    text: undefined,
+    contact: { phone_number: number, user_id: contactId },
+  });
+  const photo = "https://drive.google.com/file/d/AbCdEfGhIjKlMn/view";
+
+  it("клиент делится номером до заказа: новая строка даёт одно подтверждение и одну карточку с фото", async () => {
+    const s = studio({ auto: true });
+    sheet([]);
+    await print3dPrivateMessage(s.ctx, s.api, dm(555, "/start"), "ru", null);
+    expect(to(s.calls, 555)[0]?.payload.reply_markup).toMatchObject({
+      keyboard: [[{ request_contact: true }]],
+    });
+    await print3dPrivateMessage(s.ctx, s.api, share(555), "ru", null);
+    s.calls.length = 0;
+    await runPrint3dReadyFor(s.ctx, s.api, locale);
+    expect(s.calls).toHaveLength(0);
+
+    sheet([`1234,Иван,87011112233,Кронштейн PETG,20.11,8000,${photo},в работе`]);
+    await Promise.all([
+      runPrint3dReadyFor(s.ctx, s.api, locale),
+      runPrint3dReadyFor(s.ctx, s.api, locale),
+    ]);
+    await runPrint3dReadyFor(s.ctx, s.api, locale);
+    expect(to(s.calls, 555).map(body)).toEqual(["Ваш заказ № 1234 принят!"]);
+    const group = to(s.calls, GROUP);
+    expect(group).toHaveLength(1);
+    expect(group[0]).toMatchObject({
+      method: "sendPhoto",
+      payload: { photo: "https://drive.google.com/uc?export=download&id=AbCdEfGhIjKlMn" },
+    });
+    expect(body(group[0]!)).toContain("Кронштейн PETG");
+    expect(body(group[0]!)).toContain("#p3d555");
+  });
+
+  it("фото приходит после строки, подтверждённый контакт после фото", async () => {
+    const s = studio({ auto: true });
+    sheet(["1234,Иван,87011112233,Кронштейн PETG,20.11,8000,,в работе"]);
+    await runPrint3dReadyFor(s.ctx, s.api, locale);
+    expect(s.calls).toHaveLength(0);
+
+    sheet([`1234,Иван,87011112233,Кронштейн PETG,20.11,8000,${photo},в работе`]);
+    await runPrint3dReadyFor(s.ctx, s.api, locale);
+    expect(s.calls.map((c) => c.method)).toEqual(["sendPhoto"]);
+    expect(body(s.calls[0]!)).not.toContain("#p3d");
+
+    await print3dPrivateMessage(s.ctx, s.api, share(555), "ru", null);
+    s.calls.length = 0;
+    await runPrint3dReadyFor(s.ctx, s.api, locale);
+    expect(to(s.calls, 555).map(body)).toEqual(["Ваш заказ № 1234 принят!"]);
+    expect(to(s.calls, GROUP)).toHaveLength(0);
+  });
+
+  it("пересланный чужой контакт и номер заказа в тексте не привязывают чат", async () => {
+    const s = studio({ auto: true });
+    await print3dPrivateMessage(s.ctx, s.api, share(666, 555), "ru", "+77011112233");
+    await print3dPrivateMessage(s.ctx, s.api, dm(666, "1234"), "ru", "+77011112233");
+    s.calls.length = 0;
+    await runPrint3dReadyFor(s.ctx, s.api, locale);
+    expect(to(s.calls, 666)).toHaveLength(0);
+    expect(to(s.calls, GROUP).map((c) => c.method)).toEqual(["sendPhoto"]);
+  });
+
+  it("два чата с одним номером не получают подтверждение до устранения неоднозначности", async () => {
+    const s = studio({ auto: true });
+    await print3dPrivateMessage(s.ctx, s.api, share(555), "ru", null);
+    await print3dPrivateMessage(s.ctx, s.api, share(666), "ru", null);
+    s.calls.length = 0;
+    await runPrint3dReadyFor(s.ctx, s.api, locale);
+    expect(s.calls.map((c) => c.payload.chat_id)).toEqual([GROUP]);
+  });
+
+  it("совпадение последних цифр международных номеров не привязывает чужой чат", async () => {
+    const s = studio({ auto: true });
+    await print3dPrivateMessage(s.ctx, s.api, share(555, 555, "447011112233"), "ru", null);
+    s.calls.length = 0;
+    await runPrint3dReadyFor(s.ctx, s.api, locale);
+    expect(s.calls.map((c) => c.payload.chat_id)).toEqual([GROUP]);
+  });
+
+  it("отказ в личке не мешает отправке фото рабочей группе", async () => {
+    const s = studio({ auto: true });
+    await print3dPrivateMessage(s.ctx, s.api, share(555), "ru", null);
+    s.calls.length = 0;
+    const api: TelegramApi = {
+      ...s.api,
+      async call<T>(method: string, payload: unknown) {
+        const result = await s.api.call<T>(method, payload);
+        if (String((payload as Record<string, unknown>).chat_id) === "555")
+          return { ok: false, error_code: 403 };
+        return result;
+      },
+    };
+    expect(await runPrint3dReadyFor(s.ctx, api, locale)).toMatchObject({
+      accepted: { clients: 0, groups: 1, failed: 1 },
+    });
+    await runPrint3dReadyFor(s.ctx, api, locale);
+    expect(to(s.calls, 555)).toHaveLength(1);
+    expect(to(s.calls, GROUP).map((c) => c.method)).toEqual(["sendPhoto"]);
+  });
+});
 
 describe("студия 3D-печати: клиент пишет номер с чека", () => {
   it("свежий номер: карточка с фото клиенту и в рабочую группу, привязка записана", async () => {

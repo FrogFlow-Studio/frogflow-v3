@@ -729,11 +729,11 @@ export async function runOverdueTickets(tenant: Tenant) {
 }
 
 /**
- * Студия 3D-печати: «заказ готов» клиентам, чей заказ в таблице отмечен
- * «готово» (выключено, пока продавец не включит). Остальным нишам — пропуск.
+ * Студия 3D-печати: подтверждение и готовность заказов из Google Таблицы.
  */
 export async function runPrint3dReady(tenant: Tenant) {
   if (tenant.vertical !== "print3d") return { skipped: "not print3d" };
+  if (tenant.status !== "active") return { skipped: "paused" };
   const ctx = tenantContext(tenant);
   const { runPrint3dReadyFor } = await import("./print3d");
   const { getCustomer, userKey } = await import("@/core/customers/customers");

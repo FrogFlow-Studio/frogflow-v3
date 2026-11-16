@@ -105,6 +105,39 @@ export function buildAdminNav(shop: NavShop): AdminNav {
   const overview: NavItem = { to: "/admin", label: "nav.overview", exact: true };
   const orders: NavItem = { to: "/admin/orders", label: "nav.orders" };
 
+  if (shop.vertical === "print3d") {
+    const settings = admin && { to: "/admin/settings", label: "nav.groupSettings" as const };
+    const support = shop.role !== "accountant" && {
+      to: "/admin/support",
+      label: "support.nav" as const,
+      badge:
+        (shop.supportUnread ?? 0) > 0
+          ? { value: shop.supportUnread!, tone: "accent" as const }
+          : undefined,
+    };
+    const billing = (owner || shop.role === "accountant") && {
+      to: "/admin/billing",
+      label: "billing.nav" as const,
+    };
+    const items = compact<NavItem>([
+      settings,
+      support,
+      billing,
+      admin && { to: "/admin/log", label: "audit.nav" },
+    ]);
+    return {
+      overview,
+      groups: [{ id: "settings", label: "nav.groupSettings", items }],
+      primary: compact<NavItem>([
+        overview,
+        settings,
+        support,
+        shop.role === "accountant" && billing,
+      ]),
+      pinned: items.map((i) => i.to),
+    };
+  }
+
   if (shop.role === "accountant") {
     // Бухгалтеру — обзор, заказы, аналитика, прибыль, журнал склада и оплата тарифа.
     const groups: NavGroup[] = [
@@ -334,4 +367,13 @@ export function buildAdminNav(shop: NavShop): AdminNav {
     return { overview, groups, primary, pinned };
   }
   return { overview, groups, primary: [overview, orders, products, fourth] };
+}
+
+/** Старые ссылки на страницы магазина возвращают студию к её рабочему обзору. */
+export function adminPageAvailable(shop: NavShop, pathname: string): boolean {
+  if (shop.vertical !== "print3d") return true;
+  const path = pathname.replace(/\/+$/, "");
+  if (path === "/admin/help" || path.startsWith("/admin/help/")) return true;
+  const nav = buildAdminNav(shop);
+  return path === nav.overview.to || nav.groups.some((g) => g.items.some((i) => i.to === path));
 }

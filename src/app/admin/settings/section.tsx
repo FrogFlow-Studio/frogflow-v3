@@ -3,7 +3,11 @@ import { HelpTip } from "@/app/admin/help-panel";
 import { settingsEntry, settingsHelp } from "./registry";
 
 /** Какие разделы страницы настроек показаны (тема и поиск) и какие менялись недавно. */
-export type SettingsFilter = { shown: ReadonlySet<string>; recent: ReadonlySet<string> };
+export type SettingsFilter = {
+  shown: ReadonlySet<string>;
+  recent: ReadonlySet<string>;
+  available?: ReadonlySet<string>;
+};
 const Ctx = createContext<SettingsFilter | null>(null);
 export const SettingsFilterProvider = Ctx.Provider;
 
@@ -16,6 +20,7 @@ export const SettingsFilterProvider = Ctx.Provider;
  */
 export function SettingsSection({ id, children }: { id: string; children: ReactNode }) {
   const f = useContext(Ctx);
+  if (f?.available && !f.available.has(id)) return null;
   const entry = settingsEntry(id);
   const shown = !f || f.shown.has(id);
   const recent = Boolean(f?.recent.has(id));

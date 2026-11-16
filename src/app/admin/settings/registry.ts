@@ -59,6 +59,15 @@ export type SettingsShop = {
 };
 
 const E = (e: SettingsEntry) => e;
+const PRINT3D_SETTINGS = new Set([
+  "print3d",
+  "telegram",
+  "legal",
+  "team",
+  "invite",
+  "takeout",
+  "delete",
+]);
 
 export const SETTINGS_REGISTRY: readonly SettingsEntry[] = [
   E({
@@ -211,9 +220,15 @@ export const SETTINGS_REGISTRY: readonly SettingsEntry[] = [
     id: "print3d",
     theme: "shop",
     vertical: "print3d",
+    adminOnly: true,
     title: "settings.print3d.title",
-    keys: ["print3d_sheet_url", "print3d_ready_notify"],
-    fields: ["settings.print3d.sheet", "settings.print3d.ready"],
+    keys: ["print3d_sheet_url", "print3d_ready_notify", "print3d_auto_accept", "admin_chat_id"],
+    fields: [
+      "settings.print3d.sheet",
+      "settings.print3d.group",
+      "settings.print3d.ready",
+      "settings.print3d.auto",
+    ],
   }),
   E({
     id: "email-ask",
@@ -511,6 +526,11 @@ export function recentEntries(recentKeys: readonly string[]): Set<string> {
 
 /** Раздел виден роли, набору модулей и тому, продаёт ли клиент. */
 export function entryVisible(e: SettingsEntry, shop: SettingsShop): boolean {
+  if (
+    shop.vertical === "print3d" &&
+    (!roleAllows(shop.role as AdminRole, "admin") || !PRINT3D_SETTINGS.has(e.id))
+  )
+    return false;
   if (e.sellsOnly && shop.sells === false) return false;
   if (e.vertical && shop.vertical !== e.vertical) return false;
   if (e.ownerOnly && shop.role !== "owner") return false;

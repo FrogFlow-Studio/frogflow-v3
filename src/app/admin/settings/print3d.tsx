@@ -5,23 +5,29 @@ import { Card, ErrorBox, Field, Switch, useAction } from "@/app/ui";
 import { adminT } from "@/app/i18n/admin";
 import { roleAllows } from "@/core/auth/roles";
 import { sheetCsvUrl } from "@/core/catalog/sheet";
-import { PRINT3D_READY_KEY, PRINT3D_SHEET_KEY } from "@/core/print3d/sheet";
+import { PRINT3D_AUTO_KEY, PRINT3D_READY_KEY, PRINT3D_SHEET_KEY } from "@/core/print3d/sheet";
 import { settingsRoute } from "./route";
 
-/**
- * Студия 3D-печати (ниша print3d): ссылка на таблицу заказов и переключатель
- * «писать клиенту „заказ готов“». Рабочая группа — admin_chat_id из раздела «Магазин».
- */
+/** Таблица заказов, рабочая группа и уведомления студии. */
 export function Print3dCard({ settings }: { settings: Record<string, string> }) {
   const router = useRouter();
   const { shop } = settingsRoute.useRouteContext();
   const t = adminT(shop.locale);
   const [url, setUrl] = useState(settings[PRINT3D_SHEET_KEY] ?? "");
+  const [group, setGroup] = useState(settings.admin_chat_id ?? "");
+  const [ready, setReady] = useState(settings[PRINT3D_READY_KEY] === "true");
+  const [auto, setAuto] = useState(settings[PRINT3D_AUTO_KEY] === "true");
   const [saved, setSaved] = useState(false);
-  const ready = settings[PRINT3D_READY_KEY] === "true";
-  const save = useAction(async (data: Record<string, string>) => {
+  const save = useAction(async () => {
     setSaved(false);
-    await saveSettingsFn({ data });
+    await saveSettingsFn({
+      data: {
+        [PRINT3D_SHEET_KEY]: url.trim(),
+        admin_chat_id: group.trim(),
+        [PRINT3D_AUTO_KEY]: String(auto),
+        [PRINT3D_READY_KEY]: String(ready),
+      },
+    });
     setSaved(true);
     await router.invalidate();
   });
@@ -32,10 +38,11 @@ export function Print3dCard({ settings }: { settings: Record<string, string> }) 
       <p className="mb-3 text-sm text-muted">{t("settings.print3d.intro")}</p>
       <form
         className="space-y-3"
+        onChange={() => setSaved(false)}
         onSubmit={(e) => {
           e.preventDefault();
           if (bad) return;
-          void save.run({ [PRINT3D_SHEET_KEY]: url.trim() }).catch(() => {});
+          void save.run().catch(() => {});
         }}
       >
         <Field
@@ -52,6 +59,47 @@ export function Print3dCard({ settings }: { settings: Record<string, string> }) 
             onChange={(e) => setUrl(e.target.value)}
           />
         </Field>
+        <Field label={t("settings.print3d.group")} hint={t("settings.print3d.groupHint")}>
+          <input
+            className="input"
+            name="admin_chat_id"
+            value={group}
+            disabled={readOnly}
+            onChange={(e) => setGroup(e.target.value)}
+          />
+        </Field>
+        <div className="space-y-3 border-t border-line pt-3">
+          <div>
+            <div className="flex items-center gap-3">
+              <Switch
+                checked={auto}
+                disabled={readOnly}
+                onChange={(v) => {
+                  setAuto(v);
+                  setSaved(false);
+                }}
+                label={t("settings.print3d.auto")}
+              />
+              <span className="text-sm">{t("settings.print3d.auto")}</span>
+            </div>
+            <p className="mt-1 text-xs text-muted">{t("settings.print3d.autoHint")}</p>
+          </div>
+          <div>
+            <div className="flex items-center gap-3">
+              <Switch
+                checked={ready}
+                disabled={readOnly}
+                onChange={(v) => {
+                  setReady(v);
+                  setSaved(false);
+                }}
+                label={t("settings.print3d.ready")}
+              />
+              <span className="text-sm">{t("settings.print3d.ready")}</span>
+            </div>
+            <p className="mt-1 text-xs text-muted">{t("settings.print3d.readyHint")}</p>
+          </div>
+        </div>
         <div className="flex items-center gap-3">
           <button className="btn-primary" type="submit" disabled={readOnly || bad}>
             {t("common.save")}
@@ -59,21 +107,6 @@ export function Print3dCard({ settings }: { settings: Record<string, string> }) 
           {saved && <span className="text-xs text-ok">{t("settings.saved")}</span>}
         </div>
       </form>
-      <div className="mt-4 flex items-center gap-3">
-        <Switch
-          checked={ready}
-          disabled={readOnly}
-          onChange={(v) =>
-            void save.run({ [PRINT3D_READY_KEY]: v ? "true" : "false" }).catch(() => {})
-          }
-          label={t("settings.print3d.ready")}
-        />
-        <span className="text-sm">{t("settings.print3d.ready")}</span>
-      </div>
-      <p className="mt-1 text-xs text-muted">{t("settings.print3d.readyHint")}</p>
-      <p className="mt-2 rounded border border-warn/40 bg-warn/10 p-2 text-xs">
-        {t("settings.print3d.waNote")}
-      </p>
       <ErrorBox error={save.error} />
     </Card>
   );

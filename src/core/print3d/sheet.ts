@@ -1,9 +1,9 @@
 /**
  * Студия 3D-печати (ниша print3d): заказы живут в Google Таблице студии.
- * Мастер оформляет клиента и вносит строку; клиент пишет в бота номер
- * заказа с чека — бот находит строку и отвечает карточкой, копия уходит в
- * рабочую группу. Когда в колонке «Статус» появляется «готово», бот один раз
- * пишет клиенту (если продавец включил это в настройках).
+ * Мастер оформляет клиента и вносит строку. Бот может подтверждать заказ
+ * автоматически по телефону или искать его по номеру с чека. Он также
+ * отправляет карточку в рабочую группу и сообщает о готовности, если
+ * продавец включил уведомления.
  *
  * Модуль без базы и без канала: разбор таблицы, поиск заказа, тексты на
  * 4 языках. Канал (Telegram сейчас, WhatsApp через Zernio позже) только
@@ -14,6 +14,7 @@ import type { Locale } from "@/core/i18n/locale";
 
 export const PRINT3D_SHEET_KEY = "print3d_sheet_url";
 export const PRINT3D_READY_KEY = "print3d_ready_notify";
+export const PRINT3D_AUTO_KEY = "print3d_auto_accept";
 /** Привязка заказа к клиенту: app_settings `print3d_bind:<номер>` (вставка один раз). */
 export const BIND_PREFIX = "print3d_bind:";
 /** Отметка «о готовности написали»: app_settings `print3d_ready:<номер>` (вставка один раз). */
@@ -136,6 +137,17 @@ export function phoneKey(raw: string): string | null {
   return d.length >= 10 ? d.slice(-10) : null;
 }
 
+/** Международные номера не совпадают только по последним цифрам. */
+export function orderPhoneKey(raw: string): string | null {
+  const value = raw.trim();
+  if (!/^\+?[\d\s()-]+$/.test(value)) return null;
+  const digits = value.replace(/\D/g, "");
+  if (/^7\d{10}$/.test(digits)) return digits;
+  if (!value.startsWith("+") && /^8\d{10}$/.test(digits)) return `7${digits.slice(1)}`;
+  if (!value.startsWith("+") && digits.length === 10) return `7${digits}`;
+  return /^[1-9]\d{9,14}$/.test(digits) ? digits : null;
+}
+
 /**
  * Заказ по телефону клиента (он поделился контактом). Несколько открытых
  * заказов на один номер — берём последний в таблице: он самый свежий.
@@ -198,6 +210,10 @@ export function clientRefOf(text: string | null | undefined): string | null {
 
 type Texts = {
   askNumber: string;
+  askPhone: string;
+  sharePhone: string;
+  phoneSaved: string;
+  accepted: (no: string) => string;
   orderTitle: (no: string) => string;
   item: string;
   due: string;
@@ -211,6 +227,11 @@ type Texts = {
 
 export const PRINT3D_TEXTS: Record<Locale, Texts> = {
   ru: {
+    askPhone: "Поделитесь своим номером, чтобы получать подтверждения заказов студии в этом чате.",
+    sharePhone: "Поделиться номером",
+    phoneSaved:
+      "Номер сохранён. Когда студия внесёт ваш заказ в таблицу, здесь появится подтверждение.",
+    accepted: (no) => `Ваш заказ № ${no} принят!`,
     askNumber:
       "Здравствуйте! Пришлите, пожалуйста, номер заказа с чека — я найду ваш заказ. Вопросы можно писать сюда же, их увидит мастер.",
     orderTitle: (no) => `Заказ № ${no}`,
@@ -226,6 +247,11 @@ export const PRINT3D_TEXTS: Record<Locale, Texts> = {
       `Заказа № ${no} пока нет в системе, мастер, наверное, ещё вносит его. Как только появится, я пришлю карточку сюда.`,
   },
   kk: {
+    askPhone: "Студия тапсырыстарының растауын осы чатта алу үшін өз нөміріңізді жіберіңіз.",
+    sharePhone: "Нөмірмен бөлісу",
+    phoneSaved:
+      "Нөмір сақталды. Студия тапсырысыңызды кестеге енгізгенде, растау осы чатқа келеді.",
+    accepted: (no) => `№ ${no} тапсырысыңыз қабылданды!`,
     askNumber:
       "Сәлеметсіз бе! Чектегі тапсырыс нөмірін жіберіңізші — тапсырысыңызды табамын. Сұрақтарды осында жаза беріңіз, оларды шебер көреді.",
     orderTitle: (no) => `Тапсырыс № ${no}`,
@@ -241,6 +267,11 @@ export const PRINT3D_TEXTS: Record<Locale, Texts> = {
       `№ ${no} тапсырысы әзірге жүйеде жоқ, шебер оны енгізіп жатқан болар. Пайда болғанда карточканы осында жіберемін.`,
   },
   en: {
+    askPhone: "Share your own phone number to receive studio order confirmations in this chat.",
+    sharePhone: "Share phone number",
+    phoneSaved:
+      "Phone number saved. Your confirmation will appear here once the studio adds your order to the sheet.",
+    accepted: (no) => `Your order No. ${no} has been accepted!`,
     askNumber:
       "Hello! Please send the order number from your receipt and I'll find your order. You can ask questions here too, the studio will see them.",
     orderTitle: (no) => `Order No. ${no}`,
@@ -256,6 +287,11 @@ export const PRINT3D_TEXTS: Record<Locale, Texts> = {
       `Order No. ${no} isn't in the system yet; the studio is probably still entering it. I'll send the card here as soon as it appears.`,
   },
   uz: {
+    askPhone: "Studiya buyurtmalari tasdig‘ini shu chatda olish uchun o‘z raqamingizni yuboring.",
+    sharePhone: "Telefon raqamini yuborish",
+    phoneSaved:
+      "Raqam saqlandi. Studiya buyurtmangizni jadvalga kiritganda, tasdiq shu chatga keladi.",
+    accepted: (no) => `№ ${no} buyurtmangiz qabul qilindi!`,
     askNumber:
       "Assalomu alaykum! Chekdagi buyurtma raqamini yuboring — buyurtmangizni topaman. Savollarni shu yerga yozishingiz mumkin, ularni usta ko‘radi.",
     orderTitle: (no) => `Buyurtma № ${no}`,
@@ -292,6 +328,7 @@ type StaffTexts = {
   client: string;
   replyHint: string;
   bound: (who: string, no: string, row: number) => string;
+  newOrder: (no: string, row: number) => string;
   inSheet: string;
   phone: string;
   item: string;
@@ -312,6 +349,7 @@ export const PRINT3D_STAFF: Record<Locale, StaffTexts> = {
     client: "Клиент",
     replyHint: "Ответьте на это сообщение свайпом — бот перешлёт ответ клиенту.",
     bound: (w, no, row) => `✅ ${w} написал(а) в бота — заказ № ${no} (строка ${row})`,
+    newOrder: (no, row) => `📋 Заказ № ${no} принят (строка ${row})`,
     inSheet: "Клиент в таблице",
     phone: "Телефон",
     item: "Что печатаем",
@@ -334,6 +372,7 @@ export const PRINT3D_STAFF: Record<Locale, StaffTexts> = {
     client: "Клиент",
     replyHint: "Осы хабарламаға свайппен жауап беріңіз — бот жауапты клиентке жібереді.",
     bound: (w, no, row) => `✅ ${w} ботқа жазды — № ${no} тапсырыс (${row}-жол)`,
+    newOrder: (no, row) => `📋 № ${no} тапсырыс қабылданды (${row}-жол)`,
     inSheet: "Кестедегі клиент",
     phone: "Телефон",
     item: "Не басып шығарамыз",
@@ -357,6 +396,7 @@ export const PRINT3D_STAFF: Record<Locale, StaffTexts> = {
     replyHint:
       "Reply to this message with a swipe and the bot will forward your answer to the customer.",
     bound: (w, no, row) => `✅ ${w} wrote to the bot: order No. ${no} (row ${row})`,
+    newOrder: (no, row) => `📋 Order No. ${no} accepted (row ${row})`,
     inSheet: "Customer in the sheet",
     phone: "Phone",
     item: "What we print",
@@ -379,6 +419,7 @@ export const PRINT3D_STAFF: Record<Locale, StaffTexts> = {
     client: "Mijoz",
     replyHint: "Bu xabarga svayp bilan javob bering — bot javobni mijozga yuboradi.",
     bound: (w, no, row) => `✅ ${w} botga yozdi — № ${no} buyurtma (${row}-qator)`,
+    newOrder: (no, row) => `📋 № ${no} buyurtma qabul qilindi (${row}-qator)`,
     inSheet: "Jadvaldagi mijoz",
     phone: "Telefon",
     item: "Nimani chop etamiz",
@@ -411,15 +452,27 @@ function withRef(t: StaffTexts, clientId: string): string {
 /** Рабочей группе: клиент написал и заказ найден — та же карточка плюс данные из таблицы. */
 export function groupCardBound(o: Print3dOrder, who: ClientWho, loc: Locale = "ru"): string {
   const t = PRINT3D_STAFF[loc];
-  const lines = [t.bound(whoLine(who, t), o.no, o.row)];
+  return [t.bound(whoLine(who, t), o.no, o.row), ...groupFields(o, t), "", withRef(t, who.id)].join(
+    "\n",
+  );
+}
+
+export function groupCardAccepted(o: Print3dOrder, clientId: string | null, loc: Locale): string {
+  const t = PRINT3D_STAFF[loc];
+  const lines = [t.newOrder(o.no, o.row), ...groupFields(o, t)];
+  if (clientId) lines.push("", withRef(t, clientId));
+  return lines.join("\n");
+}
+
+function groupFields(o: Print3dOrder, t: StaffTexts): string[] {
+  const lines: string[] = [];
   if (o.name) lines.push(`${t.inSheet}: ${o.name}`);
   if (o.phone) lines.push(`${t.phone}: ${o.phone}`);
   if (o.item) lines.push(`${t.item}: ${o.item}`);
   if (o.due) lines.push(`${t.due}: ${o.due}`);
   if (o.sum) lines.push(`${t.sum}: ${o.sum}`);
   if (o.status) lines.push(`${t.status}: ${o.status}`);
-  lines.push("", withRef(t, who.id));
-  return lines.join("\n");
+  return lines;
 }
 
 /** Номер уже привязан к другому чату — мастеру нужно разобраться самому. */

@@ -7,12 +7,13 @@
  */
 import { downloadSheet, type FetchLike } from "@/core/catalog/sheet.server";
 import { pageAll } from "@/core/db/page";
-import { getSettingsStrict } from "@/core/settings/settings";
+import { getSettingsStrict, setSetting } from "@/core/settings/settings";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { serverFailure } from "@/lib/server-failure";
 import {
   BIND_PREFIX,
   parseOrders,
+  PRINT3D_AUTO_KEY,
   PRINT3D_READY_KEY,
   PRINT3D_SHEET_KEY,
   READY_PREFIX,
@@ -21,13 +22,17 @@ import {
   type Print3dOrder,
 } from "./sheet";
 
-export type Print3dConfig = { sheetUrl: string; readyNotify: boolean };
+const CONTACT_PREFIX = "print3d_contact:";
+const GROUP_PREFIX = "print3d_group:";
+
+export type Print3dConfig = { sheetUrl: string; readyNotify: boolean; autoAccept: boolean };
 
 export async function print3dConfig(ctx: TenantContext): Promise<Print3dConfig> {
-  const s = await getSettingsStrict(ctx, [PRINT3D_SHEET_KEY, PRINT3D_READY_KEY]);
+  const s = await getSettingsStrict(ctx, [PRINT3D_SHEET_KEY, PRINT3D_READY_KEY, PRINT3D_AUTO_KEY]);
   return {
     sheetUrl: (s[PRINT3D_SHEET_KEY] ?? "").trim(),
     readyNotify: s[PRINT3D_READY_KEY] === "true",
+    autoAccept: s[PRINT3D_AUTO_KEY] === "true",
   };
 }
 
@@ -38,8 +43,9 @@ export type OrdersLoad =
 export async function loadPrint3dOrders(
   ctx: TenantContext,
   fetchImpl?: FetchLike,
+  config?: Print3dConfig,
 ): Promise<OrdersLoad> {
-  const { sheetUrl } = await print3dConfig(ctx);
+  const { sheetUrl } = config ?? (await print3dConfig(ctx));
   if (!sheetUrl) return { ok: false, reason: "noSheet" };
   const dl = await downloadSheet(sheetUrl, fetchImpl);
   if (!dl.ok) return { ok: false, reason: dl.reason };
@@ -50,13 +56,13 @@ export async function loadPrint3dOrders(
 /** Клиент в канале: "telegram:123". WhatsApp через Zernio позже — "whatsapp:<номер>". */
 export type ClientAddress = { platform: "telegram"; id: string };
 
-type BindValue = { platform: string; id: string; at: string };
+type BindValue = { platform: string; id: string; at: string; automatic?: boolean };
 
 function parseBind(value: string | null | undefined): BindValue | null {
   try {
     const v = JSON.parse(value ?? "") as Partial<BindValue>;
     return typeof v.id === "string" && typeof v.platform === "string"
-      ? { platform: v.platform, id: v.id, at: String(v.at ?? "") }
+      ? { platform: v.platform, id: v.id, at: String(v.at ?? ""), automatic: v.automatic === true }
       : null;
   } catch {
     return null;
@@ -86,8 +92,9 @@ export async function bindOrder(
   orderNo: string,
   client: ClientAddress,
   now = new Date(),
+  automatic = false,
 ): Promise<BindResult> {
-  const value = JSON.stringify({ platform: client.platform, id: client.id, at: now.toISOString() });
+  const value = JSON.stringify({ ...client, at: now.toISOString(), automatic });
   if (await insertOnce(ctx, BIND_PREFIX + orderNo, value)) return { kind: "bound" };
   const { data, error } = await ctx.db
     .from("app_settings")
@@ -99,6 +106,47 @@ export async function bindOrder(
   if (other && other.platform === client.platform && other.id === client.id)
     return { kind: "same" };
   return { kind: "taken", other };
+}
+
+/** Сюда попадает только свой контакт, которым клиент поделился в Telegram. */
+export function saveOrderContact(ctx: TenantContext, clientId: string, phone: string) {
+  return setSetting(ctx, CONTACT_PREFIX + clientId, phone);
+}
+
+async function listOrderSettings(ctx: TenantContext, prefix: string) {
+  return pageAll<{ key: string; value: string | null }>(
+    (from, to) =>
+      ctx.db
+        .from("app_settings")
+        .select("key, value")
+        .eq("bot_id", ctx.tenant.id)
+        .like("key", `${prefix}%`)
+        .order("key")
+        .range(from, to),
+    "Настройки заказов студии",
+  );
+}
+
+/** Телефон → чат. Если номер поделили два чата, адрес неоднозначен. */
+export async function listOrderContacts(ctx: TenantContext): Promise<Map<string, string | null>> {
+  const byPhone = new Map<string, string | null>();
+  for (const { key, value } of await listOrderSettings(ctx, CONTACT_PREFIX)) {
+    const id = key.slice(CONTACT_PREFIX.length);
+    if (value && /^\d+$/.test(id)) byPhone.set(value, byPhone.has(value) ? null : id);
+  }
+  return byPhone;
+}
+
+export async function listGroupClaims(ctx: TenantContext): Promise<Set<string>> {
+  return new Set((await listOrderSettings(ctx, GROUP_PREFIX)).map(({ key }) => key));
+}
+
+export function groupClaimKey(orderNo: string, chatId: string): string {
+  return `${GROUP_PREFIX}${chatId}:${orderNo}`;
+}
+
+export function claimGroupCard(ctx: TenantContext, orderNo: string, chatId: string, now: Date) {
+  return insertOnce(ctx, groupClaimKey(orderNo, chatId), now.toISOString());
 }
 
 /** Все привязки магазина: номер заказа → клиент. Постранично, без обрезки. */

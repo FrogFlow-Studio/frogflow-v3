@@ -1,35 +1,37 @@
 /**
- * Студия 3D-печати в Telegram (ниша print3d, core/print3d). Клиенту ничего
- * нажимать не нужно: после оформления в студии он пишет боту номер заказа с
- * чека — бот находит строку таблицы, отвечает карточкой (с фото, если оно
- * есть) и кладёт копию в рабочую группу (app_settings.admin_chat_id).
- *
- * Бот отвечает сам только дважды за всю историю клиента: просьба прислать
- * номер (один раз) и карточка (один раз на заказ). Всё остальное, что пишет
- * клиент, молча уходит в рабочую группу; мастер отвечает свайпом, и бот
- * пересылает ответ клиенту. Так бот не влезает в живой разговор.
+ * Студия 3D-печати в Telegram. В режиме автоподтверждения клиент делится
+ * контактом, а крон проверяет заказы из таблицы по телефону. В ручном
+ * режиме клиент сначала присылает номер с чека. Вопросы идут в рабочую
+ * группу, откуда мастер может отвечать свайпом.
  */
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Locale } from "@/core/i18n/locale";
+import { blockedAmong } from "@/core/customers/customers";
 import { adminRecipients } from "@/core/notify/recipients";
 import {
   addWait,
   bindOrder,
+  claimGroupCard,
   dropWait,
   listWaits,
   waitExpired,
   claimReady,
   listBindings,
+  groupClaimKey,
+  listGroupClaims,
+  listOrderContacts,
   listReadySent,
   loadPrint3dOrders,
   orderOfClient,
   print3dConfig,
+  saveOrderContact,
 } from "@/core/print3d/orders.server";
 import {
   clientCard,
   clientRefOf,
   findOrderByPhone,
   findOrderInText,
+  groupCardAccepted,
   groupCardBound,
   groupMessageHeader,
   groupReadyFailed,
@@ -39,6 +41,7 @@ import {
   groupTakenNumber,
   isReadyStatus,
   normOrderNo,
+  orderPhoneKey,
   photoUrl,
   PRINT3D_STAFF,
   PRINT3D_TEXTS,
@@ -47,7 +50,7 @@ import {
 } from "@/core/print3d/sheet";
 import { serverFailure } from "@/lib/server-failure";
 import { sellerLocale } from "@/core/catalog/low-stock";
-import type { TelegramApi } from "./api";
+import { rejectedForSure, type TelegramApi } from "./api";
 import type { TelegramMessage } from "./types";
 
 export function isPrint3d(ctx: TenantContext): boolean {
@@ -78,7 +81,7 @@ async function sendCard(
   if (photo && text.length <= 1024) {
     const r = await api.call("sendPhoto", { chat_id: chatId, photo, caption: text });
     if (r.ok) return true;
-    // Фото не скачалось (закрытая ссылка Диска) — отказ точный, текст без фото не дубль.
+    if (!rejectedForSure(r)) return false;
   }
   const r = await api.call("sendMessage", { chat_id: chatId, text });
   return r.ok;
@@ -149,12 +152,44 @@ export async function print3dPrivateMessage(
   locale: Locale,
   contactPhone: string | null,
 ): Promise<boolean> {
-  if (!isPrint3d(ctx) || !msg.from) return false;
+  if (!isPrint3d(ctx) || !msg.from || msg.chat.id !== msg.from.id) return false;
   const who = whoOf(msg);
   const client = { platform: "telegram" as const, id: who.id };
   const m = PRINT3D_TEXTS[locale];
   const text = msg.text?.trim() ?? "";
   const sl = await sellerLocale(ctx);
+  const cfg = await print3dConfig(ctx);
+  const ownContact = msg.contact && msg.contact.user_id === msg.from.id ? msg.contact : null;
+
+  if (cfg.autoAccept) {
+    if (text.startsWith("/start")) {
+      await api.call("sendMessage", {
+        chat_id: msg.chat.id,
+        text: m.askPhone,
+        reply_markup: {
+          keyboard: [[{ text: m.sharePhone, request_contact: true }]],
+          one_time_keyboard: true,
+          resize_keyboard: true,
+        },
+      });
+      return true;
+    }
+    // Telegram передаёт код страны, иногда без ведущего плюса.
+    const phone =
+      ownContact && orderPhoneKey(`+${ownContact.phone_number.trim().replace(/^\+/, "")}`);
+    if (phone) {
+      await saveOrderContact(ctx, who.id, phone);
+      await api.call("sendMessage", {
+        chat_id: msg.chat.id,
+        text: m.phoneSaved,
+        reply_markup: { remove_keyboard: true },
+      });
+      return true;
+    }
+    const bound = orderOfClient(await listBindings(ctx), client);
+    await copyToWork(ctx, api, msg, groupMessageHeader(who, bound, sl));
+    return true;
+  }
 
   // /start — просьба прислать номер (не чаще одного раза; повторный /start молчит).
   if (text.startsWith("/start")) {
@@ -163,11 +198,10 @@ export async function print3dPrivateMessage(
     return true;
   }
 
-  const load = await loadPrint3dOrders(ctx);
+  const load = await loadPrint3dOrders(ctx, undefined, cfg);
   const orders: Print3dOrder[] = load.ok ? load.orders : [];
   // Номер с чека в тексте; иначе телефон: контакт кнопкой или уже известный боту.
   // Чужой контакт (переслали карточку знакомого) — не телефон клиента: по нему не ищем.
-  const ownContact = msg.contact && msg.contact.user_id === msg.from.id ? msg.contact : null;
   const phone = ownContact?.phone_number ?? contactPhone;
   const found =
     (text && findOrderInText(text, orders)) || (phone && findOrderByPhone(phone, orders)) || null;
@@ -249,16 +283,82 @@ export async function print3dWorkReply(
 
 export type ReadyRun =
   | { skipped: string }
-  | { ok: true; sent: number; failed: number; cards: number }
+  | { ok: true; sent: number; failed: number; cards: number; accepted?: AutoRun }
   | { ok: false; reason: string };
 
+type AutoRun = { clients: number; groups: number; failed: number };
+
+async function notifyAcceptedOrders(
+  ctx: TenantContext,
+  api: TelegramApi,
+  orders: readonly Print3dOrder[],
+  localeOfClient: (telegramId: string) => Promise<Locale>,
+  sl: Locale,
+  budget: { deadline: number },
+  now: Date,
+): Promise<AutoRun> {
+  const [contacts, bindings, groupClaims, recipients] = await Promise.all([
+    listOrderContacts(ctx),
+    listBindings(ctx),
+    listGroupClaims(ctx),
+    adminRecipients(ctx),
+  ]);
+  const groups = recipients.filter((id) => id.startsWith("-"));
+  const blocked = await blockedAmong(
+    ctx,
+    [...contacts.values()].filter((id) => id !== null).map(Number),
+  );
+  const result: AutoRun = { clients: 0, groups: 0, failed: 0 };
+  for (const order of orders) {
+    if (Date.now() >= budget.deadline) break;
+    const phone = orderPhoneKey(order.phone);
+    if (!phone || !order.item) continue;
+    const existing = bindings.get(order.no);
+    // Привязанные по номеру заказы уже отправлялись по старому сценарию.
+    if (existing && !existing.automatic) continue;
+    const matched = contacts.get(phone);
+    let clientId = existing?.id ?? (matched && !blocked.has(Number(matched)) ? matched : null);
+    if (!existing && clientId) {
+      const locale = await localeOfClient(clientId);
+      const binding = await bindOrder(
+        ctx,
+        order.no,
+        { platform: "telegram", id: clientId },
+        now,
+        true,
+      );
+      if (binding.kind === "taken") clientId = null;
+      if (binding.kind === "bound") {
+        const r = await api.call("sendMessage", {
+          chat_id: clientId,
+          text: PRINT3D_TEXTS[locale].accepted(order.no),
+        });
+        if (r.ok) result.clients++;
+        else result.failed++;
+      }
+    }
+    const photo = photoUrl(order.photo);
+    if (!photo) continue;
+    for (const chatId of groups) {
+      if (Date.now() >= budget.deadline) return result;
+      if (groupClaims.has(groupClaimKey(order.no, chatId))) continue;
+      if (!(await claimGroupCard(ctx, order.no, chatId, now))) continue;
+      const card = groupCardAccepted(order, clientId, sl);
+      if (card.length > 1024) {
+        const r = await api.call("sendPhoto", { chat_id: chatId, photo });
+        if (!r.ok) result.failed++;
+      }
+      if (await sendCard(api, chatId, card, photo)) result.groups++;
+      else result.failed++;
+    }
+  }
+  return result;
+}
+
 /**
- * Крон (минутная сетка рассылок), два дела:
- * 1. Номера, которых не было в таблице, когда клиент их прислал: строка
- *    появилась — привязываем и шлём карточку (как при первом сообщении).
- *    Не появилась за 3 дня — ожидание снимаем.
- * 2. Если продавец включил «заказ готов»: заказы со статусом «готово», клиент
- *    которых уже писал боту, получают одно сообщение «можно забирать».
+ * Минутный крон отправляет подтверждения по телефону или обрабатывает
+ * ожидаемые номера с чека. Если включены уведомления о готовности, крон
+ * также пишет клиентам по их привязанным заказам со статусом «готово».
  * Отметки ставятся до отправки; отправку, которая могла дойти, не повторяем.
  */
 export async function runPrint3dReadyFor(
@@ -270,12 +370,26 @@ export async function runPrint3dReadyFor(
 ): Promise<ReadyRun> {
   if (!isPrint3d(ctx)) return { skipped: "not print3d" };
   if (!api) return { skipped: "no telegram bot" };
-  const [cfg, waits] = await Promise.all([print3dConfig(ctx), listWaits(ctx)]);
-  if (!cfg.readyNotify && !waits.length) return { skipped: "nothing to do" };
-  const load = await loadPrint3dOrders(ctx);
+  const cfg = await print3dConfig(ctx);
+  const waits = cfg.autoAccept ? [] : await listWaits(ctx);
+  if (!cfg.autoAccept && !cfg.readyNotify && !waits.length) return { skipped: "nothing to do" };
+  const load = await loadPrint3dOrders(ctx, undefined, cfg);
   if (!load.ok) return { ok: false, reason: load.reason };
   const byNo = new Map(load.orders.map((o) => [o.no, o]));
   const sl = await sellerLocale(ctx);
+  const auto = cfg.autoAccept
+    ? {
+        accepted: await notifyAcceptedOrders(
+          ctx,
+          api,
+          load.orders,
+          localeOfClient,
+          sl,
+          budget,
+          now,
+        ),
+      }
+    : {};
   let cards = 0;
   for (const w of waits) {
     if (Date.now() > budget.deadline) break;
@@ -296,9 +410,9 @@ export async function runPrint3dReadyFor(
     await toWorkChats(ctx, (chatId) => sendCard(api, chatId, groupCardBound(o, who, sl), photo));
     cards++;
   }
-  if (!cfg.readyNotify) return { ok: true, sent: 0, failed: 0, cards };
+  if (!cfg.readyNotify) return { ok: true, sent: 0, failed: 0, cards, ...auto };
   const ready = load.orders.filter((o) => isReadyStatus(o.status));
-  if (!ready.length) return { ok: true, sent: 0, failed: 0, cards };
+  if (!ready.length) return { ok: true, sent: 0, failed: 0, cards, ...auto };
   const [bindings, done] = await Promise.all([listBindings(ctx), listReadySent(ctx)]);
   let sent = 0;
   let failed = 0;
@@ -318,5 +432,5 @@ export async function runPrint3dReadyFor(
     const note = r.ok ? groupReadySent(o.no, b.id, sl) : groupReadyFailed(o.no, b.id, sl);
     await toWorkChats(ctx, (chatId) => api.call("sendMessage", { chat_id: chatId, text: note }));
   }
-  return { ok: true, sent, failed, cards };
+  return { ok: true, sent, failed, cards, ...auto };
 }

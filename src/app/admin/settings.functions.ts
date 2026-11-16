@@ -37,7 +37,7 @@ export const settingsFn = createServerFn({ method: "GET" }).handler(async () => 
   const { listPaymentMethods } = await import("@/core/settings/payment-methods");
   const [raw, methods] = await Promise.all([
     getSettings(ctx, SETTING_KEYS),
-    listPaymentMethods(ctx),
+    ctx.tenant.vertical === "print3d" ? [] : listPaymentMethods(ctx),
   ]);
   const settings = settingsForRole(raw, role);
   const { recentSettingKeys } = await import("@/core/settings/settings");
