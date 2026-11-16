@@ -10,7 +10,10 @@ import {
   normOrderNo,
   parseOrders,
   photoUrl,
+  PRINT3D_STAFF,
   PRINT3D_TEXTS,
+  groupCardBound,
+  waitingCandidate,
 } from "./sheet";
 
 const CSV = [
@@ -65,7 +68,7 @@ describe("таблица студии 3D-печати", () => {
   it("статус «готово»: да для «Готово», «готов к выдаче», «ready»; нет для «не готово» и пусто", () => {
     for (const s of ["Готово", "готов к выдаче", "Ready", "дайын", "tayyor"])
       expect(isReadyStatus(s), s).toBe(true);
-    for (const s of ["", "в работе", "не готово", "not ready"])
+    for (const s of ["", "в работе", "не готово", "not ready", "Выдан", "готовится", "Готовим"])
       expect(isReadyStatus(s), s).toBe(false);
   });
 
@@ -95,6 +98,31 @@ describe("таблица студии 3D-печати", () => {
       expect(card, loc).not.toContain("701 111");
       expect(card, loc).not.toContain("Иван");
       expect(PRINT3D_TEXTS[loc].askNumber.length, loc).toBeGreaterThan(10);
+    }
+  });
+});
+
+describe("номер, которого ещё нет в таблице", () => {
+  it("только номер — да; вопрос, телефон, слово — нет", () => {
+    expect(waitingCandidate("1240")).toBe("1240");
+    expect(waitingCandidate("№ 1240")).toBe("1240");
+    expect(waitingCandidate("заказ 1240")).toBe("1240");
+    expect(waitingCandidate("A-17")).toBe("A-17");
+    expect(waitingCandidate("87011112233")).toBeNull();
+    expect(waitingCandidate("Здравствуйте")).toBeNull();
+    expect(waitingCandidate("сколько стоит 2 детали")).toBeNull();
+  });
+});
+
+describe("тексты рабочей группе — на языке админки продавца", () => {
+  it("4 языка, метка клиента для свайпа везде", () => {
+    const r = parseOrders(CSV);
+    if (!r.ok) throw new Error();
+    for (const loc of SUPPORTED_LOCALES) {
+      const card = groupCardBound(r.orders[0]!, { id: "555", name: "" }, loc);
+      expect(card, loc).toContain("#p3d555");
+      expect(card, loc).toContain(PRINT3D_STAFF[loc].client);
+      expect(PRINT3D_STAFF[loc].relaySent.length, loc).toBeGreaterThan(3);
     }
   });
 });

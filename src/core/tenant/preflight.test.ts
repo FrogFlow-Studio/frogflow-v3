@@ -73,6 +73,8 @@ describe("консультант по прайсу и баллы", () => {
     // BOVI: модуль магазина из v1 включён, а активных товаров нет.
     expect(shop("consultant", { shop: true, dm_shop: true }, 0)).toBe(false);
     expect(shop("consultant", { courses: true }, 0)).toBe(true);
+    // Студия 3D-печати: заказы в таблице студии, реквизиты и товары переезд не блокируют.
+    expect(shop("print3d", { shop: true }, 0)).toBe(false);
   });
 
   it("флаг включён, а прайс пуст — переезд блокируется", () => {

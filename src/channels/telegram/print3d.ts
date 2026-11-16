@@ -13,7 +13,11 @@ import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Locale } from "@/core/i18n/locale";
 import { adminRecipients } from "@/core/notify/recipients";
 import {
+  addWait,
   bindOrder,
+  dropWait,
+  listWaits,
+  waitExpired,
   claimReady,
   listBindings,
   listReadySent,
@@ -26,20 +30,23 @@ import {
   clientRefOf,
   findOrderByPhone,
   findOrderInText,
-  GROUP_RELAY_FAILED,
-  GROUP_RELAY_SENT,
   groupCardBound,
   groupMessageHeader,
+  groupReadyFailed,
   groupReadySent,
+  groupWaiting,
+  waitingCandidate,
   groupTakenNumber,
   isReadyStatus,
   normOrderNo,
   photoUrl,
+  PRINT3D_STAFF,
   PRINT3D_TEXTS,
   type ClientWho,
   type Print3dOrder,
 } from "@/core/print3d/sheet";
 import { serverFailure } from "@/lib/server-failure";
+import { sellerLocale } from "@/core/catalog/low-stock";
 import type { TelegramApi } from "./api";
 import type { TelegramMessage } from "./types";
 
@@ -147,6 +154,7 @@ export async function print3dPrivateMessage(
   const client = { platform: "telegram" as const, id: who.id };
   const m = PRINT3D_TEXTS[locale];
   const text = msg.text?.trim() ?? "";
+  const sl = await sellerLocale(ctx);
 
   // /start — просьба прислать номер (не чаще одного раза; повторный /start молчит).
   if (text.startsWith("/start")) {
@@ -158,7 +166,9 @@ export async function print3dPrivateMessage(
   const load = await loadPrint3dOrders(ctx);
   const orders: Print3dOrder[] = load.ok ? load.orders : [];
   // Номер с чека в тексте; иначе телефон: контакт кнопкой или уже известный боту.
-  const phone = msg.contact?.phone_number ?? contactPhone;
+  // Чужой контакт (переслали карточку знакомого) — не телефон клиента: по нему не ищем.
+  const ownContact = msg.contact && msg.contact.user_id === msg.from.id ? msg.contact : null;
+  const phone = ownContact?.phone_number ?? contactPhone;
   const found =
     (text && findOrderInText(text, orders)) || (phone && findOrderByPhone(phone, orders)) || null;
 
@@ -167,25 +177,38 @@ export async function print3dPrivateMessage(
     if (res.kind === "bound") {
       await sendCard(api, msg.chat.id, clientCard(found, locale), photoUrl(found.photo));
       const photo = photoUrl(found.photo);
-      await toWorkChats(ctx, (chatId) => sendCard(api, chatId, groupCardBound(found, who), photo));
+      await toWorkChats(ctx, (chatId) =>
+        sendCard(api, chatId, groupCardBound(found, who, sl), photo),
+      );
       // Клиент написал не только номер («Здравствуйте, заказ 1234, а можно…») — мастеру и текст.
       if (normOrderNo(text) !== found.no)
-        await copyToWork(ctx, api, msg, groupMessageHeader(who, found.no));
+        await copyToWork(ctx, api, msg, groupMessageHeader(who, found.no, sl));
       return true;
     }
     if (res.kind === "taken") {
       if (await askOnce(ctx, `taken:${found.no}:${who.id}`))
         await api.call("sendMessage", { chat_id: msg.chat.id, text: m.takenNumber });
       await toWorkChats(ctx, (chatId) =>
-        api.call("sendMessage", { chat_id: chatId, text: groupTakenNumber(found.no, who) }),
+        api.call("sendMessage", { chat_id: chatId, text: groupTakenNumber(found.no, who, sl) }),
       );
       return true;
     }
     // Тот же клиент прислал номер ещё раз — не повторяем карточку, сообщение мастеру.
   }
 
+  // Номера ещё нет в таблице: мастер мог попросить написать раньше, чем внёс строку.
+  // Запоминаем — крон пришлёт карточку, когда строка появится.
+  const candidate = found ? null : waitingCandidate(text);
+  if (candidate && (await addWait(ctx, candidate, client))) {
+    await api.call("sendMessage", { chat_id: msg.chat.id, text: m.waiting(candidate) });
+    await toWorkChats(ctx, (chatId) =>
+      api.call("sendMessage", { chat_id: chatId, text: groupWaiting(candidate, who, sl) }),
+    );
+    return true;
+  }
+
   const bound = orderOfClient(await listBindings(ctx), client);
-  await copyToWork(ctx, api, msg, groupMessageHeader(who, found?.no ?? bound));
+  await copyToWork(ctx, api, msg, groupMessageHeader(who, found?.no ?? bound, sl));
   // Заказа не нашли и клиент ещё ни к чему не привязан — один раз просим номер.
   if (!found && !bound && (await askOnce(ctx, who.id)))
     await api.call("sendMessage", { chat_id: msg.chat.id, text: m.askNumber });
@@ -210,6 +233,7 @@ export async function print3dWorkReply(
     staff.includes(String(msg.chat.id)) &&
     (msg.chat.type !== "private" || staff.includes(String(msg.from.id)));
   if (!fromStaff) return false;
+  const st = PRINT3D_STAFF[await sellerLocale(ctx)];
   const r = await api.call("copyMessage", {
     chat_id: clientId,
     from_chat_id: msg.chat.id,
@@ -217,34 +241,64 @@ export async function print3dWorkReply(
   });
   await api.call("sendMessage", {
     chat_id: msg.chat.id,
-    text: r.ok ? GROUP_RELAY_SENT : GROUP_RELAY_FAILED,
+    text: r.ok ? st.relaySent : st.relayFailed,
     reply_parameters: { message_id: msg.message_id, allow_sending_without_reply: true },
   });
   return true;
 }
 
 export type ReadyRun =
-  { skipped: string } | { ok: true; sent: number; failed: number } | { ok: false; reason: string };
+  | { skipped: string }
+  | { ok: true; sent: number; failed: number; cards: number }
+  | { ok: false; reason: string };
 
 /**
- * Крон (минутная сетка рассылок): заказы со статусом «готово», клиент
- * которых уже писал боту, получают одно сообщение «можно забирать».
- * Отметка ставится до отправки; отправку, которая могла дойти, не повторяем.
+ * Крон (минутная сетка рассылок), два дела:
+ * 1. Номера, которых не было в таблице, когда клиент их прислал: строка
+ *    появилась — привязываем и шлём карточку (как при первом сообщении).
+ *    Не появилась за 3 дня — ожидание снимаем.
+ * 2. Если продавец включил «заказ готов»: заказы со статусом «готово», клиент
+ *    которых уже писал боту, получают одно сообщение «можно забирать».
+ * Отметки ставятся до отправки; отправку, которая могла дойти, не повторяем.
  */
 export async function runPrint3dReadyFor(
   ctx: TenantContext,
   api: TelegramApi | null,
   localeOfClient: (telegramId: string) => Promise<Locale>,
   budget: { deadline: number } = { deadline: Date.now() + 30_000 },
+  now = new Date(),
 ): Promise<ReadyRun> {
   if (!isPrint3d(ctx)) return { skipped: "not print3d" };
   if (!api) return { skipped: "no telegram bot" };
-  const cfg = await print3dConfig(ctx);
-  if (!cfg.readyNotify) return { skipped: "ready notify off" };
+  const [cfg, waits] = await Promise.all([print3dConfig(ctx), listWaits(ctx)]);
+  if (!cfg.readyNotify && !waits.length) return { skipped: "nothing to do" };
   const load = await loadPrint3dOrders(ctx);
   if (!load.ok) return { ok: false, reason: load.reason };
+  const byNo = new Map(load.orders.map((o) => [o.no, o]));
+  const sl = await sellerLocale(ctx);
+  let cards = 0;
+  for (const w of waits) {
+    if (Date.now() > budget.deadline) break;
+    const o = byNo.get(w.no);
+    if (!o) {
+      if (waitExpired(w, now)) await dropWait(ctx, w.no);
+      continue;
+    }
+    // Ожидание снимаем первым: второй крон его уже не увидит, а привязка — вставка один раз.
+    await dropWait(ctx, w.no);
+    if (w.client.platform !== "telegram") continue;
+    const res = await bindOrder(ctx, o.no, { platform: "telegram", id: w.client.id }, now);
+    if (res.kind !== "bound") continue;
+    const locale = await localeOfClient(w.client.id);
+    const photo = photoUrl(o.photo);
+    await sendCard(api, w.client.id, clientCard(o, locale), photo);
+    const who: ClientWho = { id: w.client.id, name: "" };
+    await toWorkChats(ctx, (chatId) => sendCard(api, chatId, groupCardBound(o, who, sl), photo));
+    cards++;
+  }
+  if (!cfg.readyNotify) return { ok: true, sent: 0, failed: 0, cards };
   const ready = load.orders.filter((o) => isReadyStatus(o.status));
-  if (!ready.length) return { ok: true, sent: 0, failed: 0 };
+  if (!ready.length) return { ok: true, sent: 0, failed: 0, cards };
   const [bindings, done] = await Promise.all([listBindings(ctx), listReadySent(ctx)]);
   let sent = 0;
   let failed = 0;
@@ -258,12 +312,11 @@ export async function runPrint3dReadyFor(
       chat_id: b.id,
       text: PRINT3D_TEXTS[locale].ready(o.no),
     });
-    if (r.ok) {
-      sent++;
-      await toWorkChats(ctx, (chatId) =>
-        api.call("sendMessage", { chat_id: chatId, text: groupReadySent(o.no) }),
-      );
-    } else failed++;
+    if (r.ok) sent++;
+    else failed++;
+    // Мастеру видно и успех, и отказ: при отказе он звонит клиенту сам.
+    const note = r.ok ? groupReadySent(o.no, b.id, sl) : groupReadyFailed(o.no, b.id, sl);
+    await toWorkChats(ctx, (chatId) => api.call("sendMessage", { chat_id: chatId, text: note }));
   }
-  return { ok: true, sent, failed };
+  return { ok: true, sent, failed, cards };
 }

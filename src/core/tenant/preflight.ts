@@ -104,6 +104,8 @@ export type PreflightInput = {
  * нечего, реквизиты ему до переезда не нужны (BOVI, 06.10).
  */
 export function sellsInBot(t: Pick<Tenant, "vertical" | "modules">, products: number): boolean {
+  // Студия 3D-печати: заказы и оплата — в студии и её таблице, в боте каталога и кассы нет.
+  if (t.vertical === "print3d") return false;
   if (!isConsultantVertical(t.vertical)) return true;
   const m = t.modules;
   if (m.courses) return true;
@@ -156,7 +158,7 @@ export function evaluatePreflight(i: PreflightInput): Preflight {
           level: "info",
           title: "Оплата в боте не нужна",
           detail:
-            "Клиент — консультант без заказов в боте. Начнёт продавать — реквизиты по странам добавит в админке v2.",
+            "Клиент не принимает заказы в боте (консультант или студия 3D-печати). Начнёт продавать — реквизиты по странам добавит в админке v2.",
         }
       : i.paymentMethods > 0 || i.modulesOn.includes("robokassa")
         ? {
@@ -187,7 +189,7 @@ export function evaluatePreflight(i: PreflightInput): Preflight {
             level: "info",
             title: "Товары не нужны",
             detail:
-              "Консультант без продаж в боте: покупателям отвечает консультант, каталога в боте нет.",
+              "Каталога в боте нет: покупателям отвечает консультант или, у студии 3D-печати, бот по таблице заказов.",
           }
         : {
             key: "products",

@@ -152,6 +152,6 @@ Bot sizga Telegram’da Instagram va WhatsApp’dagi yozishmalar haqida yuboradi
 
 Bo‘lim faqat 3D bosma studiyasiga ko‘rinadi. «Havolaga ega barcha» (o‘quvchi) kirishli Google Jadval havolasini qo‘ying. Ustunlar: Номер, Имя, Телефон, Заказ, Срок, Сумма, Фото, Статус; Номер va Заказ majburiy. Rasm — ochiq Google Disk havolasi.
 
-Mijoz botga chekdagi buyurtma raqamini yozadi. Bot bir marta buyurtma kartochkasi bilan (rasm bilan, telefonsiz) javob beradi, telefonli nusxasi ishchi guruhga ketadi — bu «Buyurtma bildirishnomalari uchun Telegram ID» maydonidagi guruh ID-si. Mijozning boshqa xabarlariga bot o‘zi javob bermaydi, guruhga yuboradi; ularga svayp bilan javob bering, bot javobni mijozga yuboradi.
+Mijoz botga chekdagi buyurtma raqamini yozadi. Bot bir marta buyurtma kartochkasi bilan (rasm bilan, telefonsiz) javob beradi, telefonli nusxasi ishchi guruhga ketadi — bu «Buyurtma bildirishnomalari uchun Telegram ID» maydonidagi guruh ID-si. Mijozning boshqa xabarlariga bot o‘zi javob bermaydi, guruhga yuboradi; ularga svayp bilan javob bering, bot javobni mijozga yuboradi. Mijoz jadvalda hali yo‘q raqamni yuborsa, bot uni eslab qoladi va qator paydo bo‘lganda kartochkani o‘zi yuboradi (3 kungacha kutadi).
 
 «Mijozga „buyurtma tayyor“ deb yozish»: «Статус» ustunida «готово» paydo bo‘lganda, mijoz botga oldin yozgan bo‘lsa, bot unga bir marta yozadi. Odatda o‘chiq. WhatsAppda mijoz xabaridan 24 soatdan keyin bunday xabar uchun Meta tasdiqlagan shablon kerak, shuning uchun shablon bo‘lmasa WhatsApp uchun o‘chiq qoldiring.

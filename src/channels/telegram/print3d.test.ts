@@ -141,11 +141,27 @@ describe("студия 3D-печати: клиент пишет номер с ч
 
   it("клиент поделился контактом — заказ находится по телефону", async () => {
     const s = studio();
-    const msg = { ...dm(777, ""), text: undefined, contact: { phone_number: "+77012223344" } };
+    const msg = {
+      ...dm(777, ""),
+      text: undefined,
+      contact: { phone_number: "+77012223344", user_id: 777 },
+    };
     await print3dPrivateMessage(s.ctx, s.api, msg, "kk", null);
     const mine = to(s.calls, 777);
     expect(mine).toHaveLength(1);
     expect(body(mine[0]!)).toContain("Тапсырыс № 1235");
+  });
+
+  it("чужой контакт (пересланная карточка знакомого) — по нему заказ не ищем", async () => {
+    const s = studio();
+    const msg = {
+      ...dm(777, ""),
+      text: undefined,
+      contact: { phone_number: "+77012223344", user_id: 999 },
+    };
+    await print3dPrivateMessage(s.ctx, s.api, msg, "ru", null);
+    expect(to(s.calls, 777).map(body).join()).not.toContain("Корпус");
+    expect(s.db.tables.app_settings!.some((r) => r.key === "print3d_bind:1235")).toBe(false);
   });
 
   it("«здравствуйте» без номера: один раз просим номер, сообщение — мастеру; второй раз бот молчит", async () => {
@@ -175,6 +191,60 @@ describe("студия 3D-печати: клиент пишет номер с ч
     (s.ctx.tenant as { vertical: string }).vertical = "digital";
     expect(await print3dPrivateMessage(s.ctx, s.api, dm(555, "1234"), "ru", null)).toBe(false);
     expect(s.calls).toHaveLength(0);
+  });
+});
+
+describe("студия 3D-печати: клиент написал раньше, чем мастер внёс строку", () => {
+  const locale = async () => "ru" as const;
+
+  it("номера нет в таблице — бот обещает карточку; строка появилась — крон присылает её один раз", async () => {
+    const s = studio();
+    await print3dPrivateMessage(s.ctx, s.api, dm(555, "№1240"), "ru", null);
+    expect(to(s.calls, 555).map(body)).toEqual([expect.stringContaining("пока нет в системе")]);
+    expect(body(to(s.calls, GROUP)[0]!)).toContain("⏳");
+    s.calls.length = 0;
+    // строки ещё нет — крон ничего не шлёт
+    await runPrint3dReadyFor(s.ctx, s.api, locale);
+    expect(s.calls).toHaveLength(0);
+    sheet(["1240,Пётр,87015556677,Шестерня PLA,22.11,3000,,в работе"]);
+    await Promise.all([
+      runPrint3dReadyFor(s.ctx, s.api, locale),
+      runPrint3dReadyFor(s.ctx, s.api, locale),
+    ]);
+    await runPrint3dReadyFor(s.ctx, s.api, locale);
+    const cards = to(s.calls, 555);
+    expect(cards).toHaveLength(1);
+    expect(body(cards[0]!)).toContain("Шестерня PLA");
+    expect(to(s.calls, GROUP)).toHaveLength(1);
+    expect(s.db.tables.app_settings!.some((r) => String(r.key).startsWith("print3d_wait:"))).toBe(
+      false,
+    );
+  });
+
+  it("ожидание старше 3 дней снимается без сообщений", async () => {
+    const s = studio();
+    await print3dPrivateMessage(s.ctx, s.api, dm(555, "1240"), "ru", null);
+    s.calls.length = 0;
+    const later = new Date(Date.now() + 4 * 24 * 3600_000);
+    await runPrint3dReadyFor(s.ctx, s.api, locale, undefined, later);
+    expect(s.calls).toHaveLength(0);
+    expect(s.db.tables.app_settings!.some((r) => String(r.key).startsWith("print3d_wait:"))).toBe(
+      false,
+    );
+  });
+
+  it("вопрос без номера («а сколько стоит?») ожиданием не становится", async () => {
+    const s = studio();
+    await print3dPrivateMessage(
+      s.ctx,
+      s.api,
+      dm(555, "а сколько стоит печать 2 деталей?"),
+      "ru",
+      null,
+    );
+    expect(s.db.tables.app_settings!.some((r) => String(r.key).startsWith("print3d_wait:"))).toBe(
+      false,
+    );
   });
 });
 
@@ -231,6 +301,7 @@ describe("студия 3D-печати: «заказ готов» из табл�
       ok: true,
       sent: 1,
       failed: 0,
+      cards: 0,
     });
     expect(to(s.calls, 555).map(body)).toEqual(["Ваш заказ № 1234 готов, можно забирать!"]);
     expect(body(to(s.calls, GROUP)[0]!)).toContain("1234");
@@ -249,7 +320,7 @@ describe("студия 3D-печати: «заказ готов» из табл�
 
   it("выключено (по умолчанию) — бот ничего не пишет", async () => {
     const s = await bound({});
-    expect(await runPrint3dReadyFor(s.ctx, s.api, locale)).toEqual({ skipped: "ready notify off" });
+    expect(await runPrint3dReadyFor(s.ctx, s.api, locale)).toEqual({ skipped: "nothing to do" });
     expect(s.calls).toHaveLength(0);
   });
 
@@ -265,7 +336,10 @@ describe("студия 3D-печати: «заказ готов» из табл�
       ok: true,
       sent: 0,
       failed: 1,
+      cards: 0,
     });
+    // Мастер видит, что «готово» не дошло, и может позвонить.
+    expect(to(s.calls, GROUP).map(body).join()).toContain("Не удалось написать клиенту");
     await runPrint3dReadyFor(s.ctx, s.api, locale);
     expect(to(s.calls, 555)).toHaveLength(1);
   });

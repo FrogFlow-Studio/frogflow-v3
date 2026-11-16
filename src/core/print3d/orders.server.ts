@@ -16,6 +16,8 @@ import {
   PRINT3D_READY_KEY,
   PRINT3D_SHEET_KEY,
   READY_PREFIX,
+  WAIT_PREFIX,
+  WAIT_TTL_MS,
   type Print3dOrder,
 } from "./sheet";
 
@@ -150,4 +152,54 @@ export function orderOfClient(
     if (!best || v.at > best.at) best = { no, at: v.at };
   }
   return best?.no ?? null;
+}
+
+/**
+ * Клиент ждёт номер, которого ещё нет в таблице. Первый, кто прислал номер,
+ * его и ждёт; true — ожидание записано этим вызовом.
+ */
+export function addWait(
+  ctx: TenantContext,
+  orderNo: string,
+  client: ClientAddress,
+  now = new Date(),
+): Promise<boolean> {
+  const value = JSON.stringify({ platform: client.platform, id: client.id, at: now.toISOString() });
+  return insertOnce(ctx, WAIT_PREFIX + orderNo, value);
+}
+
+export type Wait = { no: string; client: BindValue };
+
+/** Все ожидания магазина. Постранично, без обрезки. */
+export async function listWaits(ctx: TenantContext): Promise<Wait[]> {
+  const rows = await pageAll<{ key: string; value: string | null }>(
+    (from, to) =>
+      ctx.db
+        .from("app_settings")
+        .select("key, value")
+        .like("key", `${WAIT_PREFIX}%`)
+        .order("key")
+        .range(from, to),
+    "Ожидания заказов студии",
+  );
+  const out: Wait[] = [];
+  for (const r of rows) {
+    const v = parseBind(r.value);
+    if (v) out.push({ no: r.key.slice(WAIT_PREFIX.length), client: v });
+  }
+  return out;
+}
+
+/** Снять ожидание (номер появился или срок вышел). */
+export async function dropWait(ctx: TenantContext, orderNo: string): Promise<void> {
+  const { error } = await ctx.db
+    .from("app_settings")
+    .delete()
+    .eq("key", WAIT_PREFIX + orderNo);
+  if (error) throw serverFailure(`Ожидание заказа ${orderNo}: ${error.message}`);
+}
+
+export function waitExpired(w: Wait, now = new Date()): boolean {
+  const at = Date.parse(w.client.at);
+  return !Number.isFinite(at) || now.getTime() - at > WAIT_TTL_MS;
 }

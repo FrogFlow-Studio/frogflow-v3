@@ -18,6 +18,14 @@ export const PRINT3D_READY_KEY = "print3d_ready_notify";
 export const BIND_PREFIX = "print3d_bind:";
 /** Отметка «о готовности написали»: app_settings `print3d_ready:<номер>` (вставка один раз). */
 export const READY_PREFIX = "print3d_ready:";
+/**
+ * Клиент прислал номер, которого в таблице ещё нет (мастер вносит строку
+ * после того, как попросил клиента написать): app_settings `print3d_wait:<номер>`.
+ * Крон находит строку, когда она появится, и шлёт карточку сам.
+ */
+export const WAIT_PREFIX = "print3d_wait:";
+/** Сколько ждать появления номера в таблице, потом ожидание снимается. */
+export const WAIT_TTL_MS = 3 * 24 * 3600_000;
 
 export type Print3dOrder = {
   /** Номер заказа, как его видит клиент на чеке, без «№» и пробелов, в верхнем регистре. */
@@ -142,13 +150,15 @@ export function findOrderByPhone(
   return hits.at(-1) ?? null;
 }
 
-const READY_WORDS = ["готов", "ready", "дайын", "tayyor", "выдан", "done"];
+/**
+ * Слово «готов» целиком: «готовится» и «готовим» — ещё в работе. «Выдан» не
+ * «готов»: заказ уже забрали — писать «можно забирать» поздно.
+ */
+const READY = /^(готов[оаы]?|ready|дайын|tayyor)([\s!.,:;)-]|$)/u;
 
-/** «Готово», «Готов к выдаче», «ready» — да; «не готово», пусто — нет. */
+/** «Готово», «Готов к выдаче», «ready» — да; «не готово», «готовится», пусто — нет. */
 export function isReadyStatus(status: string): boolean {
-  const s = normHeader(status);
-  if (!s || /^не\s/.test(s) || s.startsWith("not ")) return false;
-  return READY_WORDS.some((w) => s.startsWith(w));
+  return READY.test(normHeader(status));
 }
 
 /**
@@ -196,6 +206,7 @@ type Texts = {
   cardFooter: string;
   ready: (no: string) => string;
   takenNumber: string;
+  waiting: (no: string) => string;
 };
 
 export const PRINT3D_TEXTS: Record<Locale, Texts> = {
@@ -211,6 +222,8 @@ export const PRINT3D_TEXTS: Record<Locale, Texts> = {
     ready: (no) => `Ваш заказ № ${no} готов, можно забирать!`,
     takenNumber:
       "Этот номер заказа уже привязан к другому чату. Мастер увидит ваше сообщение и ответит.",
+    waiting: (no) =>
+      `Заказа № ${no} пока нет в системе, мастер, наверное, ещё вносит его. Как только появится, я пришлю карточку сюда.`,
   },
   kk: {
     askNumber:
@@ -224,6 +237,8 @@ export const PRINT3D_TEXTS: Record<Locale, Texts> = {
     ready: (no) => `№ ${no} тапсырысыңыз дайын, алып кетуге болады!`,
     takenNumber:
       "Бұл тапсырыс нөмірі басқа чатқа байланған. Шебер хабарламаңызды көріп, жауап береді.",
+    waiting: (no) =>
+      `№ ${no} тапсырысы әзірге жүйеде жоқ, шебер оны енгізіп жатқан болар. Пайда болғанда карточканы осында жіберемін.`,
   },
   en: {
     askNumber:
@@ -237,6 +252,8 @@ export const PRINT3D_TEXTS: Record<Locale, Texts> = {
     ready: (no) => `Your order No. ${no} is ready for pickup!`,
     takenNumber:
       "This order number is already linked to another chat. The studio will see your message and reply.",
+    waiting: (no) =>
+      `Order No. ${no} isn't in the system yet; the studio is probably still entering it. I'll send the card here as soon as it appears.`,
   },
   uz: {
     askNumber:
@@ -250,6 +267,8 @@ export const PRINT3D_TEXTS: Record<Locale, Texts> = {
     ready: (no) => `№ ${no} buyurtmangiz tayyor, olib ketishingiz mumkin!`,
     takenNumber:
       "Bu buyurtma raqami boshqa chatga bog‘langan. Usta xabaringizni ko‘rib, javob beradi.",
+    waiting: (no) =>
+      `№ ${no} buyurtma hozircha tizimda yo‘q, usta uni hali kiritayotgan bo‘lsa kerak. Paydo bo‘lishi bilan kartochkani shu yerga yuboraman.`,
   },
 };
 
@@ -268,42 +287,184 @@ export function clientCard(o: Print3dOrder, locale: Locale): string {
 /** Кто написал: имя и @username из канала, без лишних пробелов. */
 export type ClientWho = { id: string; name: string; username?: string };
 
-function whoLine(who: ClientWho): string {
-  const name = who.name.trim() || "Клиент";
+/** Тексты рабочей группе — на языке админки продавца (sellerLocale). */
+type StaffTexts = {
+  client: string;
+  replyHint: string;
+  bound: (who: string, no: string, row: number) => string;
+  inSheet: string;
+  phone: string;
+  item: string;
+  due: string;
+  sum: string;
+  status: string;
+  taken: (who: string, no: string) => string;
+  header: (who: string, no: string | null) => string;
+  readySent: (no: string) => string;
+  readyFailed: (no: string) => string;
+  waiting: (who: string, no: string) => string;
+  relaySent: string;
+  relayFailed: string;
+};
+
+export const PRINT3D_STAFF: Record<Locale, StaffTexts> = {
+  ru: {
+    client: "Клиент",
+    replyHint: "Ответьте на это сообщение свайпом — бот перешлёт ответ клиенту.",
+    bound: (w, no, row) => `✅ ${w} написал(а) в бота — заказ № ${no} (строка ${row})`,
+    inSheet: "Клиент в таблице",
+    phone: "Телефон",
+    item: "Что печатаем",
+    due: "Срок",
+    sum: "Сумма",
+    status: "Статус",
+    taken: (w, no) =>
+      `⚠️ ${w} прислал(а) номер № ${no}, но он уже привязан к другому чату. Карточку бот не отправил.`,
+    header: (w, no) => `💬 ${w} · ${no ? `заказ № ${no}` : "заказ не найден"}`,
+    readySent: (no) => `📦 Клиенту отправлено «заказ № ${no} готов».`,
+    readyFailed: (no) =>
+      `⚠️ Не удалось написать клиенту «заказ № ${no} готов» (возможно, он заблокировал бота). Позвоните ему.`,
+    waiting: (w, no) =>
+      `⏳ ${w} прислал(а) номер № ${no}, а в таблице его ещё нет. Как только строка появится, бот сам отправит карточку.`,
+    relaySent: "✓ Отправлено клиенту.",
+    relayFailed:
+      "Не удалось отправить клиенту: возможно, он заблокировал бота. Свяжитесь с ним по телефону.",
+  },
+  kk: {
+    client: "Клиент",
+    replyHint: "Осы хабарламаға свайппен жауап беріңіз — бот жауапты клиентке жібереді.",
+    bound: (w, no, row) => `✅ ${w} ботқа жазды — № ${no} тапсырыс (${row}-жол)`,
+    inSheet: "Кестедегі клиент",
+    phone: "Телефон",
+    item: "Не басып шығарамыз",
+    due: "Мерзімі",
+    sum: "Сомасы",
+    status: "Күйі",
+    taken: (w, no) =>
+      `⚠️ ${w} № ${no} нөмірін жіберді, бірақ ол басқа чатқа байланған. Бот карточканы жібермеді.`,
+    header: (w, no) => `💬 ${w} · ${no ? `№ ${no} тапсырыс` : "тапсырыс табылмады"}`,
+    readySent: (no) => `📦 Клиентке «№ ${no} тапсырыс дайын» жіберілді.`,
+    readyFailed: (no) =>
+      `⚠️ Клиентке «№ ${no} тапсырыс дайын» деп жазу мүмкін болмады (ботты бұғаттаған болуы мүмкін). Оған қоңырау шалыңыз.`,
+    waiting: (w, no) =>
+      `⏳ ${w} № ${no} нөмірін жіберді, бірақ ол кестеде әлі жоқ. Жол пайда болғанда бот карточканы өзі жібереді.`,
+    relaySent: "✓ Клиентке жіберілді.",
+    relayFailed:
+      "Клиентке жіберу мүмкін болмады: ботты бұғаттаған болуы мүмкін. Онымен телефон арқылы байланысыңыз.",
+  },
+  en: {
+    client: "Customer",
+    replyHint:
+      "Reply to this message with a swipe and the bot will forward your answer to the customer.",
+    bound: (w, no, row) => `✅ ${w} wrote to the bot: order No. ${no} (row ${row})`,
+    inSheet: "Customer in the sheet",
+    phone: "Phone",
+    item: "What we print",
+    due: "Due",
+    sum: "Total",
+    status: "Status",
+    taken: (w, no) =>
+      `⚠️ ${w} sent No. ${no}, but it is already linked to another chat. The bot did not send the card.`,
+    header: (w, no) => `💬 ${w} · ${no ? `order No. ${no}` : "order not found"}`,
+    readySent: (no) => `📦 Sent to the customer: “order No. ${no} is ready”.`,
+    readyFailed: (no) =>
+      `⚠️ Could not send “order No. ${no} is ready” to the customer (they may have blocked the bot). Please call them.`,
+    waiting: (w, no) =>
+      `⏳ ${w} sent No. ${no}, but it is not in the sheet yet. As soon as the row appears, the bot will send the card itself.`,
+    relaySent: "✓ Sent to the customer.",
+    relayFailed:
+      "Could not send to the customer: they may have blocked the bot. Please contact them by phone.",
+  },
+  uz: {
+    client: "Mijoz",
+    replyHint: "Bu xabarga svayp bilan javob bering — bot javobni mijozga yuboradi.",
+    bound: (w, no, row) => `✅ ${w} botga yozdi — № ${no} buyurtma (${row}-qator)`,
+    inSheet: "Jadvaldagi mijoz",
+    phone: "Telefon",
+    item: "Nimani chop etamiz",
+    due: "Muddat",
+    sum: "Summa",
+    status: "Holat",
+    taken: (w, no) =>
+      `⚠️ ${w} № ${no} raqamini yubordi, lekin u boshqa chatga bog‘langan. Bot kartochkani yubormadi.`,
+    header: (w, no) => `💬 ${w} · ${no ? `№ ${no} buyurtma` : "buyurtma topilmadi"}`,
+    readySent: (no) => `📦 Mijozga «№ ${no} buyurtma tayyor» yuborildi.`,
+    readyFailed: (no) =>
+      `⚠️ Mijozga «№ ${no} buyurtma tayyor» deb yozib bo‘lmadi (botni bloklagan bo‘lishi mumkin). Unga qo‘ng‘iroq qiling.`,
+    waiting: (w, no) =>
+      `⏳ ${w} № ${no} raqamini yubordi, lekin u jadvalda hali yo‘q. Qator paydo bo‘lishi bilan bot kartochkani o‘zi yuboradi.`,
+    relaySent: "✓ Mijozga yuborildi.",
+    relayFailed:
+      "Mijozga yuborib bo‘lmadi: botni bloklagan bo‘lishi mumkin. U bilan telefon orqali bog‘laning.",
+  },
+};
+
+function whoLine(who: ClientWho, t: StaffTexts): string {
+  const name = who.name.trim() || t.client;
   return who.username ? `${name} (@${who.username})` : name;
 }
 
-const REPLY_HINT = "Ответьте на это сообщение свайпом — бот перешлёт ответ клиенту.";
+function withRef(t: StaffTexts, clientId: string): string {
+  return `${t.replyHint} ${clientRef(clientId)}`;
+}
 
 /** Рабочей группе: клиент написал и заказ найден — та же карточка плюс данные из таблицы. */
-export function groupCardBound(o: Print3dOrder, who: ClientWho): string {
-  const lines = [`✅ ${whoLine(who)} написал(а) в бота — заказ № ${o.no} (строка ${o.row})`];
-  if (o.name) lines.push(`Клиент в таблице: ${o.name}`);
-  if (o.phone) lines.push(`Телефон: ${o.phone}`);
-  if (o.item) lines.push(`Что печатаем: ${o.item}`);
-  if (o.due) lines.push(`Срок: ${o.due}`);
-  if (o.sum) lines.push(`Сумма: ${o.sum}`);
-  if (o.status) lines.push(`Статус: ${o.status}`);
-  lines.push("", `${REPLY_HINT} ${clientRef(who.id)}`);
+export function groupCardBound(o: Print3dOrder, who: ClientWho, loc: Locale = "ru"): string {
+  const t = PRINT3D_STAFF[loc];
+  const lines = [t.bound(whoLine(who, t), o.no, o.row)];
+  if (o.name) lines.push(`${t.inSheet}: ${o.name}`);
+  if (o.phone) lines.push(`${t.phone}: ${o.phone}`);
+  if (o.item) lines.push(`${t.item}: ${o.item}`);
+  if (o.due) lines.push(`${t.due}: ${o.due}`);
+  if (o.sum) lines.push(`${t.sum}: ${o.sum}`);
+  if (o.status) lines.push(`${t.status}: ${o.status}`);
+  lines.push("", withRef(t, who.id));
   return lines.join("\n");
 }
 
 /** Номер уже привязан к другому чату — мастеру нужно разобраться самому. */
-export function groupTakenNumber(no: string, who: ClientWho): string {
-  return `⚠️ ${whoLine(who)} прислал(а) номер № ${no}, но он уже привязан к другому чату. Карточку бот не отправил.\n\n${REPLY_HINT} ${clientRef(who.id)}`;
+export function groupTakenNumber(no: string, who: ClientWho, loc: Locale = "ru"): string {
+  const t = PRINT3D_STAFF[loc];
+  return `${t.taken(whoLine(who, t), no)}\n\n${withRef(t, who.id)}`;
 }
 
 /** Обычное сообщение клиента — в рабочую группу (подпись над текстом или фото). */
-export function groupMessageHeader(who: ClientWho, orderNo: string | null): string {
-  const order = orderNo ? ` · заказ № ${orderNo}` : " · заказ не найден";
-  return `💬 ${whoLine(who)}${order}\n${REPLY_HINT} ${clientRef(who.id)}`;
+export function groupMessageHeader(
+  who: ClientWho,
+  orderNo: string | null,
+  loc: Locale = "ru",
+): string {
+  const t = PRINT3D_STAFF[loc];
+  return `${t.header(whoLine(who, t), orderNo)}\n${withRef(t, who.id)}`;
 }
 
 /** Готовность: сообщение группе, что клиенту написали. */
-export function groupReadySent(no: string): string {
-  return `📦 Клиенту отправлено «заказ № ${no} готов».`;
+export function groupReadySent(no: string, clientId: string, loc: Locale = "ru"): string {
+  const t = PRINT3D_STAFF[loc];
+  return `${t.readySent(no)}\n\n${withRef(t, clientId)}`;
 }
 
-export const GROUP_RELAY_SENT = "✓ Отправлено клиенту.";
-export const GROUP_RELAY_FAILED =
-  "Не удалось отправить клиенту: возможно, он заблокировал бота. Свяжитесь с ним по телефону.";
+/** «Готово» не дошло (клиент заблокировал бота и т. п.) — мастеру позвонить. */
+export function groupReadyFailed(no: string, clientId: string, loc: Locale = "ru"): string {
+  const t = PRINT3D_STAFF[loc];
+  return `${t.readyFailed(no)} ${clientRef(clientId)}`;
+}
+
+/** Клиент прислал номер, которого ещё нет в таблице. */
+export function groupWaiting(no: string, who: ClientWho, loc: Locale = "ru"): string {
+  const t = PRINT3D_STAFF[loc];
+  return `${t.waiting(whoLine(who, t), no)}\n\n${withRef(t, who.id)}`;
+}
+
+/**
+ * Номер заказа в сообщении, которого ещё нет в таблице: сообщение — это
+ * только номер («1240», «№1240», «заказ 1240»), а не телефон или вопрос.
+ */
+export function waitingCandidate(text: string): string | null {
+  const t = text.trim().replace(/^(заказ|тапсырыс|order|buyurtma)\s*/i, "");
+  if (!t || /\s/.test(t.replace(/^(№|#)\s*/, ""))) return null;
+  const no = normOrderNo(t);
+  if (!/^[\p{L}\p{N}-]{1,12}$/u.test(no) || !/\d/.test(no)) return null;
+  if (no.replace(/\D/g, "").length >= 10) return null; // похоже на телефон
+  return no;
+}
