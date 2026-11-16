@@ -38,3 +38,11 @@ describe("ниши: витрина, физический чекаут и кон�
     expect(verticalDef("courses").suggestedModules).toEqual(["courses", "vip", "manager_chat"]);
   });
 });
+
+describe("print3d — студия 3D-печати (3D simple)", () => {
+  it("своя ниша: физическая, без подсказанных модулей, не консультант", () => {
+    expect(verticalDef("print3d").title).toBe("Студия 3D-печати");
+    expect(isConsultantVertical("print3d")).toBe(false);
+    expect(verticalDef("print3d").suggestedModules).toEqual([]);
+  });
+});

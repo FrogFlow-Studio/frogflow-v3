@@ -23,6 +23,7 @@ const TWICE: Record<string, Evidence> = {
   orderNotify: { test: ["src/channels/telegram/order-notify.test.ts"] },
   unanswered: { test: ["src/core/chat/unanswered.test.ts"] },
   overdueTickets: { test: ["src/core/helpdesk/overdue.test.ts"] },
+  print3dReady: { test: ["src/channels/telegram/print3d.test.ts"] },
   // cart-reminder
   cartReminder: { test: ["src/lib/cron-twice-marketing.test.ts"] },
   // fulfillment-reminder

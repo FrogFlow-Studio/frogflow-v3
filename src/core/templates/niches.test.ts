@@ -12,6 +12,8 @@ describe("шаблоны ниш", () => {
       const tpl = NICHE_TEMPLATES[v];
       // У онлайн-школы главный пример — курс (COURSE_EXAMPLE), товаров-файлов нет.
       if (v === "courses") expect(tpl.categories.length).toBeGreaterThan(0);
+      // Студия 3D-печати: заказы в таблице студии, каталог боту не нужен.
+      else if (v === "print3d") expect(tpl.products).toEqual([]);
       else expect(tpl.products.length).toBeGreaterThan(0);
       for (const p of tpl.products) {
         expect(tpl.categories[p.category]).toBeDefined();

@@ -394,6 +394,63 @@ export const VERTICALS = {
       },
     },
   },
+  print3d: {
+    // 3D simple (15.11.2026): заказы ведёт студия в Google Таблице, бот находит
+    // заказ по номеру с чека и дублирует его клиенту и в рабочую группу
+    // (core/print3d, channels/telegram/print3d). Каталога и кассы в боте нет.
+    title: "Студия 3D-печати",
+    mode: "shop",
+    defaultFulfillment: "physical",
+    botDescriptionIntro:
+      `🖨 Студия 3D-печати.\n` +
+      `→ Пришлите номер заказа с чека — бот покажет ваш заказ\n` +
+      `→ Сообщим, когда заказ будет готов\n` +
+      `→ Вопросы мастеру прямо в этом чате`,
+    shortDescription:
+      "Студия 3D-печати: статус заказа по номеру с чека. Нажимая /start, вы принимаете оферту и политику конфиденциальности.",
+    suggestedModules: [],
+    locales: {
+      ru: {
+        welcomeGreeting: "Здравствуйте! Это бот студии 3D-печати.",
+        welcomeCatalog: "Заказ по номеру с чека",
+        welcomePayment: "Сообщим, когда заказ будет готов",
+        contactBtn: "💬 Написать мастеру",
+        instructionComingSoon: "📖 Пришлите номер заказа с чека — бот покажет ваш заказ.",
+        instructionDefaultCaption:
+          "📖 Пришлите номер заказа с чека. Когда заказ будет готов, бот напишет.",
+      },
+      kk: {
+        welcomeGreeting: "Сәлеметсіз бе! Бұл 3D-басып шығару студиясының боты.",
+        welcomeCatalog: "Чектегі нөмір бойынша тапсырыс",
+        welcomePayment: "Тапсырыс дайын болғанда хабарлаймыз",
+        contactBtn: "💬 Шеберге жазу",
+        instructionComingSoon:
+          "📖 Чектегі тапсырыс нөмірін жіберіңіз — бот тапсырысыңызды көрсетеді.",
+        instructionDefaultCaption:
+          "📖 Чектегі тапсырыс нөмірін жіберіңіз. Тапсырыс дайын болғанда бот жазады.",
+      },
+      en: {
+        welcomeGreeting: "Hello! This is the 3D printing studio bot.",
+        welcomeCatalog: "Your order by the receipt number",
+        welcomePayment: "We'll let you know when it's ready",
+        contactBtn: "💬 Message the studio",
+        instructionComingSoon:
+          "📖 Send the order number from your receipt and the bot will show your order.",
+        instructionDefaultCaption:
+          "📖 Send the order number from your receipt. The bot will message you when it's ready.",
+      },
+      uz: {
+        welcomeGreeting: "Assalomu alaykum! Bu 3D bosma studiyasining boti.",
+        welcomeCatalog: "Chekdagi raqam bo‘yicha buyurtma",
+        welcomePayment: "Buyurtma tayyor bo‘lganda xabar beramiz",
+        contactBtn: "💬 Ustaga yozish",
+        instructionComingSoon:
+          "📖 Chekdagi buyurtma raqamini yuboring — bot buyurtmangizni ko‘rsatadi.",
+        instructionDefaultCaption:
+          "📖 Chekdagi buyurtma raqamini yuboring. Buyurtma tayyor bo‘lganda bot yozadi.",
+      },
+    },
+  },
 } as const satisfies Record<string, VerticalDef>;
 
 export type VerticalKey = keyof typeof VERTICALS;

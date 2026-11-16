@@ -207,7 +207,8 @@ describe("что видит администратор в интерфейсе",
     // все модули включены: виден или скрыт раздел, решает только роль
     const all = new Proxy({}, { get: () => true }) as Record<string, boolean>;
     const hiddenForAdmin = SETTINGS_REGISTRY.filter(
-      (e) => !entryVisible(e, { role: "admin", modules: all }),
+      // раздел своей ниши (студия 3D-печати) скрыт нишей, а не ролью
+      (e) => !e.vertical && !entryVisible(e, { role: "admin", modules: all }),
     ).map((e) => e.id);
     expect(hiddenForAdmin.sort()).toEqual(
       [
@@ -227,7 +228,7 @@ describe("что видит администратор в интерфейсе",
         "team",
       ].sort(),
     );
-    for (const e of SETTINGS_REGISTRY)
+    for (const e of SETTINGS_REGISTRY.filter((x) => !x.vertical))
       expect(entryVisible(e, { role: "owner", modules: all }), e.id).toBe(true);
     for (const id of ["shop", "zones", "telegram", "invite", "design"])
       expect(hiddenForAdmin, id).not.toContain(id);
