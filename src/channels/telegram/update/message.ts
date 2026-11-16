@@ -72,6 +72,11 @@ export async function handleMessage(
     const { homeworkReply } = await import("../homework-review");
     if (await homeworkReply(ctx, api, msg)) return;
   }
+  // Студия 3D-печати: мастер ответил свайпом в рабочей группе — ответ клиенту.
+  if (msg.reply_to_message && ctx.tenant.vertical === "print3d") {
+    const { print3dWorkReply } = await import("../print3d");
+    if (await print3dWorkReply(ctx, api, msg)) return;
+  }
   if (msg.chat.type !== undefined && msg.chat.type !== "private") return;
 
   // Менеджер ответил свайпом на уведомление о передаче — ответ покупателю в Direct.
@@ -134,6 +139,12 @@ export async function handleMessage(
   const command = botCommandFor(text);
   if (command) return botCommand(b, command);
   if (intercepted && !text?.startsWith("/start") && !proofStep) return;
+
+  // Студия 3D-печати: номер заказа → карточка, остальное — в рабочую группу.
+  if (ctx.tenant.vertical === "print3d") {
+    const { print3dPrivateMessage } = await import("../print3d");
+    if (await print3dPrivateMessage(ctx, api, msg, locale, customer.contactPhone)) return;
+  }
 
   if (text?.startsWith("/start")) {
     // /start возвращает отписавшегося к рассылкам.

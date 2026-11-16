@@ -127,8 +127,15 @@ describe("поиск и «изменено недавно»", () => {
     expect(visibleThemes({ role: "owner", modules: all, sells: false })).not.toContain("payment");
     expect(visibleThemes({ role: "owner", modules: all, sells: false })).toContain("money");
     // Продаёт или не сказано — видно всё, как раньше.
-    expect(visible(true)).toEqual(SETTINGS_REGISTRY.map((e) => e.id));
-    expect(visible(undefined)).toEqual(SETTINGS_REGISTRY.map((e) => e.id));
+    // (разделы своей ниши, например студии 3D-печати, — только этой нише).
+    const general = SETTINGS_REGISTRY.filter((e) => !e.vertical).map((e) => e.id);
+    expect(visible(true)).toEqual(general);
+    expect(visible(undefined)).toEqual(general);
+    expect(
+      SETTINGS_REGISTRY.filter((e) =>
+        entryVisible(e, { role: "owner", modules: all, vertical: "print3d" }),
+      ).map((e) => e.id),
+    ).toContain("print3d");
     // Быстрый поиск тоже не находит скрытое.
     const t = adminT("ru");
     expect(

@@ -727,3 +727,18 @@ export async function runOverdueTickets(tenant: Tenant) {
     await notifyAdminsHtml(ctx, html, { kind: "question" });
   });
 }
+
+/**
+ * Студия 3D-печати: «заказ готов» клиентам, чей заказ в таблице отмечен
+ * «готово» (выключено, пока продавец не включит). Остальным нишам — пропуск.
+ */
+export async function runPrint3dReady(tenant: Tenant) {
+  if (tenant.vertical !== "print3d") return { skipped: "not print3d" };
+  const ctx = tenantContext(tenant);
+  const { runPrint3dReadyFor } = await import("./print3d");
+  const { getCustomer, userKey } = await import("@/core/customers/customers");
+  return runPrint3dReadyFor(ctx, tenant.telegramTokenEnc ? api(ctx) : null, async (id) => {
+    const c = await getCustomer(ctx, userKey("telegram", id));
+    return buyerLocale(c?.state, ctx.tenant.settings.default_locale);
+  });
+}

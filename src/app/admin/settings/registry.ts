@@ -46,6 +46,8 @@ export type SettingsEntry = {
    * без продаж (`sells === false`, BOVI) не показывается.
    */
   sellsOnly?: boolean;
+  /** Раздел только для этой ниши (bots.vertical), например студии 3D-печати. */
+  vertical?: string;
 };
 
 /** Что о магазине нужно, чтобы решить, виден ли раздел. Нет `sells` — продаёт. */
@@ -53,6 +55,7 @@ export type SettingsShop = {
   role: string;
   modules: Partial<Record<string, boolean>>;
   sells?: boolean;
+  vertical?: string;
 };
 
 const E = (e: SettingsEntry) => e;
@@ -203,6 +206,14 @@ export const SETTINGS_REGISTRY: readonly SettingsEntry[] = [
     title: "settings.payRemind.title",
     keys: ["chat_pay_reminder_hours", "chat_pay_reminder_hold"],
     fields: ["settings.payRemindHold.label"],
+  }),
+  E({
+    id: "print3d",
+    theme: "shop",
+    vertical: "print3d",
+    title: "settings.print3d.title",
+    keys: ["print3d_sheet_url", "print3d_ready_notify"],
+    fields: ["settings.print3d.sheet", "settings.print3d.ready"],
   }),
   E({
     id: "email-ask",
@@ -501,6 +512,7 @@ export function recentEntries(recentKeys: readonly string[]): Set<string> {
 /** Раздел виден роли, набору модулей и тому, продаёт ли клиент. */
 export function entryVisible(e: SettingsEntry, shop: SettingsShop): boolean {
   if (e.sellsOnly && shop.sells === false) return false;
+  if (e.vertical && shop.vertical !== e.vertical) return false;
   if (e.ownerOnly && shop.role !== "owner") return false;
   if (e.adminOnly && !roleAllows(shop.role as AdminRole, "admin")) return false;
   if (e.anyModule && !e.anyModule.some((m) => shop.modules[m])) return false;

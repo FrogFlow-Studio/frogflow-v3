@@ -38,6 +38,7 @@ import { MarketplaceCard } from "@/app/admin/settings/marketplace";
 import { MinOrderCard } from "@/app/admin/settings/min-order";
 import { CommunityCard } from "@/app/admin/settings/community";
 import { FreeDeliveryCard } from "@/app/admin/settings/free-delivery";
+import { Print3dCard } from "@/app/admin/settings/print3d";
 import { LowStockCard, NotifyCard } from "@/app/admin/settings/notify";
 import {
   PaymentMethods,
@@ -535,6 +536,11 @@ function SettingsPage() {
                   </form>
                 </Card>
               </SettingsSection>
+              {shop.vertical === "print3d" && (
+                <SettingsSection id="print3d">
+                  <Print3dCard settings={settings} />
+                </SettingsSection>
+              )}
               <SettingsSection id="payment-methods">
                 <PaymentMethods methods={methods} settings={settings} />
               </SettingsSection>

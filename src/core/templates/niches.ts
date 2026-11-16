@@ -363,6 +363,9 @@ const courses: NicheTemplate = {
   products: [],
 };
 
+/** Студия 3D-печати: заказы живут в Google Таблице студии, каталог боту не нужен. */
+const print3d: NicheTemplate = { categories: [], products: [] };
+
 export const NICHE_TEMPLATES: Record<VerticalKey, NicheTemplate> = {
   digital,
   courses,
@@ -370,6 +373,7 @@ export const NICHE_TEMPLATES: Record<VerticalKey, NicheTemplate> = {
   flowers,
   consultant,
   consultant_universal: universal,
+  print3d,
 };
 
 /** Пометка примера в названии: по ней продавец и поиск видят, что это не настоящий товар. */
