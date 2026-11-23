@@ -71,3 +71,4 @@ export * from "./fixtures/miniapp-photo.ts";
 export * from "./fixtures/kd-products.ts";
 export * from "./fixtures/market-approve.ts";
 export * from "./fixtures/course-landing.ts";
+export * from "./fixtures/customers-block.ts";

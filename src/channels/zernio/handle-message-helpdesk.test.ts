@@ -72,6 +72,10 @@ beforeEach(() => {
     firstName: "Аня",
     state: {},
   } as unknown as Customer;
+  // Отметку «передал продавцу» ставит условная запись в bot_users (core/instagram/forwarded).
+  db.tables.bot_users = [
+    { bot_id: "b", user_key: customer.userKey, platform: "whatsapp", telegram_id: -7, state: {} },
+  ];
   sent = [];
   notified.length = 0;
 });
@@ -102,14 +106,14 @@ describe("обращения из WhatsApp и Instagram", () => {
 
   it("повторный вопрос через час при открытом обращении — снова с номером, а не общий ответ", async () => {
     await handleZernioMessage(ctx(ON), payload("Когда привезёте букет?"), transport());
-    const direct = customer.state.direct as Record<string, unknown>;
-    customer = {
-      ...customer,
-      state: {
-        ...customer.state,
-        direct: { ...direct, forwarded_at: new Date(Date.now() - 2 * 3600_000).toISOString() },
-      },
+    const row = db.tables.bot_users![0]!;
+    const state = row.state as Record<string, unknown>;
+    const direct = state.direct as Record<string, unknown>;
+    row.state = {
+      ...state,
+      direct: { ...direct, forwarded_at: new Date(Date.now() - 2 * 3600_000).toISOString() },
     };
+    customer = { ...customer, state: row.state as Customer["state"] };
     const r = await handleZernioMessage(ctx(ON), payload("Вы тут?"), transport());
     expect(r).toEqual({ status: "processed", note: "дополнение к обращению #1" });
     expect(sent[1]).toBe(
@@ -127,6 +131,28 @@ describe("обращения из WhatsApp и Instagram", () => {
     expect(r).toEqual({ status: "processed", note: "консультант выключен — сообщение в «Чате»" });
     expect(sent[0]).toMatch(/^Передал ваш вопрос продавцу/);
     expect(db.tables.zernio_logs ?? []).toHaveLength(0);
+    // «Передал продавцу» — правда: продавцу в Telegram пришёл сам вопрос.
+    expect(notified).toHaveLength(1);
+    expect(notified[0]).toContain("Вопрос покупателя ждёт вашего ответа");
+    expect(notified[0]).toContain("Когда привезёте букет?");
+  });
+
+  it("без «Поддержки»: второй вопрос в тот же час — ни второго ответа, ни второго уведомления", async () => {
+    const c = ctx({ ...ON, helpdesk: false });
+    await handleZernioMessage(c, payload("Когда привезёте букет?"), transport());
+    await handleZernioMessage(c, payload("Вы тут?"), transport());
+    expect(sent).toHaveLength(1);
+    expect(notified).toHaveLength(1);
+  });
+
+  it("без «Поддержки»: два сообщения одновременно — продавцу одно уведомление, покупателю один ответ", async () => {
+    const c = ctx({ ...ON, helpdesk: false });
+    await Promise.all([
+      handleZernioMessage(c, payload("Не могу оплатить"), transport()),
+      handleZernioMessage(c, payload("Карта не проходит"), transport()),
+    ]);
+    expect(sent).toHaveLength(1);
+    expect(notified).toHaveLength(1);
   });
 
   it("закрыли обращение, покупатель ответил «2» — оценка записана один раз, вторая цифра идёт как обычный текст", async () => {

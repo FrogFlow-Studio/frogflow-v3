@@ -57,8 +57,18 @@ export type RuleFormValues = {
 /** Предел длины названия правила в форме (maxLength у поля). */
 export const RULE_NAME_MAX = 120;
 
-/** Значения формы: пустые для нового правила или из правила для «Изменить». */
-export function ruleFormValues(rule: RuleSource | null, defaultAccountId: string): RuleFormValues {
+/** Текст по умолчанию для нового правила (core/instagram/rule-template). */
+export type RuleTemplateValues = { dmMessage: string; secondDmMessage: string };
+
+/**
+ * Значения формы: для нового правила — пустые, а тексты сообщений из
+ * шаблона продавца, если он сохранён; для «Изменить» — из правила.
+ */
+export function ruleFormValues(
+  rule: RuleSource | null,
+  defaultAccountId: string,
+  template?: RuleTemplateValues,
+): RuleFormValues {
   const replies = [rule?.commentReply ?? "", ...(rule?.commentReplyVariations ?? [])];
   return {
     accountId: rule?.accountId ?? defaultAccountId,
@@ -74,11 +84,11 @@ export function ruleFormValues(rule: RuleSource | null, defaultAccountId: string
     keywords: rule?.keywords.join(", ") ?? "",
     replyToAll: Boolean(rule && rule.keywords.length === 0),
     matchMode: rule?.matchMode ?? "contains",
-    dmMessage: rule?.dmMessage ?? "",
+    dmMessage: rule ? rule.dmMessage : (template?.dmMessage ?? ""),
     buttons: (rule?.buttons ?? []).map((b) => ({ ...b })),
     commentReplies: replies.filter((r, i) => i === 0 || r.trim()),
     twoStepDm: rule?.twoStepDm ?? false,
-    secondDmMessage: rule?.secondDmMessage ?? "",
+    secondDmMessage: rule ? rule.secondDmMessage : (template?.secondDmMessage ?? ""),
     unresolvedPrompt: rule?.unresolvedPrompt ?? "",
     replyPrompt: rule?.replyPrompt ?? DEFAULT_REPLY_PROMPT,
   };
