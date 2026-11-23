@@ -66,7 +66,8 @@ export const instagramFn = createServerFn({ method: "GET" }).handler(async () =>
   const accounts = a.instagramAccounts(ctx);
   const configured = zernioConfigured();
   let automationsError: { key: string; message: string } | null = null;
-  const [automations, fallbackSends] = await Promise.all([
+  const { loadRuleTemplate } = await import("@/core/instagram/rule-template");
+  const [automations, fallbackSends, ruleTemplate] = await Promise.all([
     configured && accounts.length
       ? a.listAutomations(ctx).catch(async (e) => {
           const err = await zernioReadError(e);
@@ -75,6 +76,7 @@ export const instagramFn = createServerFn({ method: "GET" }).handler(async () =>
         })
       : Promise.resolve([]),
     a.listFallbackSends(ctx, 30),
+    loadRuleTemplate(ctx),
   ]);
   const productNames = await buyProductNames(
     ctx,
@@ -110,6 +112,7 @@ export const instagramFn = createServerFn({ method: "GET" }).handler(async () =>
       },
     })),
     fallbackSends,
+    ruleTemplate,
     productNames,
     telegramUsername: ctx.tenant.settings.telegram?.username ?? null,
   };
@@ -200,6 +203,23 @@ export const saveAutomationFn = createServerFn({ method: "POST" })
     const r = await saveAutomation(ctx, data);
     if (!r.ok) throw r.key ? new UserError(r.key, r.error, r.vars) : new Error(r.error);
     return { id: r.id };
+  });
+
+/** «Сделать текстом по умолчанию»: форма нового правила откроется с этим текстом. */
+export const saveRuleTemplateFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        dmMessage: z.string().max(1000),
+        secondDmMessage: z.string().max(1000).default(""),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await igWrite();
+    const { saveRuleTemplate } = await import("@/core/instagram/rule-template");
+    await saveRuleTemplate(ctx, data);
+    return { ok: true };
   });
 
 export const deleteAutomationFn = createServerFn({ method: "POST" })
