@@ -125,3 +125,48 @@ describe("ответ модели", () => {
     expect(r.code).toBe("RU");
   });
 });
+
+describe("расход — с ИИ-баланса клиента (решение Якова 26.11)", () => {
+  type Rows = Array<{ key: string; value: unknown }>;
+  const rows = (c: TenantContext) =>
+    (c.db as unknown as ReturnType<typeof fakeDb>).tables.app_settings as Rows;
+  const withBalance = (usd: number) => {
+    const c = ctx();
+    rows(c).push({
+      key: "ai_balance",
+      value: JSON.stringify({ usd, low: usd < 1, empty: usd <= 0 }),
+    });
+    return c;
+  };
+  const balanceOf = (c: TenantContext) =>
+    JSON.parse(String(rows(c).find((r) => r.key === "ai_balance")!.value)) as { usd: number };
+  const ask = (c: TenantContext) =>
+    understandCountry(c, {
+      text: "Дагестан",
+      options: OPTIONS,
+      asked: true,
+      now: Date.parse("2026-10-11T00:00:00Z"),
+    });
+
+  it("поняли страну — цена API списана с баланса и видна в «Расходе»", async () => {
+    const c = withBalance(2);
+    setCountryModelForTests(async () => ({
+      input: { country: "RU", answer_only: true },
+      usage: { input_tokens: 400, output_tokens: 30 },
+    }));
+    expect((await ask(c)).code).toBe("RU");
+    expect(balanceOf(c).usd).toBeCloseTo(2 - 0.0011, 6);
+    const day = rows(c).find((r) => String(r.key).startsWith("ai_charges:"));
+    expect(JSON.parse(String(day?.value)).uses.country_ai).toEqual({ usd: 0.0011, calls: 1 });
+  });
+
+  it("ИИ-баланс пуст — модель не зовём, работает разбор по названиям", async () => {
+    const c = withBalance(0);
+    const model = vi.fn();
+    setCountryModelForTests(model);
+    const r = await understandCountry(c, { text: "Я из России", options: OPTIONS, asked: false });
+    expect(model).not.toHaveBeenCalled();
+    expect(r.code).toBe("RU");
+    expect(balanceOf(c).usd).toBe(0);
+  });
+});

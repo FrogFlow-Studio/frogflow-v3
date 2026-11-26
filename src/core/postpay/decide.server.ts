@@ -1,10 +1,12 @@
 /**
  * ИИ после оплаты: факты заказа и вызов модели (правила — postpay.ts).
- * Ключ платформы, как у наблюдателя: копейки на ответ, потолок в день на
- * клиента. Любой сбой — «pass»: сообщение идёт прежним путём, к продавцу.
+ * Ключ платформы, расход — с ИИ-баланса клиента (core/ai/balance), копейки на
+ * ответ, потолок в день на клиента. ИИ-баланс пуст, любой сбой — «pass»:
+ * сообщение идёт прежним путём, к продавцу.
  */
 import Anthropic from "@anthropic-ai/sdk";
 import { env } from "@/config/env";
+import { aiPaidCall } from "@/core/ai/balance";
 import { modelParams } from "@/core/ai/pure";
 import type { Customer } from "@/core/customers/customers";
 import { listOrderEvents } from "@/core/orders/events";
@@ -20,6 +22,7 @@ import {
   POSTPAY_ENABLED_KEY,
   POSTPAY_MAX_TEXT,
   POSTPAY_MODEL,
+  POSTPAY_RESERVE_USD,
   POSTPAY_STATUSES,
   POSTPAY_SYSTEM,
   POSTPAY_TIMEOUT_MS,
@@ -159,7 +162,16 @@ export async function decidePostPay(
   const user = postpayUserPrompt({ facts: p.facts, lines, text, timezone: ctx.timezone, now });
   let answer: Awaited<ReturnType<CallModel>>;
   try {
-    answer = await (modelOverride ?? liveModel)(POSTPAY_SYSTEM, user);
+    // Платит клиент (решение Якова 26.11): ИИ-баланс пуст — pass, к продавцу.
+    const paid = await aiPaidCall(
+      ctx,
+      "postpay",
+      POSTPAY_RESERVE_USD,
+      () => (modelOverride ?? liveModel)(POSTPAY_SYSTEM, user),
+      (a) => costUsd(a.usage),
+    );
+    if (!paid) return PASS;
+    answer = paid.value;
   } catch (e) {
     console.warn(`[postpay:${ctx.tenant.id}] модель: ${String(e)}`);
     return PASS;

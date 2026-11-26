@@ -1,11 +1,13 @@
 /**
  * Страна из слов покупателя — вызов модели (правила и тексты — understand.ts).
- * Ключ платформы, как у ИИ после оплаты: доли цента на сообщение, потолок в
- * день на клиента. Модели нет, потолок исчерпан, сбой — запасной разбор по
- * названиям (fallbackCountry): покупатель не должен остаться без ответа.
+ * Ключ платформы, расход — с ИИ-баланса клиента (core/ai/balance), доли цента
+ * на сообщение, потолок в день на клиента. Модели нет, потолок исчерпан,
+ * ИИ-баланс пуст, сбой — запасной разбор по названиям (fallbackCountry):
+ * покупатель не должен остаться без ответа.
  */
 import Anthropic from "@anthropic-ai/sdk";
 import { env } from "@/config/env";
+import { aiPaidCall } from "@/core/ai/balance";
 import { modelParams } from "@/core/ai/pure";
 import { getSetting, updateSettingAtomic } from "@/core/settings/settings";
 import { todayInZone } from "@/core/preorder/preorder";
@@ -17,6 +19,7 @@ import {
   COUNTRY_AI_ENABLED_KEY,
   COUNTRY_AI_MAX_TEXT,
   COUNTRY_AI_MODEL,
+  COUNTRY_AI_RESERVE_USD,
   COUNTRY_AI_TIMEOUT_MS,
   COUNTRY_SYSTEM,
   countryAiSpendKey,
@@ -110,11 +113,21 @@ export async function understandCountry(
   const tool = countryTool(p.options);
   let answer: Awaited<ReturnType<CallCountryModel>>;
   try {
-    answer = await (modelOverride ?? liveModel)(
-      COUNTRY_SYSTEM,
-      countryUserPrompt({ text, options: p.options, asked: p.asked }),
-      tool,
+    // Платит клиент (решение Якова 26.11): ИИ-баланс пуст — разбор по названиям.
+    const paid = await aiPaidCall(
+      ctx,
+      "country_ai",
+      COUNTRY_AI_RESERVE_USD,
+      () =>
+        (modelOverride ?? liveModel)(
+          COUNTRY_SYSTEM,
+          countryUserPrompt({ text, options: p.options, asked: p.asked }),
+          tool,
+        ),
+      (a) => countryCostUsd(a.usage),
     );
+    if (!paid) return fallbackCountry(text, p.options);
+    answer = paid.value;
   } catch (e) {
     console.warn(`[country:${ctx.tenant.id}] модель: ${String(e)}`);
     return fallbackCountry(text, p.options);

@@ -221,6 +221,32 @@ export async function aiRelease(ctx: TenantContext, hold: AiHold): Promise<void>
 }
 
 /**
+ * Короткий вызов ИИ за счёт клиента (разбор сообщений, страна, ответы после
+ * оплаты): бронь, вызов, расчёт по фактической цене. null — баланс пуст или
+ * сбой учёта: модель не звали, вызывающий идёт своим путём без ИИ. Вызов
+ * упал — бронь назад целиком, ошибка наверх (там тоже путь без ИИ).
+ */
+export async function aiPaidCall<T>(
+  ctx: TenantContext,
+  use: AiUse,
+  reserveApiUsd: number,
+  call: () => Promise<T>,
+  apiUsdOf: (r: T) => number,
+): Promise<{ value: T } | null> {
+  const hold = await aiReserve(ctx, use, reserveApiUsd);
+  if (typeof hold === "string") return null;
+  let value: T;
+  try {
+    value = await call();
+  } catch (e) {
+    await aiRelease(ctx, hold);
+    throw e;
+  }
+  await aiSettle(ctx, hold, apiUsdOf(value));
+  return { value };
+}
+
+/**
  * Пополнение или ручная поправка оператора (usd со знаком) с записью в
  * журнал. Снимать ниже нуля нельзя: вернёт null. Сбой базы или гонка —
  * serverFailure: не «списать нельзя», а «не записалось».

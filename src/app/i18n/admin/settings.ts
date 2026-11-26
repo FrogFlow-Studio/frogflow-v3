@@ -512,7 +512,7 @@ export const ru = {
     "Покупатель прислал почту или просит прислать материалы, а его последнему заказу больше 14 дней. Бот спрашивает «Ваш последний заказ — №N от 10.09 (…). Отправить его ещё раз? Ответьте «да»» и отправляет только после «да». Другой ответ приходит вам.",
   "settings.triage.title": "Сообщения без вопроса и оплата из других стран",
   "settings.triage.intro":
-    "Что за сообщение пришло в Direct или WhatsApp, понимает ИИ, а не список слов. Сообщение всегда остаётся в «Чате».",
+    "Что за сообщение пришло в Direct или WhatsApp, понимает ИИ, а не список слов. Сообщение всегда остаётся в «Чате». Разбор тратит ИИ-баланс магазина (доли цента на сообщение); баланс кончился — сообщения идут прежним путём, к вам.",
   "settings.triage.keepUnreadLabel": "Не отвечать на обычные сообщения",
   "settings.triage.keepUnreadHint":
     "Бот не отвечает на сообщения не по заказу: вопросы об оплате из других стран, «как получить?», «несколько материалов одним чеком?», название материала, которого нет в боте. Вопрос приходит вам обращением, а диалог в Instagram остаётся непрочитанным — любой ответ бота пометил бы его прочитанным. Кнопки, коды материалов, заказ и чек бот ведёт как раньше. Переключатели ниже при этом не действуют.",
@@ -1130,7 +1130,7 @@ export const kk: SectionDict<typeof ru> = {
     "Сатып алушы пошта жіберді немесе материалдарды жіберуді сұрайды, ал соңғы тапсырысына 14 күннен асқан. Бот «Соңғы тапсырысыңыз — №N, 10.09 (…). Қайта жіберейін бе? «Иә» деп жауап беріңіз» деп сұрайды және тек «иә» дегеннен кейін жібереді. Басқа жауап сізге келеді.",
   "settings.triage.title": "Сұрақсыз хабарламалар және басқа елдерден төлем",
   "settings.triage.intro":
-    "Direct немесе WhatsApp-қа қандай хабарлама келгенін сөздер тізімі емес, ЖИ түсінеді. Хабарлама әрдайым «Чатта» қалады.",
+    "Direct немесе WhatsApp-қа қандай хабарлама келгенін сөздер тізімі емес, ЖИ түсінеді. Хабарлама әрдайым «Чатта» қалады. Талдау дүкеннің ЖИ-балансын жұмсайды (бір хабарламаға центтің бір бөлігі); баланс біткенде хабарламалар бұрынғыдай сізге келеді.",
   "settings.triage.keepUnreadLabel": "Қарапайым хабарламаларға жауап бермеу",
   "settings.triage.keepUnreadHint":
     "Бот тапсырысқа қатысы жоқ хабарламаларға жауап бермейді: басқа елден төлем туралы сұрақтар, «қалай алуға болады?», «бірнеше материал бір чекпен бола ма?», ботта жоқ материалдың атауы. Сұрақ сізге өтініш болып келеді, ал Instagram-дағы диалог оқылмаған болып қалады — боттың кез келген жауабы оны оқылды деп белгілер еді. Батырмаларды, материал кодтарын, тапсырыс пен чекті бот бұрынғыдай жүргізеді. Бұл кезде төмендегі ауыстырғыштар әрекет етпейді.",
@@ -1744,7 +1744,7 @@ export const en: SectionDict<typeof ru> = {
     "The buyer sent an email or asks for the materials, but their last order is older than 14 days. The bot asks “Your last order is #N from 10.09 (…). Send it again? Reply “yes”” and sends only after “yes”. Any other reply comes to you.",
   "settings.triage.title": "Messages without a question and payment from other countries",
   "settings.triage.intro":
-    "AI, not a word list, decides what kind of message arrived in Direct or WhatsApp. The message always stays in “Chat”.",
+    "AI, not a word list, decides what kind of message arrived in Direct or WhatsApp. The message always stays in “Chat”. Triage spends the shop’s AI balance (a fraction of a cent per message); when the balance runs out, messages go to you as before.",
   "settings.triage.keepUnreadLabel": "Don’t reply to ordinary messages",
   "settings.triage.keepUnreadHint":
     "The bot doesn’t reply to messages that aren’t part of an order: questions about paying from other countries, “how do I get it?”, “several materials with one receipt?”, the name of a material the bot doesn’t have. The question comes to you as a ticket and the Instagram conversation stays unread — any bot reply would mark it as read. Buttons, material codes, orders and receipts work as before. The switches below have no effect while this is on.",
@@ -2365,7 +2365,7 @@ export const uz: SectionDict<typeof ru> = {
     "Xaridor pochta yubordi yoki materiallarni so‘raydi, lekin oxirgi buyurtmasiga 14 kundan oshgan. Bot «Oxirgi buyurtmangiz — №N, 10.09 (…). Qayta yuboraymi? «Ha» deb javob bering» deb so‘raydi va faqat «ha» deganidan keyin yuboradi. Boshqa javob sizga keladi.",
   "settings.triage.title": "Savolsiz xabarlar va boshqa davlatlardan to‘lov",
   "settings.triage.intro":
-    "Direct yoki WhatsApp’ga qanday xabar kelganini so‘zlar ro‘yxati emas, SI tushunadi. Xabar har doim «Chat»da qoladi.",
+    "Direct yoki WhatsApp’ga qanday xabar kelganini so‘zlar ro‘yxati emas, SI tushunadi. Xabar har doim «Chat»da qoladi. Saralash do‘konning SI-balansini sarflaydi (har xabarga sentning bir qismi); balans tugasa, xabarlar avvalgidek sizga keladi.",
   "settings.triage.keepUnreadLabel": "Oddiy xabarlarga javob bermaslik",
   "settings.triage.keepUnreadHint":
     "Bot buyurtmaga aloqasi yo‘q xabarlarga javob bermaydi: boshqa davlatdan to‘lov haqidagi savollar, «qanday olsam bo‘ladi?», «bir nechta material bitta chek bilan mumkinmi?», botda yo‘q material nomi. Savol sizga murojaat bo‘lib keladi, Instagram’dagi dialog esa o‘qilmagan qoladi — botning har qanday javobi uni o‘qilgan deb belgilagan bo‘lardi. Tugmalar, material kodlari, buyurtma va chekni bot avvalgidek yuritadi. Bu yoqilganda quyidagi kalitlar ishlamaydi.",

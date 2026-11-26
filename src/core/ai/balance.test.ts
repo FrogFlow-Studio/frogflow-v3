@@ -6,6 +6,7 @@ import {
   aiBalance,
   aiCredit,
   aiJournal,
+  aiPaidCall,
   aiRelease,
   aiReserve,
   aiSettle,
@@ -223,5 +224,46 @@ describe("ИИ-баланс клиента", () => {
     const { isPlatformFailure } = await import("@/lib/server-fn-errors");
     const err = await aiCredit(broken, { kind: "adjust", usd: 1, note: "x" }).catch((e) => e);
     expect(isPlatformFailure(err)).toBe(true);
+  });
+});
+
+describe("aiPaidCall — короткий вызов ИИ за счёт клиента", () => {
+  it("два вызова одновременно, денег на одну бронь — модель зовёт только выигравший", async () => {
+    const { ctx, balance, setBalance } = setup();
+    setBalance(0.015);
+    let calls = 0;
+    // Модель отвечает не сразу: вторая бронь приходит, пока первая ещё держит деньги.
+    const call = async () => {
+      calls += 1;
+      await new Promise((r) => setTimeout(r, 30));
+      return 0.004;
+    };
+    const [a, b] = await Promise.all([
+      aiPaidCall(ctx, "inbox_triage", 0.01, call, (usd) => usd),
+      aiPaidCall(ctx, "inbox_triage", 0.01, call, (usd) => usd),
+    ]);
+    expect(calls).toBe(1);
+    expect([a, b].filter(Boolean)).toHaveLength(1);
+    expect(balance().usd).toBeCloseTo(0.011, 6);
+  });
+
+  it("сбой учёта — модель не зовём, null (путь без ИИ)", async () => {
+    const { db, ctx } = setup();
+    await aiBalance(ctx);
+    const broken = { ...ctx, db: failingUpdates(db) } as unknown as TenantContext;
+    const call = async () => 1;
+    let called = false;
+    const r = await aiPaidCall(
+      broken,
+      "postpay",
+      0.01,
+      async () => {
+        called = true;
+        return call();
+      },
+      () => 0,
+    );
+    expect(r).toBeNull();
+    expect(called).toBe(false);
   });
 });

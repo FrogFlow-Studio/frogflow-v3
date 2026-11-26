@@ -34,6 +34,9 @@ export const ru = {
   "aiBalance.use.receipt_ocr": "Распознавание чеков",
   "aiBalance.use.tutor": "ИИ-наставник уроков",
   "aiBalance.use.cache_warm": "Прогрев кеша консультанта",
+  "aiBalance.use.inbox_triage": "Разбор сообщений в чате",
+  "aiBalance.use.country_ai": "Страна покупателя",
+  "aiBalance.use.postpay": "Ответы после оплаты",
 };
 
 export const kk: SectionDict<typeof ru> = {
@@ -69,6 +72,9 @@ export const kk: SectionDict<typeof ru> = {
   "aiBalance.use.receipt_ocr": "Чектерді тану",
   "aiBalance.use.tutor": "Сабақтардың ЖИ-тәлімгері",
   "aiBalance.use.cache_warm": "Кеңесші кэшін жылыту",
+  "aiBalance.use.inbox_triage": "Чаттағы хабарламаларды талдау",
+  "aiBalance.use.country_ai": "Сатып алушының елі",
+  "aiBalance.use.postpay": "Төлемнен кейінгі жауаптар",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -104,6 +110,9 @@ export const en: SectionDict<typeof ru> = {
   "aiBalance.use.receipt_ocr": "Receipt recognition",
   "aiBalance.use.tutor": "AI lesson tutor",
   "aiBalance.use.cache_warm": "Consultant cache warm-up",
+  "aiBalance.use.inbox_triage": "Chat message triage",
+  "aiBalance.use.country_ai": "Buyer’s country",
+  "aiBalance.use.postpay": "After-payment replies",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -139,4 +148,7 @@ export const uz: SectionDict<typeof ru> = {
   "aiBalance.use.receipt_ocr": "Cheklarni tanish",
   "aiBalance.use.tutor": "Darslar SI-murabbiysi",
   "aiBalance.use.cache_warm": "Maslahatchi keshini isitish",
+  "aiBalance.use.inbox_triage": "Chatdagi xabarlarni saralash",
+  "aiBalance.use.country_ai": "Xaridor mamlakati",
+  "aiBalance.use.postpay": "To‘lovdan keyingi javoblar",
 };
