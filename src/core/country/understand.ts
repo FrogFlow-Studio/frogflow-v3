@@ -19,6 +19,8 @@ export type CountryReading = { code: string | null; onlyCountry: boolean };
 export const COUNTRY_AI_MODEL = "claude-sonnet-5";
 /** Sonnet 5, $ за миллион токенов. */
 export const COUNTRY_AI_PRICE = { in: 2, out: 10 };
+/** Бронь с ИИ-баланса клиента на один вызов, $ цены API (обычно ≈0,003 $, с запасом). */
+export const COUNTRY_AI_RESERVE_USD = 0.01;
 /** «off» — выключено у клиента; по умолчанию включено. */
 export const COUNTRY_AI_ENABLED_KEY = "country_ai";
 /** Потолок расхода в день, $; нет ключа — COUNTRY_AI_DAILY_USD. */

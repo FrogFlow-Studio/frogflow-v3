@@ -12,6 +12,8 @@ import type { Locale } from "@/core/i18n/locale";
 export const POSTPAY_MODEL = "claude-sonnet-5";
 /** Sonnet 5, $ за миллион токенов. */
 export const POSTPAY_PRICE = { in: 2, out: 10 };
+/** Бронь с ИИ-баланса клиента на один вызов, $ цены API (обычно ≈0,004 $, с запасом). */
+export const POSTPAY_RESERVE_USD = 0.02;
 /** «off» — выключено у клиента; по умолчанию включено. */
 export const POSTPAY_ENABLED_KEY = "postpay_ai";
 /** Потолок расхода в день, $; нет ключа — POSTPAY_DAILY_USD. */

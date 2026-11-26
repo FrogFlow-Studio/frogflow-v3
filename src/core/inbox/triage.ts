@@ -58,6 +58,8 @@ export type Triage = { kind: TriageKind; country: string | null };
 export const TRIAGE_MODEL = "claude-sonnet-5";
 /** Sonnet 5, $ за миллион токенов. */
 export const TRIAGE_PRICE = { in: 2, out: 10 };
+/** Бронь с ИИ-баланса клиента на один вызов, $ цены API (обычно ≈0,006 $, с запасом). */
+export const TRIAGE_RESERVE_USD = 0.02;
 /** Не открывать обращение на «спасибо», эмодзи, «+». «false» — выключено; по умолчанию включено. */
 export const CHAT_SKIP_CHATTER_KEY = "chat_skip_chatter";
 /** Отвечать про оплату из страны без способа оплаты. «false» — выключено; по умолчанию включено. */

@@ -1,5 +1,5 @@
 import { createFileRoute, useRouter, useRouterState } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { zernioStateFn, telegramStateFn } from "@/app/admin/connections.functions";
 import { deliveryZonesFn } from "@/app/admin/delivery-zones.functions";
 import { saveSettingsFn, settingsFn, setShopTimezoneFn } from "@/app/admin/settings.functions";
@@ -168,12 +168,17 @@ function SettingsPage() {
   // Якорь `#id` открывает тему своей карточки и прокручивает к ней — и при заходе,
   // и когда адрес меняется на этой же странице (Ctrl K, ссылка из текста).
   const hash = useRouterState({ select: (s) => s.location.hash });
+  // Якорь применяется один раз на адрес: обновление данных магазина (новый объект
+  // `shop`) не должно возвращать тему якоря после того, как человек выбрал «Все».
+  const appliedHash = useRef<string | null>(null);
   useEffect(() => {
+    if (appliedHash.current === hash) return;
     const target = themeForHash(hash);
     if (!target) return;
     const id = decodeURIComponent(hash.replace(/^#/, ""));
     const entry = settingsEntry(id);
     if (studio && entry && !entryVisible(entry, shop)) return;
+    appliedHash.current = hash;
     setTheme(target);
     requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView({ block: "start" }));
   }, [hash, shop, studio]);
