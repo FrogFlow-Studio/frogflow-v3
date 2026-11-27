@@ -9,14 +9,15 @@ import { recordPayment } from "../core/money/money";
 import { seedKopilka } from "../test/kopilka";
 import { pgliteV4, v4Db } from "../test/pg";
 import { pressBuy } from "./offers";
+import { SELLER_STATIC } from "./prompt";
 import { sellerContext, sellerRole } from "./role";
 import { TEXTS } from "./texts";
 import { applyTransfer } from "../transfer/apply";
 import { planTransfer } from "../transfer/plan";
 
 /**
- * Экзамен роли «продавец» (Спецификация, раздел «Сценарии экзамена»): 89
- * сценариев в 10 группах, id — как в спецификации. Модель записанная: экзамен
+ * Экзамен роли «продавец» (Спецификация, раздел «Сценарии экзамена»): 96
+ * сценариев в 11 группах, id — как в спецификации. Модель записанная: экзамен
  * проверяет код (кнопки, заказы, деньги, проверки, память, язык, режимы), а ум
  * модели — живой прогон на тех же фразах (tests/integration/v4-seller-eval).
  * Поэтому где сценарий про «что скажет модель», здесь — что код даёт модели
@@ -60,7 +61,14 @@ const tool = (name: string, input: Record<string, unknown> = {}) => ({
   name,
   input,
 });
-type Opts = { bot?: string; now?: Date; mode?: AgentMode; context?: string; role?: AgentRole };
+type Opts = {
+  bot?: string;
+  now?: Date;
+  mode?: AgentMode;
+  context?: string;
+  role?: AgentRole;
+  extra?: Partial<Parameters<typeof runAgent>[0]>;
+};
 
 async function say(b: string, text: string, turns: ScriptedTurn[], o: Opts = {}) {
   const bot = o.bot ?? K;
@@ -79,6 +87,7 @@ async function say(b: string, text: string, turns: ScriptedTurn[], o: Opts = {})
     sleep: async () => undefined,
     ...(o.now ? { now: o.now } : {}),
     ...(o.context ? { context: o.context } : {}),
+    ...o.extra,
   });
   return { r, model, x: r.kind === "reply" ? r.replies.at(-1)! : null };
 }
@@ -1730,5 +1739,151 @@ describe("И. Расширение этапа: источник ответа, у
     await expect(as(S).call("ai_wallet_check", { p_bot_id: S })).rejects.toThrow(
       /permission denied/,
     );
+  });
+});
+
+describe("К. Голос, фото и две модели (часть 2 плана)", () => {
+  const JPEG = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0, 16]);
+  const photo = (bytes = JPEG) =>
+    ({
+      kind: "photo",
+      load: async () => ({ bytes, mediaType: "application/octet-stream" }),
+    }) as const;
+  const voice = (heard: string | null, durationSec = 5) => ({
+    media: {
+      kind: "voice" as const,
+      durationSec,
+      load: async () => ({
+        bytes: new Uint8Array([0x4f, 0x67, 0x67, 0x53]),
+        mediaType: "audio/ogg",
+      }),
+    },
+    transcribe: async () => heard,
+  });
+  const lastSystem = (model: { requests: Array<{ system: Array<{ text: string }> }> }) =>
+    model.requests[0]!.system.map((s) => s.text).join("\n");
+
+  it("K01 photo-product: «такое есть?» с фото — модель видит картинку, ищет по каталогу, цена и кнопка из инструментов", async () => {
+    const b = await buyer();
+    const { x, model } = await say(
+      b,
+      "такое есть?",
+      [
+        { toolCalls: [tool("find_products", { query: "палитра" })] },
+        {
+          text: "Похоже на «Палитру средств выразительности» — 1 700 ₸.",
+          toolCalls: [tool("show_offer", { product_ids: [id(PAL)] })],
+        },
+        {},
+      ],
+      { extra: { media: photo() } },
+    );
+    const first = model.requests[0]!.messages.at(-1)!.content as Array<{ type: string }>;
+    expect(first[0]!.type).toBe("image");
+    expect(lastSystem(model)).toContain("Покупатель прислал фото");
+    expect(x!).toMatchObject({ source: "model", route: "strong" });
+    expect(x!.buttons).toHaveLength(1);
+    general(x!);
+  });
+
+  it("K02 photo-receipt: фото чека — оплату не подтверждаем, продавцу как payment, суммы с фото нет", async () => {
+    const b = await buyer();
+    const { x } = await say(
+      b,
+      "",
+      [
+        {
+          toolCalls: [tool("hand_to_seller", { kind: "payment", summary_ru: "Прислал фото чека" })],
+        },
+        { text: "Спасибо! Продавец проверит оплату и ответит здесь." },
+      ],
+      { extra: { media: photo() } },
+    );
+    expect(x!.actions[0]).toMatchObject({ kind: "handoff", reason: "payment" });
+    expect(x!.text).not.toMatch(/оплачено|получили оплату/iu);
+    expect(SELLER_STATIC).toMatch(/Фото чека.*оплату не подтверждай/u);
+  });
+
+  it("K03 photo-broken: фото не открылось — модель знает и просит прислать ещё раз, картинки в запросе нет", async () => {
+    const b = await buyer();
+    const { x, model } = await say(
+      b,
+      "",
+      [{ text: "Фото не открылось, пришлите ещё раз, пожалуйста." }],
+      {
+        extra: { media: photo(new TextEncoder().encode("%PDF-1.4")) },
+      },
+    );
+    expect(lastSystem(model)).toContain("не открылось");
+    expect(JSON.stringify(model.requests[0]!.messages)).not.toContain('"image"');
+    general(x!);
+  });
+
+  it("K04 voice-media: голосовое расшифровано, ищем по нему, в журнале «голосовое» с текстом, расшифровка списана", async () => {
+    const b = await buyer();
+    const { x, model } = await say(
+      b,
+      "",
+      [
+        { toolCalls: [tool("find_products", { query: "палитра" })] },
+        {
+          text: "Палитра средств выразительности — 1 700 ₸.",
+          toolCalls: [tool("show_offer", { product_ids: [id(PAL)] })],
+        },
+        {},
+      ],
+      { extra: voice("скока стоит политра") },
+    );
+    expect(lastSystem(model)).toContain("расшифровка голосового");
+    expect(toolResult(model, 1)).toContain(PAL);
+    expect(x!.buttons).toHaveLength(1);
+    const row = (
+      await pg.query<{ kind: string; text: string }>(
+        "select kind, text from v4.messages where buyer_id = $1 and direction = 'in'",
+        [b],
+      )
+    ).rows[0]!;
+    expect(row).toEqual({ kind: "voice", text: "скока стоит политра" });
+    expect(
+      await count(
+        "select count(*) c from v4.ai_ledger where buyer_id = $1 and purpose = 'voice' and kind = 'settle'",
+        [b],
+      ),
+    ).toBe(1);
+  });
+
+  it("K05 voice-unclear: не разобрали — просьба написать текстом на языке покупателя, без модели и без платы", async () => {
+    const b = await buyer(K, "KZ", "kk");
+    const before = await ledger(K);
+    const { x, model } = await say(b, "", [], { extra: voice(null) });
+    expect(model.requests).toHaveLength(0);
+    expect(x!).toMatchObject({ reason: "voice_unclear", text: TEXTS.voiceUnclear.kk });
+    // Бронь и её возврат — две строки книги, списания нет.
+    expect(
+      await count("select count(*) c from v4.ai_ledger where buyer_id = $1 and kind = 'settle'", [
+        b,
+      ]),
+    ).toBe(0);
+    expect(await ledger(K)).toBeGreaterThanOrEqual(before);
+  });
+
+  it("K06 fast-thanks: «Рахмет!» — быстрая модель с той же подсказкой; вопрос о цене — сильная", async () => {
+    const b = await buyer();
+    const fast = scriptedAgentModel([{ text: "Рахмет! Сұрақ болса, жазыңыз.", model: "fast" }]);
+    const quick = await say(b, "Рахмет!", [], { extra: { fastModel: fast } });
+    expect(quick.x!).toMatchObject({ route: "fast", source: "model" });
+    expect(fast.requests[0]!.tools.length).toBeGreaterThan(5);
+    const slow = scriptedAgentModel([]);
+    const { x } = await say(
+      b,
+      "Сколько стоит палитра?",
+      [
+        { toolCalls: [tool("find_products", { query: "палитра" })] },
+        { text: "Палитра средств выразительности — 1 700 ₸." },
+      ],
+      { extra: { fastModel: slow } },
+    );
+    expect(slow.requests).toHaveLength(0);
+    expect(x!.route).toBe("strong");
   });
 });

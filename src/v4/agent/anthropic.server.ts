@@ -12,6 +12,8 @@ import type { AgentModel } from "./model";
  * цену ответа почти вдвое). Повторов в SDK нет: 429/529 повторяет ядро один раз.
  */
 export const AGENT_MODEL = "claude-sonnet-5";
+/** Быстрая модель на простое (route.ts): приветствие, «спасибо», «где мой заказ». */
+export const FAST_AGENT_MODEL = "claude-haiku-5-5";
 
 export function anthropicAgentModel(apiKey: string, model = AGENT_MODEL): AgentModel {
   const client = new Anthropic({ apiKey, maxRetries: 0 });

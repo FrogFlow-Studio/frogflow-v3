@@ -33,6 +33,8 @@ export const FALLBACK_REASONS = [
   "model_failed",
   "check_failed",
   "ai_off",
+  /** Голосовое не расшифровалось: просим написать текстом, модель не зовём. */
+  "voice_unclear",
 ] as const;
 export type FallbackReason = (typeof FALLBACK_REASONS)[number];
 
@@ -42,10 +44,14 @@ export const AI_REPLIES_PER_BUYER_DAY = 40;
 export type ShownButton = { offerId?: string; productId?: string; label: string };
 export type DoneAction = { kind: string } & Record<string, unknown>;
 
+export const MESSAGE_KINDS = ["text", "voice", "photo"] as const;
+export type MessageKind = (typeof MESSAGE_KINDS)[number];
+
 export type HistoryMessage = {
   id: number;
   direction: "in" | "out";
   author: "buyer" | "bot" | "seller";
+  kind: MessageKind;
   text: string;
   buttons: ShownButton[];
   actions: DoneAction[];
@@ -69,8 +75,8 @@ export async function recordIncoming(
     externalId: string | null;
     text: string;
     mode: AgentMode;
-    /** Расшифровка голосового (Р14): текст тот же, пометка в журнале. */
-    voice?: boolean;
+    /** voice — голосовое (текст ставит setVoiceText), photo — фото с подписью. */
+    kind?: MessageKind;
     now?: Date;
   },
 ): Promise<{ messageId: number; duplicate: boolean }> {
@@ -82,7 +88,7 @@ export async function recordIncoming(
       p_external_id: a.externalId ?? "",
       p_text: a.text,
       p_mode: a.mode,
-      p_kind: a.voice ? "voice" : "text",
+      p_kind: a.kind ?? "text",
       ...iso(a.now),
     }),
     "record_incoming",
@@ -195,11 +201,27 @@ export async function conversationHistory(
     id: Number(r.id),
     direction: r.direction as HistoryMessage["direction"],
     author: r.author as HistoryMessage["author"],
+    kind: (MESSAGE_KINDS.includes(r.kind as MessageKind) ? r.kind : "text") as MessageKind,
     text: String(r.text ?? ""),
     buttons: (r.buttons ?? []) as ShownButton[],
     actions: (r.actions ?? []) as DoneAction[],
     createdAt: new Date(r.created_at as string).toISOString(),
   }));
+}
+
+/** Расшифровка голосового в журнал; false — не голосовое или текст уже стоит. */
+export async function setVoiceText(
+  db: V4Db,
+  a: { botId: string; messageId: number; text: string },
+): Promise<boolean> {
+  return one<boolean>(
+    await db.call("set_voice_text", {
+      p_bot_id: a.botId,
+      p_message_id: a.messageId,
+      p_text: a.text,
+    }),
+    "set_voice_text",
+  );
 }
 
 export type RememberResult = "ok" | "bad_key" | "bad_value" | "forbidden";
