@@ -14,9 +14,10 @@ test("главная: страница рисуется, серверная фу
 }) => {
   const errors = await watch(page);
   await page.goto("/");
-  await expect(page).toHaveTitle(/FrogFlow/);
+  await expect(page).toHaveTitle(/Enveriq/);
   // Кнопка регистрации появляется, только если signupEnabledFn ответила.
-  await expect(page.locator('a[href="/signup"]').first()).toBeVisible();
+  // Кнопка первого экрана (в шапке на телефоне её нет).
+  await expect(page.locator('main a[href="/signup"]').first()).toBeVisible();
   // Цены из реестра планов: подключение по тарифам, годовая оплата, канал сверх тарифа.
   for (const setup of [/подключение 15\s000/, /подключение 30\s000/, /подключение 60\s000/])
     await expect(page.getByText(setup)).toBeVisible();
@@ -29,6 +30,37 @@ test("главная: страница рисуется, серверная фу
     "true",
   );
   await expect(page.getByText("Рабочие_листы_1_класс.pdf")).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test("главная Enveriq: бренд, превью ссылки, клиенты, вопросы; на телефоне — кнопка внизу", async ({
+  page,
+}, info) => {
+  const errors = await watch(page);
+  await page.goto("/");
+  await expect(page.getByRole("link", { name: "Enveriq", exact: true }).first()).toBeVisible();
+  await expect(page.locator('meta[property="og:image"]')).toHaveAttribute(
+    "content",
+    "https://www.frogflow.tech/og-enveriq.png",
+  );
+  await expect(page.locator('meta[property="og:site_name"]')).toHaveAttribute("content", "Enveriq");
+  expect((await page.request.get("/og-enveriq.png")).status()).toBe(200);
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("продаёт сам");
+  await expect(page.getByText("Уже продают с Enveriq")).toBeVisible();
+  // Старое имя названо прямо: клиенты FrogFlow узнают свою платформу.
+  await page.locator("summary", { hasText: "Enveriq и FrogFlow — это одно и то же?" }).click();
+  await expect(page.getByText(/новое имя платформы FrogFlow/)).toBeVisible();
+  if (info.project.name === "phone") {
+    // Кнопки первого экрана видны — нижней нет; прокрутили к возможностям — появилась.
+    const sticky = page.getByTestId("sticky-cta");
+    await expect(sticky).not.toBeInViewport();
+    await page.locator("#features").scrollIntoViewIfNeeded();
+    await expect(sticky).toBeInViewport();
+    await expect(sticky.getByRole("link")).toHaveAttribute("href", "/signup");
+  }
+  await page.getByRole("link", { name: "KZ", exact: true }).click();
+  await expect(page).toHaveURL(/\?lang=kk$/);
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("өзі сатады");
   expect(errors).toEqual([]);
 });
 

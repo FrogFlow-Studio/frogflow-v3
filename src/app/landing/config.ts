@@ -86,77 +86,90 @@ export type LandingClient = {
   note: Record<Locale, string>;
   /** Ссылка на основного бота магазина (не VIP); нет — имя без ссылки. */
   url?: string;
-  /** Главная цифра крупно; нет — крупно имя магазина. Должна быть среди цифр в `note`. */
+  /** Главная цифра крупно с подписью; нет — подпись «Новый запуск». В `note` её не повторять. */
   stat?: { value: string; label: Record<Locale, string> };
 };
 
+/**
+ * Клиенты на главной. Цифры — из базы платформы (заказы со статусом «выдан»,
+ * покупатели бота) на дату `CLIENTS_AS_OF`; обновлять вместе с датой.
+ */
 export const CLIENTS: LandingClient[] = [
   {
     name: "AATeach",
     stat: {
-      value: "1 900+",
+      value: "2 300+",
       label: { ru: "заказов", kk: "тапсырыс", en: "orders", uz: "buyurtma" },
     },
     url: "https://t.me/maga21zzzbot",
     note: {
-      ru: "дидактика для педагогов · 520+ товаров, 1 900+ заказов",
-      kk: "педагогтерге арналған дидактика · 520+ тауар, 1 900+ тапсырыс",
-      en: "teaching materials · 520+ products, 1,900+ orders",
-      uz: "o‘qituvchilar uchun didaktika · 520+ mahsulot, 1 900+ buyurtma",
+      ru: "дидактика для педагогов · Telegram-бот, 560+ товаров",
+      kk: "педагогтерге арналған дидактика · Telegram-бот, 560+ тауар",
+      en: "teaching materials · Telegram bot, 560+ products",
+      uz: "o‘qituvchilar uchun didaktika · Telegram-bot, 560+ mahsulot",
     },
   },
   {
-    name: "Развивашка",
+    name: "BOVI",
     stat: {
-      value: "180+",
+      value: "590+",
       label: {
-        ru: "VIP-подписчиков",
-        kk: "VIP-жазылушы",
-        en: "VIP subscribers",
-        uz: "VIP-obunachi",
+        ru: "покупателей в Direct",
+        kk: "Direct-тегі сатып алушы",
+        en: "customers in Direct",
+        uz: "Direct’dagi xaridor",
       },
     },
-    url: "https://t.me/razvivashka_kaz_bot",
     note: {
-      ru: "развивающие материалы, магазин и VIP-бот · 180+ VIP-подписчиков, 380+ покупателей",
-      kk: "дамытушы материалдар, дүкен және VIP-бот · 180+ VIP-жазылушы, 380+ сатып алушы",
-      en: "early learning materials, shop and VIP bot · 180+ VIP subscribers, 380+ customers",
-      uz: "rivojlantiruvchi materiallar, do‘kon va VIP-bot · 180+ VIP-obunachi, 380+ xaridor",
+      ru: "домашний текстиль · ИИ-консультант в Instagram",
+      kk: "үй тоқыма бұйымдары · Instagram-дағы ЖИ-кеңесші",
+      en: "home textiles · AI consultant in Instagram",
+      uz: "uy to‘qimachiligi · Instagram’dagi AI-maslahatchi",
     },
   },
   {
     name: "Дидактика 03",
     stat: {
-      value: "840+",
-      label: { ru: "покупателей", kk: "сатып алушы", en: "customers", uz: "xaridor" },
+      value: "130+",
+      label: { ru: "заказов", kk: "тапсырыс", en: "orders", uz: "buyurtma" },
     },
     url: "https://t.me/didaktika_03_bot",
     note: {
-      ru: "магазин материалов и VIP-бот · 130+ заказов, 840+ покупателей",
-      kk: "материалдар дүкені және VIP-бот · 130+ тапсырыс, 840+ сатып алушы",
-      en: "materials shop and VIP bot · 130+ orders, 840+ customers",
-      uz: "materiallar do‘koni va VIP-bot · 130+ buyurtma, 840+ xaridor",
+      ru: "магазин материалов и VIP-бот · 890+ покупателей",
+      kk: "материалдар дүкені және VIP-бот · 890+ сатып алушы",
+      en: "materials shop and VIP bot · 890+ customers",
+      uz: "materiallar do‘koni va VIP-bot · 890+ xaridor",
     },
   },
   {
-    name: "BOVI",
+    name: "Копилка Русоведа",
+    stat: {
+      value: "50+",
+      label: { ru: "заказов", kk: "тапсырыс", en: "orders", uz: "buyurtma" },
+    },
     note: {
-      ru: "домашний текстиль, консультант в Instagram",
-      kk: "үй тоқыма бұйымдары, Instagram-дағы кеңесші",
-      en: "home textiles, Instagram consultant",
-      uz: "uy to‘qimachiligi, Instagram maslahatchisi",
+      ru: "материалы для учителей русского языка · 530+ покупателей",
+      kk: "орыс тілі мұғалімдеріне материалдар · 530+ сатып алушы",
+      en: "materials for Russian language teachers · 530+ customers",
+      uz: "rus tili o‘qituvchilari uchun materiallar · 530+ xaridor",
+    },
+  },
+  {
+    name: "Lash Academy Bishkek",
+    note: {
+      ru: "онлайн-курс по наращиванию ресниц · Кыргызстан, оплата переводом на карту",
+      kk: "кірпік жапсыру онлайн-курсы · Қырғызстан, картаға аударым арқылы төлем",
+      en: "online lash extension course · Kyrgyzstan, card transfer payments",
+      uz: "kiprik uzaytirish onlayn-kursi · Qirg‘iziston, kartaga o‘tkazma orqali to‘lov",
     },
   },
 ];
 
-export type LandingReview = {
-  author: string;
-  shop: string;
-  text: Record<Locale, string>;
-};
+/** Дата цифр в `CLIENTS` и `PLATFORM_ORDERS`, ДД.ММ.ГГГГ. */
+export const CLIENTS_AS_OF = "27.11.2026";
 
-/** Отзывы продавцов. Пусто — блок отзывов не показывается. */
-export const REVIEWS: LandingReview[] = [];
+/** Заказов выдано покупателям через платформу (все клиенты, без тестовых магазинов). */
+export const PLATFORM_ORDERS = "2 500+";
 
 /** Контакты платформы. null — строка не показывается, оба null — блок связи скрыт. */
 export const CONTACTS: { telegram: string | null; whatsapp: string | null } = {

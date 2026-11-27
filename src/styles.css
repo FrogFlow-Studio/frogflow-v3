@@ -290,3 +290,23 @@ body {
     min-height: 40px;
   }
 }
+
+/*
+ * Главная под брендом Enveriq: лайм логотипа и тонкая сетка на фоне первого
+ * экрана. Ниши и статьи остаются в «Ночном пруде» FrogFlow.
+ */
+.theme-enveriq {
+  --accent: #8ccf2e;
+  --ok: #8ccf2e;
+  --night-lime-hi: #a8e256;
+  --night-lime-deep: #4c8a1a;
+  --night-moss: #15240b;
+}
+.enveriq-grid {
+  background-image:
+    linear-gradient(to right, rgb(255 255 255 / 0.035) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(255 255 255 / 0.035) 1px, transparent 1px);
+  background-size: 48px 48px;
+  -webkit-mask-image: radial-gradient(80% 70% at 70% 30%, #000 0%, transparent 75%);
+  mask-image: radial-gradient(80% 70% at 70% 30%, #000 0%, transparent 75%);
+}
