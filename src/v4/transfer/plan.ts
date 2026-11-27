@@ -27,6 +27,8 @@ export type V3Snapshot = {
     description: string | null;
     keywords: string[];
   }>;
+  /** public.products и product_images v3 (id те же, что в v4): описание, ключевые слова, фото (пути Storage). */
+  v3Products: Array<{ id: string; description: string | null; keywords: string[]; photos: string[] }>;
   /** state.consultant.recent по покупателям Telegram. */
   histories: Array<{
     telegramId: string;
@@ -43,7 +45,12 @@ export type TransferPlan = {
   defaultLang: "ru" | "kk" | "en";
   features: SellerFeatures;
   knowledge: Array<{ question: string; answer: string; needsReview: boolean }>;
-  productTexts: Array<{ productId: string; description: string | null; keywords: string[] }>;
+  productTexts: Array<{
+    productId: string;
+    description: string | null;
+    keywords: string[];
+    photos: string[];
+  }>;
   balanceUsd: number | null;
   histories: Array<{
     telegramId: string;
@@ -131,10 +138,34 @@ export function planTransfer(v3: V3Snapshot): TransferPlan {
 
   // ── Знания ──
   const knowledge: TransferPlan["knowledge"] = [];
-  const productTexts = new Map<
-    string,
-    { productId: string; description: string | null; keywords: string[] }
-  >();
+  const productTexts = new Map<string, TransferPlan["productTexts"][number]>();
+  // Карточка товара v3 (описание, ключевые слова, фото) — раньше статей знаний:
+  // её писал продавец про этот товар. Фото — пути Storage, файлы не копируются.
+  const inV4 = new Map(v3.products.map((x) => [x.id, x]));
+  let lostProducts = 0;
+  for (const vp of v3.v3Products) {
+    const prod = inV4.get(vp.id);
+    const description = vp.description?.trim() || null;
+    const keywords = [...new Set(vp.keywords.map((k) => k.trim()).filter(Boolean))];
+    const photos = [...new Set(vp.photos.filter(Boolean))];
+    if (!description && !keywords.length && !photos.length) continue;
+    if (!prod) {
+      lostProducts++;
+      continue;
+    }
+    productTexts.set(prod.id, {
+      productId: prod.id,
+      description: prod.description ? null : description?.slice(0, 4000) || null,
+      keywords,
+      photos,
+    });
+  }
+  if (lostProducts)
+    report.push({
+      area: "товары",
+      item: `${lostProducts} товаров v3 с описанием или фото`,
+      reason: "нет в каталоге v4 (не перенесены copy_from_public) — карточки не перенесены",
+    });
   const titleOf = (x: V3Snapshot["products"][number]) =>
     norm(x.title + (x.variantLabel ? ` ${x.variantLabel}` : ""));
   for (const doc of v3.knowledge) {
@@ -168,6 +199,7 @@ export function planTransfer(v3: V3Snapshot): TransferPlan {
         productId: prod.id,
         description: null,
         keywords: [],
+        photos: [],
       };
       if (!prod.description && !cur.description) cur.description = content.slice(0, 4000);
       else

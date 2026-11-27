@@ -4,9 +4,9 @@
 -- Главное:
 --  * Одна функция пишет план переноса (его строит src/v4/transfer/plan.ts из
 --    снимка v3) одной транзакцией: анкета, язык магазина, флажки ИИ, знания,
---    тексты товаров, последние 24 сообщения консультанта на покупателя, блоки.
+--    тексты и фото товаров (пути Storage, файлы не копируются), последние 24 сообщения консультанта на покупателя, блоки.
 --  * Повторный запуск ничего не задваивает: знание с тем же вопросом и ответом
---    не вставляется, описание товара пишется только в пустое, история покупателя
+--    не вставляется, описание и фото товара пишутся только в пустые, история покупателя
 --    переносится один раз, блок не трогает уже заблокированного.
 --  * Остаток ИИ переносит ai_transfer_from_v3 (018) — после переключения, один раз.
 --  * Только сервисная роль: перенос запускает оператор в день переезда.
@@ -52,7 +52,9 @@ begin
 
   for k in select * from jsonb_array_elements(coalesce(p_plan -> 'product_texts', '[]'::jsonb)) loop
     update v4.products p set
-      description = coalesce(p.description, k ->> 'description'),
+      description = coalesce(nullif(p.description, ''), k ->> 'description'),
+      photo_paths = case when cardinality(p.photo_paths) > 0 then p.photo_paths
+                         else array(select jsonb_array_elements_text(coalesce(k -> 'photos', '[]'::jsonb))) end,
       keywords = (select coalesce(array_agg(distinct w order by w), '{}')
                   from unnest(p.keywords || array(select jsonb_array_elements_text(coalesce(k -> 'keywords', '[]'::jsonb)))) w)
     where p.bot_id = p_bot_id and p.id = (k ->> 'product_id')::uuid;

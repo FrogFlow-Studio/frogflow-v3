@@ -36,6 +36,8 @@ create table v4.messages (
   author text not null check (author in ('buyer', 'bot', 'seller')),
   mode text not null default 'live' check (mode in ('live', 'shadow', 'test')),
   text text not null default '' check (length(text) <= 8000),
+  -- voice — расшифровка голосового (сама расшифровка — этап 2, Р14): текст тот же, пометка в журнале.
+  kind text not null default 'text' check (kind in ('text', 'voice')),
   -- Показанные кнопки: [{offer_id|product_id, label}] — модель видит их в истории.
   buttons jsonb not null default '[]'::jsonb check (jsonb_typeof(buttons) = 'array'),
   -- Что бот сделал: [{kind, ...}] — передал продавцу, отменил заказ, запомнил факт.
@@ -74,14 +76,14 @@ create table v4.buyer_facts (
 -- Записать входящее. Повтор того же внешнего id — duplicate = true и та же строка.
 create or replace function v4.record_incoming(
   p_bot_id uuid, p_buyer_id uuid, p_channel text, p_external_id text, p_text text,
-  p_mode text default 'live', p_now timestamptz default now()
+  p_mode text default 'live', p_kind text default 'text', p_now timestamptz default now()
 ) returns jsonb language plpgsql as $$
 declare
   mid bigint;
 begin
-  insert into v4.messages (bot_id, buyer_id, channel, external_id, direction, author, mode, text, created_at)
+  insert into v4.messages (bot_id, buyer_id, channel, external_id, direction, author, mode, kind, text, created_at)
   values (p_bot_id, p_buyer_id, p_channel, nullif(p_external_id, ''), 'in', 'buyer', p_mode,
-          left(coalesce(p_text, ''), 8000), p_now)
+          coalesce(p_kind, 'text'), left(coalesce(p_text, ''), 8000), p_now)
   on conflict (bot_id, channel, external_id) where direction = 'in' and external_id is not null do nothing
   returning id into mid;
   if mid is not null then
@@ -271,7 +273,7 @@ grant update (blocked_at, blocked_by, turn_id, turn_until, ai_replies_day, ai_re
 
 revoke all on function v4.agent_buyer_state(uuid, uuid),
   v4.ai_log_usage(uuid, text, text, integer, integer, bigint, uuid, timestamptz),
-  v4.record_incoming(uuid, uuid, text, text, text, text, timestamptz),
+  v4.record_incoming(uuid, uuid, text, text, text, text, text, timestamptz),
   v4.take_turn(uuid, uuid, uuid, integer, timestamptz), v4.release_turn(uuid, uuid, uuid, bigint),
   v4.count_ai_reply(uuid, uuid, integer, timestamptz),
   v4.record_reply(uuid, uuid, text, text, jsonb, jsonb, text, text, text, bigint, text, text, text, timestamptz),
@@ -281,7 +283,7 @@ revoke all on function v4.agent_buyer_state(uuid, uuid),
   from public, anon, authenticated;
 grant execute on function v4.agent_buyer_state(uuid, uuid),
   v4.ai_log_usage(uuid, text, text, integer, integer, bigint, uuid, timestamptz),
-  v4.record_incoming(uuid, uuid, text, text, text, text, timestamptz),
+  v4.record_incoming(uuid, uuid, text, text, text, text, text, timestamptz),
   v4.take_turn(uuid, uuid, uuid, integer, timestamptz), v4.release_turn(uuid, uuid, uuid, bigint),
   v4.count_ai_reply(uuid, uuid, integer, timestamptz),
   v4.record_reply(uuid, uuid, text, text, jsonb, jsonb, text, text, text, bigint, text, text, text, timestamptz),

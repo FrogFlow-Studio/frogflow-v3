@@ -41,6 +41,7 @@ export async function applyTransfer(
           product_id: p.productId,
           description: p.description,
           keywords: p.keywords,
+          photos: p.photos,
         })),
         histories: plan.histories.map((h) => ({ telegram_id: h.telegramId, messages: h.messages })),
         blocked_telegram_ids: plan.blockedTelegramIds,

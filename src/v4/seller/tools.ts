@@ -27,6 +27,7 @@ export const HANDOFF_KINDS = [
   "complaint",
   "payment",
   "custom",
+  "privacy",
   "other",
 ] as const;
 export const HANDOFF_SUMMARY_MAX = 300;
@@ -528,10 +529,24 @@ export async function runSellerTool(
           p_buyer_id: a.buyerId,
           p_query: str(input.query),
         })
-      )[0]?.seller_context_v2 as { knowledge: Array<{ question: string; answer: string }> } | null;
+      )[0]?.seller_context_v2 as {
+        knowledge: Array<{ id?: string; question: string; answer: string }>;
+      } | null;
       const found = c?.knowledge ?? [];
-      for (const k of found) s.allowedNumbers.push(...numbersIn(k.answer));
-      return { items: found };
+      // Метка источника: та же, если знание уже было в подсказке, иначе следующая (Р10).
+      const byId = new Map(Object.entries(s.sources).map(([mark, id]) => [id, mark]));
+      const items = found.map((k) => {
+        s.allowedNumbers.push(...numbersIn(k.answer));
+        let mark = k.id ? byId.get(k.id) : undefined;
+        if (k.id && !mark) {
+          const last = Math.max(0, ...Object.keys(s.sources).map((m) => Number(m.slice(1)) || 0));
+          mark = `K${last + 1}`;
+          s.sources[mark] = k.id;
+          byId.set(k.id, mark);
+        }
+        return { ...(mark ? { mark } : {}), question: k.question, answer: k.answer };
+      });
+      return { items };
     }
     default:
       return { ok: false, error: `Нет инструмента ${name}` };
@@ -545,6 +560,7 @@ const HANDOFF_LABEL: Record<HandoffKind, string> = {
   complaint: "Жалоба",
   payment: "Оплата",
   custom: "Особый заказ",
+  privacy: "Просит удалить свои данные",
   other: "Другое",
 };
 

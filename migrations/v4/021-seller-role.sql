@@ -170,9 +170,9 @@ create or replace function v4.seller_context_v2(
                        where f.bot_id = p_bot_id and f.buyer_id = p_buyer_id), '{}'::jsonb),
     'knowledge_total', (select n from kt),
     'knowledge', coalesce((
-      select jsonb_agg(jsonb_build_object('question', x.question, 'answer', x.answer) order by x.ord)
+      select jsonb_agg(jsonb_build_object('id', x.id, 'question', x.question, 'answer', x.answer) order by x.ord)
       from (
-        select k.question, k.answer,
+        select k.id, k.question, k.answer,
           row_number() over (order by case when (select n from kt) <= 30 then 0 else -k.score end,
                                       k.created_at, k.id) as ord
         from k

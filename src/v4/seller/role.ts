@@ -138,6 +138,9 @@ export function sellerRole(): AgentRole {
       return {
         aiEnabled: features.buyer === true,
         lang,
+        sources: Object.fromEntries(
+          c.knowledge.flatMap((k, i) => (k.id ? [[`K${i + 1}`, k.id] as const] : [])),
+        ),
         system: buildSellerSystem({
           profile,
           knowledge: c.knowledge,
@@ -153,6 +156,7 @@ export function sellerRole(): AgentRole {
             localTime: c.local_time,
             weekday: Number(c.weekday),
             ...(a.context ? { context: a.context } : {}),
+            ...(a.voice ? { voice: true } : {}),
             otherLanguage: other,
           },
           lang,

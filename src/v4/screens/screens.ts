@@ -164,6 +164,16 @@ export const CASE_CARDS: Record<
     primary: "close_case",
     secondary: "close_case",
   },
+  ai_health: {
+    title: {
+      ru: "ИИ-продавец сбоит: много простых ответов, сбои модели или кошелёк не сходится",
+      kk: "ЖИ-сатушы ақауда: қарапайым жауап көп, модель істен шықты немесе әмиян сәйкес емес",
+      en: "AI seller is failing: many simple replies, model errors or the wallet doesn't match",
+      uz: "SI-sotuvchida nosozlik: oddiy javoblar ko'p, model xatolari yoki hamyon mos kelmayapti",
+    },
+    primary: "close_case",
+    secondary: "close_case",
+  },
 };
 
 export const ACTION_LABELS: Record<CaseAction, L> = {

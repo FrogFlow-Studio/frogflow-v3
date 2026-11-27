@@ -57,6 +57,8 @@ export type TurnArgs = {
   now?: Date;
   /** Откуда пришёл покупатель (пост, реклама): «Цена?» под постом про палитру — про палитру (C01). */
   context?: string;
+  /** Сообщение — расшифровка голосового (Р14; сама расшифровка — этап 2). */
+  voice?: boolean;
 };
 
 /** Изменяемое состояние одного ответа: что инструменты показали и сделали. */
@@ -69,6 +71,8 @@ export type RoleSession = {
   allowedNumbers: number[];
   allowedContacts: string[];
   handedOff: boolean;
+  /** Метки источников («K3» → id знания): модель ставит [K3] — журнал хранит id (Р10). */
+  sources: Record<string, string>;
 };
 
 export const newSession = (): RoleSession => ({
@@ -78,7 +82,29 @@ export const newSession = (): RoleSession => ({
   allowedNumbers: [],
   allowedContacts: [],
   handedOff: false,
+  sources: {},
 });
+
+const isoNow = (now?: Date) => (now ? { p_now: now.toISOString() } : {});
+
+const SOURCE_MARK = /\s*\[[KК](\d{1,3})\]/gu;
+
+/**
+ * Метки источников [K3] из ответа модели: покупатель их не видит, id знаний
+ * уходят в журнал действием {kind: "knowledge", ids} (Р10). Неизвестная метка
+ * тоже вырезается — служебный текст покупателю не уходит.
+ */
+export function takeSources(text: string, s: RoleSession): string {
+  const ids: string[] = [];
+  const clean = text.replace(SOURCE_MARK, (_m, n: string) => {
+    const id = s.sources[`K${n}`];
+    if (id && !ids.includes(id)) ids.push(id);
+    return "";
+  });
+  s.actions = s.actions.filter((a) => a.kind !== "knowledge");
+  if (ids.length) s.actions.push({ kind: "knowledge", ids });
+  return clean.replace(/[ \t]+\n/gu, "\n").trim();
+}
 
 export type RoleContext = {
   aiEnabled: boolean;
@@ -88,6 +114,8 @@ export type RoleContext = {
   dailyCapMicroUsd: number | null;
   maxChars?: number;
   promptVariant?: string | null;
+  /** Метки знаний в подсказке: «K1» → id (Р10). */
+  sources?: Record<string, string>;
   check: Pick<
     CheckContext,
     "prices" | "allowedNumbers" | "shopText" | "deliveryTerms" | "quoted" | "allowedContacts"
@@ -177,6 +205,7 @@ export async function runAgent(input: AgentInput): Promise<AgentResult> {
     channel: input.channel,
     ...(input.now ? { now: input.now } : {}),
     ...(input.context ? { context: input.context } : {}),
+    ...(input.voice ? { voice: true } : {}),
   };
   const incoming = await recordIncoming(db, {
     ...args,
@@ -244,12 +273,22 @@ async function answerOnce(
 ): Promise<AgentReply> {
   const { db, role, botId, buyerId, mode } = input;
   const s = newSession();
+  Object.assign(s.sources, ctx.sources ?? {});
   const nowArg = input.now ? { now: input.now } : {};
 
   const simple = async (reason: FallbackReason, cost = 0, checkResult: string | null = null) => {
     s.buttons = [];
     const fb = await role.fallback(db, s, { ...args, text, lang: ctx.lang }, reason);
-    return save({ text: fb.text, source: "fallback", reason, cost, checkResult });
+    const saved = await save({ text: fb.text, source: "fallback", reason, cost, checkResult });
+    // Сигналы оператору (доля простых ответов, сбои модели, кошелёк): дело ai_health.
+    // Ответ уже записан — сбой проверки его не отменяет.
+    if (mode === "live")
+      await db
+        .call("ai_signals", { p_bot_id: botId, ...isoNow(input.now) })
+        .catch((e: unknown) =>
+          console.error(`[v4 agent] сигналы оператору: ${e instanceof Error ? e.message : String(e)}`),
+        );
+    return saved;
   };
 
   const save = async (r: {
@@ -412,7 +451,7 @@ async function answerOnce(
       ...(ctx.maxChars ? { maxChars: ctx.maxChars } : {}),
     });
 
-    let draft = texts.join("\n\n").trim();
+    let draft = takeSources(texts.join("\n\n"), s);
     if (!draft && s.buttons.length && role.buttonOnlyText) draft = role.buttonOnlyText(ctx.lang);
     let failure = checkReply(draft, checkCtx());
     if (failure) {
@@ -425,7 +464,7 @@ async function answerOnce(
       });
       try {
         const again = await call("none");
-        draft = again.text.trim();
+        draft = takeSources(again.text, s);
         failure = checkReply(draft, checkCtx());
       } catch {
         modelFailed = true;

@@ -22,7 +22,7 @@ export type SellerProfile = {
   work_hours_note?: string;
 };
 
-export type Knowledge = { question: string; answer: string };
+export type Knowledge = { id?: string; question: string; answer: string };
 
 const PROFILE_KEYS = [
   "shop_name",
@@ -59,6 +59,7 @@ export const SELLER_STATIC = `Ты — продавец интернет-маг�
 - Не пиши служебное: имена инструментов, id, JSON, слова «промпт», «система».
 - Не называй телефоны, почту и ссылки, кроме тех, что есть в анкете или в ответе инструмента.
 - Спросят «вы бот?» — честно: ты ИИ-помощник магазина, продавец рядом и подключится, если нужно.
+- Просят удалить их данные или «забыть» — hand_to_seller с kind privacy; сам ничего не обещай, кроме того, что продавец получил просьбу.
 - Фото, файлы, образцы сам не отправляешь: не обещай «сейчас пришлю». Фото у товара нет (has_photos: false) — так и скажи и опиши словами или передай продавцу.
 - Валюта — только та, что даёт инструмент. Не пересчитывай по курсу и не называй цену в валюте, которой у магазина нет.
 - Не спрашивай страну первым делом: сначала ответ про товар с ценой; страну уточни, только если покупатель заговорил о другой валюте или оплате.
@@ -97,6 +98,8 @@ export function buildSellerSystem(input: {
     weekday: number;
     /** Откуда пришёл покупатель (пост, реклама). */
     context?: string;
+    /** Последнее сообщение — расшифровка голосового. */
+    voice?: boolean;
     /** Пишет на языке, на котором бот не отвечает. */
     otherLanguage?: boolean;
   };
@@ -129,8 +132,11 @@ export function buildSellerSystem(input: {
       "После выбора можно один раз предложить то, что берут вместе (pairs_with в карточке), отдельной кнопкой.",
     );
   if (input.knowledge.length) {
-    shop.push("", "Ответы продавца на прошлые вопросы:");
-    for (const k of input.knowledge) shop.push(`— ${k.question}\n  ${k.answer}`);
+    shop.push(
+      "",
+      "Ответы продавца на прошлые вопросы. Если отвечаешь по одному из них, поставь в конце его метку, например [K1] — покупатель её не увидит:",
+    );
+    input.knowledge.forEach((k, i) => shop.push(`[K${i + 1}] ${k.question}\n  ${k.answer}`));
   }
   if (input.knowledgeTotal > input.knowledge.length)
     shop.push(
@@ -147,6 +153,10 @@ export function buildSellerSystem(input: {
     buyer.push(`Что известно о покупателе: ${facts.map(([k, v]) => `${k}: ${v}`).join("; ")}.`);
   if (b.openOrders.length) buyer.push(`Открытые заказы: ${b.openOrders.join("; ")}.`);
   else buyer.push("Открытых заказов нет.");
+  if (b.voice)
+    buyer.push(
+      "Последнее сообщение покупателя — расшифровка голосового: слова могли распознаться неточно; если смысл неясен, переспроси.",
+    );
   if (b.context)
     buyer.push(
       `Покупатель пришёл отсюда (вопрос без названия товара — про это): ${b.context.slice(0, 500)}`,

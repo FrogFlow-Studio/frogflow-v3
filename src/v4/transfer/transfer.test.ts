@@ -74,6 +74,20 @@ function snapshot(over: Partial<V3Snapshot> = {}): V3Snapshot {
       { telegramId: "999", recent: [{ role: "customer", text: "нет в v4" }] },
     ],
     blockedTelegramIds: ["888"],
+    v3Products: [
+      {
+        id: ids.get("Палитра средств выразительности")!,
+        description: null,
+        keywords: ["палитра"],
+        photos: ["bot/pal-1.jpg", "bot/pal-2.jpg"],
+      },
+      {
+        id: "c0c0c0c0-0000-4000-8000-00000000dead",
+        description: "Товара нет в v4",
+        keywords: [],
+        photos: [],
+      },
+    ],
     ...over,
   };
 }
@@ -130,11 +144,31 @@ describe("план переноса", () => {
     expect(pal).toEqual({
       productId: pal!.productId,
       description: "Печать на А4 или А3.",
-      keywords: ["тропы"],
+      keywords: ["палитра", "тропы"],
+      photos: ["bot/pal-1.jpg", "bot/pal-2.jpg"],
     });
     expect(p.knowledge.find((k) => k.question === "Форматы")).toMatchObject({ needsReview: false });
     expect(p.knowledge.find((k) => k.question === "Контакты")).toMatchObject({ needsReview: true });
     expect(p.report.some((r) => r.item.includes("Контакты"))).toBe(true);
+  });
+
+  it("карточка v3: описание товара важнее статьи, статья тогда — в знания; товара нет в v4 — в отчёт", () => {
+    const palId = ids.get("Палитра средств выразительности")!;
+    const p = planTransfer(
+      snapshot({
+        v3Products: [
+          { id: palId, description: "Описание из карточки v3.", keywords: [], photos: [] },
+          { id: "c0c0c0c0-0000-4000-8000-00000000dead", description: "x", keywords: [], photos: [] },
+        ],
+      }),
+    );
+    expect(p.productTexts.find((t) => t.productId === palId)?.description).toBe(
+      "Описание из карточки v3.",
+    );
+    expect(p.knowledge.find((k) => k.question === "Палитра средств выразительности")).toMatchObject({
+      answer: "Печать на А4 или А3.",
+    });
+    expect(p.report.some((r) => r.area === "товары" && r.item.startsWith("1 товаров"))).toBe(true);
   });
 
   it("H05 background-ai-flags-kept: в v3 включена только «страна» — в v4 только «страна»", () => {
@@ -215,6 +249,11 @@ describe("запись в v4", () => {
       [ids.get("Палитра средств выразительности")],
     );
     expect(pal.rows[0]!.d).toBe("Печать на А4 или А3.");
+    const ph = await pg.query<{ ph: string[] }>(
+      "select photo_paths ph from v4.products where id = $1",
+      [ids.get("Палитра средств выразительности")],
+    );
+    expect(ph.rows[0]!.ph).toEqual(["bot/pal-1.jpg", "bot/pal-2.jpg"]);
   });
 
   it("без остатка до переключения — остаток в отчёте", async () => {
@@ -258,6 +297,14 @@ describe("чтение v3", () => {
       state:
         i === 1499 ? { consultant: { recent: [{ role: "customer", text: "последний" }] } } : {},
     }));
+    db.tables.products = [
+      { bot_id: K, id: "p1", description: "Описание", keywords: ["к1"] },
+      { bot_id: K, id: "p2", description: null, keywords: [] },
+    ];
+    db.tables.product_images = [
+      { bot_id: K, id: "i2", product_id: "p1", image_path: "b/2.jpg", sort_order: 2 },
+      { bot_id: K, id: "i1", product_id: "p1", image_path: "b/1.jpg", sort_order: 1 },
+    ];
     db.tables.blocked_users = [{ bot_id: K, telegram_id: 42, blocked_at: "2026-11-01T00:00:00Z" }];
     const ctx = { db, tenant: { id: K } } as unknown as TenantContext;
     const s = await readV3Snapshot(ctx, pgliteV4(pg));
@@ -275,6 +322,10 @@ describe("чтение v3", () => {
       { telegramId: "1500", recent: [{ role: "customer", text: "последний" }] },
     ]);
     expect(s.blockedTelegramIds).toEqual(["42"]);
+    expect(s.v3Products).toEqual([
+      { id: "p1", description: "Описание", keywords: ["к1"], photos: ["b/1.jpg", "b/2.jpg"] },
+      { id: "p2", description: null, keywords: [], photos: [] },
+    ]);
     expect(s.products.length).toBe(ids.size);
   });
 });

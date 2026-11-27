@@ -22,6 +22,7 @@ export const CASE_KINDS = [
   "channel_down",
   "seller_request",
   "ai_markup",
+  "ai_health",
 ] as const;
 export type CaseKind = (typeof CASE_KINDS)[number];
 

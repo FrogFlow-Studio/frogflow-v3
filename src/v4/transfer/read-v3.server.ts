@@ -8,7 +8,8 @@ import type { V3Snapshot } from "./plan";
 
 /**
  * Снимок v3 для переноса (Спецификация, раздел 3): анкета и знания
- * консультанта, флажки фонового ИИ, остаток ИИ, история консультанта и блоки.
+ * консультанта, флажки фонового ИИ, остаток ИИ, история консультанта, блоки,
+ * карточки товаров (описание, ключевые слова, фото).
  * Только чтение v3; каталог берётся из v4 (уже перенесён copy_from_public).
  * Каждая ошибка чтения — сбой, а не «пусто»: перенос по упавшему чтению
  * молча потерял бы данные.
@@ -87,6 +88,29 @@ export async function readV3Snapshot(
     "перенос v3: blocked_users",
   );
 
+  // keywords в типах базы — строка, в базе — text[]: разбираем как unknown.
+  const v3Rows = await pageAll<{ id: string; description: string; keywords: string }>(
+    (from, to) =>
+      ctx.db.from("products").select("id, description, keywords").order("id").range(from, to),
+    "перенос v3: products",
+  );
+  const images = await pageAll<{ product_id: string; image_path: string; sort_order: number | null }>(
+    (from, to) =>
+      ctx.db
+        .from("product_images")
+        .select("id, product_id, image_path, sort_order")
+        .order("id")
+        .range(from, to),
+    "перенос v3: product_images",
+  );
+  const photos = new Map<string, Array<{ path: string; order: number }>>();
+  for (const i of images) {
+    if (!i.image_path) continue;
+    const list = photos.get(i.product_id) ?? [];
+    list.push({ path: i.image_path, order: i.sort_order ?? 0 });
+    photos.set(i.product_id, list);
+  }
+
   const catalog = await v4.call("transfer_catalog", { p_bot_id: ctx.tenant.id });
   return {
     profile,
@@ -99,6 +123,12 @@ export async function readV3Snapshot(
       variantLabel: (r.variant_label as string | null) ?? null,
       description: (r.description as string | null) ?? null,
       keywords: (r.keywords as string[] | null) ?? [],
+    })),
+    v3Products: v3Rows.map((p) => ({
+      id: String(p.id),
+      description: p.description ?? null,
+      keywords: Array.isArray(p.keywords as unknown) ? (p.keywords as unknown as unknown[]).map(String) : [],
+      photos: (photos.get(p.id) ?? []).sort((a, b) => a.order - b.order).map((x) => x.path),
     })),
     histories,
     blockedTelegramIds: blocked.map((b) => String(b.telegram_id)),

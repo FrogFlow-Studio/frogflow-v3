@@ -15,8 +15,8 @@ import { applyTransfer } from "../transfer/apply";
 import { planTransfer } from "../transfer/plan";
 
 /**
- * Экзамен роли «продавец» (Спецификация, раздел «Сценарии экзамена»): 82
- * сценария в 9 группах, id — как в спецификации. Модель записанная: экзамен
+ * Экзамен роли «продавец» (Спецификация, раздел «Сценарии экзамена»): 88
+ * сценариев в 10 группах, id — как в спецификации. Модель записанная: экзамен
  * проверяет код (кнопки, заказы, деньги, проверки, память, язык, режимы), а ум
  * модели — живой прогон на тех же фразах (tests/integration/v4-seller-eval).
  * Поэтому где сценарий про «что скажет модель», здесь — что код даёт модели
@@ -1393,6 +1393,7 @@ describe("З. Режимы, флажки, магазин без ИИ", () => {
       products: [],
       histories: [],
       blockedTelegramIds: [],
+      v3Products: [],
     });
     await applyTransfer(pgliteV4(pg), T, plan, { withBalance: false, by: "operator" });
     const c = await sellerContext(as(T), { botId: T, buyerId: await buyer(T) });
@@ -1443,5 +1444,214 @@ describe("З. Режимы, флажки, магазин без ИИ", () => {
     const r2 = await say(b, "Здравствуйте", [{ text: "Здравствуйте! Что нужно?" }], { bot: B });
     expect(r1.model.requests[0]!.system[0]).toEqual(r2.model.requests[0]!.system[0]);
     expect(r1.model.requests[0]!.tools).toEqual(r2.model.requests[0]!.tools);
+  });
+});
+
+describe("И. Расширение этапа: источник ответа, учёба, польза, голос, право, сигналы", () => {
+  const X = "c0c0c0c0-0000-4000-8000-00000000e005"; // отдельная Копилка: свои знания и счётчики
+  let idsX: Map<string, string>;
+  const asX = () => as(X);
+  const ask = (b: string, text: string, turns: ScriptedTurn[], o: Opts = {}) =>
+    say(b, text, turns, { bot: X, ...o });
+  const count1 = async (sql: string, args: unknown[]) =>
+    Number((await pg.query<{ c: string }>(sql, args)).rows[0]!.c);
+
+  beforeAll(async () => {
+    idsX = await seedKopilka(pg, X);
+    await pg.query(`update v4.shops set ai_features = '{"buyer": true}' where bot_id = $1`, [X]);
+    await pg.query("select v4.ai_credit($1, 'topup', 50000000, 'экзамен', 'operator')", [X]);
+  });
+
+  it("I01 knowledge-source-logged (Р10): метка [K1] уходит из текста, id знания — в журнал", async () => {
+    const kid = (
+      await pg.query<{ id: string }>(
+        "insert into v4.knowledge (bot_id, question, answer, source, created_by) values ($1, 'Какой шрифт?', 'Шрифт Таймс, кегль 14.', 'manual', 't') returning id",
+        [X],
+      )
+    ).rows[0]!.id;
+    const b = await buyer(X);
+    const { x, model } = await ask(b, "Какой шрифт в материалах?", [
+      { text: "Шрифт Таймс, кегль 14. [K1]" },
+    ]);
+    expect(String(model.requests[0]!.system[1]!.text)).toContain("[K1] Какой шрифт?");
+    expect(x!.text).toBe("Шрифт Таймс, кегль 14.");
+    expect(x!.actions).toContainEqual({ kind: "knowledge", ids: [kid] });
+    const row = await pg.query<{ a: unknown[]; t: string }>(
+      "select actions a, text t from v4.messages where id = $1",
+      [x!.messageId],
+    );
+    expect(row.rows[0]!.t).not.toContain("[K");
+    expect(row.rows[0]!.a).toContainEqual({ kind: "knowledge", ids: [kid] });
+    // Неизвестная метка тоже не уходит покупателю.
+    const y = await ask(b, "А размер?", [{ text: "Формат А4. [K9]" }]);
+    expect(y.x!.text).toBe("Формат А4.");
+    expect(y.x!.actions.some((a) => a.kind === "knowledge")).toBe(false);
+  });
+
+  it("I02 handoff-exam-candidate (Р8): ответ продавца — знание и одна строка «кандидат в экзамен»", async () => {
+    const b = await buyer(X);
+    const caseId = (
+      await pg.query<{ c: string }>("select v4.hand_to_seller($1, $2, 'Вопрос: опт', 'bot') c", [X, b])
+    ).rows[0]!.c;
+    const learn = () =>
+      asX().call("learn_from_reply", {
+        p_bot_id: X,
+        p_case_id: caseId,
+        p_question: "Есть оптовая цена?",
+        p_answer: "Опт обсуждаем от 10 комплектов, напишите продавцу.",
+      });
+    await Promise.all([learn(), learn()]);
+    expect(
+      await count1("select count(*) c from v4.exam_candidates where case_id = $1", [caseId]),
+    ).toBe(1);
+    expect(
+      await count1("select count(*) c from v4.knowledge where case_id = $1", [caseId]),
+    ).toBe(1);
+  });
+
+  it("I03 ai-value-report (Р9): стоил — расход ответов; принёс — оплаченный заказ из кнопки бота", async () => {
+    const from = new Date(Date.now() - 60_000);
+    const b = await buyer(X);
+    const pal = idsX.get(PAL)!;
+    const { x } = await ask(b, "Хочу палитру", [
+      { text: "Вот кнопка.", toolCalls: [tool("show_offer", { product_ids: [pal] })] },
+      {},
+    ]);
+    const p = await pressBuy(asX(), { botId: X, buyerId: b, offerId: x!.buttons[0]!.offerId! });
+    if (p.kind !== "order") throw new Error("нет заказа");
+    const total = Number(
+      (await pg.query<{ t: string }>("select total_minor t from v4.orders where id = $1", [p.orderId]))
+        .rows[0]!.t,
+    );
+    await recordPayment(asX(), {
+      botId: X,
+      orderId: p.orderId,
+      amountMinor: total,
+      currency: "KZT",
+      method: "transfer",
+      externalRef: `i03-${b}`,
+      by: "t",
+    });
+    const r = (
+      await pg.query<{ r: Record<string, unknown> }>(
+        "select v4.ai_value_report($1, $2, now() + interval '1 minute') r",
+        [X, from.toISOString()],
+      )
+    ).rows[0]!.r;
+    expect(r).toMatchObject({ offers_shown: 1, offers_pressed: 1, orders_paid: 1 });
+    expect(r.revenue_minor).toEqual({ KZT: total });
+    expect(Number(r.spent_micro_usd)).toBeGreaterThan(0);
+    expect(Number(r.replies_model)).toBeGreaterThanOrEqual(1);
+  });
+
+  it("I04 voice-transcript (Р14): расшифровка идёт как текст, помечена в журнале, модель предупреждена", async () => {
+    const b = await buyer(X);
+    const { model } = await ask(b, "сколько стоит палитра", [{ text: "Палитра есть в каталоге." }], {});
+    expect(String(model.requests[0]!.system.at(-1)!.text)).not.toContain("голосового");
+    const r = await runAgent({
+      db: asX(),
+      role: sellerRole(),
+      model: scriptedAgentModel([{ text: "Уточните, пожалуйста, какой товар?" }]),
+      markupBp: async () => 2500,
+      botId: X,
+      buyerId: b,
+      mode: "live",
+      channel: "telegram",
+      externalId: `voice-${b}`,
+      text: "скока стоит политра",
+      voice: true,
+      sleep: async () => undefined,
+    });
+    expect(r.kind).toBe("reply");
+    expect(
+      (
+        await pg.query<{ k: string }>(
+          "select kind k from v4.messages where bot_id = $1 and external_id = $2",
+          [X, `voice-${b}`],
+        )
+      ).rows[0]!.k,
+    ).toBe("voice");
+  });
+
+  it("I05 forget-buyer (В4): «удалите мои данные» — продавцу; обезличивание стирает тексты и факты, заказ остаётся", async () => {
+    const b = await buyer(X);
+    await pg.query(
+      "insert into v4.buyer_channels (bot_id, channel, external_id, buyer_id) values ($1, 'telegram', $2, $3)",
+      [X, `tg-${b}`, b],
+    );
+    await pg.query(
+      "insert into v4.buyer_facts (bot_id, buyer_id, key, value, source) values ($1, $2, 'name', 'Айгерим', 'buyer')",
+      [X, b],
+    );
+    const pal = idsX.get(PAL)!;
+    const shownReply = await ask(b, "Палитру хочу", [
+      { text: "Вот кнопка.", toolCalls: [tool("show_offer", { product_ids: [pal] })] },
+      {},
+    ]);
+    const p = await pressBuy(asX(), {
+      botId: X,
+      buyerId: b,
+      offerId: shownReply.x!.buttons[0]!.offerId!,
+    });
+    expect(p.kind).toBe("order");
+    const { x } = await ask(b, "Удалите, пожалуйста, мои данные", [
+      { toolCalls: [tool("hand_to_seller", { kind: "privacy", summary_ru: "просит удалить данные" })] },
+      { text: "Передала продавцу вашу просьбу." },
+    ]);
+    expect(x!.actions).toContainEqual(expect.objectContaining({ kind: "handoff", reason: "privacy" }));
+
+    // Чужой магазин обезличить не может.
+    await expect(
+      as(K).call("forget_buyer", { p_bot_id: X, p_buyer_id: b, p_by: "seller" }),
+    ).rejects.toThrow(/foreign_bot/);
+    expect(
+      await asX()
+        .call("forget_buyer", { p_bot_id: X, p_buyer_id: b, p_by: "seller" })
+        .then((r) => r[0]?.forget_buyer),
+    ).toBe(true);
+    expect(
+      await count1("select count(*) c from v4.messages where buyer_id = $1 and text <> ''", [b]),
+    ).toBe(0);
+    expect(await count1("select count(*) c from v4.buyer_facts where buyer_id = $1", [b])).toBe(0);
+    expect(await count1("select count(*) c from v4.buyer_channels where buyer_id = $1", [b])).toBe(0);
+    expect(
+      await count1(
+        "select count(*) c from v4.cases where buyer_id = $1 and detail::text like '%удалить%'",
+        [b],
+      ),
+    ).toBe(0);
+    expect(await count1("select count(*) c from v4.orders where buyer_id = $1", [b])).toBe(1);
+    expect(
+      await count1("select count(*) c from v4.buyers where id = $1 and forgotten_at is not null", [b]),
+    ).toBe(1);
+  });
+
+  it("I06 operator-signals: простых ответов > 10 % за час и 3 сбоя модели — дело оператору, одно в час", async () => {
+    const S = "c0c0c0c0-0000-4000-8000-00000000e006";
+    await seedKopilka(pg, S);
+    await pg.query(`update v4.shops set ai_features = '{"buyer": true}' where bot_id = $1`, [S]);
+    await pg.query("select v4.ai_credit($1, 'topup', 50000000, 'экзамен', 'operator')", [S]);
+    const b = await buyer(S);
+    for (let i = 0; i < 9; i++)
+      await pg.query(
+        "select v4.record_reply($1, $2, 'telegram', 'ок', '[]', '[]', 'live', 'model')",
+        [S, b],
+      );
+    const fail = () =>
+      say(b, "привет", [{ throws: new Error("boom") }, { throws: new Error("boom") }], { bot: S });
+    for (let i = 0; i < 3; i++) await fail();
+    const cases = await pg.query<{ k: string; r: string; o: string }>(
+      "select dedupe_key k, detail ->> 'reason' r, owner o from v4.cases where bot_id = $1 and kind = 'ai_health' and status = 'open' order by k",
+      [S],
+    );
+    expect(cases.rows.map((c) => c.r).sort()).toEqual(["model_failed", "simple_share"]);
+    expect(cases.rows.every((c) => c.o === "operator")).toBe(true);
+    await fail();
+    expect(
+      await count1(
+        "select count(*) c from v4.cases where bot_id = $1 and kind = 'ai_health' and status = 'open'",
+        [S],
+      ),
+    ).toBe(2);
   });
 });

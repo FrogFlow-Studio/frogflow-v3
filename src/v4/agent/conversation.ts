@@ -69,6 +69,8 @@ export async function recordIncoming(
     externalId: string | null;
     text: string;
     mode: AgentMode;
+    /** Расшифровка голосового (Р14): текст тот же, пометка в журнале. */
+    voice?: boolean;
     now?: Date;
   },
 ): Promise<{ messageId: number; duplicate: boolean }> {
@@ -80,6 +82,7 @@ export async function recordIncoming(
       p_external_id: a.externalId ?? "",
       p_text: a.text,
       p_mode: a.mode,
+      p_kind: a.voice ? "voice" : "text",
       ...iso(a.now),
     }),
     "record_incoming",
@@ -268,4 +271,66 @@ export function maskContacts(text: string): string {
         return seen <= keepHead || seen > digits.length - 2 ? d : "*";
       });
     });
+}
+
+/**
+ * Обезличить покупателя по его просьбе (В4): имя, почта, тексты сообщений,
+ * факты и внешние id стираются; заказы и деньги остаются. false — нет такого.
+ */
+export async function forgetBuyer(
+  db: V4Db,
+  a: { botId: string; buyerId: string; by: string; now?: Date },
+): Promise<boolean> {
+  return Boolean(
+    one<boolean>(
+      await db.call("forget_buyer", {
+        p_bot_id: a.botId,
+        p_buyer_id: a.buyerId,
+        p_by: a.by,
+        ...iso(a.now),
+      }),
+      "forget_buyer",
+    ),
+  );
+}
+
+export type AiValueReport = {
+  repliesModel: number;
+  repliesSimple: number;
+  spentMicroUsd: number;
+  handoffs: number;
+  offersShown: number;
+  offersPressed: number;
+  ordersPaid: number;
+  revenueMinor: Record<string, number>;
+  costPerPaidOrderMicroUsd: number | null;
+};
+
+/** Что ИИ стоил и что принёс за период (Р9), только боевой режим. */
+export async function aiValueReport(
+  db: V4Db,
+  a: { botId: string; from: Date; to: Date },
+): Promise<AiValueReport> {
+  const r = one<Record<string, unknown> | null>(
+    await db.call("ai_value_report", {
+      p_bot_id: a.botId,
+      p_from: a.from.toISOString(),
+      p_to: a.to.toISOString(),
+    }),
+    "ai_value_report",
+  );
+  if (!r) throw serverFailure("v4.ai_value_report: пустой ответ");
+  const rev = (r.revenue_minor ?? {}) as Record<string, unknown>;
+  return {
+    repliesModel: Number(r.replies_model),
+    repliesSimple: Number(r.replies_simple),
+    spentMicroUsd: Number(r.spent_micro_usd),
+    handoffs: Number(r.handoffs),
+    offersShown: Number(r.offers_shown),
+    offersPressed: Number(r.offers_pressed),
+    ordersPaid: Number(r.orders_paid),
+    revenueMinor: Object.fromEntries(Object.entries(rev).map(([k, v]) => [k, Number(v)])),
+    costPerPaidOrderMicroUsd:
+      r.cost_per_paid_order_micro_usd == null ? null : Number(r.cost_per_paid_order_micro_usd),
+  };
 }
