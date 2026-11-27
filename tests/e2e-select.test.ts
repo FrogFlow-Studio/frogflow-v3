@@ -113,4 +113,28 @@ describe("какие e2e гонять", () => {
   it("документы и unit-тесты — e2e не нужны", () => {
     expect(select(["docs/ROADMAP.md", "src/core/inbox/page.test.ts"], p).mode).toBe("none");
   });
+
+  it("раздел словаря, который тянут все страницы, — только страницы с его ключами", () => {
+    const wide = Object.fromEntries(
+      Array.from({ length: 30 }, (_, i) => [
+        `src/routes/admin._authed.p${i}.tsx`,
+        'import { adminT } from "@/app/i18n/admin";',
+      ]),
+    );
+    const q = project(
+      {
+        ...wide,
+        "src/routes/admin._authed.chat.tsx":
+          'import { adminT } from "@/app/i18n/admin";\nt("chat.title"); t(`chat.status.${s}`);',
+        "src/app/i18n/admin.ts": 'import * as chat from "./admin/chat";',
+        "src/app/i18n/admin/chat.ts":
+          'export const ru = {\n  "chat.title": "Диалоги",\n  "chat.status.open": "открыт",\n};',
+      },
+      specs,
+    );
+    const s = select(["src/app/i18n/admin/chat.ts"], q);
+    expect(s.mode === "some" && s.specs).toEqual([...SMOKE, "tests/e2e/chat.spec.ts"].sort());
+    // Сам сборщик словаря по-прежнему общий.
+    expect(select(["src/app/i18n/admin.ts"], q).mode).toBe("all");
+  });
 });

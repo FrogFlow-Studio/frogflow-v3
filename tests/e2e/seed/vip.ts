@@ -4,7 +4,7 @@
  */
 import * as F from "../fixtures.ts";
 import type { StubDb } from "../pg-stub.ts";
-import { add, encrypt } from "./util.ts";
+import { add, encrypt, hash } from "./util.ts";
 
 const vip = <T extends object>(r: T) => ({ bot_id: F.VIP_SHOP_ID, ...r });
 
@@ -21,6 +21,7 @@ export function seedVip(db: StubDb, now: string) {
         default_locale: "ru",
         slug: "e2e-vip",
         telegram: { username: "e2e_vip_shop_bot", webhook_ok: true },
+        admin: { username: F.VIP_SELLER_LOGIN, password_hash: hash(F.VIP_SELLER_PASSWORD) },
         vip: {
           token_enc: encrypt(F.VIP_TOKEN, F.SECRETS_KEY),
           username: "e2e_vip_bot",

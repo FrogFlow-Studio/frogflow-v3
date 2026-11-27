@@ -17,6 +17,7 @@ import { Badge, Card, Empty, ErrorBox, Field, PageTitle, Switch, useAction } fro
 import { HelpTip } from "@/app/admin/help-panel";
 import { imagePath } from "@/core/catalog/image-url";
 import { uploadFile } from "@/app/admin/upload-client";
+import { activeMemberCount } from "@/core/vip/pure";
 
 export const Route = createFileRoute("/admin/_authed/vip")({
   beforeLoad: ({ context }) => {
@@ -579,6 +580,7 @@ function SubscribersCard({ state, t, locale }: { state: State; t: AdminT; locale
     void act.run({ id: s.id, action: "reject", note: n || undefined }).catch(() => {});
   };
   const pending = state.subscriptions.filter((s) => s.status === "pending_payment").length;
+  const activePaid = activeMemberCount(state.subscriptions);
   return (
     <Card
       title={t("vip.subs.title")}
@@ -590,6 +592,20 @@ function SubscribersCard({ state, t, locale }: { state: State; t: AdminT; locale
       }
       className="lg:col-span-2"
     >
+      <div className="mb-3 flex flex-wrap gap-2" data-testid="vip-member-counts">
+        {state.settings.groupId && state.bot.connected && (
+          <span title={t("vip.subs.inGroupHint")}>
+            <Badge tone={state.groupMembers === null ? "warn" : "neutral"}>
+              {state.groupMembers === null
+                ? t("vip.subs.inGroupUnknown")
+                : t("vip.subs.inGroup", { n: state.groupMembers })}
+            </Badge>
+          </span>
+        )}
+        <span title={t("vip.subs.activePaidHint")}>
+          <Badge tone="ok">{t("vip.subs.activePaid", { n: activePaid })}</Badge>
+        </span>
+      </div>
       <div className="mb-3 flex flex-wrap gap-2">
         <select className="input w-auto" value={status} onChange={(e) => setStatus(e.target.value)}>
           <option value="all">{t("vip.subs.filter.all")}</option>
