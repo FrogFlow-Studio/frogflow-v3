@@ -1,11 +1,11 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import type { RoleSession, TurnArgs } from "../agent/run";
-import { FACT_KEYS, rememberFact } from "../agent/conversation";
+import { conversationHistory, FACT_KEYS, rememberFact } from "../agent/conversation";
 import type { V4Db } from "../core/db";
 import { cantPay, handToSeller } from "../core/cases/cases";
 import { methodsFor } from "../core/money/money";
 import { issueCabinetLink } from "../core/access/access";
-import { createOffer } from "./offers";
+import { createOffer, type Offer, pressBuy } from "./offers";
 import { asLang, type BuyerLang, TEXTS } from "./texts";
 
 /**
@@ -58,6 +58,12 @@ export const SELLER_TOOLS: Anthropic.Tool[] = [
       { product_ids: { type: "array", items: { type: "string" }, minItems: 1, maxItems: 10 } },
       ["product_ids"],
     ),
+  },
+  {
+    name: "accept_offer",
+    description:
+      "Покупатель согласился на последнее показанное предложение («Да, оформляем», «беру», «+»): создать заказ по нему, как будто он нажал «Купить». Не для «да» на другой вопрос.",
+    input_schema: obj({}),
   },
   {
     name: "payment_methods",
@@ -164,6 +170,66 @@ export function offerLabel(lang: BuyerLang, titles: string[], total: string): st
     : `${TEXTS.buyAll[lang]} (${titles.length}) · ${total}`;
 }
 
+/** Инструменты, которые что-то меняют у магазина: в тени они только делают вид (H02). */
+const WRITE_TOOLS = new Set([
+  "cancel_order",
+  "cabinet_link",
+  "cant_pay",
+  "hand_to_seller",
+  "remember_fact",
+  "set_country",
+]);
+
+function shadowTool(s: RoleSession, t: SellerTurn, name: string, input: Record<string, unknown>) {
+  if (name === "hand_to_seller") {
+    s.handedOff = true;
+    s.buttons = [];
+    s.actions.push({ kind: "handoff", caseId: null, reason: str(input.kind) || "other" });
+  }
+  if (name === "set_country" && /^[A-Z]{2}$/u.test(str(input.country).toUpperCase()))
+    t.country = str(input.country).toUpperCase();
+  return { ok: true };
+}
+
+export type Accepted =
+  | { kind: "order"; orderId: string; orderNo: number; reused: boolean }
+  | { kind: "new_offer"; offer: Offer; was: "expired" | "price_changed" }
+  | { kind: "none"; reason: string };
+
+/**
+ * Согласие словами на последнее предложение (A06 «Да, оформляем», C14 «+»):
+ * то же, что нажатие кнопки последнего ответа бота. Кнопок несколько или их
+ * не было — не угадываем (G03).
+ */
+export async function acceptLastOffer(
+  db: V4Db,
+  a: TurnArgs,
+  opts: { strict?: boolean } = {},
+): Promise<Accepted> {
+  const hist = await conversationHistory(db, {
+    botId: a.botId,
+    buyerId: a.buyerId,
+    mode: a.mode,
+    limit: 20,
+  });
+  const bot = hist.filter((m) => m.direction === "out" && m.author === "bot");
+  // «+» — только на предложение в самом последнем ответе; «да, оформляем» словами —
+  // на последнее показанное, даже если после него бот ответил на вопрос о товаре (A12).
+  const last = opts.strict
+    ? bot.at(-1)
+    : bot.filter((m) => m.buttons.some((b) => b.offerId)).at(-1);
+  const offers = (last?.buttons ?? []).filter((b) => b.offerId);
+  if (offers.length !== 1) return { kind: "none", reason: offers.length ? "several" : "no_offer" };
+  const r = await pressBuy(db, {
+    botId: a.botId,
+    buyerId: a.buyerId,
+    offerId: offers[0]!.offerId!,
+    ...(a.now ? { now: a.now } : {}),
+  });
+  if (r.kind === "refused") return { kind: "none", reason: r.reason };
+  return r;
+}
+
 export async function runSellerTool(
   db: V4Db,
   s: RoleSession,
@@ -172,7 +238,45 @@ export async function runSellerTool(
   name: string,
   input: Record<string, unknown>,
 ): Promise<unknown> {
+  if (a.mode === "shadow" && WRITE_TOOLS.has(name)) return shadowTool(s, t, name, input);
   switch (name) {
+    case "accept_offer": {
+      const r = await acceptLastOffer(db, a);
+      if (r.kind === "order") {
+        s.allowedNumbers.push(r.orderNo);
+        s.actions.push({ kind: "order_created", orderId: r.orderId, orderNo: r.orderNo });
+        return {
+          ok: true,
+          order_no: r.orderNo,
+          note: "Заказ создан. Назови номер; как оплатить — система пришлёт отдельным сообщением.",
+        };
+      }
+      if (r.kind === "new_offer") {
+        const total = money(s, r.offer.totalMinor, r.offer.currency);
+        s.buttons.push({
+          offerId: r.offer.offerId,
+          label: offerLabel(
+            t.lang,
+            r.offer.items.map((i) => i.title),
+            total,
+          ),
+        });
+        return {
+          ok: false,
+          error:
+            r.was === "expired"
+              ? `Предложение устарело. Новое — ${total}, кнопка под ответом.`
+              : `Цена изменилась: теперь ${total}, кнопка под ответом.`,
+        };
+      }
+      return {
+        ok: false,
+        error:
+          r.reason === "several"
+            ? "Кнопок было несколько — спроси, какую."
+            : "Последнего предложения нет — сначала покажи товар через show_offer.",
+      };
+    }
     case "find_products": {
       const rows = await db.call("find_products", {
         p_bot_id: a.botId,
@@ -267,6 +371,16 @@ export async function runSellerTool(
       // Те же товары по той же цене дважды в одном ответе — одна кнопка.
       if (s.buttons.some((b) => b.label === label))
         return { ok: true, already_shown: true, note: "Эта кнопка уже под ответом." };
+      // Та же кнопка уже была в прошлом ответе (B02) — не повторяем, она у покупателя перед глазами.
+      const prev = (await conversationHistory(db, { ...a, limit: 20 }))
+        .filter((m) => m.direction === "out" && m.author === "bot")
+        .at(-1);
+      if (prev?.buttons.some((b) => b.label === label))
+        return {
+          ok: true,
+          already_shown: true,
+          note: "Эта кнопка уже есть в прошлом ответе — ответь на вопрос без новой кнопки.",
+        };
       s.buttons.push({ offerId: o.offerId, label });
       return {
         ok: true,

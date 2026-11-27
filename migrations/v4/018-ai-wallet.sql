@@ -113,7 +113,7 @@ $$;
 
 -- Бронь перед вызовом модели. Итог: {ok, hold_id} или {ok:false, reason}:
 -- wallet_empty — остатка не хватает на бронь; limit_day — дневной предел магазина.
--- Отказ по пустому кошельку открывает продавцу дело «ИИ кончился», одно в сутки.
+-- Отказ по пустому кошельку или дневному пределу открывает продавцу дело, одно в сутки на причину.
 create or replace function v4.ai_hold(
   p_bot_id uuid, p_amount_micro_usd bigint, p_purpose text, p_buyer_id uuid default null,
   p_daily_cap_micro_usd bigint default null, p_mode text default 'live', p_now timestamptz default now()
@@ -127,11 +127,14 @@ begin
     raise exception using errcode = 'P0001', message = 'v4:amount_not_positive';
   end if;
   w := v4.ai_wallet_lock(p_bot_id);
+  select timezone into tz from v4.shops where bot_id = p_bot_id;
   if p_daily_cap_micro_usd is not null and v4.ai_spent_today(p_bot_id, p_now) >= p_daily_cap_micro_usd then
+    -- Дневной предел: продавцу одно дело в сутки («ИИ сегодня потратил больше обычного»).
+    perform v4.open_case(p_bot_id, 'ai_limit', 'day:' || to_char(p_now at time zone tz, 'YYYY-MM-DD'),
+                         'ai', null, null, jsonb_build_object('cap_micro_usd', p_daily_cap_micro_usd), p_now);
     return jsonb_build_object('ok', false, 'reason', 'limit_day');
   end if;
   if w.balance_micro_usd < p_amount_micro_usd then
-    select timezone into tz from v4.shops where bot_id = p_bot_id;
     if w.empty_at is null then
       update v4.ai_wallet set empty_at = p_now, updated_at = p_now where bot_id = p_bot_id;
     end if;

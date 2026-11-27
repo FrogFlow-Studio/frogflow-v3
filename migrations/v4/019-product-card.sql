@@ -50,6 +50,16 @@ language sql immutable as $$
     'salom', 'rahmat', 'kerak', 'qancha', 'bormi', 'sotib'])
 $$;
 
+-- Опечатка в одной букве основы («Политра» ~ «Палитра»): только для слов от 6
+-- букв и только когда точного совпадения нет ни у одного товара.
+create or replace function v4.word_typo(p_text text, p_word text) returns boolean
+language sql immutable as $$
+  select length(p_word) >= 6 and p_word !~ '\d'
+    and lower(coalesce(p_text, '')) ~ ('(^|[^[:alnum:]])(' || (
+      select string_agg(left(v4.word_stem(p_word), i - 1) || '.' || substr(v4.word_stem(p_word), i + 1), '|')
+      from generate_series(1, 5) i) || ')')
+$$;
+
 -- Поиск товара для бота: по основе слов в названии, варианте, ключевых словах и
 -- описании, только то, что продаётся. Подпись прежняя (005).
 create or replace function v4.find_products(p_bot_id uuid, p_query text, p_limit integer default 8)
@@ -65,16 +75,21 @@ language sql stable as $$
           3 * (v4.word_matches(coalesce(par.title, p.title) || ' ' || coalesce(p.variant_label, ''), w))::int
         + 2 * (v4.word_matches(array_to_string(p.keywords || coalesce(par.keywords, '{}'), ' '), w))::int
         + 1 * (v4.word_matches(coalesce(p.description, par.description), w))::int)
-        from words), 0) as score
+        from words), 0) as score,
+      coalesce((select sum(
+          (v4.word_typo(coalesce(par.title, p.title) || ' ' || array_to_string(p.keywords || coalesce(par.keywords, '{}'), ' '), w))::int)
+        from words), 0) as typo
     from v4.products p
     left join v4.products par on par.id = p.parent_id
     where p.bot_id = p_bot_id and p.status = 'active' and coalesce(par.status, 'active') = 'active')
   select s.id, s.title, s.variant_label, s.kind,
     exists (select 1 from v4.products c where c.parent_id = s.id and c.status = 'active')
   from scored s
-  -- Пустой запрос — весь каталог; одни частые слова («добрый вечер») — ничего.
+  -- Пустой запрос — весь каталог; одни частые слова («добрый вечер») — ничего;
+  -- точных совпадений нет — с опечаткой в одной букве.
   where not exists (select 1 from said) or s.score > 0
-  order by s.score desc, s.parent_id nulls first, s.title, s.variant_label nulls first, s.id
+     or (s.typo > 0 and not exists (select 1 from scored x where x.score > 0))
+  order by s.score desc, s.typo desc, s.parent_id nulls first, s.title, s.variant_label nulls first, s.id
   limit greatest(1, least(p_limit, 20))
 $$;
 
@@ -130,10 +145,10 @@ end $$;
 
 grant update (description, keywords, photo_paths, pairs_with) on v4.products to tenant_bot;
 
-revoke all on function v4.word_stem(text), v4.word_matches(text, text), v4.search_stopword(text),
+revoke all on function v4.word_stem(text), v4.word_matches(text, text), v4.search_stopword(text), v4.word_typo(text, text),
   v4.product_details(uuid, uuid, text), v4.cancel_by_buyer(uuid, uuid, bigint)
   from public, anon, authenticated;
-grant execute on function v4.word_stem(text), v4.word_matches(text, text), v4.search_stopword(text),
+grant execute on function v4.word_stem(text), v4.word_matches(text, text), v4.search_stopword(text), v4.word_typo(text, text),
   v4.product_details(uuid, uuid, text), v4.cancel_by_buyer(uuid, uuid, bigint)
   to service_role, tenant_bot;
 

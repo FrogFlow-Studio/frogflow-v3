@@ -55,6 +55,8 @@ export type TurnArgs = {
   mode: AgentMode;
   channel: MessageChannel;
   now?: Date;
+  /** Откуда пришёл покупатель (пост, реклама): «Цена?» под постом про палитру — про палитру (C01). */
+  context?: string;
 };
 
 /** Изменяемое состояние одного ответа: что инструменты показали и сделали. */
@@ -104,6 +106,17 @@ export type AgentRole = {
     name: string,
     input: Record<string, unknown>,
   ): Promise<unknown>;
+  /**
+   * Ответ без модели, когда смысл однозначен («+» на предложение — заказ, C14).
+   * null — дальше обычный путь. Вызывается под ходом, до брони.
+   */
+  shortcut?(
+    db: V4Db,
+    s: RoleSession,
+    a: TurnArgs & { text: string; lang: CheckLang },
+  ): Promise<{ text: string } | null>;
+  /** Модель показала кнопку и не написала текста — заготовка на языке покупателя (G01). */
+  buttonOnlyText?(lang: CheckLang): string;
   /** Простой ответ без ИИ (кнопки кладёт в s.buttons). check_failed — роль передаёт продавцу. */
   fallback(
     db: V4Db,
@@ -144,11 +157,13 @@ export type AgentReply = {
 export type AgentResult =
   | {
       kind: "silent";
-      reason: "duplicate" | "blocked" | "handoff" | "ai_off" | "queued" | "unknown_buyer";
+      reason: "duplicate" | "blocked" | "handoff" | "ai_off" | "queued" | "unknown_buyer" | "emoji";
     }
   | { kind: "reply"; replies: AgentReply[] };
 
 const MAX_ROUNDS = 4;
+/** Длинное сообщение покупателя уходит модели обрезанным (G10); в журнале — целиком. */
+export const MODEL_MESSAGE_MAX = 4_000;
 const MAX_PASSES = 3;
 const DEFAULT_BUDGET_MS = 35_000;
 const BUSY_RETRY_MS = 1_500;
@@ -161,6 +176,7 @@ export async function runAgent(input: AgentInput): Promise<AgentResult> {
     mode,
     channel: input.channel,
     ...(input.now ? { now: input.now } : {}),
+    ...(input.context ? { context: input.context } : {}),
   };
   const incoming = await recordIncoming(db, {
     ...args,
@@ -174,6 +190,10 @@ export async function runAgent(input: AgentInput): Promise<AgentResult> {
   if (!state?.found) return { kind: "silent", reason: "unknown_buyer" };
   if (state.blocked) return { kind: "silent", reason: "blocked" };
   if (state.handoff) return { kind: "silent", reason: "handoff" };
+  // Реакция или одни смайлики (❤️, 👍) — не вопрос и не «да»: молчим, модель не зовём (C13).
+  // «+» — согласие (решение по Direct), его разбирает роль.
+  if (!/[\p{L}\p{N}]/u.test(input.text) && input.text.trim() !== "+")
+    return { kind: "silent", reason: "emoji" };
 
   const ctx = await input.role.loadContext(db, { ...args, text: input.text });
   if (!ctx.aiEnabled) return { kind: "silent", reason: "ai_off" };
@@ -184,19 +204,21 @@ export async function runAgent(input: AgentInput): Promise<AgentResult> {
 
   const replies: AgentReply[] = [];
   const deadline = Date.now() + (input.budgetMs ?? DEFAULT_BUDGET_MS);
-  let lastSeen = incoming.messageId;
+  // Последнее входящее, на которое уже ответили: модель видит весь журнал, так что
+  // сообщения, пришедшие до чтения истории, отвечены этим же ответом (D08).
+  const seen = { id: incoming.messageId };
   let text = input.text;
   try {
     for (let pass = 0; pass < MAX_PASSES; pass++) {
       const passCtx = pass === 0 ? ctx : await input.role.loadContext(db, { ...args, text });
-      replies.push(await answerOnce(input, args, passCtx, text, deadline));
-      const pending = await releaseTurn(db, { botId, buyerId, turnId, afterMessageId: lastSeen });
+      replies.push(await answerOnce(input, args, passCtx, text, deadline, seen));
+      const pending = await releaseTurn(db, { botId, buyerId, turnId, afterMessageId: seen.id });
       if (pending === 0) break;
       // За время хода пришли новые сообщения — отвечаем за них тем же ходом.
       const hist = await conversationHistory(db, { botId, buyerId, mode, limit: 20 });
-      const fresh = hist.filter((m) => m.direction === "in" && m.id > lastSeen);
+      const fresh = hist.filter((m) => m.direction === "in" && m.id > seen.id);
       if (!fresh.length) break;
-      lastSeen = fresh.at(-1)!.id;
+      seen.id = fresh.at(-1)!.id;
       text = fresh.map((m) => m.text).join("\n");
       if (Date.now() > deadline - 5_000) break;
     }
@@ -218,6 +240,7 @@ async function answerOnce(
   ctx: RoleContext,
   text: string,
   deadline: number,
+  seen: { id: number },
 ): Promise<AgentReply> {
   const { db, role, botId, buyerId, mode } = input;
   const s = newSession();
@@ -263,6 +286,19 @@ async function answerOnce(
     };
   };
 
+  // 4а. Однозначный ответ без модели («+» на предложение).
+  if (role.shortcut) {
+    const quick = await role.shortcut(db, s, { ...args, text, lang: ctx.lang });
+    if (quick)
+      return save({
+        text: quick.text,
+        source: "fallback",
+        reason: null,
+        cost: 0,
+        checkResult: null,
+      });
+  }
+
   // 5. Предел ответов ИИ покупателю в день (в тени не считаем: покупатель её не видит).
   if (mode !== "shadow" && !(await countAiReply(db, { botId, buyerId, ...nowArg })))
     return simple("limit_buyer");
@@ -295,6 +331,7 @@ async function answerOnce(
 
   try {
     const history = await conversationHistory(db, { botId, buyerId, mode, limit: 20 });
+    for (const m of history) if (m.direction === "in" && m.id > seen.id) seen.id = m.id;
     const messages = toModelMessages(history);
     const recentReplies = history.filter((m) => m.direction === "out").map((m) => m.text);
     const signal = AbortSignal.timeout(Math.max(1_000, deadline - Date.now()));
@@ -376,6 +413,7 @@ async function answerOnce(
     });
 
     let draft = texts.join("\n\n").trim();
+    if (!draft && s.buttons.length && role.buttonOnlyText) draft = role.buttonOnlyText(ctx.lang);
     let failure = checkReply(draft, checkCtx());
     if (failure) {
       // Одна попытка исправить: модель видит своё и конкретное замечание.
@@ -417,6 +455,8 @@ export function toModelMessages(history: HistoryMessage[]): Anthropic.MessagePar
   for (const m of history) {
     const role = m.direction === "in" ? "user" : "assistant";
     let content = m.direction === "in" ? maskContacts(m.text) : m.text;
+    if (m.direction === "in" && content.length > MODEL_MESSAGE_MAX)
+      content = `${content.slice(0, MODEL_MESSAGE_MAX)} [обрезано: сообщение длиннее ${MODEL_MESSAGE_MAX} знаков]`;
     if (m.direction === "out") {
       if (m.author === "seller") content = `[ответ продавца] ${content}`;
       if (m.buttons.length)
@@ -443,11 +483,22 @@ export function toModelMessages(history: HistoryMessage[]): Anthropic.MessagePar
 export function detectLang(text: string, fallback: CheckLang): CheckLang {
   const letters = text.match(/\p{L}/gu) ?? [];
   if (letters.length < 4) return fallback;
+  // Узбекский кириллицей: ў, ҳ или узбекские слова («нархи», «қанча»); қ без ў — казахский (F05).
+  if (/[ўҳ]/iu.test(text) || /(^|[^\p{L}])(нарх|қанча|керакми|борми|рахмат)/iu.test(text))
+    return "uz";
   if (/[әғқңөұүһі]/iu.test(text)) return "kk";
   const cyr = letters.filter((c) => /\p{Script=Cyrillic}/u.test(c)).length / letters.length;
+  // Казахский без казахских букв (с телефона без раскладки): «сатасызба», «керек», «саламатсыз» (F02).
+  if (
+    cyr > 0.5 &&
+    /(сатасыз|саламатсыз|сәлеметсіз|керек|бар ма|барма|қалай|рахмет|жиберіңіз|жибериз)/iu.test(text)
+  )
+    return "kk";
   if (cyr > 0.5) return fallback === "kk" && letters.length < 12 ? "kk" : "ru";
   if (
-    /[oOgG]['ʻ’‘`]|\b(salom|narx|qancha|kerak|rahmat|qanday|bormi|sotib|kitob|nima)\w*/iu.test(text)
+    /[oOgG]['ʻ’‘`]|\b(salom|assalomu|narx|qancha|kerak|rahmat|qanday|bormi|sotib|kitob|nima|siz\b|\w+misiz\b)\w*/iu.test(
+      text,
+    )
   )
     return "uz";
   return "en";

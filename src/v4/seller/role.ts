@@ -1,11 +1,12 @@
 import { serverFailure } from "@/lib/server-failure";
-import { conversationHistory } from "../agent/conversation";
+import { conversationHistory, rememberFact } from "../agent/conversation";
 import { type AgentRole, detectLang, type RoleSession, type TurnArgs } from "../agent/run";
 import type { V4Db } from "../core/db";
 import { handToSeller } from "../core/cases/cases";
 import { createOffer } from "./offers";
 import { buildSellerSystem, type Knowledge, parseProfile, profileText } from "./prompt";
 import {
+  acceptLastOffer,
   formatMoney,
   numbersIn,
   offerLabel,
@@ -57,6 +58,7 @@ type ContextRow = {
     money_state: string;
   }>;
   prices_minor: Array<number | string>;
+  auto_cap_micro_usd: number | string | null;
   payment_details: string[];
 };
 
@@ -87,6 +89,14 @@ const turnOf = (s: RoleSession, fallback: SellerTurn) => {
   return t;
 };
 
+/**
+ * Язык, на котором бот не отвечает (F07): кыргызские ң, ө, ү без казахских
+ * ә, ғ, қ, һ, і, ұ. Бот пишет по-русски и просит писать по-русски или по-казахски.
+ */
+export function isOtherLanguage(text: string): boolean {
+  return /[ңөү]/iu.test(text) && !/[әғқһіұ]/iu.test(text);
+}
+
 /** «Продавец ответит» — не чаще раза в 6 часов: покупатель не получает его на каждое сообщение. */
 export const HOLD_REPEAT_MS = 6 * 3_600_000;
 
@@ -103,8 +113,21 @@ export function sellerRole(): AgentRole {
       const c = await sellerContext(db, { ...a, query: a.text });
       const profile = parseProfile(c.profile);
       const features = c.features ?? {};
-      const lang = detectLang(a.text, asLang(c.language)) as BuyerLang;
+      const other = isOtherLanguage(a.text);
+      const lang = other ? "ru" : (detectLang(a.text, asLang(c.language)) as BuyerLang);
       base.set(key(a), { country: c.country, lang });
+      // Язык по сообщению запоминается (B05): следующий короткий ответ («да», «5 класс») — на нём же.
+      const said = other ? "other" : lang;
+      const letters = (a.text.match(/\p{L}/gu) ?? []).length;
+      if (a.mode !== "shadow" && letters >= 8 && (c.facts?.language ?? c.language) !== said)
+        await rememberFact(db, {
+          botId: a.botId,
+          buyerId: a.buyerId,
+          key: "language",
+          value: said,
+          source: "buyer",
+          ...(a.now ? { now: a.now } : {}),
+        });
       const shopText = [profileText(profile), ...c.knowledge.map((k) => k.answer)].join("\n");
       const units = (m: number | string) => Number(m) / 100;
       return {
@@ -124,11 +147,18 @@ export function sellerRole(): AgentRole {
             ),
             localTime: c.local_time,
             weekday: Number(c.weekday),
+            ...(a.context ? { context: a.context } : {}),
+            otherLanguage: other,
           },
           lang,
         }),
+        // Предел дня: из флажков, иначе 3 средних дня магазина (E06).
         dailyCapMicroUsd:
-          typeof features.daily_cap_micro_usd === "number" ? features.daily_cap_micro_usd : null,
+          typeof features.daily_cap_micro_usd === "number"
+            ? features.daily_cap_micro_usd
+            : c.auto_cap_micro_usd == null
+              ? null
+              : Number(c.auto_cap_micro_usd),
         ...(features.max_chars ? { maxChars: features.max_chars } : {}),
         promptVariant: features.prompt_variant ?? null,
         check: {
@@ -149,6 +179,30 @@ export function sellerRole(): AgentRole {
       };
     },
 
+    async shortcut(db, s, a) {
+      if (a.text.trim() !== "+") return null;
+      const lang = asLang(a.lang);
+      const r = await acceptLastOffer(db, a, { strict: true });
+      if (r.kind === "order") {
+        s.actions.push({ kind: "order_created", orderId: r.orderId, orderNo: r.orderNo });
+        return { text: TEXTS.ordered[lang].replace("{no}", String(r.orderNo)) };
+      }
+      if (r.kind === "new_offer") {
+        s.buttons.push({
+          offerId: r.offer.offerId,
+          label: offerLabel(
+            lang,
+            r.offer.items.map((i) => i.title),
+            formatMoney(r.offer.totalMinor, r.offer.currency),
+          ),
+        });
+        return { text: TEXTS.newPrice[lang] };
+      }
+      return null;
+    },
+
+    buttonOnlyText: (lang) => TEXTS.tapBuy[asLang(lang)],
+
     runTool(db, s, a, name, input) {
       const t = turnOf(s, base.get(key(a)) ?? { country: null, lang: "ru" });
       return runSellerTool(db, s, a, t, name, input);
@@ -162,6 +216,7 @@ export function sellerRole(): AgentRole {
       const note = parseProfile(c.profile).work_hours_note;
       const withNote = (t: string) => (note ? `${t} ${note}` : t);
 
+      if (reason === "check_failed" && a.mode === "shadow") return { text: TEXTS.handedOff[lang] };
       if (reason === "check_failed") {
         // Модель дважды написала то, что нельзя отправить: вопрос — продавцу.
         const caseId = await handToSeller(db, {

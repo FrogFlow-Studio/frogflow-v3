@@ -187,9 +187,10 @@ begin
   if p_key not in ('language', 'country', 'name', 'looking_for', 'grade', 'subject', 'for_whom', 'notes') then
     return 'bad_key';
   end if;
-  maxlen := case p_key when 'name' then 40 when 'subject' then 60 when 'language' then 2 when 'country' then 2 else 100 end;
+  maxlen := case p_key when 'name' then 40 when 'subject' then 60 when 'language' then 5 when 'country' then 2 else 100 end;
   if v = '' or length(v) > maxlen then return 'bad_value'; end if;
-  if p_key = 'language' and v not in ('ru', 'kk', 'en', 'uz') then return 'bad_value'; end if;
+  -- other — язык, на котором бот не отвечает (кыргызский и т. п.): бот пишет по-русски и просит ru/kk.
+  if p_key = 'language' and v not in ('ru', 'kk', 'en', 'uz', 'other') then return 'bad_value'; end if;
   if p_key = 'country' then
     v := upper(v);
     if not exists (select 1 from v4.country_currency where country = v) then return 'bad_value'; end if;
@@ -207,7 +208,7 @@ begin
   values (p_bot_id, p_buyer_id, p_key, v, p_source, p_now)
   on conflict (bot_id, buyer_id, key) do update set value = excluded.value, source = excluded.source,
     updated_at = excluded.updated_at;
-  if p_key = 'language' then
+  if p_key = 'language' and v <> 'other' then
     update v4.buyers set language = v where bot_id = p_bot_id and id = p_buyer_id;
   elsif p_key = 'country' then
     update v4.buyers set country = v where bot_id = p_bot_id and id = p_buyer_id;

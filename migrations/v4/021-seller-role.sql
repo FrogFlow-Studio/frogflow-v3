@@ -118,6 +118,21 @@ begin
   return v4.ai_room_micro_usd(p_bot_id, p_now);
 end $$;
 
+-- Дневной предел по умолчанию (E06): три средних дня магазина за последние 14
+-- (дни с расходом, не меньше 3 таких дней), но не меньше 1 доллара. Меньше
+-- истории — предела нет. Флажок daily_cap_micro_usd его заменяет.
+create or replace function v4.ai_auto_cap(p_bot_id uuid, p_now timestamptz default now())
+returns bigint language sql stable as $$
+  select case when count(*) >= 3 then greatest(1000000, (3 * avg(d.total))::bigint) end
+  from (
+    select (l.created_at at time zone s.timezone)::date as d_day, sum(l.total_micro_usd) as total
+    from v4.ai_ledger l join v4.shops s on s.bot_id = l.bot_id
+    where l.bot_id = p_bot_id and l.kind = 'settle' and l.mode = 'live'
+      and (l.created_at at time zone s.timezone)::date between (p_now at time zone s.timezone)::date - 14
+                                                          and (p_now at time zone s.timezone)::date - 1
+    group by 1) d
+$$;
+
 -- ── контекст роли «продавец» ──────────────────────────────────────────────
 create or replace function v4.seller_context_v2(
   p_bot_id uuid, p_buyer_id uuid, p_query text default '', p_now timestamptz default now()
@@ -140,6 +155,7 @@ create or replace function v4.seller_context_v2(
     'weekday', extract(isodow from p_now at time zone s.timezone)::int,
     'base_currency', s.base_currency,
     'wallet_micro_usd', v4.ai_room_micro_usd(s.bot_id, p_now),
+    'auto_cap_micro_usd', v4.ai_auto_cap(s.bot_id, p_now),
     'country', (select country from b),
     'language', coalesce((select language from b), 'ru'),
     'facts', coalesce((select jsonb_object_agg(f.key, f.value) from v4.buyer_facts f
@@ -185,11 +201,11 @@ grant update (needs_review) on v4.knowledge to tenant_bot;
 
 revoke all on function v4.ai_features_valid(jsonb), v4.save_ai_features(uuid, jsonb, integer),
   v4.knowledge_risky(text), v4.review_knowledge(uuid, uuid, boolean),
-  v4.seller_context_v2(uuid, uuid, text, timestamptz), v4.offer_products(uuid, uuid, text)
+  v4.seller_context_v2(uuid, uuid, text, timestamptz), v4.offer_products(uuid, uuid, text), v4.ai_auto_cap(uuid, timestamptz)
   from public, anon, authenticated;
 grant execute on function v4.ai_features_valid(jsonb), v4.save_ai_features(uuid, jsonb, integer),
   v4.knowledge_risky(text), v4.review_knowledge(uuid, uuid, boolean),
-  v4.seller_context_v2(uuid, uuid, text, timestamptz), v4.offer_products(uuid, uuid, text)
+  v4.seller_context_v2(uuid, uuid, text, timestamptz), v4.offer_products(uuid, uuid, text), v4.ai_auto_cap(uuid, timestamptz)
   to service_role, tenant_bot;
 
 -- Проверка (должно вернуть 2 колонки магазина и 1 колонку знаний):
