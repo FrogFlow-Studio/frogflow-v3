@@ -49,3 +49,32 @@ export function vipGroupApi(api: TelegramApi): VipGroup {
     },
   };
 }
+
+/** Счётчик — подсказка на странице: дольше ждать Telegram страница не будет. */
+export const MEMBER_COUNT_BUDGET_MS = 5_000;
+
+/**
+ * Сколько людей в группе по Telegram (getChatMemberCount): вместе с админами
+ * и ботами. null — Telegram не ответил за MEMBER_COUNT_BUDGET_MS или бот не
+ * в группе: «не удалось узнать», а не ноль.
+ */
+export async function vipGroupMemberCount(
+  api: TelegramApi,
+  groupId: string,
+  budgetMs = MEMBER_COUNT_BUDGET_MS,
+): Promise<number | null> {
+  if (!groupId) return null;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const late = new Promise<null>((resolve) => {
+    timer = setTimeout(() => resolve(null), budgetMs);
+  });
+  const count = api
+    .call<number>("getChatMemberCount", { chat_id: groupId })
+    .then((r) => (r.ok && typeof r.result === "number" ? r.result : null))
+    .catch(() => null);
+  try {
+    return await Promise.race([count, late]);
+  } finally {
+    clearTimeout(timer);
+  }
+}

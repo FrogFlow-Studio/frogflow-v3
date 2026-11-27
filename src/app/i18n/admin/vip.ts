@@ -92,6 +92,13 @@ export const ru = {
   "vip.subs.extendPrompt": "На сколько дней изменить срок? Отрицательное число — сократить.",
   "vip.subs.rejectPrompt": "Причина отказа (покупатель увидит её):",
   "vip.subs.pendingCount": "{n} ждут подтверждения",
+  "vip.subs.inGroup": "В группе: {n}",
+  "vip.subs.inGroupUnknown": "В группе: — (Telegram не ответил или бот не в группе)",
+  "vip.subs.inGroupHint":
+    "Сколько людей сейчас в группе по данным Telegram, вместе с админами и ботами.",
+  "vip.subs.activePaid": "С действующей подпиской: {n}",
+  "vip.subs.activePaidHint":
+    "Люди со статусом «Активна», у которых срок ещё не вышел. Каждый считается один раз.",
   "vip.subs.filter.all": "Все статусы",
   "vip.subs.filter.pending": "Ждут оплаты",
   "vip.subs.filter.active": "Активные",
@@ -213,6 +220,13 @@ export const kk: SectionDict<typeof ru> = {
   "vip.subs.extendPrompt": "Мерзімді неше күнге өзгертеміз? Теріс сан — қысқарту.",
   "vip.subs.rejectPrompt": "Бас тарту себебі (сатып алушы оны көреді):",
   "vip.subs.pendingCount": "{n} растауды күтуде",
+  "vip.subs.inGroup": "Топта: {n}",
+  "vip.subs.inGroupUnknown": "Топта: — (Telegram жауап бермеді немесе бот топта жоқ)",
+  "vip.subs.inGroupHint":
+    "Telegram деректері бойынша топта қазір қанша адам бар, әкімшілер мен боттарды қоса.",
+  "vip.subs.activePaid": "Жазылымы жарамды: {n}",
+  "vip.subs.activePaidHint":
+    "Мәртебесі «Белсенді» және мерзімі әлі өтпеген адамдар. Әркім бір рет саналады.",
   "vip.subs.filter.all": "Барлық мәртебелер",
   "vip.subs.filter.pending": "Төлем күтуде",
   "vip.subs.filter.active": "Белсенділер",
@@ -335,6 +349,14 @@ export const en: SectionDict<typeof ru> = {
   "vip.subs.extendPrompt": "By how many days to change the term? A negative number shortens it.",
   "vip.subs.rejectPrompt": "Rejection reason (the customer will see it):",
   "vip.subs.pendingCount": "{n} awaiting confirmation",
+  "vip.subs.inGroup": "In the group: {n}",
+  "vip.subs.inGroupUnknown":
+    "In the group: — (Telegram did not answer or the bot is not in the group)",
+  "vip.subs.inGroupHint":
+    "How many people are in the group right now according to Telegram, including admins and bots.",
+  "vip.subs.activePaid": "With an active subscription: {n}",
+  "vip.subs.activePaidHint":
+    "People with the “Active” status whose term has not ended yet. Each person is counted once.",
   "vip.subs.filter.all": "All statuses",
   "vip.subs.filter.pending": "Awaiting payment",
   "vip.subs.filter.active": "Active",
@@ -456,6 +478,13 @@ export const uz: SectionDict<typeof ru> = {
   "vip.subs.extendPrompt": "Muddatni necha kunga o‘zgartiramiz? Manfiy son — qisqartirish.",
   "vip.subs.rejectPrompt": "Rad etish sababi (xaridor uni ko‘radi):",
   "vip.subs.pendingCount": "{n} ta tasdiq kutmoqda",
+  "vip.subs.inGroup": "Guruhda: {n}",
+  "vip.subs.inGroupUnknown": "Guruhda: — (Telegram javob bermadi yoki bot guruhda emas)",
+  "vip.subs.inGroupHint":
+    "Telegram maʼlumotiga ko‘ra hozir guruhda nechta odam bor, adminlar va botlar bilan birga.",
+  "vip.subs.activePaid": "Amaldagi obuna bilan: {n}",
+  "vip.subs.activePaidHint":
+    "«Faol» maqomidagi, muddati hali tugamagan odamlar. Har biri bir marta sanaladi.",
   "vip.subs.filter.all": "Barcha holatlar",
   "vip.subs.filter.pending": "To‘lov kutilmoqda",
   "vip.subs.filter.active": "Faollar",

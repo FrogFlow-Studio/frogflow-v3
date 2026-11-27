@@ -150,3 +150,18 @@ export function formatDateTime(value: string | Date, timeZone: string): string {
     minute: "2-digit",
   });
 }
+
+/**
+ * Сколько людей с действующим оплаченным доступом: статус active и срок ещё
+ * не вышел; один человек с несколькими подписками считается один раз.
+ */
+export function activeMemberCount(
+  subs: readonly { telegram_id: number; status: string; expires_at: string | null }[],
+  now: number = Date.now(),
+): number {
+  const ids = new Set<number>();
+  for (const s of subs)
+    if (s.status === "active" && s.expires_at && new Date(s.expires_at).getTime() > now)
+      ids.add(s.telegram_id);
+  return ids.size;
+}
