@@ -1,4 +1,6 @@
 -- Откат v4/017: журнал сообщений, память о покупателе, ход, предел ответов, блок.
+drop function if exists v4.agent_buyer_state(uuid, uuid);
+drop function if exists v4.ai_log_usage(uuid, text, text, integer, integer, bigint, uuid, timestamptz);
 drop function if exists v4.record_incoming(uuid, uuid, text, text, text, text, timestamptz);
 drop function if exists v4.take_turn(uuid, uuid, uuid, integer, timestamptz);
 drop function if exists v4.release_turn(uuid, uuid, uuid, bigint);

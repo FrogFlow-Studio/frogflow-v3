@@ -113,6 +113,9 @@ create or replace function v4.release_turn(
 declare
   pending bigint;
 begin
+  -- Блокировка строки покупателя: take_turn нового сообщения ждёт, пока мы не
+  -- решим, отпускать ли ход, — сообщение не потеряется между подсчётом и отпуском.
+  perform 1 from v4.buyers where bot_id = p_bot_id and id = p_buyer_id for update;
   select count(*) into pending from v4.messages m
   where m.bot_id = p_bot_id and m.buyer_id = p_buyer_id and m.direction = 'in' and m.id > p_after_message_id;
   if pending = 0 then
@@ -228,6 +231,28 @@ returns boolean language sql as $$
   select exists (select 1 from b)
 $$;
 
+-- Можно ли боту отвечать покупателю: блок и «диалог у продавца» одним вызовом.
+create or replace function v4.agent_buyer_state(p_bot_id uuid, p_buyer_id uuid)
+returns jsonb language sql stable as $$
+  select jsonb_build_object(
+    'found', true,
+    'blocked', b.blocked_at is not null,
+    'handoff', not v4.bot_may_reply(p_bot_id, p_buyer_id),
+    'language', b.language,
+    'country', b.country)
+  from v4.buyers b where b.bot_id = p_bot_id and b.id = p_buyer_id
+$$;
+
+-- Журнал токенов (ai_usage) без месячного лимита тарифа: деньги считает кошелёк (018).
+create or replace function v4.ai_log_usage(
+  p_bot_id uuid, p_purpose text, p_model text, p_input integer, p_output integer,
+  p_cost_micro_usd bigint, p_buyer_id uuid default null, p_now timestamptz default now()
+) returns void language sql as $$
+  insert into v4.ai_usage (bot_id, purpose, model, input_tokens, output_tokens, cost_micro_usd, buyer_id, created_at)
+  values (p_bot_id, p_purpose, p_model, greatest(p_input, 0), greatest(p_output, 0), greatest(p_cost_micro_usd, 0),
+          p_buyer_id, p_now)
+$$;
+
 -- ── права ──────────────────────────────────────────────────────────────────
 alter table v4.messages enable row level security;
 alter table v4.buyer_facts enable row level security;
@@ -243,7 +268,9 @@ grant select, insert, update on v4.buyer_facts to tenant_bot;
 grant update (blocked_at, blocked_by, turn_id, turn_until, ai_replies_day, ai_replies_date, language, country)
   on v4.buyers to tenant_bot;
 
-revoke all on function v4.record_incoming(uuid, uuid, text, text, text, text, timestamptz),
+revoke all on function v4.agent_buyer_state(uuid, uuid),
+  v4.ai_log_usage(uuid, text, text, integer, integer, bigint, uuid, timestamptz),
+  v4.record_incoming(uuid, uuid, text, text, text, text, timestamptz),
   v4.take_turn(uuid, uuid, uuid, integer, timestamptz), v4.release_turn(uuid, uuid, uuid, bigint),
   v4.count_ai_reply(uuid, uuid, integer, timestamptz),
   v4.record_reply(uuid, uuid, text, text, jsonb, jsonb, text, text, text, bigint, text, text, text, timestamptz),
@@ -251,7 +278,9 @@ revoke all on function v4.record_incoming(uuid, uuid, text, text, text, text, ti
   v4.remember_fact(uuid, uuid, text, text, text, timestamptz),
   v4.block_buyer(uuid, uuid, text, timestamptz), v4.unblock_buyer(uuid, uuid)
   from public, anon, authenticated;
-grant execute on function v4.record_incoming(uuid, uuid, text, text, text, text, timestamptz),
+grant execute on function v4.agent_buyer_state(uuid, uuid),
+  v4.ai_log_usage(uuid, text, text, integer, integer, bigint, uuid, timestamptz),
+  v4.record_incoming(uuid, uuid, text, text, text, text, timestamptz),
   v4.take_turn(uuid, uuid, uuid, integer, timestamptz), v4.release_turn(uuid, uuid, uuid, bigint),
   v4.count_ai_reply(uuid, uuid, integer, timestamptz),
   v4.record_reply(uuid, uuid, text, text, jsonb, jsonb, text, text, text, bigint, text, text, text, timestamptz),
