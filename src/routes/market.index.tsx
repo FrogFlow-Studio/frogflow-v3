@@ -39,7 +39,7 @@ export const Route = createFileRoute("/market/")({
         { title: t("meta.title") },
         { name: "description", content: t("meta.description") },
         // Пустой список («магазинов нет») — не для поиска, иначе «ложная 404».
-        ...(loaderData ? marketIndexRobots(loaderData.shops.length) : []),
+        ...(loaderData ? marketIndexRobots(loaderData.ready ? loaderData.shops.length : 0) : []),
       ],
       // Фильтры и постраничный показ — та же страница: canonical без них, только язык (В10).
       links: marketHeadLinks("/market", match.search.lang ?? "ru"),
