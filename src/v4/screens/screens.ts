@@ -154,6 +154,16 @@ export const CASE_CARDS: Record<
     primary: "reply_buyer",
     secondary: "close_case",
   },
+  ai_markup: {
+    title: {
+      ru: "Наценка ИИ не читается — списано по запасному значению",
+      kk: "ЖИ үстемесі оқылмайды — қосалқы мәнмен есептелді",
+      en: "AI markup can't be read — charged at the fallback rate",
+      uz: "SI ustamasi o'qilmayapti — zaxira qiymat bo'yicha hisoblandi",
+    },
+    primary: "close_case",
+    secondary: "close_case",
+  },
 };
 
 export const ACTION_LABELS: Record<CaseAction, L> = {
