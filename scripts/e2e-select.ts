@@ -43,6 +43,27 @@ export const WIDE = 25;
 /** Серверная логика без разметки: широкий модуль отсюда не тянет за собой все e2e. */
 export const BACKEND = /^src\/(core|channels|lib|config|db)\/.*\.ts$/;
 
+/** Раздел словаря панели или витрины: только строки, без кода (`src/app/i18n/admin/vip.ts`). */
+export const I18N_SECTION = /^src\/app\/i18n\/[^/]+\/[^/]+\.ts$/;
+
+/**
+ * Где показывают строки раздела словаря: файлы `src`, в которых встречается его префикс
+ * ключа (`"vip.subs.` или `` `vip.status.${…}` ``). Словарь импортируют все страницы панели,
+ * поэтому цепочка импортов назвала бы «все e2e» на любую новую подпись; полноту переводов
+ * проверяют сканирующие тесты precheck.
+ */
+export function i18nSectionUsers(file: string, p: Project): string[] {
+  const prefixes = new Set<string>();
+  for (const m of p.read(file).matchAll(/^\s*["']([a-z][\w-]*\.[\w-]+)[.\w-]*["']\s*:/gim))
+    prefixes.add(m[1]!);
+  if (!prefixes.size) return [];
+  const esc = (x: string) => x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const re = new RegExp(`["'\`](?:${[...prefixes].map(esc).join("|")})[."'\`$]`);
+  return [...p.sources]
+    .filter(([f, text]) => !f.startsWith("src/app/i18n/") && re.test(text))
+    .map(([f]) => f);
+}
+
 const WILD = String.raw`(?:\$\{[^}]*\}|[A-Za-z0-9_-]+)`;
 const END = String.raw`(?=["'\`?#$)\\]|$)`;
 
@@ -180,6 +201,21 @@ export function select(changed: string[], p: Project): Selection {
     code = true;
     rev ??= reverseImports(p.sources, p.exists);
     const reached = routesReaching(f, rev);
+    if (I18N_SECTION.test(f) && reached.size > WIDE) {
+      // Подпись видна только там, где её ключ, а не на всех страницах, что тянут словарь.
+      const users = i18nSectionUsers(f, p);
+      const shown = new Set<string>();
+      for (const u of users) for (const r of routesReaching(u, rev)) shown.add(r);
+      if (users.length && shown.size <= WIDE) {
+        for (const r of shown) {
+          if (isLayout(r, routes)) return { mode: "all", reason: `${f}: подпись в раскладке ${r}` };
+          const re = routePattern(r);
+          for (const [spec, text] of p.specs) if (re.test(text)) picked.add(spec);
+        }
+        why.push(`${f} — строки раздела → ${shown.size} маршр.`);
+        continue;
+      }
+    }
     if (reached.size > WIDE) {
       // Логика сервера (ядро, каналы, lib) доходит почти до всех страниц через серверные
       // функции; её проверяют unit-тесты precheck, а страницы — дымовой набор и ежедневный прогон.

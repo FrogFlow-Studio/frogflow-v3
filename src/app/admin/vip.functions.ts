@@ -23,18 +23,39 @@ async function groupOf(ctx: TenantContext) {
   return vipGroupApi(vipTelegramApi(ctx));
 }
 
+/** Число людей в группе по Telegram; сбой Telegram не роняет страницу — null. */
+async function groupMemberCount(ctx: TenantContext, groupId: string): Promise<number | null> {
+  if (!groupId) return null;
+  try {
+    const { vipTelegramApi } = await import("@/channels/telegram/vip/handle");
+    const { vipGroupMemberCount } = await import("@/channels/telegram/vip/group");
+    return await vipGroupMemberCount(vipTelegramApi(ctx), groupId);
+  } catch (e) {
+    console.error("[vip] число участников группы", e);
+    return null;
+  }
+}
+
 export const vipStateFn = createServerFn({ method: "GET" }).handler(async () => {
   const ctx = await vip();
   const core = await import("@/core/vip/vip");
   const { receiptOcrAutoEnabled } = await import("@/core/receipts/verify.server");
-  const [settings, tariffs, subscriptions, autoCheckReady] = await Promise.all([
-    core.vipSettings(ctx),
+  const settingsP = core.vipSettings(ctx);
+  // Telegram спрашиваем параллельно с базой; у счётчика свой предел ожидания.
+  const membersP = ctx.tenant.settings.vip?.token_enc
+    ? settingsP.then((s) => groupMemberCount(ctx, s.groupId))
+    : Promise.resolve(null);
+  const [settings, tariffs, subscriptions, autoCheckReady, groupMembers] = await Promise.all([
+    settingsP,
     core.listTariffs(ctx),
     core.listSubscriptions(ctx),
     receiptOcrAutoEnabled(ctx),
+    membersP,
   ]);
   const v = ctx.tenant.settings.vip;
   return {
+    /** Людей в группе по Telegram (с админами и ботами); null — не удалось узнать. */
+    groupMembers,
     bot: {
       connected: Boolean(v?.token_enc),
       username: v?.username ?? null,
