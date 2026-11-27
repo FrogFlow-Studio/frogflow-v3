@@ -4,7 +4,7 @@ import type { SectionDict } from "../section";
 export const ru = {
   "aiBalance.title": "ИИ-баланс",
   "aiBalance.subtitle":
-    "ИИ-консультант, помощник по текстам, умный поиск и распознавание чеков тратят этот баланс по цене API. Когда он кончится, ИИ остановится: диалоги уйдут менеджеру, чеки будете проверять вы.",
+    "ИИ-консультант, помощник по текстам, умный поиск и распознавание чеков тратят этот баланс за каждый вызов модели. Когда он кончится, ИИ остановится: диалоги уйдут менеджеру, чеки будете проверять вы.",
   "aiBalance.left": "Осталось",
   "aiBalance.notStarted": "Стартовые {amount} начислятся при первом обращении к ИИ.",
   "aiBalance.low": "почти закончился",
@@ -42,7 +42,7 @@ export const ru = {
 export const kk: SectionDict<typeof ru> = {
   "aiBalance.title": "ЖИ-баланс",
   "aiBalance.subtitle":
-    "ЖИ-кеңесші, мәтін көмекшісі, ақылды іздеу және чектерді тану осы балансты API бағасымен жұмсайды. Баланс біткенде ЖИ тоқтайды: диалогтар менеджерге өтеді, чектерді өзіңіз тексересіз.",
+    "ЖИ-кеңесші, мәтін көмекшісі, ақылды іздеу және чектерді тану осы балансты модельге әр сұрау үшін жұмсайды. Баланс біткенде ЖИ тоқтайды: диалогтар менеджерге өтеді, чектерді өзіңіз тексересіз.",
   "aiBalance.left": "Қалды",
   "aiBalance.notStarted": "Бастапқы {amount} ЖИ-ге алғаш жүгінгенде есептеледі.",
   "aiBalance.low": "таусылуға жақын",
@@ -80,7 +80,7 @@ export const kk: SectionDict<typeof ru> = {
 export const en: SectionDict<typeof ru> = {
   "aiBalance.title": "AI balance",
   "aiBalance.subtitle":
-    "The AI consultant, the text assistant, smart search and receipt recognition spend this balance at API prices. When it runs out, AI stops: dialogs go to a manager and you check receipts yourself.",
+    "The AI consultant, the text assistant, smart search and receipt recognition spend this balance on every model call. When it runs out, AI stops: dialogs go to a manager and you check receipts yourself.",
   "aiBalance.left": "Remaining",
   "aiBalance.notStarted": "The starting {amount} is credited on the first AI request.",
   "aiBalance.low": "almost empty",
@@ -118,7 +118,7 @@ export const en: SectionDict<typeof ru> = {
 export const uz: SectionDict<typeof ru> = {
   "aiBalance.title": "SI balansi",
   "aiBalance.subtitle":
-    "SI-maslahatchi, matn yordamchisi, aqlli qidiruv va cheklarni tanish bu balansni API narxida sarflaydi. Balans tugasa, SI to‘xtaydi: dialoglar menejerga o‘tadi, cheklarni o‘zingiz tekshirasiz.",
+    "SI-maslahatchi, matn yordamchisi, aqlli qidiruv va cheklarni tanish bu balansni har bir model chaqiruvi uchun sarflaydi. Balans tugasa, SI to‘xtaydi: dialoglar menejerga o‘tadi, cheklarni o‘zingiz tekshirasiz.",
   "aiBalance.left": "Qoldi",
   "aiBalance.notStarted": "Boshlang‘ich {amount} SI’ga birinchi murojaatda beriladi.",
   "aiBalance.low": "tugab qolmoqda",
