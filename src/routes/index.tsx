@@ -9,10 +9,11 @@ import { landingT } from "@/app/i18n/landing";
 import { homeT } from "@/app/i18n/home";
 import { BRAND } from "@/app/landing/brand";
 import { OG_LOCALE, SITE_URL, TRIAL_DAYS, landingUrl } from "@/app/landing/config";
-import { LANDING_FONT_LINKS, Pricing, Steps } from "@/app/landing/sections";
+import { LANDING_FONT_LINKS, Pricing } from "@/app/landing/sections";
 import {
   Compare,
   Features,
+  Flow,
   Hero,
   HomeFaq,
   HomeFinal,
@@ -21,6 +22,7 @@ import {
   HomeTitle,
   Payments,
   Proof,
+  Segments,
   StickyCta,
   useStickyCta,
   WRAP,
@@ -53,7 +55,7 @@ export const Route = createFileRoute("/")({
       meta: [
         { title },
         { name: "description", content: description },
-        { name: "theme-color", content: "#05080b" },
+        { name: "theme-color", content: "#f7f8f4" },
         { property: "og:title", content: title },
         { property: "og:description", content: description },
         { property: "og:type", content: "website" },
@@ -118,15 +120,16 @@ function Landing() {
   const sticky = useStickyCta(heroCta, finalRef);
 
   return (
-    <div className="theme-night theme-enveriq flex min-h-screen flex-col bg-bg text-fg">
+    <div className="theme-enveriq flex min-h-screen flex-col bg-bg text-fg">
       <HomeHeader {...p} />
       <main>
         <Hero {...p} ctaRef={heroCta} />
         <Proof {...p} />
+        <Flow {...p} />
         <Features {...p} />
         <Payments {...p} />
-        <Steps t={p.lt} wrap={WRAP} Title={HomeTitle} />
         <Compare {...p} />
+        <Segments {...p} />
         <Pricing t={p.lt} signup={signup} wrap={WRAP} Title={HomeTitle} />
         <HomeFaq {...p} />
         <div ref={finalRef}>

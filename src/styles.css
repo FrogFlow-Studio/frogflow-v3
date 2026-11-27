@@ -292,21 +292,99 @@ body {
 }
 
 /*
- * Главная под брендом Enveriq: лайм логотипа и тонкая сетка на фоне первого
- * экрана. Ниши и статьи остаются в «Ночном пруде» FrogFlow.
+ * Главная под брендом Enveriq: светлая тема, чернила логотипа (#0d0f0e) и его
+ * лайм (#8ccf2e). Лайм — только заливка (кнопки, метки), текст-акцент —
+ * тёмный лайм, чтобы держать контраст на белом. Ниши и статьи остаются в
+ * «Ночном пруде» FrogFlow.
  */
 .theme-enveriq {
+  --bg: #f7f8f4;
+  --surface: #ffffff;
+  --surface-2: #eef1e8;
+  --fg: #0d0f0e;
+  --muted: #565e59;
+  --line: #e1e5da;
   --accent: #8ccf2e;
-  --ok: #8ccf2e;
-  --night-lime-hi: #a8e256;
-  --night-lime-deep: #4c8a1a;
-  --night-moss: #15240b;
+  --accent-fg: #0d0f0e;
+  --ok: #3f7a12;
+  --warn: #b7791f;
+  --lime: #8ccf2e;
+  --lime-ink: #3a6e0c;
+  --lime-soft: #eaf6d6;
+  --ink: #0d0f0e;
+  --ink-2: #161a18;
+  --ink-line: #262c29;
+  --ink-muted: #a7b0aa;
+  color-scheme: light;
+  font-family: "Onest", var(--font-sans);
 }
-.enveriq-grid {
-  background-image:
-    linear-gradient(to right, rgb(255 255 255 / 0.035) 1px, transparent 1px),
-    linear-gradient(to bottom, rgb(255 255 255 / 0.035) 1px, transparent 1px);
-  background-size: 48px 48px;
-  -webkit-mask-image: radial-gradient(80% 70% at 70% 30%, #000 0%, transparent 75%);
-  mask-image: radial-gradient(80% 70% at 70% 30%, #000 0%, transparent 75%);
+.theme-enveriq .font-display {
+  font-family: "Exo 2", "Onest", var(--font-sans);
+  font-style: italic;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+}
+/* Акцентный текст из общих блоков (галочки тарифов) — тёмным лаймом. */
+.theme-enveriq .text-accent {
+  color: var(--lime-ink);
+}
+.theme-enveriq .btn-primary,
+.theme-enveriq .btn-secondary {
+  border-radius: 9999px;
+  font-weight: 600;
+}
+.theme-enveriq .btn-primary {
+  box-shadow:
+    inset 0 -2px 0 rgb(0 0 0 / 0.12),
+    0 8px 24px -10px rgb(90 150 20 / 0.7);
+}
+.theme-enveriq .btn-primary:hover {
+  opacity: 1;
+  background: #9bdb3d;
+}
+.theme-enveriq .btn-secondary:hover {
+  background: var(--surface);
+  border-color: var(--fg);
+}
+/* Тёмный блок внутри светлой страницы. */
+.enveriq-ink {
+  --bg: var(--ink);
+  --surface: var(--ink-2);
+  --surface-2: #1d2220;
+  --fg: #f3f6f1;
+  --muted: var(--ink-muted);
+  --line: var(--ink-line);
+  background: var(--ink);
+  color: var(--fg);
+  color-scheme: dark;
+}
+.enveriq-ink .text-accent {
+  color: var(--lime);
+}
+.enveriq-dots {
+  background-image: radial-gradient(rgb(13 15 14 / 0.09) 1px, transparent 1px);
+  background-size: 22px 22px;
+  -webkit-mask-image: radial-gradient(70% 70% at 60% 40%, #000 0%, transparent 80%);
+  mask-image: radial-gradient(70% 70% at 60% 40%, #000 0%, transparent 80%);
+}
+@keyframes enveriq-float {
+  50% {
+    transform: translateY(-6px);
+  }
+}
+.enveriq-float {
+  animation: enveriq-float 6s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .enveriq-float {
+    animation: none;
+  }
+}
+@media (pointer: coarse) {
+  .theme-enveriq header a,
+  .theme-enveriq footer a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 40px;
+  }
 }

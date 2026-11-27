@@ -10,9 +10,10 @@ export const BRAND = {
   name: "Enveriq",
   /**
    * Надпись-логотип, вариант S3 из /mnt/project-files/design/enveriq (выбор
-   * временный). Светлые буквы — только на тёмном фоне главной.
+   * временный): тёмные буквы для светлого фона и светлые — для тёмного.
    */
   logo: { src: "/brand/enveriq-logo.svg", width: 272, height: 67 },
+  logoOnDark: { src: "/brand/enveriq-logo-on-dark.svg", width: 272, height: 67 },
   /** Квадратный знак (аватар, маленькие места). */
   mark: { src: "/brand/enveriq-mark.svg", width: 64, height: 64 },
   /** Подпись под логотипом: одинаковая на всех языках. */

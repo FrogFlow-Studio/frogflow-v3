@@ -182,7 +182,7 @@ export function Header({
   );
 }
 
-/** Ширина и заголовок блока по умолчанию; главная Enveriq передаёт свои. */
+/** Ширина и заголовок блока тарифов по умолчанию; главная Enveriq передаёт свои. */
 const DEFAULT_WRAP = "mx-auto w-full max-w-[1440px] px-4 xl:px-8";
 type BlockLook = { wrap?: string; Title?: (p: { children: ReactNode }) => ReactNode };
 
