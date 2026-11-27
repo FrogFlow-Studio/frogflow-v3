@@ -35,6 +35,22 @@ export const Route = createFileRoute("/api/telegram/$botId")({
 
         const { resolveTenant, tenantContext } = await import("@/core/tenant/resolve.server");
         const tenant = await resolveTenant({ by: "id", value: botId });
+        const { payLane } = await import("@/v4/core/served-by");
+        if (tenant && payLane(tenant.settings.served_by) === "v4") {
+          const { dispatchV4Telegram } = await import("@/v4/channels/dispatch.server");
+          try {
+            await dispatchV4Telegram(botId, update);
+          } catch (e) {
+            if (e instanceof Error && e.message === "v4 not connected") {
+              return new Response("v4 not connected", {
+                status: 503,
+                headers: { "retry-after": "60" },
+              });
+            }
+            throw e;
+          }
+          return new Response("ok");
+        }
         // Клиент на v1: его вебхук не должен быть здесь. Не найден или ни
         // разу не был на v2 — отвечаем 200, чтобы Telegram не копил очередь, и
         // пишем в журнал (вебхук переставлен неправильно). Явно возвращён на

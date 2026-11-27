@@ -72,16 +72,30 @@ function V4AttentionPage() {
                 </tr>
               </thead>
               <tbody>
-                {view.screen.shops.map((s) => (
-                  <tr key={s.botId}>
-                    <td>
-                      <Badge tone={TONE[s.light]}>{DOT[s.light]}</Badge> {name(s.botId)}
-                    </td>
-                    <td>{s.openCases}</td>
-                    <td>{s.orders2d}</td>
-                    <td>${(s.aiRoomMicroUsd / 1_000_000).toFixed(2)}</td>
-                  </tr>
-                ))}
+                {view.screen.shops.map((s) => {
+                  const check = view.checks[s.botId];
+                  return (
+                    <tr key={s.botId}>
+                      <td>
+                        <Badge tone={TONE[s.light]}>{DOT[s.light]}</Badge> {name(s.botId)}
+                        {check ? (
+                          <div className="text-muted">
+                            {check.blockers.length === 0
+                              ? "Блокеров нет. Флаг обслуживания отсюда не ставится."
+                              : check.blockers.join(", ")}
+                            {check.warnings.length ? ` · ${check.warnings.join(", ")}` : ""}
+                            {" · "}
+                            ИИ ${(check.spentMicroUsd / 1_000_000).toFixed(2)}, оплаченных{" "}
+                            {check.ordersPaid}
+                          </div>
+                        ) : null}
+                      </td>
+                      <td>{s.openCases}</td>
+                      <td>{s.orders2d}</td>
+                      <td>${(s.aiRoomMicroUsd / 1_000_000).toFixed(2)}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}

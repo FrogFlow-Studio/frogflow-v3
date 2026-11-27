@@ -26,6 +26,7 @@ export { orderAccessToken, verifyOrderAccess } from "./web-order-access";
 export {
   WEB_MAX_QTY,
   type WebPlaceResult,
+  isV4WebOrder,
   placeWebOrder,
   webMaterialSender,
   deliverWebOrder,

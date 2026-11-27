@@ -19,7 +19,7 @@ export type ChannelState = {
 
 /** Поля клиента, которые читают функции ниже (подмножество `ClientView`). */
 export type HealthClient = {
-  servedBy: "v1" | "v2" | null;
+  servedBy: "v1" | "v2" | "v4" | null;
   plan: string | null;
   telegram: { connected: boolean; webhookOk: boolean };
   zernio: {

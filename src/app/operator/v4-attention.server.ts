@@ -1,6 +1,8 @@
 import { serviceDb } from "@/core/db/client.server";
 import { tenantDirectory } from "@/core/tenant/resolve.server";
 import { postgrestV4Db, type RpcClient, type V4Db } from "@/v4/core/db";
+import { readValueReport } from "@/v4/core/depth";
+import { shopPreflight } from "@/v4/core/platform";
 import { attention, type AttentionScreen } from "@/v4/screens/screens";
 
 /**
@@ -10,9 +12,21 @@ import { attention, type AttentionScreen } from "@/v4/screens/screens";
  * другая ошибка — сбой. Имена магазинов — из справочника арендаторов.
  */
 
+export type ShopCheck = {
+  blockers: string[];
+  warnings: string[];
+  spentMicroUsd: number;
+  ordersPaid: number;
+};
+
 export type V4AttentionView =
   | { state: "not_connected" }
-  | { state: "ready"; screen: AttentionScreen; names: Record<string, string> };
+  | {
+      state: "ready";
+      screen: AttentionScreen;
+      names: Record<string, string>;
+      checks: Record<string, ShopCheck>;
+    };
 
 const SCHEMA_NOT_EXPOSED = /schema must be one of|PGRST106/i;
 
@@ -30,5 +44,18 @@ export async function loadV4Attention(
   const ids = new Set([...screen.shops.map((s) => s.botId), ...screen.cases.map((c) => c.botId)]);
   const byId: Record<string, string> = {};
   if (ids.size) for (const t of await names()) if (ids.has(t.id)) byId[t.id] = t.name;
-  return { state: "ready", screen, names: byId };
+  const to = new Date();
+  const from = new Date(to.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const checks: Record<string, ShopCheck> = {};
+  for (const shop of screen.shops) {
+    const report = await shopPreflight(db, shop.botId);
+    const value = await readValueReport(db, { botId: shop.botId, from, to });
+    checks[shop.botId] = {
+      blockers: report.blockers,
+      warnings: report.warnings,
+      spentMicroUsd: value.spentMicroUsd,
+      ordersPaid: value.ordersPaid,
+    };
+  }
+  return { state: "ready", screen, names: byId, checks };
 }

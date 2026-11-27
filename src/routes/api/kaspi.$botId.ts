@@ -25,6 +25,11 @@ async function handle(request: Request, botId: string): Promise<Response> {
   if (!/^[0-9a-f-]{36}$/i.test(botId)) return new Response("not found", { status: 404 });
   const { resolveTenant, tenantContext } = await import("@/core/tenant/resolve.server");
   const tenant = await resolveTenant({ by: "id", value: botId });
+  const { payLane } = await import("@/v4/core/served-by");
+  if (tenant && payLane(tenant.settings.served_by) === "v4") {
+    const { handleV4Gateway } = await import("@/v4/channels/gateway.server");
+    return handleV4Gateway("kaspi", request, botId, tenant);
+  }
   // Платежи клиента прежней платформы v2 не принимает (servedByV2).
   if (!tenant || tenant.settings.served_by !== "v2")
     return new Response("not found", { status: 404 });

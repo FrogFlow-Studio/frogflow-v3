@@ -50,7 +50,7 @@ const when = (iso: string) =>
 /* ── Telegram ─────────────────────────────────────────────────────── */
 
 export type TelegramFacts = {
-  servedBy: "v1" | "v2" | null;
+  servedBy: "v1" | "v2" | "v4" | null;
   tokenSet: boolean;
   /** null — не спрашивали (токена нет). */
   me: { ok: true; username: string | null } | { ok: false; code: number | null } | null;
@@ -201,7 +201,7 @@ export function diagnoseTelegram(f: TelegramFacts): Diagnosis {
 /* ── Instagram и WhatsApp (Zernio) ────────────────────────────────── */
 
 export type ZernioFacts = {
-  servedBy: "v1" | "v2" | null;
+  servedBy: "v1" | "v2" | "v4" | null;
   /** Ключ Zernio задан на платформе. */
   keySet: boolean;
   profileId: string | null;

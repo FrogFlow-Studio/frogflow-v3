@@ -1,12 +1,13 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
-import { v4CaseActionFn, v4TodayFn } from "@/app/admin/v4-today.functions";
+import { v4AdvanceFn, v4CaseActionFn, v4ReplyFn, v4TodayFn } from "@/app/admin/v4-today.functions";
 import { intlLocale } from "@/app/i18n/admin";
 import { Badge, Card, Empty, ErrorBox, PageTitle, useAction } from "@/app/ui";
 import { canEdit } from "@/core/auth/roles";
 import { isPanelAction, type PanelAction } from "@/v4/screens/actions";
 import { panelT, type PanelKey } from "@/v4/screens/panel-texts";
 import type { CaseCard, Light } from "@/v4/screens/screens";
+import type { DeskOrder } from "@/app/admin/v4-today.server";
 
 /**
  * «Сегодня (v4)»: дела магазина в новой версии платформы. Пока магазин не
@@ -23,6 +24,13 @@ const TONE: Record<Light, "danger" | "warn" | "ok"> = {
   green: "ok",
 };
 const DOT: Record<Light, string> = { red: "🔴", yellow: "🟡", green: "🟢" };
+
+const STEP_KEY = {
+  accepted: "stepAccepted",
+  working: "stepWorking",
+  ready: "stepReady",
+  handed: "stepHanded",
+} as const satisfies Record<string, PanelKey>;
 
 const OUTCOME_TEXT: Partial<Record<string, PanelKey>> = {
   already: "already",
@@ -51,25 +59,73 @@ function V4TodayPage() {
               view.screen.cards.map((c) => <CaseRow key={c.id} card={c} />)
             )}
           </div>
-          <Card title={t("botDid")}>
-            <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
-              <span>
-                <b>{view.screen.botDid.orders}</b> {t("orders")}
-              </span>
-              <span>
-                <b>{view.screen.botDid.paid}</b> {t("paid")}
-              </span>
-              <span>
-                <b>{view.screen.botDid.delivered}</b> {t("delivered")}
-              </span>
-              <span>
-                <b>{view.screen.botDid.commentsAnswered}</b> {t("comments")}
-              </span>
-              <span className="text-muted">
-                {t("aiLeft")}: ${(view.screen.aiRoomMicroUsd / 1_000_000).toFixed(2)}
-              </span>
-            </div>
+          <Card title={t("deskOrders")}>
+            {view.orders.length === 0 ? (
+              <Empty>{t("empty")}</Empty>
+            ) : (
+              <ul className="space-y-2 text-sm">
+                {view.orders.map((o) => (
+                  <OrderRow key={o.orderId} order={o} />
+                ))}
+              </ul>
+            )}
           </Card>
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <Card title={t("deskCatalog")}>
+              {view.products.length === 0 ? (
+                <Empty>{t("empty")}</Empty>
+              ) : (
+                <ul className="space-y-1 text-sm">
+                  {view.products.map((p) => (
+                    <li key={p.id} className="flex justify-between gap-3">
+                      <span className="truncate">{p.title}</span>
+                      <span className="tabular-nums text-muted">
+                        {(p.priceMinor / 100).toFixed(2)}
+                        {p.trackStock ? ` · ${p.onHand}` : ""}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Card>
+            <Card title={t("deskSales")}>
+              {view.sales.length === 0 ? (
+                <Empty>{t("empty")}</Empty>
+              ) : (
+                <ul className="space-y-1 text-sm">
+                  {view.sales.map((s) => (
+                    <li key={`${s.day}:${s.currency}`} className="flex justify-between gap-3">
+                      <span>{s.day}</span>
+                      <span className="tabular-nums">
+                        {(s.amountMinor / 100).toFixed(2)} {s.currency}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Card>
+          </div>
+          <div className="mt-4">
+            <Card title={t("botDid")}>
+              <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
+                <span>
+                  <b>{view.screen.botDid.orders}</b> {t("orders")}
+                </span>
+                <span>
+                  <b>{view.screen.botDid.paid}</b> {t("paid")}
+                </span>
+                <span>
+                  <b>{view.screen.botDid.delivered}</b> {t("delivered")}
+                </span>
+                <span>
+                  <b>{view.screen.botDid.commentsAnswered}</b> {t("comments")}
+                </span>
+                <span className="text-muted">
+                  {t("aiLeft")}: ${(view.screen.aiRoomMicroUsd / 1_000_000).toFixed(2)}
+                </span>
+              </div>
+            </Card>
+          </div>
         </>
       )}
     </>
@@ -113,6 +169,9 @@ function CaseRow({ card }: { card: CaseCard }) {
           </Badge>
         ) : null}
       </div>
+      {canEdit(shop.role) && card.primary.action === "reply_buyer" ? (
+        <ReplyBox caseId={card.id} />
+      ) : null}
       {canEdit(shop.role) && buttons.length > 0 ? (
         <div className="mt-3 flex flex-wrap gap-2">
           {buttons.map((b, i) => (
@@ -131,5 +190,79 @@ function CaseRow({ card }: { card: CaseCard }) {
       {note ? <div className="mt-2 text-sm text-muted">{note}</div> : null}
       <ErrorBox error={act.error} />
     </div>
+  );
+}
+
+function OrderRow({ order }: { order: DeskOrder }) {
+  const { shop } = Route.useRouteContext();
+  const t = panelT(shop.locale);
+  const router = useRouter();
+  const [note, setNote] = useState<string | null>(null);
+  const act = useAction(async () => {
+    const r = await v4AdvanceFn({ data: { orderId: order.orderId } });
+    if (!r.ok) setNote(r.code);
+    await router.invalidate();
+  });
+  if (!order.nextStep || !canEdit(shop.role)) {
+    return (
+      <li>
+        №{order.no} · {(order.dueMinor / 100).toFixed(2)} {order.currency}
+      </li>
+    );
+  }
+  return (
+    <li className="flex flex-wrap items-center justify-between gap-2">
+      <span>
+        №{order.no} · {(order.dueMinor / 100).toFixed(2)} {order.currency}
+      </span>
+      <button
+        type="button"
+        className="btn-secondary"
+        disabled={act.busy}
+        onClick={() => void act.run().catch(() => {})}
+      >
+        {t("deskStep")}: {t(STEP_KEY[order.nextStep])}
+      </button>
+      {note ? <span className="text-muted">{note}</span> : null}
+    </li>
+  );
+}
+
+function ReplyBox({ caseId }: { caseId: string }) {
+  const { shop } = Route.useRouteContext();
+  const t = panelT(shop.locale);
+  const router = useRouter();
+  const [text, setText] = useState("");
+  const [note, setNote] = useState<string | null>(null);
+  const act = useAction(async () => {
+    const r = await v4ReplyFn({ data: { caseId, text } });
+    if (!r.ok) setNote(r.code);
+    else {
+      setText("");
+      setNote(t("saved"));
+    }
+    await router.invalidate();
+  });
+  return (
+    <form
+      className="mt-3 flex flex-wrap gap-2"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!text.trim()) return;
+        void act.run().catch(() => {});
+      }}
+    >
+      <input
+        className="input min-w-0 flex-1"
+        value={text}
+        maxLength={4000}
+        placeholder={t("deskReply")}
+        onChange={(e) => setText(e.target.value)}
+      />
+      <button type="submit" className="btn-secondary" disabled={act.busy || !text.trim()}>
+        {t("deskSend")}
+      </button>
+      {note ? <span className="text-sm text-muted">{note}</span> : null}
+    </form>
   );
 }

@@ -33,3 +33,25 @@ export const v4CaseActionFn = createServerFn({ method: "POST" })
     const { runV4CaseAction } = await import("./v4-today.server");
     return runV4CaseAction(ctx, { ...data, by });
   });
+
+export const v4AdvanceFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ orderId: z.string().uuid() }).parse(d))
+  .handler(async ({ data }) => {
+    const guards = await import("@/app/auth/guards.server");
+    const ctx = await guards.requireAdminRole("manager");
+    const by = await guards.adminActor();
+    const { advanceV4Order } = await import("./v4-today.server");
+    return advanceV4Order(ctx, { orderId: data.orderId, by });
+  });
+
+export const v4ReplyFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z.object({ caseId: z.string().uuid(), text: z.string().trim().min(1).max(4000) }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const guards = await import("@/app/auth/guards.server");
+    const ctx = await guards.requireAdminRole("manager");
+    const by = await guards.adminActor();
+    const { replyV4Case } = await import("./v4-today.server");
+    return replyV4Case(ctx, { ...data, by });
+  });

@@ -53,7 +53,7 @@ export type ClientView = {
   status: Tenant["status"];
   vertical: VerticalKey;
   verticalTitle: string;
-  servedBy: "v1" | "v2" | null;
+  servedBy: "v1" | "v2" | "v4" | null;
   slug: string | null;
   hosts: string[];
   telegram: { connected: boolean; username: string | null; webhookOk: boolean };

@@ -5,6 +5,7 @@ import type { DispatchOutcome } from "./dispatch.server";
 import { runNotingEffects } from "@/lib/external-effects";
 import { scrubForLog } from "@/lib/log-mask";
 import type { InboundVerdict } from "@/core/customers/inbound-rate";
+import { payLane } from "@/v4/core/served-by";
 
 export type IntakeDeps = {
   resolve: (
@@ -115,6 +116,18 @@ export async function intakeZernioEvent(
   if (eventTooOld(payload)) return { status: 202, body: "accepted" };
 
   const found = await deps.resolve(accountId, profileId);
+  if (found && payLane(found.tenant.settings.served_by) === "v4") {
+    const { dispatchV4Zernio } = await import("@/v4/channels/dispatch.server");
+    try {
+      await dispatchV4Zernio(found.tenant.id, payload);
+    } catch (e) {
+      if (e instanceof Error && e.message === "v4 not connected") {
+        return { status: 503, body: "v4 not connected" };
+      }
+      throw e;
+    }
+    return { status: 202, body: "accepted" };
+  }
   if (!found || found.tenant.settings.served_by !== "v2") {
     await deps
       .unmatched?.({

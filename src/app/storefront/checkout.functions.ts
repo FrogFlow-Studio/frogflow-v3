@@ -201,7 +201,7 @@ export const webCheckoutFn = createServerFn({ method: "POST" })
 
     const { normalizePhone } = await import("@/channels/telegram/copy");
     const { parseHandoffItems } = await import("@/core/storefront/handoff");
-    const { placeWebOrder, webCustomer, orderAccessToken } =
+    const { isV4WebOrder, placeWebOrder, webCustomer, orderAccessToken } =
       await import("@/core/storefront/web-order");
     const phone = data.phone?.trim() ? normalizePhone(data.phone) : null;
     // Вошёл через Telegram — заказ ложится на покупателя из бота (одна карточка).
@@ -291,6 +291,9 @@ export const webCheckoutFn = createServerFn({ method: "POST" })
         default:
           throw shownError(t("checkout.error.failed"));
       }
+    }
+    if (isV4WebOrder(r)) {
+      return { via: "v4" as const, id: r.no, orderId: r.orderId };
     }
     if (consent.offer || consent.privacy) {
       const { recordOrderEvent } = await import("@/core/orders/events");

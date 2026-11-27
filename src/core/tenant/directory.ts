@@ -85,7 +85,14 @@ export function settingsFromJson(json: unknown): TenantSettings {
   const adm = obj(s.admin);
   const vip = obj(s.vip);
   const mb = obj(s.multi_bot);
-  const served = s.served_by === "v2" ? "v2" : s.served_by === "v1" ? "v1" : undefined;
+  const served =
+    s.served_by === "v2"
+      ? "v2"
+      : s.served_by === "v1"
+        ? "v1"
+        : s.served_by === "v4"
+          ? "v4"
+          : undefined;
   // Пределы ИИ: только числа, остальное — null («общий предел»).
   const numOrNull = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : null);
   const cl = s.consultant_limits;

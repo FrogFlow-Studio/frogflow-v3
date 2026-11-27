@@ -215,7 +215,9 @@ describe("servedByV2", () => {
   it("клиент виден v2 только по явному флагу оператора", () => {
     expect(servedByV2({ settings: { served_by: "v2" } })).toBe(true);
     expect(servedByV2({ settings: { served_by: "v1" } })).toBe(false);
+    expect(servedByV2({ settings: { served_by: "v4" } })).toBe(false);
     expect(servedByV2({ settings: {} })).toBe(false);
+    expect(settingsFromJson({ served_by: "v4" }).served_by).toBe("v4");
   });
 });
 

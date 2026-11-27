@@ -33,7 +33,7 @@ type BotUpdate = Database["public"]["Tables"]["bots"]["Update"];
 export type MigrationCandidate = {
   id: string;
   name: string;
-  servedBy: "v1" | "v2" | null;
+  servedBy: "v1" | "v2" | "v4" | null;
   ready: boolean;
   blockers: string[];
   warnings: string[];

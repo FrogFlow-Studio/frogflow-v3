@@ -1,7 +1,8 @@
 import type { AgentModel } from "../agent/model";
 import { isParkedModel } from "../agent/model";
 import type { IncomingMedia, Transcriber } from "../agent/media";
-import { runAgent, type AgentMode } from "../agent/run";
+import type { AgentMode } from "../agent/conversation";
+import { runAgent } from "../agent/run";
 import type { V4Db } from "../core/db";
 import { claimInbound, sellerReply } from "../core/depth";
 import { touchBuyer } from "../core/platform";
@@ -44,12 +45,7 @@ async function buyerAiOn(db: V4Db, botId: string): Promise<boolean> {
   return r.ai_on === true;
 }
 
-async function once(
-  db: V4Db,
-  botId: string,
-  channel: string,
-  claimId: string,
-): Promise<boolean> {
+async function once(db: V4Db, botId: string, channel: string, claimId: string): Promise<boolean> {
   return claimInbound(db, { botId, channel, externalId: claimId });
 }
 
@@ -189,7 +185,9 @@ export async function adaptDirect(
     country: input.country ?? null,
   });
   if (!ai || isParkedModel(input.model)) {
-    return ai ? { kind: "silent", reason: "model_parked" } : { kind: "buttons", buyerId, text: input.text };
+    return ai
+      ? { kind: "silent", reason: "model_parked" }
+      : { kind: "buttons", buyerId, text: input.text };
   }
   const result = await runAgent({
     db,
@@ -219,7 +217,13 @@ export function marketingOpen(
 export type ZernioIntent =
   | { type: "buy"; channel: "instagram" | "whatsapp"; externalId: string; productId: string }
   | { type: "text"; channel: "instagram" | "whatsapp"; externalId: string; text: string }
-  | { type: "comment"; externalId: string; postId: string | null; commenterId: string; text: string }
+  | {
+      type: "comment";
+      externalId: string;
+      postId: string | null;
+      commenterId: string;
+      text: string;
+    }
   | { type: "ignore" };
 
 /** Разбор события Zernio без записи. Кнопка — `buy:<uuid>`. */
@@ -232,22 +236,40 @@ export function zernioIntent(payload: {
     sender?: { id?: string };
     metadata?: { postbackPayload?: string; buttonPayload?: string };
   };
-  comment?: { id?: string; postId?: string | null; commenterId?: string; text?: string };
+  post?: { id?: string; platformPostId?: string };
+  comment?: {
+    id?: string;
+    postId?: string | null;
+    platformPostId?: string;
+    commenterId?: string;
+    text?: string;
+    author?: { id?: string; username?: string };
+  };
 }): ZernioIntent {
-  if (payload.event === "comment.received" && payload.comment?.commenterId && payload.comment.text) {
-    return {
-      type: "comment",
-      externalId: payload.comment.id ?? payload.comment.commenterId,
-      postId: payload.comment.postId ?? null,
-      commenterId: payload.comment.commenterId,
-      text: payload.comment.text,
-    };
+  if (payload.event === "comment.received" && payload.comment?.text) {
+    const commenterId =
+      payload.comment.commenterId || payload.comment.author?.id || payload.comment.author?.username;
+    if (commenterId) {
+      return {
+        type: "comment",
+        externalId: payload.comment.id || commenterId,
+        postId:
+          payload.comment.postId ||
+          payload.comment.platformPostId ||
+          payload.post?.id ||
+          payload.post?.platformPostId ||
+          null,
+        commenterId,
+        text: payload.comment.text,
+      };
+    }
   }
   const platform = payload.message?.platform;
   const channel = platform === "whatsapp" || platform === "instagram" ? platform : null;
   const externalId = payload.message?.sender?.id;
   if (!channel || !externalId) return { type: "ignore" };
-  const button = payload.message?.metadata?.postbackPayload ?? payload.message?.metadata?.buttonPayload ?? "";
+  const button =
+    payload.message?.metadata?.postbackPayload ?? payload.message?.metadata?.buttonPayload ?? "";
   const buy = /^buy:([0-9a-f-]{36})$/i.exec(button);
   if (buy && UUID.test(buy[1]!)) return { type: "buy", channel, externalId, productId: buy[1]! };
   const text = payload.message?.text?.trim();

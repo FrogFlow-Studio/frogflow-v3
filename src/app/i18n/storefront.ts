@@ -250,6 +250,7 @@ const ru = {
   "checkout.error.consent": "Отметьте согласие с условиями, чтобы оформить заказ.",
   "checkout.error.email": "Проверьте адрес почты.",
   "checkout.error.failed": "Не получилось оформить заказ. Попробуйте ещё раз.",
+  "checkout.v4placed": "Заказ №{no} принят. Оплатите по реквизитам продавца и пришлите чек в чат.",
   "checkout.error.outOfStock": "Товар закончился — обновите корзину.",
   "checkout.error.country": "Оплата в этой стране недоступна — выберите другую.",
   "order.title": "Заказ №{no}",
@@ -853,6 +854,8 @@ const kk: Dict = {
   "checkout.error.consent": "Тапсырыс беру үшін шарттармен келісіміңізді белгілеңіз.",
   "checkout.error.email": "Пошта мекенжайын тексеріңіз.",
   "checkout.error.failed": "Тапсырысты рәсімдеу мүмкін болмады. Қайта көріңіз.",
+  "checkout.v4placed":
+    "№{no} тапсырыс қабылданды. Сатушының деректемесімен төлеп, чекті чатқа жіберіңіз.",
   "checkout.error.outOfStock": "Тауар таусылды — себетті жаңартыңыз.",
   "checkout.error.country": "Бұл елде төлем қолжетімсіз — басқасын таңдаңыз.",
   "order.title": "№{no} тапсырыс",
@@ -1448,6 +1451,8 @@ const en: Dict = {
   "checkout.error.consent": "Please tick your consent to the terms to place the order.",
   "checkout.error.email": "Please check the email address.",
   "checkout.error.failed": "Could not place the order. Please try again.",
+  "checkout.v4placed":
+    "Order #{no} is placed. Pay using the seller's details and send the receipt in the chat.",
   "checkout.error.outOfStock": "An item is out of stock — please update your cart.",
   "checkout.error.country": "Payment is not available in this country — choose another one.",
   "order.title": "Order #{no}",
@@ -2043,6 +2048,8 @@ const uz: Dict = {
   "checkout.error.consent": "Buyurtma berish uchun shartlarga roziligingizni belgilang.",
   "checkout.error.email": "Pochta manzilini tekshiring.",
   "checkout.error.failed": "Buyurtmani rasmiylashtirib bo‘lmadi. Qayta urinib ko‘ring.",
+  "checkout.v4placed":
+    "Buyurtma №{no} qabul qilindi. Sotuvchi rekvizitlari bilan to‘lang va chekni chatga yuboring.",
   "checkout.error.outOfStock": "Mahsulot tugadi — savatni yangilang.",
   "checkout.error.country": "Bu mamlakatda to‘lov mavjud emas — boshqasini tanlang.",
   "order.title": "Buyurtma №{no}",

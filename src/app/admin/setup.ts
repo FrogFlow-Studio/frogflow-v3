@@ -123,7 +123,7 @@ export function testOrderLink(
  * и продавец её ещё не закрыл.
  */
 export function showMovedWelcome(p: {
-  servedBy: "v1" | "v2" | undefined;
+  servedBy: "v1" | "v2" | "v4" | undefined;
   since: string | undefined;
   hidden: boolean;
   ordersBeforeMove: number;

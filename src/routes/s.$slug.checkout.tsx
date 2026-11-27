@@ -38,6 +38,7 @@ function CheckoutPage() {
   // Решение задачи одноразовое: после отказа (неверный промокод, товар
   // закончился) берём новую, чтобы покупатель исправил поле и отправил снова.
   const [challenge, setChallenge] = useState(info.enabled ? info.challenge : "");
+  const [v4no, setV4no] = useState<string | null>(null);
   const physical = cart.lines.some((l) => l.kind === "physical");
   // Корзина в валюте магазина меньше минимума — подсказка и кнопка закрыта; в другой
   // валюте (цена страны) сравнит сервер при оформлении.
@@ -128,6 +129,11 @@ function CheckoutPage() {
       if (fresh?.enabled) setChallenge(fresh.challenge);
       throw e;
     });
+    if ("via" in r && r.via === "v4") {
+      cart.clear();
+      setV4no(String(r.id));
+      return;
+    }
     // «Запомнить адрес» (К5): заказ уже оформлен, сбой сохранения его не затрагивает.
     if (physical && ftype === "delivery" && f.get("rememberAddress") === "on")
       await webAddressSaveFn({ data: { slug, text: String(f.get("address") ?? "") } }).catch(
@@ -141,6 +147,14 @@ function CheckoutPage() {
       search: { t: r.t },
     });
   });
+  if (v4no) {
+    return (
+      <div className="mx-auto max-w-xl">
+        <h1 className="mb-4 text-xl font-semibold">{t("checkout.title")}</h1>
+        <p>{t("checkout.v4placed", { no: v4no })}</p>
+      </div>
+    );
+  }
   if (!info.enabled || cart.lines.length === 0) {
     return (
       <Empty>

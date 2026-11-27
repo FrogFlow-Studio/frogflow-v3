@@ -55,7 +55,7 @@ export function dropMark(raw: string | null, expires: string, mark: string): str
 export type RenewalRow = {
   botId: string;
   name: string;
-  servedBy: "v1" | "v2" | null;
+  servedBy: "v1" | "v2" | "v4" | null;
   expires: string;
   daysLeft: number;
   /** Цена продления, ₸; null — клиент не на плане, цену называют вручную. */

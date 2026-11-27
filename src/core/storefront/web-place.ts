@@ -15,6 +15,7 @@ import {
   type PlaceOrderResult,
 } from "@/core/orders/orders";
 import { serverFailure } from "@/lib/server-failure";
+import { payLane } from "@/v4/core/served-by";
 
 /** Оформление и выдача заказа с сайта. */
 
@@ -27,8 +28,15 @@ export const WEB_MAX_QTY = 5;
 
 export type WebPlaceResult =
   | PlaceOrderResult
+  | { ok: true; via: "v4"; orderId: string; no: number }
   | { ok: false; reason: "nothing_imported" | "too_many" }
   | Extract<WebFulfillmentCheck, { ok: false }>;
+
+export function isV4WebOrder(
+  r: WebPlaceResult,
+): r is { ok: true; via: "v4"; orderId: string; no: number } {
+  return r.ok === true && "via" in r && r.via === "v4";
+}
 
 /**
  * Корзина с сайта → заказ. Корзина покупателя в базе сначала очищается:
@@ -59,6 +67,9 @@ export async function placeWebOrder(
     giftWrap?: boolean;
   } = {},
 ): Promise<WebPlaceResult> {
+  if (payLane(ctx.tenant.settings.served_by) === "v4") {
+    return placeOnV4(ctx, customer, items, countryCode);
+  }
   if (items.some((it) => Number(it.quantity) > WEB_MAX_QTY))
     return { ok: false, reason: "too_many" };
   // Покупатель из бота (вошёл через Telegram): его корзина в боте — не
@@ -69,6 +80,31 @@ export async function placeWebOrder(
   } finally {
     if (botCart) await restoreBotCart(ctx, customer, botCart);
   }
+}
+
+async function placeOnV4(
+  ctx: TenantContext,
+  customer: Customer,
+  items: HandoffItem[],
+  countryCode: string,
+): Promise<WebPlaceResult> {
+  if (items.some((it) => Number(it.quantity) > WEB_MAX_QTY))
+    return { ok: false, reason: "too_many" };
+  const ids = [...new Set(items.map((it) => it.product_id).filter((id) => id))];
+  if (ids.length === 0) return { ok: false, reason: "nothing_imported" };
+  const { buyFromChannel } = await import("@/v4/channels/buyer");
+  const { v4DbOf } = await import("@/app/admin/v4-today.server");
+  const bought = await buyFromChannel(v4DbOf(ctx), {
+    botId: ctx.tenant.id,
+    channel: "web",
+    externalId: customer.userKey,
+    country: countryCode,
+    productIds: ids,
+    claimId: `web:${customer.userKey}:${crypto.randomUUID()}`,
+    by: "web",
+  });
+  if (!bought.ok) return { ok: false, reason: "order_failed" };
+  return { ok: true, via: "v4", orderId: bought.orderId, no: bought.no };
 }
 
 type CartRow = { product_id: string; product_variant_id: string | null; quantity: number };
