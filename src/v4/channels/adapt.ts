@@ -6,10 +6,10 @@ import { runAgent } from "../agent/run";
 import type { V4Db } from "../core/db";
 import { claimInbound, sellerReply } from "../core/depth";
 import { touchBuyer } from "../core/platform";
+import { createOffer, pressBuy } from "../seller/offers";
 import { sellerRole } from "../seller/role";
 import { acceptComment } from "./comments";
 import {
-  checkout,
   handleTelegramUpdate,
   marketingAllowed,
   parseTelegramUpdate,
@@ -28,7 +28,15 @@ const SELLER_REPLY = /^reply:([0-9a-f-]{36})\s+([\s\S]+)$/i;
 export type AdaptResult =
   | { kind: "ignore" }
   | { kind: "duplicate" }
-  | { kind: "order"; buyerId: string; orderId: string }
+  | { kind: "order"; buyerId: string; orderId: string; reused: boolean }
+  | {
+      kind: "offer";
+      buyerId: string;
+      offerId: string;
+      currency: string;
+      totalMinor: number;
+      title: string;
+    }
   | { kind: "receipt"; buyerId: string; orderId: string }
   | { kind: "buttons"; buyerId: string; text: string }
   | { kind: "comment"; buyerId: string; verdict: string }
@@ -47,6 +55,76 @@ async function buyerAiOn(db: V4Db, botId: string): Promise<boolean> {
 
 async function once(db: V4Db, botId: string, channel: string, claimId: string): Promise<boolean> {
   return claimInbound(db, { botId, channel, externalId: claimId });
+}
+
+/** Карточка с ценой на 72 часа. Заказа ещё нет: его создаёт нажатие на код. */
+async function showOffer(
+  db: V4Db,
+  input: {
+    botId: string;
+    channel: BuyerChannel;
+    externalId: string;
+    country: string | null;
+    productId: string;
+  },
+): Promise<AdaptResult> {
+  const buyerId = await touchBuyer(db, {
+    botId: input.botId,
+    channel: input.channel,
+    externalId: input.externalId,
+    country: input.country,
+  });
+  const made = await createOffer(db, {
+    botId: input.botId,
+    buyerId,
+    productIds: [input.productId],
+    mode: "live",
+  });
+  if (!made.ok) return { kind: "refused", code: made.reason };
+  return {
+    kind: "offer",
+    buyerId,
+    offerId: made.offer.offerId,
+    currency: made.offer.currency,
+    totalMinor: made.offer.totalMinor,
+    title: made.offer.items[0]?.title ?? "",
+  };
+}
+
+/** Восемь нажатий одного кода — один заказ. Модель не вызывается. */
+async function claimShown(
+  db: V4Db,
+  input: {
+    botId: string;
+    channel: BuyerChannel;
+    externalId: string;
+    country: string | null;
+    offerId: string;
+  },
+): Promise<AdaptResult> {
+  const buyerId = await touchBuyer(db, {
+    botId: input.botId,
+    channel: input.channel,
+    externalId: input.externalId,
+    country: input.country,
+  });
+  const pressed = await pressBuy(db, {
+    botId: input.botId,
+    buyerId,
+    offerId: input.offerId.toUpperCase(),
+  });
+  if (pressed.kind === "order")
+    return { kind: "order", buyerId, orderId: pressed.orderId, reused: pressed.reused };
+  if (pressed.kind === "new_offer")
+    return {
+      kind: "offer",
+      buyerId,
+      offerId: pressed.offer.offerId,
+      currency: pressed.offer.currency,
+      totalMinor: pressed.offer.totalMinor,
+      title: pressed.offer.items[0]?.title ?? "",
+    };
+  return { kind: "refused", code: pressed.reason };
 }
 
 export async function adaptTelegram(
@@ -76,19 +154,23 @@ export async function adaptTelegram(
     if (!wrote.ok) return { kind: "refused", code: wrote.code };
     return { kind: "seller_reply", wrote: wrote.value };
   }
-  if (intent.type === "buy") {
-    const order = await checkout(db, {
+  if (intent.type === "offer") {
+    return claimShown(db, {
       botId: input.botId,
       channel: "telegram",
       externalId: intent.chatId,
       country: input.country ?? null,
-      productIds: [intent.productId],
-      by: "telegram",
+      offerId: intent.offerId,
     });
-    if (order.type === "order")
-      return { kind: "order", buyerId: order.buyerId, orderId: order.order.id };
-    if (order.type === "refused") return { kind: "refused", code: order.code };
-    return { kind: "refused", code: "order_not_found" };
+  }
+  if (intent.type === "buy") {
+    return showOffer(db, {
+      botId: input.botId,
+      channel: "telegram",
+      externalId: intent.chatId,
+      country: input.country ?? null,
+      productId: intent.productId,
+    });
   }
   const ai = await buyerAiOn(db, input.botId);
   if (intent.type === "receipt" || (input.media?.kind === "photo" && !ai)) {
@@ -158,24 +240,29 @@ export async function adaptDirect(
     externalId: string;
     text: string;
     productId?: string;
+    offerId?: string;
     model: AgentModel;
     country?: string | null;
   },
 ): Promise<AdaptResult> {
   if (!(await once(db, input.botId, input.channel, input.claimId))) return { kind: "duplicate" };
-  if (input.productId && UUID.test(input.productId)) {
-    const order = await checkout(db, {
+  if (input.offerId && /^[A-HJ-NP-Z2-9]{8}$/i.test(input.offerId)) {
+    return claimShown(db, {
       botId: input.botId,
       channel: input.channel,
       externalId: input.externalId,
       country: input.country ?? null,
-      productIds: [input.productId],
-      by: input.channel,
+      offerId: input.offerId,
     });
-    if (order.type === "order")
-      return { kind: "order", buyerId: order.buyerId, orderId: order.order.id };
-    if (order.type === "refused") return { kind: "refused", code: order.code };
-    return { kind: "refused", code: "order_not_found" };
+  }
+  if (input.productId && UUID.test(input.productId)) {
+    return showOffer(db, {
+      botId: input.botId,
+      channel: input.channel,
+      externalId: input.externalId,
+      country: input.country ?? null,
+      productId: input.productId,
+    });
   }
   const ai = await buyerAiOn(db, input.botId);
   const buyerId = await touchBuyer(db, {
@@ -216,6 +303,7 @@ export function marketingOpen(
 
 export type ZernioIntent =
   | { type: "buy"; channel: "instagram" | "whatsapp"; externalId: string; productId: string }
+  | { type: "offer"; channel: "instagram" | "whatsapp"; externalId: string; offerId: string }
   | { type: "text"; channel: "instagram" | "whatsapp"; externalId: string; text: string }
   | {
       type: "comment";
@@ -226,7 +314,7 @@ export type ZernioIntent =
     }
   | { type: "ignore" };
 
-/** Разбор события Zernio без записи. Кнопка — `buy:<uuid>`. */
+/** Разбор события Zernio без записи. Кнопка товара — `buy:<uuid>`, карточка — `offer:<код>`. */
 export function zernioIntent(payload: {
   id?: string;
   event?: string;
@@ -270,6 +358,8 @@ export function zernioIntent(payload: {
   if (!channel || !externalId) return { type: "ignore" };
   const button =
     payload.message?.metadata?.postbackPayload ?? payload.message?.metadata?.buttonPayload ?? "";
+  const offer = /^offer:([A-HJ-NP-Z2-9]{8})$/i.exec(button);
+  if (offer) return { type: "offer", channel, externalId, offerId: offer[1]!.toUpperCase() };
   const buy = /^buy:([0-9a-f-]{36})$/i.exec(button);
   if (buy && UUID.test(buy[1]!)) return { type: "buy", channel, externalId, productId: buy[1]! };
   const text = payload.message?.text?.trim();

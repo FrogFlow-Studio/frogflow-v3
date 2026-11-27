@@ -13,6 +13,7 @@ export type BuyerChannel = "telegram" | "instagram" | "whatsapp" | "web";
 export type TelegramIntent =
   | { type: "text"; chatId: string; text: string }
   | { type: "buy"; chatId: string; productId: string }
+  | { type: "offer"; chatId: string; offerId: string }
   | { type: "receipt"; chatId: string; fileId: string }
   | { type: "ignore" };
 
@@ -28,13 +29,15 @@ type TgUpdate = {
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/** Разбор апдейта Telegram. Кнопка «Купить» — callback `buy:<uuid товара>`. */
+/** Разбор апдейта Telegram. Товар — `buy:<uuid>`, карточка с ценой — `offer:<код>`. */
 export function parseTelegramUpdate(update: TgUpdate): TelegramIntent {
   const data = update.callback_query?.data ?? "";
+  const offer = /^offer:([A-HJ-NP-Z2-9]{8})$/i.exec(data);
   const buy = /^buy:([0-9a-f-]{36})$/i.exec(data);
   const chatId = update.callback_query?.message?.chat?.id ?? update.message?.chat?.id;
   if (chatId == null) return { type: "ignore" };
   const id = String(chatId);
+  if (offer) return { type: "offer", chatId: id, offerId: offer[1]!.toUpperCase() };
   if (buy && UUID.test(buy[1]!)) return { type: "buy", chatId: id, productId: buy[1]! };
   const photo = update.message?.photo?.at(-1)?.file_id;
   if (photo) return { type: "receipt", chatId: id, fileId: photo };
@@ -121,6 +124,7 @@ export async function handleTelegramUpdate(
     ...(input.now ? { now: input.now } : {}),
   });
   if (intent.type === "text") return { type: "text", buyerId, text: intent.text };
+  if (intent.type === "offer") return { type: "ignore" };
   if (intent.type === "buy") {
     const order = await placeOrder(db, {
       botId: input.botId,

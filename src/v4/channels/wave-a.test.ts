@@ -49,7 +49,17 @@ describe("тонкий адаптер без живой модели", () => {
         callback_query: { data: `buy:${productId}`, message: { chat: { id: 77 } } },
       },
     });
-    expect(bought.kind).toBe("order");
+    expect(bought.kind).toBe("offer");
+    if (bought.kind !== "offer") return;
+    expect(bought.totalMinor).toBe(100_000);
+    expect(bought.currency).toBe("KZT");
+    expect(bought.title).toBe("Тетрадь");
+    const locked = await pg.query<{ hours: number }>(
+      `select round(extract(epoch from (expires_at - created_at)) / 3600)::int as hours
+         from v4.offers where id = $1`,
+      [bought.offerId],
+    );
+    expect(locked.rows[0]!.hours).toBe(72);
     const again = await adaptTelegram(svc(), {
       botId: A,
       claimId: "tg:2",
@@ -60,11 +70,33 @@ describe("тонкий адаптер без живой модели", () => {
       },
     });
     expect(again).toEqual({ kind: "duplicate" });
+    const presses = [];
+    for (let i = 0; i < 8; i++) {
+      presses.push(
+        await adaptTelegram(svc(), {
+          botId: A,
+          claimId: `tg:buy:${i}`,
+          model,
+          country: "KZ",
+          update: {
+            callback_query: {
+              data: `offer:${bought.offerId}`,
+              message: { chat: { id: 77 } },
+            },
+          },
+        }),
+      );
+    }
+    expect(presses[0]).toMatchObject({ kind: "order", reused: false });
+    expect(presses.slice(1).every((p) => p.kind === "order" && p.reused)).toBe(true);
+    const ids = new Set(presses.map((p) => (p.kind === "order" ? p.orderId : "")));
+    expect(ids.size).toBe(1);
     const n = await pg.query<{ n: number }>(
       "select count(*)::int n from v4.orders where bot_id = $1",
       [A],
     );
     expect(n.rows[0]!.n).toBe(1);
+    expect(model.requests).toHaveLength(0);
   });
 
   it("чек открывает дело продавцу и не подтверждает оплату", async () => {
@@ -134,7 +166,7 @@ describe("тонкий адаптер без живой модели", () => {
       botId: A,
       claimId: "tg:6",
       model,
-        update: {
+      update: {
         message: { chat: { id: 1 }, text: `reply:${opened.value.caseId} Файл уже в чате` },
       },
     });
@@ -143,7 +175,7 @@ describe("тонкий адаптер без живой модели", () => {
       botId: A,
       claimId: "tg:7",
       model,
-        update: {
+      update: {
         message: { chat: { id: 1 }, text: `reply:${opened.value.caseId} Ещё раз` },
       },
     });

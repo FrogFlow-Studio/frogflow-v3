@@ -61,6 +61,7 @@ export async function dispatchV4Zernio(botId: string, payload: unknown) {
       externalId: intent.externalId,
       text: intent.type === "text" ? intent.text : "",
       ...(intent.type === "buy" ? { productId: intent.productId } : {}),
+      ...(intent.type === "offer" ? { offerId: intent.offerId } : {}),
       model: parkedAgentModel,
     });
   } catch (e) {

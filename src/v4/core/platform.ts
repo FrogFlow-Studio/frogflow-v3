@@ -523,24 +523,95 @@ export function cutoverDecision(report: Preflight): { ready: boolean } {
   return { ready: report.blockers.length === 0 };
 }
 
+export type PaymentMethodRow = {
+  id: string;
+  kind: string;
+  country: string | null;
+  currency: string;
+  details: string;
+};
+
+export async function listPaymentMethods(db: V4Db, botId: string): Promise<PaymentMethodRow[]> {
+  const rows = await db.call("list_payment_methods", { p_bot_id: botId });
+  return rows.map((r) => ({
+    id: String(r.id),
+    kind: String(r.kind),
+    country: (r.country as string | null) ?? null,
+    currency: String(r.currency),
+    details: String(r.details ?? ""),
+  }));
+}
+
+export function savePaymentMethod(
+  db: V4Db,
+  input: {
+    botId: string;
+    kind: string;
+    country: string | null;
+    currency: string;
+    details: string;
+    methodId?: string | null;
+  },
+): Promise<V4Result<string>> {
+  return attempt(async () =>
+    String(
+      cell(
+        one(
+          await db.call("save_payment_method", {
+            p_bot_id: input.botId,
+            p_kind: input.kind,
+            p_country: input.country,
+            p_currency: input.currency,
+            p_details: input.details,
+            p_method_id: input.methodId ?? null,
+          }),
+          "save_payment_method",
+        ),
+        "save_payment_method",
+      ),
+    ),
+  );
+}
+
+export type LessonRow = {
+  id: string;
+  productId: string;
+  title: string;
+  position: number;
+};
+
+export async function listLessons(db: V4Db, botId: string): Promise<LessonRow[]> {
+  const rows = await db.call("list_lessons", { p_bot_id: botId });
+  return rows.map((r) => ({
+    id: String(r.id),
+    productId: String(r.product_id),
+    title: String(r.title),
+    position: num(r.position),
+  }));
+}
+
 export type SellerDesk = {
   day: TodayScreen;
   orders: ListedOrder[];
   products: ListedProduct[];
+  methods: PaymentMethodRow[];
+  lessons: LessonRow[];
   sales: SalesDay[];
 };
 
-/** День продавца: дела, заказы, каталог и выручка из книги. */
+/** День продавца: дела, заказы, каталог, уроки, способы оплаты и выручка из книги. */
 export async function sellerDesk(
   db: V4Db,
   botId: string,
   lang: SellerLang = "ru",
 ): Promise<SellerDesk> {
-  const [day, orders, products, sales] = await Promise.all([
+  const [day, orders, products, sales, methods, lessons] = await Promise.all([
     today(db, botId, lang),
     listOrders(db, botId),
     listProducts(db, botId),
     salesDays(db, botId),
+    listPaymentMethods(db, botId),
+    listLessons(db, botId),
   ]);
-  return { day, orders, products, sales };
+  return { day, orders, products, sales, methods, lessons };
 }
