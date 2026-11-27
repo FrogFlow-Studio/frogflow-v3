@@ -407,6 +407,7 @@ describe("язык и история для модели", () => {
         id: 1,
         direction: "out",
         author: "bot",
+        kind: "text",
         text: "старое",
         buttons: [],
         actions: [],
@@ -416,6 +417,7 @@ describe("язык и история для модели", () => {
         id: 2,
         direction: "in",
         author: "buyer",
+        kind: "text",
         text: "мой номер +7 777 123 45 51",
         buttons: [],
         actions: [],
@@ -425,6 +427,7 @@ describe("язык и история для модели", () => {
         id: 3,
         direction: "in",
         author: "buyer",
+        kind: "text",
         text: "и папка",
         buttons: [],
         actions: [],
@@ -434,6 +437,7 @@ describe("язык и история для модели", () => {
         id: 4,
         direction: "out",
         author: "seller",
+        kind: "text",
         text: "Есть",
         buttons: [],
         actions: [{ kind: "offer" }],
@@ -444,5 +448,227 @@ describe("язык и история для модели", () => {
       { role: "user", content: "мой номер +7 7** *** ** 51\nи папка" },
       { role: "assistant", content: "[ответ продавца] Есть\n[сделано: offer]" },
     ]);
+  });
+});
+
+// ── Голос, фото, две модели (часть 2 плана: «Голос и картинки», «Дешевле и быстрее») ──
+
+const JPEG = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 4]);
+const OGG = { bytes: new Uint8Array([0x4f, 0x67, 0x67, 0x53, 9]), mediaType: "audio/ogg" };
+const voice = (durationSec: number | null = 4, load = async () => OGG) =>
+  ({ kind: "voice", durationSec, load }) as const;
+const msgRow = async (id: number) =>
+  (
+    await pg.query<{ kind: string; text: string }>(
+      "select kind, text from v4.messages where id = $1",
+      [id],
+    )
+  ).rows[0]!;
+const lastIn = async (b: string) =>
+  (
+    await pg.query<{ id: number }>(
+      "select id from v4.messages where buyer_id = $1 and direction = 'in' order by id desc limit 1",
+      [b],
+    )
+  ).rows[0]!.id;
+
+describe("голосовые", () => {
+  it("расшифровка идёт в журнал и модели, списана с баланса с наценкой и входит в расход ответа", async () => {
+    const b = await buyer();
+    const before = await balance();
+    const heard: Uint8Array[] = [];
+    const { r, model } = await run(b, "", [{ text: "Палитра — 1 700 ₸.", costMicroUsd: 8_000 }], {
+      media: voice(4),
+      transcribe: async (f) => {
+        heard.push(f.bytes);
+        return "сколько стоит палитра";
+      },
+    });
+    const x = one(r);
+    expect(heard).toHaveLength(1);
+    expect(await msgRow(await lastIn(b))).toEqual({ kind: "voice", text: "сколько стоит палитра" });
+    expect(JSON.stringify(model.requests[0]!.messages)).toContain(
+      "[голосовое] сколько стоит палитра",
+    );
+    // 4 с × 100 мкр$ = 400 → 500 с наценкой; ответ 8 000 → 10 000.
+    expect(x.costMicroUsd).toBe(10_500);
+    expect(await balance()).toBe(before - 10_500);
+    const led = await pg.query<{ n: number }>(
+      "select count(*)::int n from v4.ai_ledger where buyer_id = $1 and purpose = 'voice' and kind = 'settle'",
+      [b],
+    );
+    expect(led.rows[0]!.n).toBe(1);
+  });
+
+  it("не разобрали — просьба написать текстом, модель не зовём, бронь возвращена", async () => {
+    const b = await buyer();
+    const before = await balance();
+    const { r, model } = await run(b, "", [], {
+      media: voice(3),
+      transcribe: async () => null,
+    });
+    expect(model.requests).toHaveLength(0);
+    expect(one(r)).toMatchObject({ source: "fallback", reason: "voice_unclear", costMicroUsd: 0 });
+    expect(await balance()).toBe(before);
+  });
+
+  it("длиннее 5 минут — не расшифровываем вовсе", async () => {
+    const b = await buyer();
+    let called = false;
+    const { r } = await run(b, "", [], {
+      media: voice(301),
+      transcribe: async () => {
+        called = true;
+        return "текст";
+      },
+    });
+    expect(called).toBe(false);
+    expect(one(r).reason).toBe("voice_unclear");
+  });
+
+  it("ИИ выключен — не расшифровываем и молчим: канал ведёт себя как v3", async () => {
+    const b = await buyer();
+    aiEnabled = false;
+    let called = false;
+    try {
+      const { r } = await run(b, "", [], {
+        media: voice(3),
+        transcribe: async () => {
+          called = true;
+          return "текст";
+        },
+      });
+      expect(r).toEqual({ kind: "silent", reason: "ai_off" });
+    } finally {
+      aiEnabled = true;
+    }
+    expect(called).toBe(false);
+  });
+
+  it("повтор вебхука того же голосового — второй расшифровки и платы нет", async () => {
+    const b = await buyer();
+    let calls = 0;
+    const transcribe = async () => {
+      calls++;
+      return "привет";
+    };
+    await run(b, "", [{ text: "Здравствуйте!" }], {
+      media: voice(2),
+      transcribe,
+      externalId: "voice-dup",
+    });
+    const again = await run(b, "", [], { media: voice(2), transcribe, externalId: "voice-dup" });
+    expect(again.r).toEqual({ kind: "silent", reason: "duplicate" });
+    expect(calls).toBe(1);
+  });
+});
+
+describe("фото покупателя", () => {
+  it("картинка уходит модели в последнем сообщении, подпись рядом, отвечает сильная модель", async () => {
+    const b = await buyer();
+    const fast = scriptedAgentModel([]);
+    const { r, model } = await run(
+      b,
+      "такое есть?",
+      [{ text: "Похоже на палитру — 1 700 ₸.", toolCalls: [call("show_item")] }, { text: "" }],
+      {
+        media: {
+          kind: "photo",
+          load: async () => ({ bytes: JPEG, mediaType: "application/octet-stream" }),
+        },
+        fastModel: fast,
+      },
+    );
+    expect(fast.requests).toHaveLength(0);
+    expect(one(r)).toMatchObject({ source: "model", route: "strong" });
+    const last = model.requests[0]!.messages.at(-1)!;
+    expect(Array.isArray(last.content)).toBe(true);
+    const blocks = last.content as Array<{
+      type: string;
+      text?: string;
+      source?: { media_type: string };
+    }>;
+    expect(blocks[0]).toMatchObject({ type: "image", source: { media_type: "image/jpeg" } });
+    expect(blocks[1]!.text).toContain("[фото покупателя] такое есть?");
+    expect(await msgRow(await lastIn(b))).toEqual({ kind: "photo", text: "такое есть?" });
+  });
+
+  it("фото без подписи — не «смайлик»: модель видит картинку", async () => {
+    const b = await buyer();
+    const { r } = await run(b, "", [{ text: "Это палитра — 1 700 ₸." }], {
+      media: { kind: "photo", load: async () => ({ bytes: JPEG, mediaType: "image/jpeg" }) },
+    });
+    expect(one(r).source).toBe("model");
+  });
+
+  it("не картинка или не загрузилось — модель знает, что фото не открылось, файла нет", async () => {
+    const b = await buyer();
+    const seen: boolean[] = [];
+    const watching: AgentRole = {
+      ...role,
+      async loadContext(db, a) {
+        seen.push(Boolean(a.photoFailed));
+        return role.loadContext(db, a);
+      },
+    };
+    const { r, model } = await run(b, "вот", [{ text: "Пришлите, пожалуйста, ещё раз." }], {
+      role: watching,
+      media: {
+        kind: "photo",
+        load: async () => ({ bytes: new Uint8Array([1, 2, 3]), mediaType: "image/jpeg" }),
+      },
+    });
+    expect(one(r).source).toBe("model");
+    expect(seen.at(-1)).toBe(true);
+    expect(JSON.stringify(model.requests[0]!.messages)).not.toContain('"image"');
+  });
+});
+
+describe("две модели", () => {
+  it("«спасибо» — быстрая модель, сильная не тронута", async () => {
+    const b = await buyer();
+    const fast = scriptedAgentModel([{ text: "Пожалуйста!", model: "fast" }]);
+    const { r, model } = await run(b, "Спасибо!", [], { fastModel: fast });
+    expect(model.requests).toHaveLength(0);
+    expect(fast.requests).toHaveLength(1);
+    expect(one(r)).toMatchObject({ text: "Пожалуйста!", route: "fast" });
+    const used = await pg.query<{ model: string }>(
+      "select model from v4.ai_usage where buyer_id = $1",
+      [b],
+    );
+    expect(used.rows.map((x) => x.model)).toEqual(["fast"]);
+  });
+
+  it("вопрос о товаре — сильная модель", async () => {
+    const b = await buyer();
+    const fast = scriptedAgentModel([]);
+    const { r } = await run(b, "Сколько стоит палитра?", [{ text: "Палитра — 1 700 ₸." }], {
+      fastModel: fast,
+    });
+    expect(fast.requests).toHaveLength(0);
+    expect(one(r).route).toBe("strong");
+  });
+
+  it("«ок» после кнопки — может значить «беру»: сильная модель", async () => {
+    const b = await buyer();
+    await run(b, "Палитра?", [{ toolCalls: [call("show_item")] }, { text: "Палитра — 1 700 ₸." }]);
+    const fast = scriptedAgentModel([]);
+    const { r } = await run(b, "ок", [{ text: "Хорошо! Если будут вопросы, пишите." }], {
+      fastModel: fast,
+    });
+    expect(fast.requests).toHaveLength(0);
+    expect(one(r).route).toBe("strong");
+  });
+
+  it("ответ быстрой не прошёл проверку — исправляет сильная", async () => {
+    const b = await buyer();
+    const fast = scriptedAgentModel([{ text: "Привет! У нас скидка 25 000 ₸" }]);
+    const { r, model } = await run(b, "привет", [{ text: "Здравствуйте! Чем помочь?" }], {
+      fastModel: fast,
+    });
+    expect(fast.requests).toHaveLength(1);
+    expect(model.requests).toHaveLength(1);
+    expect(model.requests[0]!.toolChoice).toBe("none");
+    expect(one(r)).toMatchObject({ text: "Здравствуйте! Чем помочь?", route: "strong" });
   });
 });

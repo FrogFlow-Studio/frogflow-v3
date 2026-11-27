@@ -10,6 +10,7 @@ drop function if exists v4.conversation_history(uuid, uuid, text, integer);
 drop function if exists v4.remember_fact(uuid, uuid, text, text, text, timestamptz);
 drop function if exists v4.block_buyer(uuid, uuid, text, timestamptz);
 drop function if exists v4.unblock_buyer(uuid, uuid);
+drop function if exists v4.set_voice_text(uuid, bigint, text);
 drop table if exists v4.buyer_facts;
 drop table if exists v4.messages;
 alter table v4.buyers

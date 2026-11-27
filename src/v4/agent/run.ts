@@ -14,9 +14,17 @@ import {
   recordIncoming,
   recordReply,
   releaseTurn,
+  setVoiceText,
   type ShownButton,
   takeTurn,
 } from "./conversation";
+import {
+  imageBlock,
+  type IncomingMedia,
+  type Transcriber,
+  voiceCostMicroUsd,
+  voiceTooLong,
+} from "./media";
 import {
   type AgentModel,
   type AgentRequest,
@@ -24,6 +32,7 @@ import {
   isModelBusy,
   type SystemBlock,
 } from "./model";
+import { type ModelRoute, routeTurn } from "./route";
 import { aiHold, aiRelease, aiSettle, withMarkup } from "./wallet";
 
 /**
@@ -34,9 +43,13 @@ import { aiHold, aiRelease, aiSettle, withMarkup } from "./wallet";
  *  1. Записать входящее; повтор вебхука — молчим (duplicate).
  *  2. Покупатель заблокирован — молчим; диалог у продавца — молчим.
  *  3. ИИ у магазина выключен — молчим (ai_off): канал ведёт себя как v3.
+ *  3а. Голосовое — расшифровка с баланса ИИ (до хода: ход держит текст, а не файл);
+ *     не разобрали — просьба написать текстом без модели. Фото — картинкой модели.
  *  4. Взять ход; занят — молчим (queued): держатель хода ответит за оба сообщения.
  *  5. Предел ответов ИИ покупателю в день → простой ответ без ИИ.
  *  6. Бронь в кошельке (не в тени) → не хватило или дневной предел → простой ответ.
+ *  6а. Модель: простое («спасибо», «где заказ») — быстрая, остальное и фото — сильная
+ *     (route.ts). Ответ быстрой не прошёл проверку — исправляет сильная.
  *  7. Модель до 4 кругов; текст всех кругов собирается (ошибка 1 от 05.11);
  *     последний круг и круг после передачи продавцу — tool_choice none (ошибка 3).
  *     429/529 — один повтор в пределах бюджета.
@@ -57,8 +70,11 @@ export type TurnArgs = {
   now?: Date;
   /** Откуда пришёл покупатель (пост, реклама): «Цена?» под постом про палитру — про палитру (C01). */
   context?: string;
-  /** Сообщение — расшифровка голосового (Р14; сама расшифровка — этап 2). */
+  /** Сообщение — расшифровка голосового (сам канал или ядро по media). */
   voice?: boolean;
+  /** Покупатель прислал фото; photoFailed — фото не открылось (размер, формат). */
+  photo?: boolean;
+  photoFailed?: boolean;
 };
 
 /** Изменяемое состояние одного ответа: что инструменты показали и сделали. */
@@ -171,6 +187,12 @@ export type AgentInput = TurnArgs & {
   sleep?: (ms: number) => Promise<void>;
   /** id хода (в тестах — постоянный). */
   turnId?: string;
+  /** Голосовое или фото: файл грузит канал, ядро получает байты (media.ts). */
+  media?: IncomingMedia;
+  /** Расшифровка голосовых; нет — голосовое считается неразобранным. */
+  transcribe?: Transcriber;
+  /** Быстрая дешёвая модель на простое; нет — всё отвечает model. */
+  fastModel?: AgentModel;
 };
 
 export type AgentReply = {
@@ -183,6 +205,8 @@ export type AgentReply = {
   costMicroUsd: number;
   checkResult: string | null;
   messageId: number;
+  /** Какая модель написала итог: fast, strong; простой ответ без модели — null. */
+  route: ModelRoute | null;
 };
 
 export type AgentResult =
@@ -201,6 +225,8 @@ const BUSY_RETRY_MS = 1_500;
 
 export async function runAgent(input: AgentInput): Promise<AgentResult> {
   const { db, botId, buyerId, mode } = input;
+  const media = input.media;
+  const isVoice = media?.kind === "voice" || input.voice === true;
   const args: TurnArgs = {
     botId,
     buyerId,
@@ -208,12 +234,16 @@ export async function runAgent(input: AgentInput): Promise<AgentResult> {
     channel: input.channel,
     ...(input.now ? { now: input.now } : {}),
     ...(input.context ? { context: input.context } : {}),
-    ...(input.voice ? { voice: true } : {}),
+    ...(isVoice ? { voice: true } : {}),
+    ...(media?.kind === "photo" ? { photo: true } : {}),
   };
+  // Голосовое пишется до расшифровки с пустым текстом: повтор вебхука — тот же
+  // duplicate и без второй платы за расшифровку.
   const incoming = await recordIncoming(db, {
     ...args,
     externalId: input.externalId,
-    text: input.text,
+    text: media?.kind === "voice" ? "" : input.text,
+    kind: media?.kind ?? (isVoice ? "voice" : "text"),
   });
   if (incoming.duplicate) return { kind: "silent", reason: "duplicate" };
 
@@ -224,11 +254,38 @@ export async function runAgent(input: AgentInput): Promise<AgentResult> {
   if (state.handoff) return { kind: "silent", reason: "handoff" };
   // Реакция или одни смайлики (❤️, 👍) — не вопрос и не «да»: молчим, модель не зовём (C13).
   // «+» — согласие (решение по Direct), его разбирает роль.
-  if (!/[\p{L}\p{N}]/u.test(input.text) && input.text.trim() !== "+")
+  if (!media && !/[\p{L}\p{N}]/u.test(input.text) && input.text.trim() !== "+")
     return { kind: "silent", reason: "emoji" };
 
-  const ctx = await input.role.loadContext(db, { ...args, text: input.text });
+  let text = input.text;
+  let ctx = await input.role.loadContext(db, {
+    ...args,
+    text: media?.kind === "voice" ? "" : text,
+  });
   if (!ctx.aiEnabled) return { kind: "silent", reason: "ai_off" };
+
+  // Голосовое: расшифровать до хода — держатель хода читает журнал, а не файл.
+  const first: FirstPass = {};
+  if (media?.kind === "voice") {
+    const heard = await transcribeVoice(input, media, ctx.dailyCapMicroUsd);
+    first.voiceCost = heard.cost;
+    if (heard.text) {
+      text = heard.text;
+      await setVoiceText(db, { botId, messageId: incoming.messageId, text });
+      ctx = await input.role.loadContext(db, { ...args, text });
+    } else if (heard.unclear) first.voiceUnclear = true;
+  }
+  if (media?.kind === "photo") {
+    try {
+      const img = imageBlock(await media.load());
+      if (img.ok) first.image = img.block;
+      else args.photoFailed = true;
+    } catch (e) {
+      console.warn(`[v4 agent] фото не загрузилось: ${e instanceof Error ? e.name : "ошибка"}`);
+      args.photoFailed = true;
+    }
+    if (args.photoFailed) ctx = await input.role.loadContext(db, { ...args, text });
+  }
 
   const turnId = input.turnId ?? crypto.randomUUID();
   if (!(await takeTurn(db, { botId, buyerId, turnId, ...(input.now ? { now: input.now } : {}) })))
@@ -239,11 +296,14 @@ export async function runAgent(input: AgentInput): Promise<AgentResult> {
   // Последнее входящее, на которое уже ответили: модель видит весь журнал, так что
   // сообщения, пришедшие до чтения истории, отвечены этим же ответом (D08).
   const seen = { id: incoming.messageId };
-  let text = input.text;
   try {
     for (let pass = 0; pass < MAX_PASSES; pass++) {
-      const passCtx = pass === 0 ? ctx : await input.role.loadContext(db, { ...args, text });
-      replies.push(await answerOnce(input, args, passCtx, text, deadline, seen));
+      const passArgs: TurnArgs =
+        pass === 0 ? args : { ...args, voice: false, photo: false, photoFailed: false };
+      const passCtx = pass === 0 ? ctx : await input.role.loadContext(db, { ...passArgs, text });
+      replies.push(
+        await answerOnce(input, passArgs, passCtx, text, deadline, seen, pass === 0 ? first : {}),
+      );
       const pending = await releaseTurn(db, { botId, buyerId, turnId, afterMessageId: seen.id });
       if (pending === 0) break;
       // За время хода пришли новые сообщения — отвечаем за них тем же ходом.
@@ -266,6 +326,70 @@ export async function runAgent(input: AgentInput): Promise<AgentResult> {
   return { kind: "reply", replies };
 }
 
+/** Что относится только к первому ответу хода: картинка, голосовое. */
+type FirstPass = {
+  image?: Anthropic.ImageBlockParam;
+  voiceUnclear?: boolean;
+  /** Расшифровка, списанная с баланса (с наценкой): входит в расход ответа. */
+  voiceCost?: number;
+};
+
+/**
+ * Расшифровка с баланса ИИ: бронь по длительности, расчёт с наценкой. Тень платит
+ * платформа. Нет денег — расшифровки нет, а простой ответ даст обычный путь
+ * (пустой кошелёк). Не разобрали или слишком длинное — unclear, бронь возвращена.
+ */
+async function transcribeVoice(
+  input: AgentInput,
+  media: Extract<IncomingMedia, { kind: "voice" }>,
+  dailyCapMicroUsd: number | null,
+): Promise<{ text: string | null; unclear: boolean; cost: number }> {
+  const { db, botId, buyerId, mode } = input;
+  const nowArg = input.now ? { now: input.now } : {};
+  if (!input.transcribe || voiceTooLong(media.durationSec))
+    return { text: null, unclear: true, cost: 0 };
+  const api = voiceCostMicroUsd(media.durationSec);
+  let holdId: number | null = null;
+  if (mode !== "shadow") {
+    const hold = await aiHold(db, {
+      botId,
+      buyerId,
+      purpose: "voice",
+      amountMicroUsd: api,
+      dailyCapMicroUsd,
+      mode,
+      ...nowArg,
+    });
+    if (!hold.ok) return { text: null, unclear: false, cost: 0 };
+    holdId = hold.holdId;
+  }
+  try {
+    let heard: string | null = null;
+    try {
+      heard = await input.transcribe(await media.load());
+    } catch (e) {
+      console.warn(
+        `[v4 agent] голосовое не загрузилось: ${e instanceof Error ? e.name : "ошибка"}`,
+      );
+    }
+    if (!heard?.trim()) return { text: null, unclear: true, cost: 0 };
+    if (holdId === null) return { text: heard.trim(), unclear: false, cost: withMarkup(api, 0) };
+    const id = holdId;
+    holdId = null;
+    const cost = await aiSettle(db, {
+      botId,
+      holdId: id,
+      apiMicroUsd: api,
+      markupBp: await input.markupBp(),
+      ...nowArg,
+    });
+    return { text: heard.trim(), unclear: false, cost };
+  } finally {
+    // Не разобрали или сбой — бронь вернуть: за пустую расшифровку не платят.
+    if (holdId !== null) await aiRelease(db, { botId, holdId, ...nowArg }).catch(() => undefined);
+  }
+}
+
 async function answerOnce(
   input: AgentInput,
   args: TurnArgs,
@@ -273,18 +397,27 @@ async function answerOnce(
   text: string,
   deadline: number,
   seen: { id: number },
+  first: FirstPass,
 ): Promise<AgentReply> {
   const { db, role, botId, buyerId, mode } = input;
   const s = newSession();
   Object.assign(s.sources, ctx.sources ?? {});
   const nowArg = input.now ? { now: input.now } : {};
 
+  const voiceCost = first.voiceCost ?? 0;
   const simple = async (reason: FallbackReason, cost = 0, checkResult: string | null = null) => {
     s.buttons = [];
     // Простой ответ не опирается на знания, которые называл отвергнутый черновик.
     s.actions = s.actions.filter((x) => x.kind !== "knowledge");
     const fb = await role.fallback(db, s, { ...args, text, lang: ctx.lang }, reason);
-    const saved = await save({ text: fb.text, source: "fallback", reason, cost, checkResult });
+    const saved = await save({
+      text: fb.text,
+      source: "fallback",
+      reason,
+      cost: cost + voiceCost,
+      checkResult,
+      route: null,
+    });
     // Сигналы оператору (доля простых ответов, сбои модели, кошелёк): дело ai_health.
     // Ответ уже записан — сбой проверки его не отменяет.
     if (mode === "live")
@@ -304,6 +437,7 @@ async function answerOnce(
     reason: FallbackReason | null;
     cost: number;
     checkResult: string | null;
+    route: ModelRoute | null;
   }): Promise<AgentReply> => {
     const messageId = await recordReply(db, {
       botId,
@@ -329,8 +463,12 @@ async function answerOnce(
       costMicroUsd: r.cost,
       checkResult: r.checkResult,
       messageId,
+      route: r.route,
     };
   };
+
+  // 3а. Голосовое не разобрали — просьба написать текстом, модель не зовём.
+  if (first.voiceUnclear) return simple("voice_unclear");
 
   // 4а. Однозначный ответ без модели («+» на предложение).
   if (role.shortcut) {
@@ -340,8 +478,9 @@ async function answerOnce(
         text: quick.text,
         source: "fallback",
         reason: null,
-        cost: 0,
+        cost: voiceCost,
         checkResult: null,
+        route: null,
       });
   }
 
@@ -379,10 +518,23 @@ async function answerOnce(
     const history = await conversationHistory(db, { botId, buyerId, mode, limit: 20 });
     for (const m of history) if (m.direction === "in" && m.id > seen.id) seen.id = m.id;
     const messages = toModelMessages(history);
+    if (first.image) attachImage(messages, first.image);
     const recentReplies = history.filter((m) => m.direction === "out").map((m) => m.text);
     const signal = AbortSignal.timeout(Math.max(1_000, deadline - Date.now()));
+    const lastOut = history.filter((m) => m.direction === "out").at(-1);
+    let route: ModelRoute =
+      input.fastModel &&
+      routeTurn({
+        text,
+        photo: Boolean(args.photo),
+        lastReplyHadButtons: Boolean(lastOut?.buttons.length),
+      }) === "fast"
+        ? "fast"
+        : "strong";
+    const modelFor = (r: ModelRoute) => (r === "fast" && input.fastModel) || input.model;
 
     const call = async (toolChoice: "auto" | "none"): Promise<AgentTurn> => {
+      const model = modelFor(route);
       const req: AgentRequest = {
         system: ctx.system,
         messages,
@@ -392,11 +544,11 @@ async function answerOnce(
       };
       let turn: AgentTurn;
       try {
-        turn = await input.model.turn(req);
+        turn = await model.turn(req);
       } catch (e) {
         if (!isModelBusy(e) || deadline - Date.now() < BUSY_RETRY_MS + 5_000) throw e;
         await (input.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms))))(BUSY_RETRY_MS);
-        turn = await input.model.turn(req);
+        turn = await model.turn(req);
       }
       apiCost += turn.costMicroUsd;
       await db.call("ai_log_usage", {
@@ -469,6 +621,8 @@ async function answerOnce(
         role: "user",
         content: `[Проверка: ответ не отправлен — ${failure.hint}. Напиши ответ покупателю заново, коротко, без инструментов.]`,
       });
+      // Быструю модель исправляет сильная.
+      route = "strong";
       try {
         const again = await call("none");
         draft = takeSources(again.text, s);
@@ -484,7 +638,14 @@ async function answerOnce(
     }
     const cost = await finishMoney();
     holdId = null;
-    return save({ text: draft, source: "model", reason: null, cost, checkResult: "ok" });
+    return save({
+      text: draft,
+      source: "model",
+      reason: null,
+      cost: cost + voiceCost,
+      checkResult: "ok",
+      route,
+    });
   } finally {
     // Непредвиденный сбой между бронью и расчётом — бронь вернуть, а не ждать тика.
     if (holdId !== null) await aiRelease(db, { botId, holdId, ...nowArg }).catch(() => undefined);
@@ -503,6 +664,10 @@ export function toModelMessages(history: HistoryMessage[]): Anthropic.MessagePar
     let content = m.direction === "in" ? maskContacts(m.text) : m.text;
     if (m.direction === "in" && content.length > MODEL_MESSAGE_MAX)
       content = `${content.slice(0, MODEL_MESSAGE_MAX)} [обрезано: сообщение длиннее ${MODEL_MESSAGE_MAX} знаков]`;
+    // Файлы в журнале не хранятся: модель видит пометку, текущее фото — картинкой.
+    if (m.direction === "in" && m.kind === "photo") content = `[фото покупателя] ${content}`;
+    if (m.direction === "in" && m.kind === "voice")
+      content = content ? `[голосовое] ${content}` : "[голосовое, не разобрано]";
     if (m.direction === "out") {
       if (m.author === "seller") content = `[ответ продавца] ${content}`;
       if (m.buttons.length)
@@ -520,6 +685,17 @@ export function toModelMessages(history: HistoryMessage[]): Anthropic.MessagePar
   while (out[0]?.role === "assistant") out.shift();
   if (!out.length) throw serverFailure("v4 agent: в журнале нет сообщения покупателя");
   return out;
+}
+
+/** Картинка — в последнее сообщение покупателя (оно и есть это фото с подписью). */
+export function attachImage(
+  messages: Anthropic.MessageParam[],
+  image: Anthropic.ImageBlockParam,
+): void {
+  const last = messages.at(-1);
+  if (!last || last.role !== "user") return;
+  const text = typeof last.content === "string" ? last.content : "";
+  last.content = [image, { type: "text", text: text || "[фото покупателя]" }];
 }
 
 /**

@@ -49,6 +49,13 @@ export const TEXTS = {
     en: "The price has been updated — the new button is below.",
     uz: "Narx yangilandi — yangi tugma pastda.",
   },
+  /** Голосовое не расшифровалось. */
+  voiceUnclear: {
+    ru: "Не получилось разобрать голосовое. Напишите, пожалуйста, текстом.",
+    kk: "Дауыстық хабарламаны түсіну мүмкін болмады. Мәтінмен жазыңызшы.",
+    en: "I couldn’t make out the voice message. Could you please type it?",
+    uz: "Ovozli xabarni tushunib bo'lmadi. Iltimos, matn bilan yozing.",
+  },
   buy: { ru: "Купить", kk: "Сатып алу", en: "Buy", uz: "Sotib olish" },
   /** Кнопка одного предложения на несколько товаров. */
   buyAll: {

@@ -36,8 +36,9 @@ create table v4.messages (
   author text not null check (author in ('buyer', 'bot', 'seller')),
   mode text not null default 'live' check (mode in ('live', 'shadow', 'test')),
   text text not null default '' check (length(text) <= 8000),
-  -- voice — расшифровка голосового (сама расшифровка — этап 2, Р14): текст тот же, пометка в журнале.
-  kind text not null default 'text' check (kind in ('text', 'voice')),
+  -- voice — голосовое: в text его расшифровка (пустая, пока не расшифровано);
+  -- photo — фото покупателя: в text подпись к нему. Сам файл в журнале не хранится.
+  kind text not null default 'text' check (kind in ('text', 'voice', 'photo')),
   -- Показанные кнопки: [{offer_id|product_id, label}] — модель видит их в истории.
   buttons jsonb not null default '[]'::jsonb check (jsonb_typeof(buttons) = 'array'),
   -- Что бот сделал: [{kind, ...}] — передал продавцу, отменил заказ, запомнил факт.
@@ -92,6 +93,21 @@ begin
   select id into mid from v4.messages
   where bot_id = p_bot_id and channel = p_channel and external_id = p_external_id and direction = 'in';
   return jsonb_build_object('message_id', mid, 'duplicate', true);
+end $$;
+
+-- Расшифровка голосового: входящее записано до расшифровки (повтор вебхука не
+-- платит за неё второй раз), текст ставится один раз и только у голосового.
+-- security definer: прямого update журнала у tenant_bot нет, чужой магазин — отказ.
+create or replace function v4.set_voice_text(
+  p_bot_id uuid, p_message_id bigint, p_text text
+) returns boolean language plpgsql security definer set search_path = v4, pg_temp as $$
+begin
+  if v4.current_bot_id() is not null and v4.current_bot_id() <> p_bot_id then
+    raise exception using errcode = 'P0001', message = 'v4:foreign_bot';
+  end if;
+  update v4.messages set text = left(coalesce(p_text, ''), 8000)
+  where bot_id = p_bot_id and id = p_message_id and direction = 'in' and kind = 'voice' and text = '';
+  return found;
 end $$;
 
 -- Взять ход: true только у одного из одновременных вызовов. Ход истекает сам
@@ -165,9 +181,9 @@ $$;
 -- Последние p_limit сообщений покупателя в этом режиме, старые первыми.
 create or replace function v4.conversation_history(
   p_bot_id uuid, p_buyer_id uuid, p_mode text default 'live', p_limit integer default 20
-) returns table (id bigint, direction text, author text, text text, buttons jsonb, actions jsonb, created_at timestamptz)
+) returns table (id bigint, direction text, author text, kind text, text text, buttons jsonb, actions jsonb, created_at timestamptz)
 language sql stable as $$
-  select h.id, h.direction, h.author, h.text, h.buttons, h.actions, h.created_at from (
+  select h.id, h.direction, h.author, h.kind, h.text, h.buttons, h.actions, h.created_at from (
     select m.* from v4.messages m
     where m.bot_id = p_bot_id and m.buyer_id = p_buyer_id and m.mode = p_mode
     order by m.created_at desc, m.id desc
@@ -279,7 +295,8 @@ revoke all on function v4.agent_buyer_state(uuid, uuid),
   v4.record_reply(uuid, uuid, text, text, jsonb, jsonb, text, text, text, bigint, text, text, text, timestamptz),
   v4.conversation_history(uuid, uuid, text, integer),
   v4.remember_fact(uuid, uuid, text, text, text, timestamptz),
-  v4.block_buyer(uuid, uuid, text, timestamptz), v4.unblock_buyer(uuid, uuid)
+  v4.block_buyer(uuid, uuid, text, timestamptz), v4.unblock_buyer(uuid, uuid),
+  v4.set_voice_text(uuid, bigint, text)
   from public, anon, authenticated;
 grant execute on function v4.agent_buyer_state(uuid, uuid),
   v4.ai_log_usage(uuid, text, text, integer, integer, bigint, uuid, timestamptz),
@@ -289,7 +306,8 @@ grant execute on function v4.agent_buyer_state(uuid, uuid),
   v4.record_reply(uuid, uuid, text, text, jsonb, jsonb, text, text, text, bigint, text, text, text, timestamptz),
   v4.conversation_history(uuid, uuid, text, integer),
   v4.remember_fact(uuid, uuid, text, text, text, timestamptz),
-  v4.block_buyer(uuid, uuid, text, timestamptz), v4.unblock_buyer(uuid, uuid)
+  v4.block_buyer(uuid, uuid, text, timestamptz), v4.unblock_buyer(uuid, uuid),
+  v4.set_voice_text(uuid, bigint, text)
   to service_role, tenant_bot;
 
 -- Проверка (должно вернуть 2 таблицы и 6 новых колонок покупателя):

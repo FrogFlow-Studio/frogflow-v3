@@ -157,6 +157,7 @@ export function sellerRole(): AgentRole {
             weekday: Number(c.weekday),
             ...(a.context ? { context: a.context } : {}),
             ...(a.voice ? { voice: true } : {}),
+            ...(a.photo ? { photo: a.photoFailed ? ("failed" as const) : ("ok" as const) } : {}),
             otherLanguage: other,
           },
           lang,
@@ -225,6 +226,8 @@ export function sellerRole(): AgentRole {
       const note = parseProfile(c.profile).work_hours_note;
       const withNote = (t: string) => (note ? `${t} ${note}` : t);
 
+      // Голосовое не разобрали (или длиннее 5 минут): просим текстом, без поиска.
+      if (reason === "voice_unclear") return { text: TEXTS.voiceUnclear[lang] };
       if (reason === "check_failed" && a.mode === "shadow") return { text: TEXTS.handedOff[lang] };
       if (reason === "check_failed") {
         // Модель дважды написала то, что нельзя отправить: вопрос — продавцу.
