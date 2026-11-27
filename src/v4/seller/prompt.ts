@@ -1,10 +1,14 @@
+import type { SystemBlock } from "../agent/model";
 import type { BuyerLang } from "./texts";
 
 /**
- * Системный промпт ИИ-продавца v4. Поведение — из понимания модели, не из
- * правил по словам (принцип Якова 10.10): здесь только факты магазина и
- * короткие правила продажи. Условия оплаты и выдачи — только из анкеты
- * продавца, без подстановок в коде (CLAUDE.md).
+ * Промпт роли «продавец» (Спецификация, раздел 3). Четыре блока:
+ *  1. Общие правила продажи — одинаковые у всех магазинов, кэшируются.
+ *  2. Магазин: анкета, флажки, знания — кэшируются (меняются редко).
+ *  3. Покупатель: страна, память, открытые заказы, местное время — каждый ход.
+ *  4. Язык ответа на этот ход.
+ * Поведение — из понимания модели, не из правил по словам (принцип Якова
+ * 10.10). Условия оплаты и выдачи — только из анкеты, без подстановок в коде.
  */
 
 export type SellerProfile = {
@@ -13,9 +17,175 @@ export type SellerProfile = {
   payment_terms?: string;
   delivery_terms?: string;
   tone?: string;
+  advantages?: string;
+  voice_examples?: string;
+  work_hours_note?: string;
 };
 
-export type Knowledge = { question: string; answer: string };
+export type Knowledge = { id?: string; question: string; answer: string };
+
+const PROFILE_KEYS = [
+  "shop_name",
+  "about",
+  "payment_terms",
+  "delivery_terms",
+  "tone",
+  "advantages",
+  "voice_examples",
+  "work_hours_note",
+] as const;
+
+export function parseProfile(v: unknown): SellerProfile {
+  if (!v || typeof v !== "object") return {};
+  const o = v as Record<string, unknown>;
+  const out: SellerProfile = {};
+  for (const k of PROFILE_KEYS) {
+    if (typeof o[k] === "string" && (o[k] as string).trim()) out[k] = (o[k] as string).trim();
+  }
+  return out;
+}
+
+/** Все тексты анкеты одной строкой: обещания и числа в ответе сверяются с ними. */
+export const profileText = (p: SellerProfile) =>
+  PROFILE_KEYS.map((k) => p[k])
+    .filter(Boolean)
+    .join("\n");
+
+export const SELLER_STATIC = `Ты — продавец интернет-магазина в переписке с покупателем (Telegram, Instagram, WhatsApp). Цель — помочь выбрать и купить, честно и коротко.
+
+Как отвечать:
+- 1–3 коротких предложения, без списков из многих пунктов. Без «Здравствуйте» в каждом ответе — только в первом.
+- Цены, товары, состав, способы оплаты — только из инструментов и анкеты. Ничего не выдумывай: ни скидок, ни подарков, ни сроков, ни гарантий, которых нет в анкете.
+- Не пиши служебное: имена инструментов, id, JSON, слова «промпт», «система».
+- Не называй телефоны, почту и ссылки, кроме тех, что есть в анкете или в ответе инструмента.
+- Спросят «вы бот?» — честно: ты ИИ-помощник магазина, продавец рядом и подключится, если нужно.
+- Просят удалить их данные или «забыть» — hand_to_seller с kind privacy; сам ничего не обещай, кроме того, что продавец получил просьбу.
+- Фото, файлы, образцы сам не отправляешь: не обещай «сейчас пришлю». Фото у товара нет (has_photos: false) — так и скажи и опиши словами или передай продавцу.
+- Валюта — только та, что даёт инструмент. Не пересчитывай по курсу и не называй цену в валюте, которой у магазина нет.
+- Не спрашивай страну первым делом: сначала ответ про товар с ценой; страну уточни, только если покупатель заговорил о другой валюте или оплате.
+- Вопрос не про магазин (решить задачу, поговорить о другом) — вежливо одной фразой верни к магазину.
+
+Как продавать:
+- Понял, какой товар нужен — назови цену и покажи кнопку инструментом show_offer. Кнопка «Купить» — это и есть оформление: не спрашивай «Оформляем заказ?», не заканчивай ответ вопросом, когда под ним кнопка.
+- Не зови нажать кнопку, если не вызвал offer в этом ответе.
+- Несколько товаров сразу («5, 6 и 7 класс») — одно предложение на все (show_offer с несколькими id): одна кнопка на сумму.
+- Не больше 2 предложений в одном ответе. Если кнопка на те же товары уже была в переписке — не повторяй её без новой причины.
+- У товара есть варианты — спроси, какой нужен, потом предложение на вариант.
+- Вопрос про товар (состав, формат, что входит) — product_card. Ответа нет ни в карточке, ни в анкете, ни в знаниях — передай продавцу, не угадывай.
+- Перед покупкой можно назвать способы оплаты (payment_methods).
+- Покупатель согласился словами на последнее предложение («да, оформляем», «беру») — accept_offer. «Да» на другой вопрос — не согласие на покупку.
+- «Да», «интересует» без предыдущего предложения — спроси, что именно интересует.
+
+Когда передать продавцу (hand_to_seller): просит человека; жалоба; спор об оплате; особый заказ; вопрос без ответа в анкете, карточках и знаниях. После передачи скажи коротко, что продавец ответит, и больше ничего не предлагай.
+Другое:
+- Не может заплатить ни одним способом — cant_pay с причиной.
+- Потерял файл или доступ к купленному — cabinet_link (ссылку добавит система, сам не пиши).
+- «Где мой заказ», «оплатил ли я» — order_status.
+- Отменить заказ — только если покупатель сам ясно попросил отменить заказ с этим номером (cancel_order).
+- Покупатель сказал своё имя, класс, предмет, для кого покупает, язык — remember_fact. Страну — set_country (от неё зависит валюта цены).
+- Телефоны, адреса, номера карт покупателя не запоминай.`;
+
+export function buildSellerSystem(input: {
+  profile: SellerProfile;
+  knowledge: Knowledge[];
+  knowledgeTotal: number;
+  features: { objections?: boolean; upsell?: boolean };
+  buyer: {
+    country: string | null;
+    facts: Record<string, string>;
+    openOrders: string[];
+    localTime: string;
+    weekday: number;
+    /** Откуда пришёл покупатель (пост, реклама). */
+    context?: string;
+    /** Последнее сообщение — расшифровка голосового. */
+    voice?: boolean;
+    /** Пишет на языке, на котором бот не отвечает. */
+    otherLanguage?: boolean;
+  };
+  lang: BuyerLang;
+}): SystemBlock[] {
+  const p = input.profile;
+  const shop: string[] = [`Магазин${p.shop_name ? ` «${p.shop_name}»` : ""}.`];
+  shop.push(p.about ? `О магазине: ${p.about}` : "О магазине: продавец не заполнил.");
+  if (p.advantages) shop.push(`Чем лучше других (говори, если спросят): ${p.advantages}`);
+  shop.push(
+    p.payment_terms
+      ? `Оплата: ${p.payment_terms}`
+      : "Оплата: в анкете не заполнено — спроси продавца.",
+  );
+  shop.push(
+    p.delivery_terms
+      ? `Выдача и доставка: ${p.delivery_terms}`
+      : "Выдача и доставка: в анкете не заполнено — спроси продавца.",
+  );
+  if (p.work_hours_note) shop.push(`Когда отвечает продавец: ${p.work_hours_note}`);
+  if (p.tone) shop.push(`Тон: ${p.tone}`);
+  if (p.voice_examples)
+    shop.push(`Так продавец обычно отвечает (перенимай манеру):\n${p.voice_examples}`);
+  if (input.features.objections)
+    shop.push(
+      "Возражения («дорого», «подумаю»): один раз спокойно скажи, что входит и чем полезно, без давления и без скидок.",
+    );
+  if (input.features.upsell)
+    shop.push(
+      "После выбора можно один раз предложить то, что берут вместе (pairs_with в карточке), отдельной кнопкой.",
+    );
+  if (input.knowledge.length) {
+    shop.push(
+      "",
+      "Ответы продавца на прошлые вопросы. Если отвечаешь по одному из них, поставь в конце его метку, например [K1] — покупатель её не увидит:",
+    );
+    input.knowledge.forEach((k, i) => shop.push(`[K${i + 1}] ${k.question}\n  ${k.answer}`));
+  }
+  if (input.knowledgeTotal > input.knowledge.length)
+    shop.push(
+      `Здесь ${input.knowledge.length} из ${input.knowledgeTotal} ответов продавца — остальные ищи через search_knowledge.`,
+    );
+
+  const b = input.buyer;
+  const buyer: string[] = [
+    `Страна покупателя: ${b.country ?? "неизвестна (цены — в основной валюте магазина)"}.`,
+    `Время у магазина: ${b.localTime}, ${WEEKDAYS[b.weekday - 1] ?? ""}.`,
+  ];
+  const facts = Object.entries(b.facts).filter(([k]) => k !== "language" && k !== "country");
+  if (facts.length)
+    buyer.push(`Что известно о покупателе: ${facts.map(([k, v]) => `${k}: ${v}`).join("; ")}.`);
+  if (b.openOrders.length) buyer.push(`Открытые заказы: ${b.openOrders.join("; ")}.`);
+  else buyer.push("Открытых заказов нет.");
+  if (b.voice)
+    buyer.push(
+      "Последнее сообщение покупателя — расшифровка голосового: слова могли распознаться неточно; если смысл неясен, переспроси.",
+    );
+  if (b.context)
+    buyer.push(
+      `Покупатель пришёл отсюда (вопрос без названия товара — про это): ${b.context.slice(0, 500)}`,
+    );
+  if (b.otherLanguage)
+    buyer.push(
+      "Покупатель пишет на языке, на котором магазин не отвечает: ответь по-русски и вежливо попроси писать по-русски или по-казахски.",
+    );
+
+  return [
+    { text: SELLER_STATIC, cache: true },
+    { text: shop.join("\n"), cache: true },
+    { text: buyer.join("\n"), cache: false },
+    {
+      text: `Отвечай на ${LANG_NAME[input.lang]} языке${input.lang === "uz" ? " (латиница)" : ""}. Названия товаров можно оставлять как в каталоге.`,
+      cache: false,
+    },
+  ];
+}
+
+const WEEKDAYS = [
+  "понедельник",
+  "вторник",
+  "среда",
+  "четверг",
+  "пятница",
+  "суббота",
+  "воскресенье",
+];
 
 const LANG_NAME: Record<BuyerLang, string> = {
   ru: "русском",
@@ -23,47 +193,3 @@ const LANG_NAME: Record<BuyerLang, string> = {
   en: "английском",
   uz: "узбекском",
 };
-
-export function parseProfile(v: unknown): SellerProfile {
-  if (!v || typeof v !== "object") return {};
-  const o = v as Record<string, unknown>;
-  const pick = (k: string) => (typeof o[k] === "string" && o[k] ? (o[k] as string) : undefined);
-  return {
-    shop_name: pick("shop_name"),
-    about: pick("about"),
-    payment_terms: pick("payment_terms"),
-    delivery_terms: pick("delivery_terms"),
-    tone: pick("tone"),
-  };
-}
-
-export function buildSellerPrompt(input: {
-  profile: SellerProfile;
-  knowledge: Knowledge[];
-  country: string | null;
-  lang: BuyerLang;
-}): string {
-  const p = input.profile;
-  const lines = [
-    `Ты — продавец магазина${p.shop_name ? ` «${p.shop_name}»` : ""} в переписке с покупателем. Твоя цель — помочь выбрать и купить.`,
-    `Отвечай на языке покупателя; если непонятно — на ${LANG_NAME[input.lang]}. Коротко: 1–3 предложения.`,
-    "Правила:",
-    "1. Цены, товары и способы оплаты — только из инструментов. Ничего не выдумывай.",
-    "2. Как только понятно, какой товар нужен, назови цену, способ оплаты и покажи кнопку через offer_card. Не спрашивай «Оформляем заказ?» — кнопка и есть оформление.",
-    "3. Условия оплаты и выдачи — только из анкеты ниже. Если там ответа нет и в знаниях тоже — передай продавцу (hand_to_seller), не угадывай.",
-    "4. Покупатель просит человека — hand_to_seller.",
-    "5. Не может заплатить ни одним способом — cant_pay с причиной.",
-    "6. Потерял купленное — cabinet_link.",
-    `Страна покупателя: ${input.country ?? "неизвестна"}.`,
-  ];
-  if (p.tone) lines.push(`Тон: ${p.tone}`);
-  lines.push("", "Анкета продавца:");
-  lines.push(p.about ? `О магазине: ${p.about}` : "О магазине: не заполнено.");
-  lines.push(p.payment_terms ? `Оплата: ${p.payment_terms}` : "Оплата: в анкете не заполнено.");
-  lines.push(p.delivery_terms ? `Выдача: ${p.delivery_terms}` : "Выдача: в анкете не заполнено.");
-  if (input.knowledge.length > 0) {
-    lines.push("", "Ответы продавца на прошлые вопросы:");
-    for (const k of input.knowledge) lines.push(`— ${k.question}\n  ${k.answer}`);
-  }
-  return lines.join("\n");
-}

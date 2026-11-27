@@ -1,25 +1,36 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { modelParams } from "@/core/ai/pure";
 import { callUsd } from "@/core/consultant/engine.server";
 import { previewReadonly } from "@/lib/preview";
 import { serverFailure } from "@/lib/server-failure";
-import type { SellerModel } from "./model";
+import type { AgentModel } from "./model";
 
-/** Модель по умолчанию для продавца v4. Выбор модели — до живой проверки качества. */
-export const SELLER_MODEL = "claude-sonnet-5";
+/**
+ * Модель ядра на Anthropic. Порядок кэша: инструменты → неизменный блок (общий
+ * для всех магазинов, горячий, пока пишет хоть кто-то на платформе) → блок
+ * магазина → блок покупателя без кэша (проект 4.4: тихому магазину это снижает
+ * цену ответа почти вдвое). Повторов в SDK нет: 429/529 повторяет ядро один раз.
+ */
+export const AGENT_MODEL = "claude-sonnet-5";
 
-export function anthropicSellerModel(apiKey: string, model = SELLER_MODEL): SellerModel {
+export function anthropicAgentModel(apiKey: string, model = AGENT_MODEL): AgentModel {
   const client = new Anthropic({ apiKey, maxRetries: 0 });
   return {
     async turn(req) {
-      // Предпросмотр: модель не зовём; продавец ответит простым ответом без модели.
-      if (previewReadonly()) throw serverFailure("v4 seller: предпросмотр, модель выключена");
+      if (previewReadonly()) throw serverFailure("v4 agent: предпросмотр, модель выключена");
       const res = await client.messages.create(
         {
           model,
           max_tokens: 1024,
-          system: [{ type: "text", text: req.system, cache_control: { type: "ephemeral" } }],
+          ...modelParams(model),
+          system: req.system.map((b) => ({
+            type: "text" as const,
+            text: b.text,
+            ...(b.cache ? { cache_control: { type: "ephemeral" as const } } : {}),
+          })),
           messages: req.messages,
           tools: req.tools,
+          tool_choice: { type: req.toolChoice },
         },
         { signal: req.signal },
       );

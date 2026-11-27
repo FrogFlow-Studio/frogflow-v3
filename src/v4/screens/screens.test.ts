@@ -61,7 +61,16 @@ describe("«Сегодня» продавца", () => {
     const s = await today(asB(), B);
     expect(s.cards).toEqual([]);
     expect(s.botDid).toMatchObject({ orders: 0, paid: 0, delivered: 0, commentsAnswered: 0 });
-    expect(s.aiRoomMicroUsd).toBe(5_000_000);
+    // Остаток ИИ — баланс кошелька (021): пустой кошелёк — 0, после пополнения — пополнение.
+    expect(s.aiRoomMicroUsd).toBe(0);
+    await svc().call("ai_credit", {
+      p_bot_id: B,
+      p_kind: "topup",
+      p_amount_micro_usd: 5_000_000,
+      p_note: "тест",
+      p_created_by: "operator",
+    });
+    expect((await today(asB(), B)).aiRoomMicroUsd).toBe(5_000_000);
   });
 
   it("чек, передача продавцу и молчащий канал — канал первым, у чека номер заказа и имя", async () => {
