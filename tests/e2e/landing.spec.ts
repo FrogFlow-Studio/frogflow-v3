@@ -51,6 +51,7 @@ test("главная Enveriq: бренд, превью ссылки, клиен�
   if (info.project.name === "phone") {
     // Кнопки первого экрана видны — нижней нет; прокрутили к возможностям — появилась.
     const sticky = page.getByTestId("sticky-cta");
+    await page.evaluate(() => window.scrollTo(0, 0));
     await expect(sticky).not.toBeInViewport();
     await page.locator("#features").scrollIntoViewIfNeeded();
     await expect(sticky).toBeInViewport();

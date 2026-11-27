@@ -7,7 +7,14 @@
  * остаются со старой шапкой FrogFlow.
  */
 import { Link } from "@tanstack/react-router";
-import { useEffect, useState, type ReactNode, type Ref, type RefObject } from "react";
+import {
+  useEffect,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+  type Ref,
+  type RefObject,
+} from "react";
 import type { HomeKey, HomeT } from "@/app/i18n/home";
 import type { LandingKey, LandingT } from "@/app/i18n/landing";
 import { SUPPORTED_LOCALES, type Locale } from "@/core/i18n/locale";
@@ -25,6 +32,7 @@ import {
 import { ARTICLES, ARTICLE_SLUGS } from "./articles";
 import { openNichePages } from "./niches";
 import { NicheLinks, langSearch } from "./sections";
+import { delay } from "./motion";
 
 export type HomeProps = { t: HomeT; lt: LandingT; locale: Locale; signup: boolean };
 
@@ -202,26 +210,36 @@ export function Hero({ t, locale, signup, ctaRef }: HomeProps & { ctaRef: Ref<HT
         className={`${WRAP} relative grid items-center gap-12 pt-10 pb-12 md:pt-16 lg:grid-cols-[1.05fr_0.95fr] lg:gap-10 lg:pt-20 lg:pb-20`}
       >
         <div className="min-w-0">
-          <p className="inline-flex items-center gap-2 rounded-full border border-line bg-surface py-1.5 pr-3.5 pl-2 text-[13px] font-medium text-muted shadow-sm">
+          <p className="ev-rise inline-flex items-center gap-2 rounded-full border border-line bg-surface py-1.5 pr-3.5 pl-2 text-[13px] font-medium text-muted shadow-sm">
             <span className="grid h-5 w-5 place-items-center rounded-full bg-[var(--lime)]">
               <span className="h-1.5 w-1.5 rounded-full bg-[var(--ink)]" />
             </span>
             {t("hero.eyebrow")}
           </p>
-          <h1 className="mt-6 font-display text-[42px] leading-[1] text-balance sm:text-[54px] md:text-[64px] xl:text-[76px]">
+          <h1
+            style={delay(90)}
+            className="ev-rise mt-6 font-display text-[42px] leading-[1] text-balance sm:text-[54px] md:text-[64px] xl:text-[76px]"
+          >
             {t("hero.titleHead")}{" "}
             <span className="relative whitespace-nowrap">
               <span className="relative z-10">{t("hero.titleTail")}</span>
               <span
                 aria-hidden
-                className="absolute inset-x-[-4px] bottom-[0.06em] z-0 h-[0.36em] -skew-x-12 rounded-sm bg-[var(--lime)]"
+                className="ev-mark absolute inset-x-[-4px] bottom-[0.06em] z-0 h-[0.36em] -skew-x-12 rounded-sm bg-[var(--lime)]"
               />
             </span>
           </h1>
-          <p className="mt-6 max-w-xl text-[17px] leading-relaxed text-muted md:text-lg">
+          <p
+            style={delay(220)}
+            className="ev-rise mt-6 max-w-xl text-[17px] leading-relaxed text-muted md:text-lg"
+          >
             {t("hero.lead")}
           </p>
-          <div ref={ctaRef} className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+          <div
+            ref={ctaRef}
+            style={delay(320)}
+            className="ev-rise mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap"
+          >
             <SignupLink locale={locale} signup={signup} className="btn-primary px-7 py-4 text-base">
               {signup ? t("hero.ctaSignup", { days: TRIAL_DAYS }) : t("hero.ctaLogin")}
               <Arrow />
@@ -237,7 +255,10 @@ export function Hero({ t, locale, signup, ctaRef }: HomeProps & { ctaRef: Ref<HT
               </a>
             )}
           </div>
-          <ul className="mt-6 grid gap-2 text-sm text-muted sm:flex sm:flex-wrap sm:gap-x-6">
+          <ul
+            style={delay(420)}
+            className="ev-rise mt-6 grid gap-2 text-sm text-muted sm:flex sm:flex-wrap sm:gap-x-6"
+          >
             {(["hero.r1", "hero.r2", "hero.r3"] as const).map((k) => (
               <li key={k} className="flex items-center gap-2">
                 <Check />
@@ -249,15 +270,19 @@ export function Hero({ t, locale, signup, ctaRef }: HomeProps & { ctaRef: Ref<HT
         <HeroVisual t={t} />
       </div>
       <div className={`${WRAP} relative pb-10`}>
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-line pt-6">
+        <div
+          style={delay(520)}
+          className="ev-rise flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-line pt-6"
+        >
           <span className="text-xs font-semibold tracking-[0.18em] text-muted uppercase">
             {t("works.label")}
           </span>
           <ul className="flex flex-wrap gap-2">
-            {WORKS_WITH.map((w) => (
+            {WORKS_WITH.map((w, i) => (
               <li
                 key={w.name}
-                className="flex items-center gap-2 rounded-full border border-line bg-surface px-3 py-1.5 text-sm font-semibold"
+                style={delay(700 + i * 70)}
+                className="ev-pop flex items-center gap-2 rounded-full border border-line bg-surface px-3 py-1.5 text-sm font-semibold"
               >
                 <span
                   className="h-2 w-2 rounded-full"
@@ -283,7 +308,10 @@ function HeroVisual({ t }: { t: HomeT }) {
   return (
     <div className="relative mx-auto w-full max-w-[540px] pb-40 sm:pb-32 lg:mr-0">
       {/* Телефон с перепиской */}
-      <div className="relative mt-14 ml-auto w-[80%] max-w-[340px] rounded-[36px] border border-line bg-surface p-2.5 shadow-[0_30px_80px_-30px_rgb(13_15_14/0.35)] sm:w-[64%]">
+      <div
+        style={delay(150)}
+        className="ev-rise relative mt-14 ml-auto w-[80%] max-w-[340px] rounded-[36px] border border-line bg-surface p-2.5 shadow-[0_30px_80px_-30px_rgb(13_15_14/0.35)] sm:w-[64%]"
+      >
         <div className="rounded-[28px] bg-[var(--surface-2)] p-3">
           <div className="flex items-center gap-2.5 pb-3">
             <span className="grid h-9 w-9 place-items-center rounded-full bg-[linear-gradient(135deg,#f9ce34,#ee2a7b,#6228d7)] p-[2px]">
@@ -297,13 +325,33 @@ function HeroVisual({ t }: { t: HomeT }) {
             </div>
           </div>
           <div className="grid gap-2 text-[13.5px] leading-snug">
-            <div className="max-w-[85%] justify-self-end rounded-2xl rounded-br-md bg-[var(--ink)] px-3 py-2 text-white">
+            <div
+              style={delay(700)}
+              className="ev-pop max-w-[85%] justify-self-end rounded-2xl rounded-br-md bg-[var(--ink)] px-3 py-2 text-white"
+            >
               {t("feat.ai.q")}
             </div>
-            <div className="max-w-[88%] rounded-2xl rounded-bl-md bg-surface px-3 py-2 shadow-sm">
-              {t("feat.ai.a")}
+            <div className="grid">
+              <div
+                aria-hidden
+                style={{ ...delay(1250), "--t": "1000ms" } as CSSProperties}
+                className="ev-typing col-start-1 row-start-1 flex w-fit gap-1 self-start rounded-2xl rounded-bl-md bg-surface px-3.5 py-3 shadow-sm"
+              >
+                <i className="h-1.5 w-1.5 rounded-full bg-[var(--muted)]" />
+                <i className="h-1.5 w-1.5 rounded-full bg-[var(--muted)]" />
+                <i className="h-1.5 w-1.5 rounded-full bg-[var(--muted)]" />
+              </div>
+              <div
+                style={delay(2250)}
+                className="ev-pop col-start-1 row-start-1 max-w-[88%] rounded-2xl rounded-bl-md bg-surface px-3 py-2 shadow-sm"
+              >
+                {t("feat.ai.a")}
+              </div>
             </div>
-            <div className="flex max-w-[88%] items-center gap-3 rounded-2xl rounded-bl-md bg-surface p-2 shadow-sm">
+            <div
+              style={delay(2750)}
+              className="ev-pop flex max-w-[88%] items-center gap-3 rounded-2xl rounded-bl-md bg-surface p-2 shadow-sm"
+            >
               <div className="h-14 w-14 shrink-0 rounded-xl bg-[repeating-linear-gradient(135deg,#eaf6d6_0_8px,#dff0c4_8px_16px)]" />
               <div className="min-w-0 pr-1">
                 <div className="font-semibold">{t("vis.product")}</div>
@@ -314,21 +362,29 @@ function HeroVisual({ t }: { t: HomeT }) {
         </div>
       </div>
       {/* Чип: ответ ИИ */}
-      <div className="enveriq-float absolute top-0 left-0 flex items-center gap-2 rounded-2xl border border-line bg-surface px-3 py-2 text-[13px] font-semibold shadow-[0_12px_30px_-12px_rgb(13_15_14/0.3)] ">
-        <span className="grid h-7 w-7 place-items-center rounded-full bg-[var(--lime)] text-[var(--ink)]">
-          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor" aria-hidden>
-            <path d="M12 3l1.8 4.6L18.5 9l-4.7 1.4L12 15l-1.8-4.6L5.5 9l4.7-1.4L12 3Z" />
-          </svg>
-        </span>
-        {t("vis.ai")}
+      <div style={delay(2400)} className="ev-pop absolute top-0 left-0">
+        <div className="enveriq-float flex items-center gap-2 rounded-2xl border border-line bg-surface px-3 py-2 text-[13px] font-semibold shadow-[0_12px_30px_-12px_rgb(13_15_14/0.3)] ">
+          <span className="grid h-7 w-7 place-items-center rounded-full bg-[var(--lime)] text-[var(--ink)]">
+            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor" aria-hidden>
+              <path d="M12 3l1.8 4.6L18.5 9l-4.7 1.4L12 15l-1.8-4.6L5.5 9l4.7-1.4L12 3Z" />
+            </svg>
+          </span>
+          {t("vis.ai")}
+        </div>
       </div>
       {/* Карточка заказа в панели продавца */}
-      <div className="absolute bottom-0 left-0 w-[78%] max-w-[300px] rounded-3xl border border-line bg-surface p-4 shadow-[0_24px_60px_-20px_rgb(13_15_14/0.35)] sm:w-[52%]">
+      <div
+        style={delay(3200)}
+        className="ev-pop absolute bottom-0 left-0 w-[78%] max-w-[300px] rounded-3xl border border-line bg-surface p-4 shadow-[0_24px_60px_-20px_rgb(13_15_14/0.35)] sm:w-[52%]"
+      >
         <div className="flex items-center justify-between gap-2 text-xs text-muted">
           <span className="font-semibold">{t("vis.order")}</span>
           <span className="font-semibold text-fg tabular-nums">1 900 ₸</span>
         </div>
-        <div className="mt-2 flex items-center gap-2 rounded-xl bg-[var(--lime-soft)] px-3 py-2 text-[13px] font-semibold text-[var(--lime-ink)]">
+        <div
+          style={delay(3700)}
+          className="ev-pop mt-2 flex items-center gap-2 rounded-xl bg-[var(--lime-soft)] px-3 py-2 text-[13px] font-semibold text-[var(--lime-ink)]"
+        >
           <Check />
           {t("vis.receipt")}
         </div>
@@ -342,10 +398,11 @@ function HeroVisual({ t }: { t: HomeT }) {
           type="button"
           aria-pressed={sent}
           onClick={() => setSent((v) => !v)}
+          style={delay(4200)}
           className={`mt-3 w-full rounded-2xl px-4 py-3 font-display text-lg transition-colors focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-[var(--ink)] ${
             sent
               ? "bg-[var(--ink)] text-white"
-              : "bg-[var(--lime)] text-[var(--ink)] hover:bg-[#9bdb3d]"
+              : "ev-pulse bg-[var(--lime)] text-[var(--ink)] hover:bg-[#9bdb3d]"
           }`}
         >
           {sent ? `✓ ${t("vis.done")}` : t("vis.button")}
@@ -375,9 +432,17 @@ export function Proof({ t, locale }: HomeProps) {
     <section aria-labelledby="proof-title" className="border-y border-line bg-surface">
       <div className={`${WRAP} py-12 md:py-16`}>
         <ul className="grid grid-cols-2 gap-x-6 gap-y-8 lg:grid-cols-4">
-          {stats.map(([n, label]) => (
-            <li key={label} className="border-l-2 border-[var(--lime)] pl-4">
-              <span className="block font-display text-[40px] leading-none tabular-nums md:text-[52px]">
+          {stats.map(([n, label], i) => (
+            <li
+              key={label}
+              data-reveal
+              style={delay(i * 90)}
+              className="border-l-2 border-[var(--lime)] pl-4"
+            >
+              <span
+                data-count={n}
+                className="block font-display text-[40px] leading-none tabular-nums md:text-[52px]"
+              >
                 {n}
               </span>
               <span className="mt-2 block text-sm leading-snug text-muted">{label}</span>
@@ -386,7 +451,7 @@ export function Proof({ t, locale }: HomeProps) {
         </ul>
         {CLIENTS.length > 0 && (
           <>
-            <div className="mt-14 flex flex-wrap items-end justify-between gap-3">
+            <div data-reveal className="mt-14 flex flex-wrap items-end justify-between gap-3">
               <h2
                 id="proof-title"
                 className="font-display text-[26px] leading-tight md:text-[32px]"
@@ -396,16 +461,21 @@ export function Proof({ t, locale }: HomeProps) {
               <p className="text-xs text-muted">{t("proof.asOf", { date: CLIENTS_AS_OF })}</p>
             </div>
             <ul className="-mx-4 mt-6 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-2 md:mx-0 md:grid md:grid-cols-3 md:overflow-visible md:px-0 md:pb-0 xl:grid-cols-5">
-              {CLIENTS.map((c) => {
+              {CLIENTS.map((c, i) => {
                 const [what, figures] = c.note[locale].split(" · ");
                 return (
                   <li
                     key={c.name}
-                    className="flex w-[74%] shrink-0 snap-start flex-col gap-1 rounded-3xl border border-line bg-[var(--bg)] p-5 sm:w-[44%] md:w-auto"
+                    data-reveal
+                    style={delay(i * 80)}
+                    className="ev-card flex w-[74%] shrink-0 snap-start flex-col gap-1 rounded-3xl border border-line bg-[var(--bg)] p-5 sm:w-[44%] md:w-auto"
                   >
                     {c.stat ? (
                       <>
-                        <span className="font-display text-[30px] leading-none tabular-nums">
+                        <span
+                          data-count={c.stat.value}
+                          className="font-display text-[30px] leading-none tabular-nums"
+                        >
                           {c.stat.value}
                         </span>
                         <span className="text-sm text-muted">{c.stat.label[locale]}</span>
@@ -444,10 +514,14 @@ export function Proof({ t, locale }: HomeProps) {
 
 export function HomeTitle({ children, sub }: { children: ReactNode; sub?: string }) {
   return (
-    <div className="max-w-3xl">
+    <div data-reveal className="max-w-3xl">
       <h2 className="font-display text-[32px] leading-[1.05] text-balance md:text-[48px]">
         {children}
       </h2>
+      <span
+        aria-hidden
+        className="ev-underline mt-4 block h-1.5 w-16 -skew-x-12 rounded-sm bg-[var(--lime)]"
+      />
       {sub && <p className="mt-4 text-[17px] leading-relaxed text-muted md:text-lg">{sub}</p>}
     </div>
   );
@@ -463,8 +537,19 @@ export function Flow({ t }: HomeProps) {
           aria-hidden
           className="absolute top-6 right-[12%] left-[12%] hidden h-0.5 bg-[repeating-linear-gradient(90deg,var(--line)_0_8px,transparent_8px_14px)] md:block"
         />
+        <span
+          aria-hidden
+          data-reveal="line"
+          style={delay(200)}
+          className="absolute top-[23px] right-[12%] left-[12%] hidden h-1 rounded-full bg-[var(--lime)] md:block"
+        />
         {([1, 2, 3, 4] as const).map((n) => (
-          <li key={n} className="relative flex gap-4 md:block">
+          <li
+            key={n}
+            data-reveal
+            style={delay(150 + (n - 1) * 280)}
+            className="relative flex gap-4 md:block"
+          >
             <span
               className={`relative z-10 grid h-12 w-12 shrink-0 place-items-center rounded-2xl font-display text-xl ${
                 n === 4 ? "bg-[var(--lime)] text-[var(--ink)]" : "bg-[var(--ink)] text-white"
@@ -516,7 +601,7 @@ const ICONS: Record<string, ReactNode> = {
 
 function Icon({ name }: { name: string }) {
   return (
-    <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[var(--lime-soft)] text-[var(--lime-ink)]">
+    <span className="ev-icon grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[var(--lime-soft)] text-[var(--lime-ink)]">
       <svg
         viewBox="0 0 24 24"
         className="h-6 w-6"
@@ -544,7 +629,14 @@ export function Features({ t, lt }: HomeProps) {
       <div className={`${WRAP} py-16 md:py-24`}>
         <HomeTitle sub={t("feat.sub")}>{t("feat.title")}</HomeTitle>
         <div className="mt-12 grid gap-3 md:grid-cols-2 lg:grid-cols-4 lg:gap-4">
-          <article className="enveriq-ink relative flex flex-col overflow-hidden rounded-3xl p-6 md:col-span-2 lg:row-span-3 lg:p-8">
+          <article
+            data-reveal="scale"
+            className="enveriq-ink relative isolate flex flex-col overflow-hidden rounded-3xl p-6 md:col-span-2 lg:row-span-3 lg:p-8"
+          >
+            <span
+              aria-hidden
+              className="ev-drift pointer-events-none absolute -top-24 -right-24 -z-10 h-80 w-80 rounded-full bg-[radial-gradient(closest-side,rgb(140_207_46/0.28),transparent)]"
+            />
             <span className="inline-flex w-fit items-center gap-2 self-start rounded-full bg-[var(--lime)] px-3 py-1 text-xs font-bold text-[var(--ink)]">
               AI
             </span>
@@ -568,10 +660,14 @@ export function Features({ t, lt }: HomeProps) {
               className="mt-8 grid flex-1 content-center gap-2 rounded-2xl border border-[var(--ink-line)] bg-[#141816] p-4 text-[14px] leading-snug"
               aria-hidden
             >
-              <p className="text-xs font-semibold uppercase tracking-wider text-[var(--ink-muted)]">
+              <p
+                data-reveal
+                style={delay(200)}
+                className="text-xs font-semibold uppercase tracking-wider text-[var(--ink-muted)]"
+              >
                 {t("feat.ai.lblComment")}
               </p>
-              <div className="flex items-start gap-2">
+              <div data-reveal style={delay(550)} className="flex items-start gap-2">
                 <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-white/10 text-xs font-bold">
                   M
                 </span>
@@ -579,24 +675,42 @@ export function Features({ t, lt }: HomeProps) {
                   {t("feat.ai.comment")}
                 </div>
               </div>
-              <div className="ml-9 w-fit rounded-2xl rounded-tl-md border border-[var(--lime)]/40 px-3 py-2 text-[var(--lime)]">
+              <div
+                data-reveal
+                style={delay(900)}
+                className="ml-9 w-fit rounded-2xl rounded-tl-md border border-[var(--lime)]/40 px-3 py-2 text-[var(--lime)]"
+              >
                 {t("feat.ai.public")}
               </div>
-              <p className="mt-3 text-xs font-semibold uppercase tracking-wider text-[var(--ink-muted)]">
+              <p
+                data-reveal
+                style={delay(1250)}
+                className="mt-3 text-xs font-semibold uppercase tracking-wider text-[var(--ink-muted)]"
+              >
                 {t("feat.ai.lblDm")}
               </p>
-              <div className="max-w-[90%] justify-self-start rounded-2xl rounded-bl-md bg-[#1f2522] px-3 py-2">
+              <div
+                data-reveal
+                style={delay(1600)}
+                className="max-w-[90%] justify-self-start rounded-2xl rounded-bl-md bg-[#1f2522] px-3 py-2"
+              >
                 {t("feat.ai.dm")}
               </div>
-              <div className="max-w-[85%] justify-self-end rounded-2xl rounded-br-md bg-white px-3 py-2 text-[var(--ink)]">
+              <div
+                data-reveal
+                style={delay(1950)}
+                className="max-w-[85%] justify-self-end rounded-2xl rounded-br-md bg-white px-3 py-2 text-[var(--ink)]"
+              >
                 {t("feat.ai.yes")}
               </div>
             </div>
           </article>
-          {TILES.map((f) => (
+          {TILES.map((f, i) => (
             <article
               key={f}
-              className="flex gap-4 rounded-3xl border border-line bg-[var(--bg)] p-5 md:block md:p-6"
+              data-reveal
+              style={delay(120 + i * 70)}
+              className="ev-card flex gap-4 rounded-3xl border border-line bg-[var(--bg)] p-5 md:block md:p-6"
             >
               <Icon name={f} />
               <div>
@@ -637,7 +751,9 @@ export function Payments({ t, lt }: HomeProps) {
     const own = key === "own";
     return (
       <div
-        className={`flex flex-col gap-2 rounded-3xl p-6 md:p-7 ${
+        data-reveal={own ? "right" : "left"}
+        style={delay(own ? 120 : 0)}
+        className={`ev-card flex flex-col gap-2 rounded-3xl p-6 md:p-7 ${
           own
             ? "border-2 border-[var(--lime)] bg-[linear-gradient(160deg,var(--lime-soft),var(--surface)_70%)]"
             : "border border-line bg-surface"
@@ -665,12 +781,18 @@ export function Payments({ t, lt }: HomeProps) {
         {way("kaspi")}
         {way("own")}
       </div>
-      <div className="mt-6 grid items-start gap-8 rounded-3xl border border-line bg-surface p-6 md:grid-cols-[300px_1fr] md:gap-12 md:p-10">
+      <div
+        data-reveal
+        className="mt-6 grid items-start gap-8 rounded-3xl border border-line bg-surface p-6 md:grid-cols-[300px_1fr] md:gap-12 md:p-10"
+      >
         <div
+          data-reveal="scale"
+          style={delay(200)}
           role="img"
           aria-label={lt("check.receipt.label")}
-          className="night-receipt hidden w-full max-w-[300px] -rotate-2 rounded-md bg-[#f3f5ef] px-5 pt-5 pb-8 font-mono text-[13px] leading-[1.7] text-[#111614] tabular-nums shadow-[0_20px_40px_-20px_rgb(13_15_14/0.4)] md:block"
+          className="night-receipt relative hidden w-full max-w-[300px] -rotate-2 rounded-md bg-[#f3f5ef] px-5 pt-5 pb-8 font-mono text-[13px] leading-[1.7] text-[#111614] tabular-nums shadow-[0_20px_40px_-20px_rgb(13_15_14/0.4)] md:block"
         >
+          <span aria-hidden className="ev-scan" />
           <div className="mb-2.5 border-b border-dashed border-[#b8c0bb] pb-2.5 text-center font-semibold">
             {lt("check.receipt.title")}
           </div>
@@ -712,7 +834,12 @@ export function Payments({ t, lt }: HomeProps) {
           <h3 className="font-display text-2xl leading-tight">{t("pay.checksTitle")}</h3>
           <ol className="mt-5 grid gap-x-8 border-t border-line sm:grid-cols-2">
             {CHECK_ROWS.map((r, i) => (
-              <li key={r} className="grid grid-cols-[28px_1fr] gap-3 border-b border-line py-4">
+              <li
+                key={r}
+                data-reveal
+                style={delay(300 + i * 120)}
+                className="grid grid-cols-[28px_1fr] gap-3 border-b border-line py-4"
+              >
                 <span className="grid h-6 w-6 place-items-center rounded-full bg-[var(--ink)] text-xs font-bold text-white">
                   {i + 1}
                 </span>
@@ -746,12 +873,12 @@ export function Compare({ t, locale, signup }: HomeProps) {
       <div className={`${WRAP} py-16 md:py-24`}>
         <HomeTitle sub={t("compare.sub")}>{t("compare.title")}</HomeTitle>
         <div className="mt-12 grid items-stretch gap-4 lg:grid-cols-[1fr_auto_1fr] lg:gap-6">
-          <div className="rounded-3xl border border-line bg-surface p-6 md:p-8">
+          <div data-reveal="left" className="rounded-3xl border border-line bg-surface p-6 md:p-8">
             <h3 className="text-xs font-bold tracking-[0.18em] text-muted uppercase">
               {t("compare.usual")}
             </h3>
             <ul className="mt-5 grid gap-2.5">
-              {(["r1", "r2", "r3", "r4", "r5"] as const).map((r) => (
+              {(["r1", "r2", "r3", "r4", "r5"] as const).map((r, i) => (
                 <li
                   key={r}
                   className="flex items-center gap-3 rounded-xl border border-dashed border-line px-4 py-3 text-muted"
@@ -759,17 +886,31 @@ export function Compare({ t, locale, signup }: HomeProps) {
                   <span aria-hidden className="text-lg leading-none text-[#e5675b]">
                     ×
                   </span>
-                  {t(`compare.${r}`)}
+                  <span className="ev-strike" style={delay(600 + i * 220)}>
+                    {t(`compare.${r}`)}
+                  </span>
                 </li>
               ))}
             </ul>
           </div>
           <div aria-hidden className="hidden place-items-center lg:grid">
-            <span className="grid h-14 w-14 place-items-center rounded-full bg-[var(--lime)] text-[var(--ink)]">
+            <span
+              data-reveal="scale"
+              style={delay(1500)}
+              className="ev-pulse grid h-14 w-14 place-items-center rounded-full bg-[var(--lime)] text-[var(--ink)]"
+            >
               <Arrow />
             </span>
           </div>
-          <div className="flex flex-col rounded-3xl bg-[var(--lime)] p-6 text-[var(--ink)] md:p-8">
+          <div
+            data-reveal="right"
+            style={delay(1700)}
+            className="relative isolate flex flex-col overflow-hidden rounded-3xl bg-[var(--lime)] p-6 text-[var(--ink)] md:p-8"
+          >
+            <span
+              aria-hidden
+              className="ev-drift pointer-events-none absolute -right-16 -bottom-20 -z-10 h-72 w-72 rounded-full bg-[radial-gradient(closest-side,rgb(255_255_255/0.55),transparent)]"
+            />
             <h3 className="text-xs font-bold tracking-[0.18em] uppercase">{t("compare.one")}</h3>
             <img
               src={BRAND.mark.src}
@@ -816,7 +957,9 @@ export function Segments({ t, lt, locale }: HomeProps) {
             to="/for/$niche"
             params={{ niche: p }}
             search={langSearch(locale)}
-            className={`group flex flex-col rounded-3xl border border-line bg-surface p-6 transition-shadow ${pages.length === 5 && i < 2 ? "lg:col-span-3" : "lg:col-span-2"} hover:shadow-[0_20px_40px_-24px_rgb(13_15_14/0.35)]`}
+            data-reveal
+            style={delay(i * 80)}
+            className={`group ev-card ev-arrow flex flex-col rounded-3xl border border-line bg-surface p-6 ${pages.length === 5 && i < 2 ? "lg:col-span-3" : "lg:col-span-2"}`}
           >
             <span className="flex items-center justify-between gap-3 text-lg font-semibold">
               {lt(`niche.${p}.link` as LandingKey)}
@@ -846,12 +989,16 @@ export function HomeFaq({ t, lt }: HomeProps) {
   return (
     <section id="faq" className={`${WRAP} scroll-mt-28 py-16 md:py-24`}>
       <div className="grid gap-8 lg:grid-cols-[0.8fr_1.2fr] lg:gap-16">
-        <h2 className="font-display text-[32px] leading-[1.05] md:text-[48px]">{t("faq.title")}</h2>
+        <h2 data-reveal className="font-display text-[32px] leading-[1.05] md:text-[48px]">
+          {t("faq.title")}
+        </h2>
         <div className="grid gap-3">
           {items.map(([q, a], i) => (
             <details
               key={q}
-              className="group rounded-2xl border border-line bg-surface px-5 open:shadow-sm"
+              data-reveal
+              style={delay(i * 70)}
+              className="ev-faq group rounded-2xl border border-line bg-surface px-5 open:shadow-sm"
               open={i === 0}
             >
               <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 py-4 text-[17px] font-semibold [&::-webkit-details-marker]:hidden">
@@ -893,10 +1040,17 @@ export function HomeFinal({ t, locale, signup }: HomeProps) {
   );
   return (
     <section className={WRAP}>
-      <div className="relative overflow-hidden rounded-[36px] bg-[var(--lime)] px-6 py-10 text-[var(--ink)] md:px-12 md:py-16">
+      <div
+        data-reveal="scale"
+        className="relative overflow-hidden rounded-[36px] bg-[var(--lime)] px-6 py-10 text-[var(--ink)] md:px-12 md:py-16"
+      >
         <div
           aria-hidden
-          className="pointer-events-none absolute -right-20 -bottom-24 h-80 w-80 rounded-full bg-[radial-gradient(closest-side,rgb(255_255_255/0.5),transparent)]"
+          className="ev-drift pointer-events-none absolute -right-20 -bottom-24 h-80 w-80 rounded-full bg-[radial-gradient(closest-side,rgb(255_255_255/0.5),transparent)]"
+        />
+        <div
+          aria-hidden
+          className="ev-drift pointer-events-none absolute -top-28 left-[30%] h-72 w-72 rounded-full bg-[radial-gradient(closest-side,rgb(255_255_255/0.3),transparent)] [animation-delay:-7s]"
         />
         <div
           className={`relative grid items-center gap-10 ${contacts.length ? "lg:grid-cols-[1.4fr_1fr]" : ""}`}
@@ -930,13 +1084,15 @@ export function HomeFinal({ t, locale, signup }: HomeProps) {
           {contacts.length > 0 && (
             <div className="grid gap-3">
               <p className="text-sm font-medium">{t("final.contacts")}</p>
-              {contacts.map((c) => (
+              {contacts.map((c, i) => (
                 <a
+                  data-reveal="right"
+                  style={delay(300 + i * 120)}
                   key={c.label}
                   href={c.href}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex items-center gap-3 rounded-2xl bg-white px-4 py-3 shadow-sm hover:shadow-md"
+                  className="ev-card flex items-center gap-3 rounded-2xl bg-white px-4 py-3 shadow-sm"
                 >
                   <span
                     className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-xs font-bold text-white"

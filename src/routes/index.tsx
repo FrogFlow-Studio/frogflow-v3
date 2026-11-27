@@ -10,6 +10,7 @@ import { homeT } from "@/app/i18n/home";
 import { BRAND } from "@/app/landing/brand";
 import { OG_LOCALE, SITE_URL, TRIAL_DAYS, landingUrl } from "@/app/landing/config";
 import { LANDING_FONT_LINKS, Pricing } from "@/app/landing/sections";
+import { useReveal } from "@/app/landing/motion";
 import {
   Compare,
   Features,
@@ -118,9 +119,11 @@ function Landing() {
   const heroCta = useRef<HTMLDivElement>(null);
   const finalRef = useRef<HTMLDivElement>(null);
   const sticky = useStickyCta(heroCta, finalRef);
+  const root = useRef<HTMLDivElement>(null);
+  useReveal(root);
 
   return (
-    <div className="theme-enveriq flex min-h-screen flex-col bg-bg text-fg">
+    <div ref={root} className="theme-enveriq flex min-h-screen flex-col bg-bg text-fg">
       <HomeHeader {...p} />
       <main>
         <Hero {...p} ctaRef={heroCta} />
