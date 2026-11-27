@@ -168,6 +168,25 @@ const CONTACT_BUTTON: Record<
 /** Кнопка «Связаться с менеджером» в Telegram у консультанта по прайсу — карточка продавцу. */
 export const contactButtonText = (locale: Locale) => CONTACT_BUTTON[locale];
 
+const FORWARDED_TITLE: Record<Locale, string> = {
+  ru: "🙋 <b>Вопрос покупателя ждёт вашего ответа</b>",
+  kk: "🙋 <b>Сатып алушының сұрағы сіздің жауабыңызды күтуде</b>",
+  en: "🙋 <b>A customer question is waiting for your reply</b>",
+  uz: "🙋 <b>Xaridor savoli javobingizni kutmoqda</b>",
+};
+
+const FORWARDED_HINT: Record<Locale, (channel: string) => string> = {
+  ru: (c) => `Ответьте в приложении ${c} или в «Чате» панели.`,
+  kk: (c) => `${c} қосымшасында немесе панельдегі «Чатта» жауап беріңіз.`,
+  en: (c) => `Reply in the ${c} app or in the panel's “Chat”.`,
+  uz: (c) => `${c} ilovasida yoki paneldagi «Chat»da javob bering.`,
+};
+
+/** Продавцу (на его языке): покупателю сказали «передал продавцу» — заголовок и где ответить. */
+export const forwardedTitle = (locale: Locale): string => FORWARDED_TITLE[locale];
+export const forwardedHint = (locale: Locale, channel: string): string =>
+  FORWARDED_HINT[locale](channel);
+
 const REPLY_NOT_SENT: Record<Locale, string> = {
   ru: "⚠️ <b>Ответ консультанта не ушёл покупателю</b>",
   kk: "⚠️ <b>Кеңесшінің жауабы сатып алушыға жетпеді</b>",

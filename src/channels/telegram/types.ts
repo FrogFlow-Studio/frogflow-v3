@@ -15,7 +15,8 @@ export type TelegramMessage = {
   from?: TelegramUser;
   text?: string;
   caption?: string;
-  contact?: { phone_number: string };
+  /** user_id — чей это контакт: свой (кнопка «Поделиться номером») или чужой, пересланный. */
+  contact?: { phone_number: string; user_id?: number };
   document?: { file_id: string; file_name?: string; mime_type?: string; file_size?: number };
   photo?: Array<{ file_id: string; file_size?: number }>;
   /** Голосовое сообщение (Ogg/Opus), «кружок» (mp4), видео и аудиофайл — ответ на задание. */

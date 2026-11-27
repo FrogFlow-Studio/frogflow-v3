@@ -96,7 +96,8 @@ function CustomersPage() {
                 <span>
                   {b.first_name || "—"}{" "}
                   {b.username && <span className="text-muted">@{b.username}</span>}{" "}
-                  <span className="text-muted">ID {b.telegram_id}</span>
+                  {/* Синтетический id покупателя из Instagram/WhatsApp продавцу ничего не скажет. */}
+                  {b.telegram_id > 0 && <span className="text-muted">ID {b.telegram_id}</span>}
                 </span>
                 <button
                   className="btn-ghost text-xs"
@@ -174,7 +175,9 @@ function CustomersPage() {
                     <td className="text-right">
                       <button
                         className={`btn-ghost text-xs ${r.blocked ? "" : "text-danger"}`}
-                        disabled={block.busy || r.platform !== "telegram"}
+                        // Instagram и WhatsApp тоже: блок держится на telegram_id, у них он
+                        // синтетический, и каналы проверяют его так же, как бот в Telegram.
+                        disabled={block.busy || !r.telegram_id}
                         onClick={() => void block.run(r, !r.blocked).catch(() => {})}
                       >
                         {r.blocked ? t("customers.unblock") : t("customers.block")}

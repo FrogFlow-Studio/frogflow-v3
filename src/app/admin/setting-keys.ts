@@ -102,6 +102,9 @@ export const SETTING_KEYS = [
   "kaspi_apipay_webhook_secret",
   "kaspi_apipay_test_mode",
   "card_all_prices",
+  "print3d_sheet_url",
+  "print3d_ready_notify",
+  "print3d_auto_accept",
 ] as const;
 
 /**

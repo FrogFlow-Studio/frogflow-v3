@@ -54,3 +54,48 @@ test("скопировать правило Instagram → форма сверх�
   await expect(formTitle).toBeHidden();
   expect(errors).toEqual([]);
 });
+
+/**
+ * Клиентка 15.11: в каждое правило к видео пишет один и тот же текст, меняются
+ * только название и цена. «Сделать текстом по умолчанию» — и новое правило
+ * открывается с этим текстом. Правила не сохраняем (общие с comment-to-dm.spec.ts).
+ */
+test("текст по умолчанию: сохранили в форме — новое правило открывается с ним", async ({
+  page,
+}) => {
+  const errors = await watch(page);
+  await page.goto("/admin/login");
+  await page.locator('input[name="username"]').fill(F.SELLER_LOGIN);
+  await page.locator('input[name="password"]').fill(F.SELLER_PASSWORD);
+  await page.getByRole("button", { name: "Войти", exact: true }).click();
+  await expect(page).toHaveURL(/\/admin$/);
+  await page.goto("/admin/instagram");
+
+  const formTitle = page.getByRole("heading", { name: "Новое правило", exact: true });
+  const add = page.getByRole("button", { name: "+ Новое правило", exact: true });
+  await expect(async () => {
+    if (!(await formTitle.isVisible())) await add.click();
+    await expect(formTitle).toBeVisible({ timeout: 2000 });
+  }).toPass({ timeout: 20_000 });
+  const form = page.locator("section", { has: formTitle });
+  const dm = form.getByLabel(/^Сообщение в Direct/);
+  const text = `Видеоурок «Название» — цена ₸. Ответьте «+» ${test.info().project.name}`;
+  await dm.fill(text);
+  await form.getByRole("button", { name: "Сделать текстом по умолчанию", exact: true }).click();
+  await expect(
+    form.getByText("Сохранено: новые правила откроются с этим текстом.", { exact: true }),
+  ).toBeVisible();
+
+  // Сохранено на сервере, а не только в форме: после перезагрузки новое правило — с текстом.
+  page.on("dialog", (d) => void d.accept());
+  await page.reload();
+  await expect(async () => {
+    if (!(await formTitle.isVisible())) await add.click();
+    await expect(formTitle).toBeVisible({ timeout: 2000 });
+  }).toPass({ timeout: 20_000 });
+  await expect(form.getByLabel(/^Сообщение в Direct/)).toHaveValue(/^Видеоурок «Название»/);
+  await expect(
+    form.getByText("Текст подставлен по умолчанию — поменяйте название и цену.", { exact: true }),
+  ).toBeVisible();
+  expect(errors).toEqual([]);
+});

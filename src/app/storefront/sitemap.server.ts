@@ -86,7 +86,9 @@ export async function pagesSitemapResponse(request: Request): Promise<Response> 
   if (!isPlatformHost(new URL(request.url).host, env().APP_URL)) return notFound();
   const { landingSitemapLocs } = await import("@/app/landing/niches");
   const { marketSitemapLocs } = await import("@/app/market/seo");
-  const locs = [...landingSitemapLocs(), ...marketSitemapLocs()];
+  const { directoryShops } = await import("@/core/marketplace/items.server");
+  const hasShops = (await directoryShops()).size > 0;
+  const locs = [...landingSitemapLocs(), ...marketSitemapLocs({ hasShops })];
   return new Response(sitemapXml(locs.map((loc) => ({ loc }))), { headers: XML });
 }
 

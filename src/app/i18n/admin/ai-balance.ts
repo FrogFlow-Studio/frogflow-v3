@@ -4,7 +4,7 @@ import type { SectionDict } from "../section";
 export const ru = {
   "aiBalance.title": "ИИ-баланс",
   "aiBalance.subtitle":
-    "ИИ-консультант, помощник по текстам, умный поиск и распознавание чеков тратят этот баланс по цене API. Когда он кончится, ИИ остановится: диалоги уйдут менеджеру, чеки будете проверять вы.",
+    "ИИ-консультант, помощник по текстам, умный поиск и распознавание чеков тратят этот баланс за каждый вызов модели. Когда он кончится, ИИ остановится: диалоги уйдут менеджеру, чеки будете проверять вы.",
   "aiBalance.left": "Осталось",
   "aiBalance.notStarted": "Стартовые {amount} начислятся при первом обращении к ИИ.",
   "aiBalance.low": "почти закончился",
@@ -34,12 +34,15 @@ export const ru = {
   "aiBalance.use.receipt_ocr": "Распознавание чеков",
   "aiBalance.use.tutor": "ИИ-наставник уроков",
   "aiBalance.use.cache_warm": "Прогрев кеша консультанта",
+  "aiBalance.use.inbox_triage": "Разбор сообщений в чате",
+  "aiBalance.use.country_ai": "Страна покупателя",
+  "aiBalance.use.postpay": "Ответы после оплаты",
 };
 
 export const kk: SectionDict<typeof ru> = {
   "aiBalance.title": "ЖИ-баланс",
   "aiBalance.subtitle":
-    "ЖИ-кеңесші, мәтін көмекшісі, ақылды іздеу және чектерді тану осы балансты API бағасымен жұмсайды. Баланс біткенде ЖИ тоқтайды: диалогтар менеджерге өтеді, чектерді өзіңіз тексересіз.",
+    "ЖИ-кеңесші, мәтін көмекшісі, ақылды іздеу және чектерді тану осы балансты модельге әр сұрау үшін жұмсайды. Баланс біткенде ЖИ тоқтайды: диалогтар менеджерге өтеді, чектерді өзіңіз тексересіз.",
   "aiBalance.left": "Қалды",
   "aiBalance.notStarted": "Бастапқы {amount} ЖИ-ге алғаш жүгінгенде есептеледі.",
   "aiBalance.low": "таусылуға жақын",
@@ -69,12 +72,15 @@ export const kk: SectionDict<typeof ru> = {
   "aiBalance.use.receipt_ocr": "Чектерді тану",
   "aiBalance.use.tutor": "Сабақтардың ЖИ-тәлімгері",
   "aiBalance.use.cache_warm": "Кеңесші кэшін жылыту",
+  "aiBalance.use.inbox_triage": "Чаттағы хабарламаларды талдау",
+  "aiBalance.use.country_ai": "Сатып алушының елі",
+  "aiBalance.use.postpay": "Төлемнен кейінгі жауаптар",
 };
 
 export const en: SectionDict<typeof ru> = {
   "aiBalance.title": "AI balance",
   "aiBalance.subtitle":
-    "The AI consultant, the text assistant, smart search and receipt recognition spend this balance at API prices. When it runs out, AI stops: dialogs go to a manager and you check receipts yourself.",
+    "The AI consultant, the text assistant, smart search and receipt recognition spend this balance on every model call. When it runs out, AI stops: dialogs go to a manager and you check receipts yourself.",
   "aiBalance.left": "Remaining",
   "aiBalance.notStarted": "The starting {amount} is credited on the first AI request.",
   "aiBalance.low": "almost empty",
@@ -104,12 +110,15 @@ export const en: SectionDict<typeof ru> = {
   "aiBalance.use.receipt_ocr": "Receipt recognition",
   "aiBalance.use.tutor": "AI lesson tutor",
   "aiBalance.use.cache_warm": "Consultant cache warm-up",
+  "aiBalance.use.inbox_triage": "Chat message triage",
+  "aiBalance.use.country_ai": "Buyer’s country",
+  "aiBalance.use.postpay": "After-payment replies",
 };
 
 export const uz: SectionDict<typeof ru> = {
   "aiBalance.title": "SI balansi",
   "aiBalance.subtitle":
-    "SI-maslahatchi, matn yordamchisi, aqlli qidiruv va cheklarni tanish bu balansni API narxida sarflaydi. Balans tugasa, SI to‘xtaydi: dialoglar menejerga o‘tadi, cheklarni o‘zingiz tekshirasiz.",
+    "SI-maslahatchi, matn yordamchisi, aqlli qidiruv va cheklarni tanish bu balansni har bir model chaqiruvi uchun sarflaydi. Balans tugasa, SI to‘xtaydi: dialoglar menejerga o‘tadi, cheklarni o‘zingiz tekshirasiz.",
   "aiBalance.left": "Qoldi",
   "aiBalance.notStarted": "Boshlang‘ich {amount} SI’ga birinchi murojaatda beriladi.",
   "aiBalance.low": "tugab qolmoqda",
@@ -139,4 +148,7 @@ export const uz: SectionDict<typeof ru> = {
   "aiBalance.use.receipt_ocr": "Cheklarni tanish",
   "aiBalance.use.tutor": "Darslar SI-murabbiysi",
   "aiBalance.use.cache_warm": "Maslahatchi keshini isitish",
+  "aiBalance.use.inbox_triage": "Chatdagi xabarlarni saralash",
+  "aiBalance.use.country_ai": "Xaridor mamlakati",
+  "aiBalance.use.postpay": "To‘lovdan keyingi javoblar",
 };

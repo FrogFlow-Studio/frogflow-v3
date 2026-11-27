@@ -1302,10 +1302,11 @@ async function forwardedToSeller(
   const { getSetting } = await import("@/core/settings/settings");
   const { CHAT_KEEP_UNREAD_KEY, keepUnreadOn } = await import("@/core/inbox/triage");
   if (keepUnreadOn(await getSetting(ctx, CHAT_KEEP_UNREAD_KEY))) return;
-  const direct = customer.state.direct;
-  const mem = direct && typeof direct === "object" && !Array.isArray(direct) ? direct : {};
-  const at = Date.parse(String(mem.forwarded_at ?? ""));
-  if (Number.isFinite(at) && Date.now() - at < 3600_000) return;
+  // Отметку ставим до ответа и уведомления: из двух сообщений подряд
+  // продавец получает одно уведомление, покупатель — один ответ.
+  const { claimForwarded } = await import("@/core/instagram/forwarded");
+  const claimed = await claimForwarded(ctx, customer);
+  if (!claimed) return;
   const locale = customer.state.locale ?? ctx.tenant.settings.default_locale ?? "ru";
   // Консультант без товаров: «напишите «каталог»» звал бы в пустой каталог.
   const { handoffReply } = await import("@/core/consultant/messages");
@@ -1320,13 +1321,12 @@ async function forwardedToSeller(
       : sells
         ? `Передал ваш вопрос продавцу — он ответит здесь. ${ORDER_HINT_RU}`
         : handoffReply(isLocale(locale) ? locale : "ru"));
+  // «Передал продавцу» должно быть правдой: продавцу — уведомление в Telegram
+  // (раньше вопрос оставался только в «Чате» панели, и продавец его не видел).
+  // Обращение «Поддержки» уведомляет само (directTicket).
+  if (!ticket) await notifyForwarded(ctx, customer, m);
   const r = await transport.send(m.conversationId!, m.accountId!, text, { platform: m.platform });
   if (!r.ok) return;
-  const { setState } = await import("@/core/customers/customers");
-  await setState(ctx, customer, {
-    ...customer.state,
-    direct: { ...mem, forwarded_at: new Date().toISOString() },
-  });
   if (ctx.tenant.modules.manager_chat) {
     const { recordMessage } = await import("@/core/chat/chat");
     await recordMessage(ctx, {
@@ -1337,6 +1337,22 @@ async function forwardedToSeller(
       reason: makeReason({ source: "forward", rule: "to_seller" }),
     });
   }
+}
+
+/** Продавцу в Telegram: вопрос, на который бот ответил «передал продавцу». */
+async function notifyForwarded(ctx: TenantContext, customer: Customer, m: ParsedMessage) {
+  const { sellerLocaleSafe } = await import("@/core/ai/seller-text");
+  const { forwardedHint, forwardedTitle } = await import("@/core/consultant/messages");
+  const l = await sellerLocaleSafe(ctx);
+  const who = customer.firstName || (customer.username ? `@${customer.username}` : m.senderId);
+  const lines = [
+    forwardedTitle(l),
+    `${PLATFORM_LABEL[m.platform]} · 👤 ${escapeHtml(who)}${customer.username ? ` · @${escapeHtml(customer.username)}` : ""}`,
+    `💬 ${escapeHtml(m.text.slice(0, 1000))}`,
+    "",
+    forwardedHint(l, PLATFORM_LABEL[m.platform]),
+  ];
+  await notifyAdminsHtml(ctx, lines.join("\n"), { kind: "question" }).catch(() => 0);
 }
 
 /**

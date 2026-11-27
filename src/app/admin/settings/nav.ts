@@ -11,8 +11,18 @@ import {
   type SettingsShop,
   type SettingsTheme,
 } from "./registry";
+import type { AdminKey } from "@/app/i18n/admin";
 
 export type ThemeChoice = SettingsTheme | "all";
+
+export function settingsThemeTitle(
+  theme: ThemeChoice,
+  shop: Pick<SettingsShop, "vertical">,
+): AdminKey {
+  return shop.vertical === "print3d" && theme === "shop"
+    ? "settings.print3d.overview.title"
+    : `settings19.theme.${theme}`;
+}
 
 /** Тема, с которой открывается страница в новом виде. */
 export const DEFAULT_THEME: ThemeChoice = "shop";

@@ -1,5 +1,5 @@
 import { createFileRoute, useRouter, useRouterState } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { zernioStateFn, telegramStateFn } from "@/app/admin/connections.functions";
 import { deliveryZonesFn } from "@/app/admin/delivery-zones.functions";
 import { saveSettingsFn, settingsFn, setShopTimezoneFn } from "@/app/admin/settings.functions";
@@ -8,6 +8,7 @@ import {
   entryMatches,
   entryVisible,
   recentEntries,
+  settingsEntry,
   SETTINGS_REGISTRY,
 } from "@/app/admin/settings/registry";
 import {
@@ -17,6 +18,7 @@ import {
 } from "@/app/admin/settings/section";
 import {
   DEFAULT_THEME,
+  settingsThemeTitle,
   themeForHash,
   themeShows,
   visibleThemes,
@@ -38,6 +40,7 @@ import { MarketplaceCard } from "@/app/admin/settings/marketplace";
 import { MinOrderCard } from "@/app/admin/settings/min-order";
 import { CommunityCard } from "@/app/admin/settings/community";
 import { FreeDeliveryCard } from "@/app/admin/settings/free-delivery";
+import { Print3dCard } from "@/app/admin/settings/print3d";
 import { LowStockCard, NotifyCard } from "@/app/admin/settings/notify";
 import {
   PaymentMethods,
@@ -88,12 +91,13 @@ const TakeoutCard = lazyCard<object>(() => import("@/app/admin/settings/takeout"
 const InviteCard = lazyCard<object>(() => import("@/app/admin/settings/invite"), "InviteCard");
 
 export const Route = createFileRoute("/admin/_authed/settings")({
-  loader: async () => {
+  loader: async ({ context }) => {
+    const studio = context.shop.vertical === "print3d";
     const [settings, telegram, zones, zernio] = await Promise.all([
       settingsFn(),
       telegramStateFn(),
-      deliveryZonesFn(),
-      zernioStateFn(),
+      studio ? [] : deliveryZonesFn(),
+      studio ? null : zernioStateFn(),
     ]);
     return { ...settings, telegram, zones, zernio };
   },
@@ -140,8 +144,9 @@ function SettingsPage() {
   } = Route.useLoaderData();
   const { shop } = Route.useRouteContext();
   const t = adminT(shop.locale);
+  const studio = shop.vertical === "print3d";
   // Консультанту без продаж разделов оплаты нет — и в заголовке её нет.
-  const pageTitle = shop.sells === false ? t("nav.groupSettings") : t("settings.title");
+  const pageTitle = studio || shop.sells === false ? t("nav.groupSettings") : t("settings.title");
   // Консультант без продаж (BOVI): витрины, баллов и выдачи материалов у него нет —
   // эти поля не рисуются и не сохраняются (их значения не трогаем).
   const sells = shop.sells !== false;
@@ -151,26 +156,32 @@ function SettingsPage() {
   const [theme, setTheme] = useState<ThemeChoice>(DEFAULT_THEME);
   const [query, setQuery] = useState("");
   const text = (k: AdminKey, vars?: Record<string, string>) => t(k, vars);
-  const visibleEntries = SETTINGS_REGISTRY.filter(
-    (e) =>
-      entryVisible(e, shop) &&
-      themeShows(theme, e.theme, Boolean(query.trim())) &&
-      entryMatches(e, query, text),
+  const availableEntries = SETTINGS_REGISTRY.filter((e) => entryVisible(e, shop));
+  const visibleEntries = availableEntries.filter(
+    (e) => themeShows(theme, e.theme, Boolean(query.trim())) && entryMatches(e, query, text),
   );
   const filter: SettingsFilter = {
     shown: new Set(visibleEntries.map((e) => e.id)),
     recent: recentEntries(recentKeys),
+    available: studio ? new Set(availableEntries.map((e) => e.id)) : undefined,
   };
   // Якорь `#id` открывает тему своей карточки и прокручивает к ней — и при заходе,
   // и когда адрес меняется на этой же странице (Ctrl K, ссылка из текста).
   const hash = useRouterState({ select: (s) => s.location.hash });
+  // Якорь применяется один раз на адрес: обновление данных магазина (новый объект
+  // `shop`) не должно возвращать тему якоря после того, как человек выбрал «Все».
+  const appliedHash = useRef<string | null>(null);
   useEffect(() => {
+    if (appliedHash.current === hash) return;
     const target = themeForHash(hash);
     if (!target) return;
-    setTheme(target);
     const id = decodeURIComponent(hash.replace(/^#/, ""));
+    const entry = settingsEntry(id);
+    if (studio && entry && !entryVisible(entry, shop)) return;
+    appliedHash.current = hash;
+    setTheme(target);
     requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView({ block: "start" }));
-  }, [hash]);
+  }, [hash, shop, studio]);
   // Разделы с отдельной страницы — ссылкой, но только когда человек ищет или выбрал тему.
   const links = query.trim() || theme !== "all" ? visibleEntries.filter((e) => e.to) : [];
   const save = useAction(async (f: FormData) => {
@@ -226,7 +237,7 @@ function SettingsPage() {
           aria-pressed={theme === x}
           onClick={() => setTheme(x)}
         >
-          {t(`settings19.theme.${x}` as AdminKey)}
+          {t(settingsThemeTitle(x, shop))}
         </button>
       ))}
     </div>
@@ -278,7 +289,7 @@ function SettingsPage() {
                   />
                 </SettingsSection>
               )}
-              {(shop.modules.instagram || shop.modules.whatsapp) && (
+              {zernio && (shop.modules.instagram || shop.modules.whatsapp) && (
                 <SettingsSection id="instagram-whatsapp">
                   <ChannelsCard
                     zernio={zernio}
@@ -535,6 +546,11 @@ function SettingsPage() {
                   </form>
                 </Card>
               </SettingsSection>
+              {shop.vertical === "print3d" && (
+                <SettingsSection id="print3d">
+                  <Print3dCard settings={settings} />
+                </SettingsSection>
+              )}
               <SettingsSection id="payment-methods">
                 <PaymentMethods methods={methods} settings={settings} />
               </SettingsSection>

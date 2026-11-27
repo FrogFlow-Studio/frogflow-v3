@@ -63,6 +63,7 @@ export function LegalCard({ settings }: { settings: Record<string, string> }) {
   const router = useRouter();
   const { shop } = settingsRoute.useRouteContext();
   const t = adminT(shop.locale);
+  const studio = shop.vertical === "print3d";
   const [saved, setSaved] = useState(false);
   const save = useAction(async (f: FormData) => {
     setSaved(false);
@@ -85,9 +86,11 @@ export function LegalCard({ settings }: { settings: Record<string, string> }) {
   ] as const;
   return (
     <Card title={t("settings.legal.title")} className="lg:col-span-2">
-      <p className="mb-3 text-xs text-muted">
-        {t("settings.legal.intro", { path: shop.slug ? ` /s/${shop.slug}/legal/…` : "" })}
-      </p>
+      {!studio && (
+        <p className="mb-3 text-xs text-muted">
+          {t("settings.legal.intro", { path: shop.slug ? ` /s/${shop.slug}/legal/…` : "" })}
+        </p>
+      )}
       <form
         className="grid gap-3 md:grid-cols-2"
         onSubmit={(e) => {
@@ -98,7 +101,7 @@ export function LegalCard({ settings }: { settings: Record<string, string> }) {
         {docs.map(([k, title]) => (
           <Field key={k} label={title}>
             <textarea id={k} className="input" name={k} rows={5} defaultValue={settings[k] ?? ""} />
-            {(k === "legal_offer" || k === "legal_privacy") && (
+            {!studio && (k === "legal_offer" || k === "legal_privacy") && (
               <button
                 type="button"
                 className="mt-1 text-xs text-accent hover:underline"
@@ -115,7 +118,9 @@ export function LegalCard({ settings }: { settings: Record<string, string> }) {
             )}
           </Field>
         ))}
-        <p className="text-xs text-muted md:col-span-2">{t("settings.legal.templateHint")}</p>
+        {!studio && (
+          <p className="text-xs text-muted md:col-span-2">{t("settings.legal.templateHint")}</p>
+        )}
         <div className="flex items-center gap-3 md:col-span-2">
           <button className="btn-secondary" disabled={save.busy}>
             {t("common.save")}

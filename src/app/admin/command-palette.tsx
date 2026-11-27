@@ -5,6 +5,7 @@ import { adminT } from "@/app/i18n/admin";
 import type { Locale } from "@/core/i18n/locale";
 import { formatMoneyUi } from "@/core/money/money";
 import { searchSettings } from "@/app/admin/settings/palette";
+import type { SettingsShop } from "@/app/admin/settings/registry";
 import { searchSections } from "@/core/search/search-sections";
 
 type Results = Awaited<ReturnType<typeof adminSearchFn>>;
@@ -24,11 +25,12 @@ export function CommandPalette({
   /** Разделы, доступные этой роли (из меню): поиск по названию раздела. */
   sections: Array<{ label: string; to: string; hash?: string }>;
   /** Роль и модули магазина: какие настройки показать в поиске. */
-  shop: { role: string; modules: Partial<Record<string, boolean>> };
+  shop: SettingsShop;
   /** «Создать» (Ж5): новый заказ, товар, рассылка… — только то, что роль и модули позволяют. */
   actions?: Array<{ label: string; to: string; params?: Record<string, string> }>;
 }) {
   const t = adminT(locale);
+  const searchEntities = shop.vertical !== "print3d";
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
@@ -63,7 +65,7 @@ export function CommandPalette({
     }
   }, [open]);
   useEffect(() => {
-    if (!q.trim()) {
+    if (!searchEntities || !q.trim()) {
       setFailed(false);
       return setRes(null);
     }
@@ -77,7 +79,7 @@ export function CommandPalette({
       live = false;
       clearTimeout(timer);
     };
-  }, [q]);
+  }, [q, searchEntities]);
 
   const close = () => setOpen(false);
   const sectionItems: Item[] = searchSections(sections, q).map((x) => ({
@@ -108,31 +110,32 @@ export function CommandPalette({
     hint: "→",
     go: () => void navigate({ to, search: { q: q.trim() } as never }),
   });
-  const items: Item[] = res
-    ? [
-        ...actionItems,
-        ...sectionItems,
-        ...settingItems,
-        ...res.orders.map((o) => ({
-          label: `#${o.no} · ${o.name}`,
-          hint: formatMoneyUi(o.total, o.currency),
-          go: () => void navigate({ to: "/admin/orders/$id", params: { id: String(o.id) } }),
-        })),
-        ...res.products.map((p) => ({
-          label: p.name,
-          hint: t("palette.product"),
-          go: () => void navigate({ to: "/admin/products/$id", params: { id: p.id } }),
-        })),
-        ...res.customers.map((c) => ({
-          label: c.name,
-          hint: [c.platform, c.phone].filter(Boolean).join(" · "),
-          go: () => void navigate({ to: "/admin/customers/$key", params: { key: c.key } }),
-        })),
-        ...(res.ordersMore ? [more(t("palette.allOrders"), "/admin/orders")] : []),
-        ...(res.productsMore ? [more(t("palette.allProducts"), "/admin/products")] : []),
-        ...(res.customersMore ? [more(t("palette.allCustomers"), "/admin/customers")] : []),
-      ]
-    : [...actionItems, ...sectionItems, ...settingItems];
+  const items: Item[] =
+    searchEntities && res
+      ? [
+          ...actionItems,
+          ...sectionItems,
+          ...settingItems,
+          ...res.orders.map((o) => ({
+            label: `#${o.no} · ${o.name}`,
+            hint: formatMoneyUi(o.total, o.currency),
+            go: () => void navigate({ to: "/admin/orders/$id", params: { id: String(o.id) } }),
+          })),
+          ...res.products.map((p) => ({
+            label: p.name,
+            hint: t("palette.product"),
+            go: () => void navigate({ to: "/admin/products/$id", params: { id: p.id } }),
+          })),
+          ...res.customers.map((c) => ({
+            label: c.name,
+            hint: [c.platform, c.phone].filter(Boolean).join(" · "),
+            go: () => void navigate({ to: "/admin/customers/$key", params: { key: c.key } }),
+          })),
+          ...(res.ordersMore ? [more(t("palette.allOrders"), "/admin/orders")] : []),
+          ...(res.productsMore ? [more(t("palette.allProducts"), "/admin/products")] : []),
+          ...(res.customersMore ? [more(t("palette.allCustomers"), "/admin/customers")] : []),
+        ]
+      : [...actionItems, ...sectionItems, ...settingItems];
   if (!open) return null;
   return (
     <div
@@ -148,7 +151,7 @@ export function CommandPalette({
         <input
           ref={input}
           className="w-full border-b border-line bg-transparent px-4 py-3 outline-none"
-          placeholder={t("palette.placeholder")}
+          placeholder={t(searchEntities ? "palette.placeholder" : "settings.print3d.search")}
           value={q}
           onChange={(e) => setQ(e.target.value)}
           onKeyDown={(e) => {
@@ -166,7 +169,7 @@ export function CommandPalette({
         />
         <ul className="max-h-80 overflow-y-auto">
           {failed && <li className="px-4 py-3 text-sm text-danger">{t("palette.failed")}</li>}
-          {q.trim() && res && items.length === 0 && (
+          {q.trim() && (res || !searchEntities) && items.length === 0 && (
             <li className="px-4 py-3 text-sm text-muted">{t("palette.empty")}</li>
           )}
           {items.map((it, i) => (

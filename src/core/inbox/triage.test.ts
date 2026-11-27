@@ -249,3 +249,53 @@ describe("вызов модели", () => {
     );
   });
 });
+
+describe("расход — с ИИ-баланса клиента (решение Якова 26.11)", () => {
+  type Rows = Array<{ key: string; value: unknown }>;
+  const rows = (c: TenantContext) =>
+    (c.db as unknown as ReturnType<typeof fakeDb>).tables.app_settings as Rows;
+  const balanceOf = (c: TenantContext) =>
+    JSON.parse(String(rows(c).find((r) => r.key === "ai_balance")!.value)) as { usd: number };
+  const answer = async () => ({
+    input: { kind: "how_to_buy" },
+    usage: { input_tokens: 2500, output_tokens: 40 },
+  });
+
+  it("разобрали сообщение — цена API списана с баланса и видна в «Расходе»", async () => {
+    const c = ctx([
+      { key: "ai_balance", value: JSON.stringify({ usd: 2, low: false, empty: false }) },
+    ]);
+    setTriageModelForTests(answer);
+    const t = await triageMessage(c, { customer, text: "Как можно получить", now: NOW });
+    expect(t.kind).toBe("how_to_buy");
+    // 2500 × 2 $ + 40 × 10 $ за миллион = 0,0054 $.
+    expect(balanceOf(c).usd).toBeCloseTo(2 - 0.0054, 6);
+    const day = rows(c).find((r) => String(r.key).startsWith("ai_charges:"));
+    expect(JSON.parse(String(day?.value)).uses.inbox_triage).toEqual({ usd: 0.0054, calls: 1 });
+  });
+
+  it("ИИ-баланс пуст — модель не зовём, сообщение идёт прежним путём, к продавцу", async () => {
+    const c = ctx([
+      { key: "ai_balance", value: JSON.stringify({ usd: 0, low: true, empty: true }) },
+    ]);
+    const model = vi.fn(answer);
+    setTriageModelForTests(model);
+    const t = await triageMessage(c, { customer, text: "Как можно получить", now: NOW });
+    expect(t.kind).toBe("other");
+    expect(model).not.toHaveBeenCalled();
+    expect(balanceOf(c).usd).toBe(0);
+  });
+
+  it("сбой модели — бронь вернулась целиком", async () => {
+    const c = ctx([
+      { key: "ai_balance", value: JSON.stringify({ usd: 2, low: false, empty: false }) },
+    ]);
+    setTriageModelForTests(async () => {
+      throw new Error("timeout");
+    });
+    expect((await triageMessage(c, { customer, text: "Как можно получить", now: NOW })).kind).toBe(
+      "other",
+    );
+    expect(balanceOf(c).usd).toBe(2);
+  });
+});

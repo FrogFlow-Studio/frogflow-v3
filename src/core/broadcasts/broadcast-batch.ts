@@ -326,7 +326,11 @@ export function isDue(b: Pick<BroadcastRow, "audience_filter">, now: number): bo
   return !Number.isFinite(t) || t <= now;
 }
 
-/** Кто из пакета сейчас отписан или заблокирован (Telegram: ещё и blocked_users). */
+/**
+ * Кто из пакета сейчас отписан или заблокирован продавцом (blocked_users —
+ * в любом канале: у покупателя из WhatsApp там его синтетический
+ * telegram_id).
+ */
 async function unreachableNow(
   ctx: TenantContext,
   ids: number[],
@@ -342,13 +346,11 @@ async function unreachableNow(
   // Не прочитали, кто отписан, — не шлём никому из пакета.
   if (optError) throw serverFailure(`Рассылки: отписавшиеся: ${optError.message}`);
   const out = new Set((optedOut ?? []).map((u) => Number(u.telegram_id)));
-  if (channel === "telegram") {
-    const { data: blocked, error: blockedError } = await ctx.db
-      .from("blocked_users")
-      .select("telegram_id")
-      .in("telegram_id", ids);
-    if (blockedError) throw serverFailure(`Рассылки: блокировки: ${blockedError.message}`);
-    for (const b of blocked ?? []) out.add(Number(b.telegram_id));
-  }
+  const { data: blocked, error: blockedError } = await ctx.db
+    .from("blocked_users")
+    .select("telegram_id")
+    .in("telegram_id", ids);
+  if (blockedError) throw serverFailure(`Рассылки: блокировки: ${blockedError.message}`);
+  for (const b of blocked ?? []) out.add(Number(b.telegram_id));
   return out;
 }

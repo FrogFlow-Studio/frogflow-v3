@@ -82,3 +82,40 @@ describe("ИИ после оплаты: вызов модели", () => {
     expect(calls).toHaveLength(0);
   });
 });
+
+describe("расход — с ИИ-баланса клиента (решение Якова 26.11)", () => {
+  const setBalance = (usd: number) =>
+    db.tables.app_settings!.push({
+      bot_id: "bot-1",
+      key: "ai_balance",
+      value: JSON.stringify({ usd, low: usd < 1, empty: usd <= 0 }),
+    });
+  const balance = () =>
+    JSON.parse(String(db.tables.app_settings!.find((r) => r.key === "ai_balance")!.value)) as {
+      usd: number;
+    };
+
+  it("решение модели — цена API списана с баланса и видна в «Расходе»", async () => {
+    setBalance(2);
+    expect((await ask()).action).toBe("status");
+    expect(balance().usd).toBeCloseTo(2 - 0.0018, 6);
+    const day = db.tables.app_settings!.find((r) => String(r.key).startsWith("ai_charges:"));
+    expect(JSON.parse(String(day?.value)).uses.postpay).toEqual({ usd: 0.0018, calls: 1 });
+  });
+
+  it("ИИ-баланс пуст — модель не зовём, pass: сообщение идёт к продавцу", async () => {
+    setBalance(0);
+    expect((await ask()).action).toBe("pass");
+    expect(calls).toHaveLength(0);
+    expect(balance().usd).toBe(0);
+  });
+
+  it("сбой модели — бронь вернулась целиком", async () => {
+    setBalance(2);
+    setPostpayModelForTests(async () => {
+      throw new Error("timeout");
+    });
+    expect((await ask()).action).toBe("pass");
+    expect(balance().usd).toBe(2);
+  });
+});

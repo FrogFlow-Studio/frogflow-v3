@@ -113,3 +113,28 @@ describe("форма правила: начальные значения и не
     expect(ruleFormDirty({ ...init, dmMessage: "другое" }, init)).toBe(true);
   });
 });
+
+describe("текст по умолчанию для нового правила", () => {
+  const template = {
+    dmMessage: "Видеоурок «{название}» — {цена} ₸. Ответьте «+»",
+    secondDmMessage: "Ссылка 👇",
+  };
+
+  it("новое правило открывается с текстом по умолчанию, остальное пустое", () => {
+    const v = ruleFormValues(null, "acc-1", template);
+    expect(v.dmMessage).toBe(template.dmMessage);
+    expect(v.secondDmMessage).toBe("Ссылка 👇");
+    expect(v.name).toBe("");
+    expect(v.target).toBeNull();
+    expect(v.buttons).toEqual([]);
+  });
+
+  it("«Изменить» и «Скопировать» берут текст правила, а не шаблон", () => {
+    expect(ruleFormValues(rule, "acc-1", template).dmMessage).toBe(rule.dmMessage);
+    expect(copyRuleFormValues(rule, (n) => `${n} (копия)`).dmMessage).toBe(rule.dmMessage);
+  });
+
+  it("без шаблона — как раньше, пусто", () => {
+    expect(ruleFormValues(null, "acc-1").dmMessage).toBe("");
+  });
+});
