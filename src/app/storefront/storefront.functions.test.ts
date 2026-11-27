@@ -202,6 +202,16 @@ describe("storeProductFn: похожие товары", () => {
     expect(await related([product(T, [])], T)).toEqual([]);
   });
 
+  it("снятый с продажи или удалённый товар — честный 404, а не 500 с текстом «не найден»", async () => {
+    tenantWith(fakeDb(), [product(T, [], { is_active: false })]);
+    const off = await storeProductFn({ data: { slug: "shop", id: T } }).catch((e: unknown) => e);
+    expect(off).toMatchObject({ isNotFound: true });
+    const gone = await storeProductFn({
+      data: { slug: "shop", id: "bbbbbbbb-0000-4000-8000-000000000000" },
+    }).catch((e: unknown) => e);
+    expect(gone).toMatchObject({ isNotFound: true });
+  });
+
   it("товар из скрытой категории не попадает в похожие", async () => {
     const db = fakeDb();
     db.tables.categories = [

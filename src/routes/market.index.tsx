@@ -5,7 +5,7 @@ import { useEffect } from "react";
 import { z } from "zod";
 import { trackMarketFn } from "@/app/market/track.functions";
 import { marketFn } from "@/app/market/market.functions";
-import { marketHeadLinks } from "@/app/market/seo";
+import { marketHeadLinks, marketIndexRobots } from "@/app/market/seo";
 import { rememberMarketBack } from "@/app/market/back";
 import { FeedList } from "@/app/market/feeds";
 import { marketT } from "@/app/market/i18n";
@@ -32,10 +32,15 @@ export const Route = createFileRoute("/market/")({
         lang: deps.lang,
       },
     }),
-  head: ({ match }) => {
+  head: ({ match, loaderData }) => {
     const t = marketT(match.search.lang ?? "ru");
     return {
-      meta: [{ title: t("meta.title") }, { name: "description", content: t("meta.description") }],
+      meta: [
+        { title: t("meta.title") },
+        { name: "description", content: t("meta.description") },
+        // Пустой список («магазинов нет») — не для поиска, иначе «ложная 404».
+        ...(loaderData ? marketIndexRobots(loaderData.shops.length) : []),
+      ],
       // Фильтры и постраничный показ — та же страница: canonical без них, только язык (В10).
       links: marketHeadLinks("/market", match.search.lang ?? "ru"),
     };
