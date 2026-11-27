@@ -18,20 +18,11 @@ alter table v4.products add column track_stock boolean not null default false;
 alter table v4.shops add column listed_on_market boolean not null default false;
 
 -- ── шлюзы ────────────────────────────────────────────────────────────────────
-do $$
-declare cname text;
-begin
-  select c.conname into cname from pg_constraint c
-    join pg_class t on t.oid = c.conrelid join pg_namespace n on n.oid = t.relnamespace
-   where n.nspname = 'v4' and t.relname = 'payment_methods' and c.contype = 'c'
-     and pg_get_constraintdef(c.oid) like '%kind%';
-  execute format('alter table v4.payment_methods drop constraint %I', cname);
-  select c.conname into cname from pg_constraint c
-    join pg_class t on t.oid = c.conrelid join pg_namespace n on n.oid = t.relnamespace
-   where n.nspname = 'v4' and t.relname = 'ledger' and c.contype = 'c'
-     and pg_get_constraintdef(c.oid) like '%method%';
-  execute format('alter table v4.ledger drop constraint %I', cname);
-end $$;
+-- Имена проверок столбца в Postgres 17: payment_methods_kind_check и
+-- ledger_method_check. Поиск «любая проверка со словом kind» снимал соседнюю
+-- проверку перевода (kind <> 'transfer') и оставлял старый список способов.
+alter table v4.payment_methods drop constraint payment_methods_kind_check;
+alter table v4.ledger drop constraint ledger_method_check;
 alter table v4.payment_methods add constraint payment_methods_kind_check
   check (kind in ('transfer', 'prodamus', 'apipay', 'robokassa', 'stripe', 'kaspi', 'nowpayments'));
 alter table v4.ledger add constraint ledger_method_check
