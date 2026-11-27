@@ -20,6 +20,7 @@ $$;
 
 drop function if exists v4.cancel_by_buyer(uuid, uuid, bigint);
 drop function if exists v4.product_details(uuid, uuid, text);
+drop function if exists v4.search_stopword(text);
 drop function if exists v4.word_matches(text, text);
 drop function if exists v4.word_stem(text);
 alter table v4.products

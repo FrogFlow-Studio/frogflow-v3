@@ -8,7 +8,7 @@ import type { SellerSettings } from "@/v4/seller/settings";
 
 /**
  * «ИИ-продавец (v4)»: анкета продавца, из которой консультант v4 берёт
- * условия, и стоп-слова для комментариев. Лимит ИИ — только показ.
+ * условия, и стоп-слова для комментариев. Баланс ИИ — только показ.
  */
 export const Route = createFileRoute("/admin/_authed/v4-seller")({
   loader: () => v4SellerSettingsFn(),
@@ -21,6 +21,9 @@ const FIELDS: Array<{ key: keyof SellerSettings["profile"]; label: PanelKey; row
   { key: "payment_terms", label: "fPayment", rows: 3 },
   { key: "delivery_terms", label: "fDelivery", rows: 3 },
   { key: "tone", label: "fTone", rows: 2 },
+  { key: "advantages", label: "fAdvantages", rows: 3 },
+  { key: "voice_examples", label: "fVoice", rows: 4 },
+  { key: "work_hours_note", label: "fWorkHours", rows: 1 },
 ];
 
 function V4SellerPage() {
@@ -83,8 +86,7 @@ function SellerForm({ settings }: { settings: SellerSettings }) {
           />
         </label>
         <div className="text-sm text-muted">
-          {t("aiLimit")}: ${(settings.roomMicroUsd / 1_000_000).toFixed(2)} / $
-          {(settings.limitMicroUsd / 1_000_000).toFixed(2)}
+          {t("aiLimit")}: ${(settings.roomMicroUsd / 1_000_000).toFixed(2)}
         </div>
         {canWrite ? (
           <button

@@ -5,8 +5,8 @@ import { parseProfile, type SellerProfile } from "./prompt";
 /**
  * Настройки ИИ-продавца из панели (migrations/v4/011-seller-settings.sql):
  * анкета продавца — из неё консультант берёт условия оплаты и доставки, без
- * подстановок в коде (CLAUDE.md), — стоп-слова для комментариев и лимит ИИ
- * на месяц (только показ: его задаёт тариф). Запись — условная по версии,
+ * подстановок в коде (CLAUDE.md), — стоп-слова для комментариев и баланс ИИ
+ * (только показ: баланс кошелька, пополняет оператор). Запись — условная по версии,
  * чтобы не затереть сохранённое другим сотрудником.
  */
 
@@ -16,6 +16,9 @@ export const PROFILE_FIELDS = [
   "payment_terms",
   "delivery_terms",
   "tone",
+  "advantages",
+  "voice_examples",
+  "work_hours_note",
 ] as const satisfies readonly (keyof SellerProfile)[];
 export const PROFILE_MAX = 2000;
 export const SPAM_WORDS_MAX = 100;

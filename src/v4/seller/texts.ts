@@ -21,7 +21,21 @@ export const TEXTS = {
     en: "Thank you for your message! The seller will reply during working hours.",
     uz: "Xabaringiz uchun rahmat! Sotuvchi ish vaqtida javob beradi.",
   },
+  /** Передали продавцу (простой ответ или проверка не прошла). */
+  handedOff: {
+    ru: "Передал ваш вопрос продавцу — он ответит здесь же.",
+    kk: "Сұрағыңызды сатушыға жібердім — ол осы жерде жауап береді.",
+    en: "I’ve passed your question to the seller — they will reply here.",
+    uz: "Savolingizni sotuvchiga yubordim — u shu yerda javob beradi.",
+  },
   buy: { ru: "Купить", kk: "Сатып алу", en: "Buy", uz: "Sotib olish" },
+  /** Кнопка одного предложения на несколько товаров. */
+  buyAll: {
+    ru: "Купить всё",
+    kk: "Барлығын сатып алу",
+    en: "Buy all",
+    uz: "Hammasini sotib olish",
+  },
   cabinet: {
     ru: "Ваши покупки",
     kk: "Сатып алғандарыңыз",
