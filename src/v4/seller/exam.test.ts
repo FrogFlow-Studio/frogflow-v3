@@ -11,6 +11,8 @@ import { pgliteV4, v4Db } from "../test/pg";
 import { pressBuy } from "./offers";
 import { sellerContext, sellerRole } from "./role";
 import { TEXTS } from "./texts";
+import { applyTransfer } from "../transfer/apply";
+import { planTransfer } from "../transfer/plan";
 
 /**
  * Экзамен роли «продавец» (Спецификация, раздел «Сценарии экзамена»): 82
@@ -1380,9 +1382,22 @@ describe("З. Режимы, флажки, магазин без ИИ", () => {
     for (let i = 1; i <= 6; i++) expect(sent).toContain(`вопрос номер ${i}`);
   });
 
-  it.todo(
-    "H05 background-ai-flags-kept: флажки фонового ИИ переносятся из v3 (перенос — следующий шаг)",
-  );
+  it("H05 background-ai-flags-kept: в v3 включена только «страна» — после переноса в v4 только «страна»", async () => {
+    const T = "c0c0c0c0-0000-4000-8000-00000000e0a5";
+    await seedKopilka(pg, T);
+    const plan = planTransfer({
+      profile: null,
+      knowledge: [],
+      settings: { consultant_enabled: "false", country_ai: "true", postpay_ai: "false" },
+      balanceUsd: null,
+      products: [],
+      histories: [],
+      blockedTelegramIds: [],
+    });
+    await applyTransfer(pgliteV4(pg), T, plan, { withBalance: false, by: "operator" });
+    const c = await sellerContext(as(T), { botId: T, buyerId: await buyer(T) });
+    expect(c.features).toEqual({ buyer: false, triage: false, country: true, postpay: false });
+  });
 
   it("H06 empty-role-runs: роль с одним инструментом проходит цикл ядра", async () => {
     const role: AgentRole = {

@@ -1,4 +1,5 @@
 -- Откат v4/021: роль «продавец». Возвращает функции 005 (лимит месяца) и знания без проверки.
+drop function if exists v4.seller_readiness(uuid);
 drop function if exists v4.ai_auto_cap(uuid, timestamptz);
 drop function if exists v4.offer_products(uuid, uuid, text);
 drop function if exists v4.seller_context_v2(uuid, uuid, text, timestamptz);
@@ -56,4 +57,5 @@ drop function if exists v4.knowledge_risky(text);
 alter table v4.knowledge drop column if exists needs_review;
 alter table v4.shops drop constraint if exists shops_ai_features_valid;
 drop function if exists v4.ai_features_valid(jsonb);
-alter table v4.shops drop column if exists ai_features_rev, drop column if exists ai_features;
+alter table v4.shops drop column if exists ai_features_rev, drop column if exists ai_features,
+  drop column if exists default_lang;

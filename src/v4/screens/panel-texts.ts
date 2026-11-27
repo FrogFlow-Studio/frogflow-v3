@@ -133,6 +133,12 @@ export const PANEL_TEXTS = {
     en: "AI balance (topped up by the operator)",
     uz: "SI balansi (operator to'ldiradi)",
   },
+  readiness: {
+    ru: "Готовность ИИ-продавца",
+    kk: "ЖИ-сатушының дайындығы",
+    en: "AI seller readiness",
+    uz: "SI-sotuvchining tayyorligi",
+  },
   fAdvantages: {
     ru: "Чем вы лучше других (бот скажет, если спросят «почему у вас»)",
     kk: "Сіз несімен жақсысыз (бот «неге сізден» деп сұраса айтады)",

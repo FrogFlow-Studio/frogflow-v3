@@ -36,6 +36,11 @@ export type SellerFeatures = {
   daily_cap_micro_usd?: number | null;
   max_chars?: number;
   prompt_variant?: string;
+  /** Переключатели разбора входящих из v3 (chat_*), как есть; сам разбор — этап 2. */
+  triage_switches?: Record<string, string>;
+  triage_daily_usd?: number;
+  country_daily_usd?: number;
+  postpay_daily_usd?: number;
 };
 
 type ContextRow = {

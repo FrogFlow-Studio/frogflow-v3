@@ -4,6 +4,7 @@ import { saveV4SellerSettingsFn, v4SellerSettingsFn } from "@/app/admin/v4-selle
 import { Card, Empty, ErrorBox, PageTitle, useAction } from "@/app/ui";
 import { roleAllows } from "@/core/auth/roles";
 import { panelT, type PanelKey } from "@/v4/screens/panel-texts";
+import { READINESS_HINTS, type Readiness } from "@/v4/seller/readiness";
 import type { SellerSettings } from "@/v4/seller/settings";
 
 /**
@@ -38,9 +39,32 @@ function V4SellerPage() {
       ) : view.state === "no_shop" ? (
         <Empty>{t("noShop")}</Empty>
       ) : (
-        <SellerForm settings={view.settings} />
+        <>
+          {view.readiness ? <ReadinessCard readiness={view.readiness} /> : null}
+          <SellerForm settings={view.settings} />
+        </>
       )}
     </>
+  );
+}
+
+function ReadinessCard({ readiness }: { readiness: Readiness }) {
+  const { shop } = Route.useRouteContext();
+  const t = panelT(shop.locale);
+  const lang = (["ru", "kk", "en", "uz"] as const).find((l) => l === shop.locale) ?? "ru";
+  return (
+    <Card>
+      <div className="text-sm font-medium">
+        {t("readiness")}: {readiness.score}/100
+      </div>
+      {readiness.missing.length ? (
+        <ul className="mt-2 list-disc pl-5 text-sm text-muted">
+          {readiness.missing.map((m) => (
+            <li key={m}>{READINESS_HINTS[m][lang]}</li>
+          ))}
+        </ul>
+      ) : null}
+    </Card>
   );
 }
 

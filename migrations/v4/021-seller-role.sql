@@ -15,7 +15,9 @@
 
 alter table v4.shops
   add column ai_features jsonb not null default '{}'::jsonb,
-  add column ai_features_rev integer not null default 0;
+  add column ai_features_rev integer not null default 0,
+  -- Язык текстов без ИИ, пока язык покупателя неизвестен (из v3 primary_language).
+  add column default_lang text not null default 'ru' check (default_lang in ('ru', 'kk', 'en', 'uz'));
 
 -- Флажки ИИ: только известные ключи и типы.
 create or replace function v4.ai_features_valid(p jsonb) returns boolean
@@ -23,7 +25,13 @@ language sql immutable as $$
   select jsonb_typeof(p) = 'object'
     and not exists (select 1 from jsonb_object_keys(p) k
       where k not in ('buyer', 'triage', 'country', 'postpay', 'objections', 'upsell',
-                      'model', 'daily_cap_micro_usd', 'max_chars', 'prompt_variant'))
+                      'model', 'daily_cap_micro_usd', 'max_chars', 'prompt_variant',
+                      'triage_switches', 'triage_daily_usd', 'country_daily_usd', 'postpay_daily_usd'))
+    and coalesce(jsonb_typeof(p -> 'triage_switches'), 'object') = 'object'
+    and not exists (select 1 from jsonb_each(coalesce(p -> 'triage_switches', '{}'::jsonb)) e
+                    where jsonb_typeof(e.value) <> 'string' or e.key !~ '^chat_[a-z_]+$')
+    and not exists (select 1 from unnest(array['triage_daily_usd', 'country_daily_usd', 'postpay_daily_usd']) k
+                    where p ? k and (jsonb_typeof(p -> k) <> 'number' or (p ->> k)::numeric < 0))
     and coalesce(jsonb_typeof(p -> 'buyer'), 'boolean') = 'boolean'
     and coalesce(jsonb_typeof(p -> 'triage'), 'boolean') = 'boolean'
     and coalesce(jsonb_typeof(p -> 'country'), 'boolean') = 'boolean'
@@ -157,7 +165,7 @@ create or replace function v4.seller_context_v2(
     'wallet_micro_usd', v4.ai_room_micro_usd(s.bot_id, p_now),
     'auto_cap_micro_usd', v4.ai_auto_cap(s.bot_id, p_now),
     'country', (select country from b),
-    'language', coalesce((select language from b), 'ru'),
+    'language', coalesce((select language from b), s.default_lang),
     'facts', coalesce((select jsonb_object_agg(f.key, f.value) from v4.buyer_facts f
                        where f.bot_id = p_bot_id and f.buyer_id = p_buyer_id), '{}'::jsonb),
     'knowledge_total', (select n from kt),
@@ -197,15 +205,31 @@ returns jsonb language sql stable as $$
   from v4.offers f where f.bot_id = p_bot_id and f.buyer_id = p_buyer_id and f.id = upper(p_offer_id)
 $$;
 
+-- Готовность магазина к ИИ-продавцу: сырьё для оценки и подсказок (src/v4/seller/readiness.ts).
+create or replace function v4.seller_readiness(p_bot_id uuid)
+returns jsonb language sql stable as $$
+  select jsonb_build_object(
+    'profile', s.seller_profile,
+    'ai_on', coalesce((s.ai_features ->> 'buyer')::boolean, false),
+    'wallet_micro_usd', v4.ai_room_micro_usd(s.bot_id),
+    'products', (select count(*) from v4.products p where p.bot_id = s.bot_id and p.status = 'active' and p.parent_id is null),
+    'products_described', (select count(*) from v4.products p where p.bot_id = s.bot_id and p.status = 'active'
+                             and p.parent_id is null and coalesce(p.description, '') <> ''),
+    'payment_methods', (select count(*) from v4.payment_methods m where m.bot_id = s.bot_id and m.active),
+    'knowledge', (select count(*) from v4.knowledge k where k.bot_id = s.bot_id and k.active and not k.needs_review),
+    'knowledge_review', (select count(*) from v4.knowledge k where k.bot_id = s.bot_id and k.active and k.needs_review))
+  from v4.shops s where s.bot_id = p_bot_id
+$$;
+
 grant update (needs_review) on v4.knowledge to tenant_bot;
 
 revoke all on function v4.ai_features_valid(jsonb), v4.save_ai_features(uuid, jsonb, integer),
   v4.knowledge_risky(text), v4.review_knowledge(uuid, uuid, boolean),
-  v4.seller_context_v2(uuid, uuid, text, timestamptz), v4.offer_products(uuid, uuid, text), v4.ai_auto_cap(uuid, timestamptz)
+  v4.seller_context_v2(uuid, uuid, text, timestamptz), v4.offer_products(uuid, uuid, text), v4.ai_auto_cap(uuid, timestamptz), v4.seller_readiness(uuid)
   from public, anon, authenticated;
 grant execute on function v4.ai_features_valid(jsonb), v4.save_ai_features(uuid, jsonb, integer),
   v4.knowledge_risky(text), v4.review_knowledge(uuid, uuid, boolean),
-  v4.seller_context_v2(uuid, uuid, text, timestamptz), v4.offer_products(uuid, uuid, text), v4.ai_auto_cap(uuid, timestamptz)
+  v4.seller_context_v2(uuid, uuid, text, timestamptz), v4.offer_products(uuid, uuid, text), v4.ai_auto_cap(uuid, timestamptz), v4.seller_readiness(uuid)
   to service_role, tenant_bot;
 
 -- Проверка (должно вернуть 2 колонки магазина и 1 колонку знаний):

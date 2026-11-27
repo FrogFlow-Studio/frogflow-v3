@@ -6,6 +6,7 @@ import { seedKopilka } from "../test/kopilka";
 import { pgliteV4, v4Db } from "../test/pg";
 import { pressBuy } from "./offers";
 import { sellerContext, sellerRole } from "./role";
+import { READINESS_HINTS, sellerReadiness } from "./readiness";
 import { TEXTS } from "./texts";
 
 /**
@@ -390,5 +391,29 @@ describe("промпт", () => {
     expect(sys[3]!.text).toContain("казахском");
     // Общий блок одинаков для любого магазина — кэш общий.
     expect(sys[0]!.text).not.toContain("Копилка");
+  });
+});
+
+describe("готовность магазина", () => {
+  it("после переноса новые поля пустые — оценка и подсказки на 4 языках; заполнили — 100", async () => {
+    const R = "a0a0a0a0-0000-4000-8000-0000000007a5";
+    await seedKopilka(pg, R);
+    const r0 = await sellerReadiness(pgliteV4(pg, { botId: R }), R);
+    // У Копилки описаны 5 карточек из 11 — меньше половины.
+    expect(r0!.missing).toEqual(["descriptions", "wallet", "work_hours", "advantages", "voice"]);
+    expect(r0!.descriptions).toEqual({ described: 5, total: 11 });
+    expect(r0!.score).toBe(55);
+    for (const m of r0!.missing)
+      for (const l of ["ru", "kk", "en", "uz"] as const) expect(READINESS_HINTS[m][l]).toBeTruthy();
+    await pg.query(
+      `update v4.shops set seller_profile = seller_profile || '{"work_hours_note": "с 9 до 21", "advantages": "авторские материалы", "voice_examples": "Здравствуйте! Сейчас подскажу."}' where bot_id = $1`,
+      [R],
+    );
+    await pg.query("select v4.ai_credit($1, 'topup', 1000000, 'т', 'operator')", [R]);
+    await pg.query(
+      "update v4.products set description = 'Описание' where bot_id = $1 and parent_id is null and description is null and title like 'Папка%'",
+      [R],
+    );
+    expect((await sellerReadiness(pgliteV4(pg, { botId: R }), R))!.score).toBe(100);
   });
 });
