@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { adminT, type AdminKey } from "@/app/i18n/admin";
 import { SUPPORTED_LOCALES } from "@/core/i18n/locale";
-import { buildAdminNav, consultantWorkspace, WORKSPACE_PAGES, type NavShop } from "./nav-model";
+import {
+  adminPageAvailable,
+  buildAdminNav,
+  consultantWorkspace,
+  WORKSPACE_PAGES,
+  type NavShop,
+} from "./nav-model";
 
 const shop = (over: Partial<NavShop> = {}): NavShop => ({
   role: "owner",
@@ -18,6 +24,39 @@ const labels = (s: NavShop) =>
   );
 
 describe("меню админки", () => {
+  it("3D-студия показывает только рабочие страницы, даже с модулями магазина", () => {
+    const studio = shop({
+      vertical: "print3d",
+      modules: { shop: true, warehouse: true, courses: true, broadcasts: true, dashboard: true },
+      undelivered: 4,
+      homeworkWaiting: 2,
+    });
+    expect(labels(studio)).toEqual([
+      "/admin/settings",
+      "/admin/support",
+      "/admin/billing",
+      "/admin/log",
+    ]);
+    expect(buildAdminNav(studio).primary.map((i) => i.to)).toEqual([
+      "/admin",
+      "/admin/settings",
+      "/admin/support",
+    ]);
+    for (const path of [
+      "/admin/orders",
+      "/admin/orders/42",
+      "/admin/products/new",
+      "/admin/warehouse/journal",
+    ])
+      expect(adminPageAvailable(studio, path), path).toBe(false);
+    expect(adminPageAvailable(shop(), "/admin/orders/42")).toBe(true);
+    expect(adminPageAvailable(studio, "/admin/settings/")).toBe(true);
+    expect(adminPageAvailable(studio, "/admin/help/guide")).toBe(true);
+    expect(labels({ ...studio, role: "manager" })).toEqual(["/admin/support"]);
+    expect(adminPageAvailable({ ...studio, role: "manager" }, "/admin/settings")).toBe(false);
+    expect(labels({ ...studio, role: "accountant" })).toEqual(["/admin/billing"]);
+  });
+
   it("модуль выключен — пункта нет, включён — есть", () => {
     expect(labels(shop())).not.toContain("/admin/warehouse");
     expect(labels(shop())).not.toContain("/admin/broadcasts#giveaways");

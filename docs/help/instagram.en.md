@@ -94,6 +94,8 @@ Note: for a rule without words, an order from a "+" reply is placed right away o
 
 The first private message, up to 1000 characters (with two steps — including the call to reply). Text only, no buttons. If the rule has buttons, write here what exactly the person will get and ask them to reply.
 
+“Make this the default text” under the field remembers this message and the second message (with two steps): every new rule opens with them, so you only change the name and price. Existing rules are not changed.
+
 ## Buttons under the message {#buttons}
 
 Up to three buttons. They always go in the second message, never in the first.

@@ -5,6 +5,7 @@
  */
 import type { AdminKey } from "@/app/i18n/admin";
 import { entryMatches, entryVisible, SETTINGS_REGISTRY, type SettingsShop } from "./registry";
+import { settingsThemeTitle } from "./nav";
 
 export const SETTINGS_SHOWN = 5;
 
@@ -20,7 +21,7 @@ export function searchSettings(
     .slice(0, SETTINGS_SHOWN)
     .map((e) => ({
       label: t(e.title, e.titleVars),
-      theme: t(`settings19.theme.${e.theme}` as AdminKey),
+      theme: t(settingsThemeTitle(e.theme, shop)),
       to: e.to ?? "/admin/settings",
       hash: e.to ? undefined : e.id,
     }));

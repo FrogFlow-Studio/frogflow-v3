@@ -408,7 +408,11 @@ export async function setBlocked(
     });
     if (error) throw serverFailure(error.message);
   } else {
-    const { error } = await ctx.db.from("blocked_users").delete().eq("telegram_id", telegramId);
+    const { error } = await ctx.db
+      .from("blocked_users")
+      .delete()
+      .eq("bot_id", ctx.tenant.id)
+      .eq("telegram_id", telegramId);
     if (error) throw serverFailure(`Заказы: разблокировка: ${error.message}`);
   }
 }

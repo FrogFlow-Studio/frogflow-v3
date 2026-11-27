@@ -1,5 +1,6 @@
 import type { ConsultantProduct } from "./catalog";
 import { checkForm, checkPrices, indexCatalog, type CatalogIndex } from "./eval/checks";
+import { withMarkup } from "@/core/ai/pure";
 
 /**
  * Сводка качества консультанта за сутки — продавцу, раз в день (перенос
@@ -57,7 +58,10 @@ const NOT_MANAGER_SILENCE = new Set(["folded", "busy", "stale"]);
 export function buildQualityDigest(
   runs: DigestRun[],
   catalog: ConsultantProduct[],
-  opts: { day: string },
+  opts: {
+    day: string;
+    /** Наценка платформы, %: продавцу — списанное с ИИ-баланса, не цена API. */ markupPercent?: number;
+  },
 ): string | null {
   const index = indexCatalog(catalog.filter((p) => p.stock));
   const replied = runs.filter((r) => r.status === "replied" && r.reply_text?.trim());
@@ -78,7 +82,8 @@ export function buildQualityDigest(
     (r) => r.status === "cancelled" && !NOT_MANAGER_SILENCE.has(r.reply_kind ?? ""),
   ).length;
   const noModel = replied.filter((r) => !r.model).length;
-  const cost = runs.reduce((sum, r) => sum + (Number(r.token_usage?.usd) || 0), 0);
+  const apiCost = runs.reduce((sum, r) => sum + (Number(r.token_usage?.usd) || 0), 0);
+  const cost = withMarkup(apiCost, opts.markupPercent ?? 0);
   const clean = scored.filter((s) => s.flags.length === 0).length;
 
   const lines = [
@@ -92,7 +97,7 @@ export function buildQualityDigest(
   const flagged = scored.filter((s) => s.flags.length > 0);
   if (flagged.length) lines.push(`Замечания: ${countFlags(flagged.map((s) => s.flags))}.`);
   lines.push(
-    `Расход модели: ${usd(cost)}${replied.length ? `, в среднем ${usd(cost / replied.length)} за ответ` : ""}.`,
+    `Списано с ИИ-баланса: ${usd(cost)}${replied.length ? `, в среднем ${usd(cost / replied.length)} за ответ` : ""}.`,
   );
   if (flagged.length) {
     lines.push("", "Примеры:");

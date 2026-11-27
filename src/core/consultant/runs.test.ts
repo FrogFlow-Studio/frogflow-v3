@@ -111,6 +111,17 @@ describe("журнал ответов консультанта", () => {
       ctx.db as unknown as { tables: Record<string, Record<string, unknown>[]> }
     ).tables.consultant_message_runs![0]!.received_at = new Date().toISOString();
     expect((await loadConsultantUsage(ctx)).messages).toBe(1);
+    // Продавцу — с наценкой платформы, как списывается с ИИ-баланса.
+    const { setAiMarkupSource } = await import("@/core/ai/markup");
+    setAiMarkupSource(async () => 25);
+    try {
+      const u = await loadConsultantUsage(ctx);
+      expect(u.usd).toBeCloseTo(0.0125);
+      expect(u.usdPerMessage).toBeCloseTo(0.0125);
+      expect(u.days[0]!.usd).toBeCloseTo(0.0125);
+    } finally {
+      setAiMarkupSource(async () => 0);
+    }
   });
 
   it("пустой журнал не делит на ноль", () => {

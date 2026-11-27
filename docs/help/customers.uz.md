@@ -38,7 +38,7 @@ Segment «unga kim kiradi» degan savolga javob beradi. Xabar yuborish yoki aksi
 
 ## Bloklash {#block}
 
-Bloklash moduli ulangan bo‘lsa, tugma bor va u faqat Telegram’dagi xaridorlar uchun ishlaydi. Bloklangan odam «bloklangan» deb belgilanadi, bot unga javob berishni to‘xtatadi. «Blokdan chiqarish» hammasini avvalgidek qaytaradi.
+Bloklash moduli ulangan bo‘lsa, tugma bor va u Telegram, Instagram va WhatsApp xaridorlari uchun ishlaydi. Bloklangan odam «bloklangan» deb belgilanadi: bot unga shaxsiy xabarlarda javob bermaydi, uning Instagram’dagi izohlariga do‘kon javob bermaydi, xabar tarqatish va sovrin o‘yinlari uni o‘tkazib yuboradi. Comment-to-DM qoidasining birinchi xabari izohdan keyin darhol avtomatik ketadi — bloklash uni to‘xtatmaydi. «Blokdan chiqarish» hammasini avvalgidek qaytaradi.
 
 Bloklangan odamga bot javob bermaydi, shuning uchun u umumiy ro‘yxatda bo‘lmasligi mumkin. Bunday odamlar ro‘yxat ustidagi alohida «Bloklanganlar» blokida ko‘rsatiladi: ismi, @nik, Telegram ID va «Blokdan chiqarish» tugmasi. Qidiruvda nikni «@» bilan ham, usiz ham yozish mumkin.
 

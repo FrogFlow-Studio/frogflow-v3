@@ -23,6 +23,25 @@ export function isHandledEvent(event: string | undefined): boolean {
 
 export type DispatchOutcome = { status: "processed" | "ignored" | "failed"; note: string | null };
 
+type CommentAuthorPayload = { comment?: { author?: { id?: string } } };
+
+/**
+ * Автор комментария в чёрном списке клиента. Ключ тот же, что у покупателя
+ * из Direct (`upsertCustomer(ctx, "instagram", author.id)`), поэтому кнопка
+ * «Заблокировать» в «Покупателях» действует и на комментарии. Без id автора
+ * не узнать, кто это, — тогда не блокируем. Сбой чтения — ошибка события, а
+ * не «не заблокирован».
+ */
+async function commentAuthorBlocked(
+  ctx: TenantContext,
+  payload: CommentAuthorPayload,
+): Promise<boolean> {
+  const authorId = payload.comment?.author?.id?.trim();
+  if (!authorId || !ctx.tenant.modules.blocked) return false;
+  const { isBlocked, syntheticTelegramId, userKey } = await import("@/core/customers/customers");
+  return isBlocked(ctx, syntheticTelegramId(userKey("instagram", authorId)));
+}
+
 export async function dispatchZernioEvent(
   ctx: TenantContext,
   eventId: string,
@@ -32,6 +51,12 @@ export async function dispatchZernioEvent(
 ): Promise<DispatchOutcome> {
   try {
     if (payload.event === "comment.received") {
+      // Покупателя заблокировали в «Покупателях» — на его комментарии магазин
+      // не отвечает ни вторым сообщением, ни публично, ни консультантом, и в
+      // розыгрыш он не попадает. Первое сообщение правила Zernio шлёт сам —
+      // его отсюда не остановить.
+      if (await commentAuthorBlocked(ctx, payload as CommentAuthorPayload))
+        return { status: "ignored", note: "покупатель заблокирован" };
       // Двухшаговая Comment-to-DM: второе сообщение с кнопками после первого от Zernio.
       const { handleCommentReceived } = await import("./automations.server");
       const r = ctx.tenant.modules.instagram

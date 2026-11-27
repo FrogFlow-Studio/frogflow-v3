@@ -53,6 +53,28 @@ describe("поиск и «изменено недавно»", () => {
   const find = (q: string) =>
     SETTINGS_REGISTRY.filter((e) => entryMatches(e, q, text)).map((e) => e.id);
 
+  it("у студии только таблица, Telegram и настройки аккаунта, без кассы и витрины", () => {
+    const shop = {
+      vertical: "print3d",
+      role: "owner",
+      modules: { legal_docs: true, admin_roles: true, stripe: true, instagram: true },
+    };
+    expect(SETTINGS_REGISTRY.filter((e) => entryVisible(e, shop)).map((e) => e.id)).toEqual([
+      "legal",
+      "print3d",
+      "telegram",
+      "team",
+      "invite",
+      "takeout",
+      "delete",
+    ]);
+    expect(searchSettings(shop, "группы", t)).toEqual([
+      expect.objectContaining({ hash: "print3d" }),
+    ]);
+    expect(searchSettings(shop, "stripe", t)).toEqual([]);
+    expect(visibleThemes(shop)).toEqual(["shop", "channels", "team", "advanced"]);
+  });
+
   it("находит по названию раздела, названию поля и ключу; регистр не важен", () => {
     expect(find("робокасса")).toEqual([]);
     expect(find("Robokassa")).toContain("robokassa");
@@ -127,8 +149,15 @@ describe("поиск и «изменено недавно»", () => {
     expect(visibleThemes({ role: "owner", modules: all, sells: false })).not.toContain("payment");
     expect(visibleThemes({ role: "owner", modules: all, sells: false })).toContain("money");
     // Продаёт или не сказано — видно всё, как раньше.
-    expect(visible(true)).toEqual(SETTINGS_REGISTRY.map((e) => e.id));
-    expect(visible(undefined)).toEqual(SETTINGS_REGISTRY.map((e) => e.id));
+    // (разделы своей ниши, например студии 3D-печати, — только этой нише).
+    const general = SETTINGS_REGISTRY.filter((e) => !e.vertical).map((e) => e.id);
+    expect(visible(true)).toEqual(general);
+    expect(visible(undefined)).toEqual(general);
+    expect(
+      SETTINGS_REGISTRY.filter((e) =>
+        entryVisible(e, { role: "owner", modules: all, vertical: "print3d" }),
+      ).map((e) => e.id),
+    ).toContain("print3d");
     // Быстрый поиск тоже не находит скрытое.
     const t = adminT("ru");
     expect(

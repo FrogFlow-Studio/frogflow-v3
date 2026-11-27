@@ -1,11 +1,13 @@
 /**
  * Разбор свободной реплики перед обращением — вызов модели (правила — triage.ts).
- * Ключ платформы, как у ИИ после оплаты и страны: доли цента на сообщение,
- * потолок в день на клиента. Обе настройки выключены, модели нет, потолок
- * исчерпан, сбой — «other»: сообщение идёт прежним путём, к продавцу.
+ * Ключ платформы, расход — с ИИ-баланса клиента (core/ai/balance), доли цента
+ * на сообщение, потолок в день на клиента. Обе настройки выключены, модели
+ * нет, потолок исчерпан, ИИ-баланс пуст, сбой — «other»: сообщение идёт
+ * прежним путём, к продавцу.
  */
 import Anthropic from "@anthropic-ai/sdk";
 import { env } from "@/config/env";
+import { aiPaidCall } from "@/core/ai/balance";
 import { modelParams } from "@/core/ai/pure";
 import type { Customer } from "@/core/customers/customers";
 import { getSetting, updateSettingAtomic } from "@/core/settings/settings";
@@ -28,6 +30,7 @@ import {
   TRIAGE_MAX_TEXT,
   TRIAGE_MODEL,
   TRIAGE_OTHER,
+  TRIAGE_RESERVE_USD,
   TRIAGE_SYSTEM,
   TRIAGE_TIMEOUT_MS,
   TRIAGE_TOOL,
@@ -189,10 +192,20 @@ export async function triageMessage(
   const lines = await recentLines(ctx, p.customer.telegramId);
   let answer: Awaited<ReturnType<CallTriageModel>>;
   try {
-    answer = await (modelOverride ?? liveModel)(
-      TRIAGE_SYSTEM,
-      triageUserPrompt({ text, lines, withPhoto: p.withPhoto }),
+    // Платит клиент (решение Якова 26.11): ИИ-баланс пуст — прежний путь, к продавцу.
+    const paid = await aiPaidCall(
+      ctx,
+      "inbox_triage",
+      TRIAGE_RESERVE_USD,
+      () =>
+        (modelOverride ?? liveModel)(
+          TRIAGE_SYSTEM,
+          triageUserPrompt({ text, lines, withPhoto: p.withPhoto }),
+        ),
+      (a) => triageCostUsd(a.usage),
     );
+    if (!paid) return TRIAGE_OTHER;
+    answer = paid.value;
   } catch (e) {
     console.warn(`[triage:${ctx.tenant.id}] модель: ${String(e)}`);
     return TRIAGE_OTHER;

@@ -147,3 +147,13 @@ Messages the bot sends you in Telegram about chats in Instagram and WhatsApp. Tu
 - "Bot paused in a dialogue: you replied to the buyer yourself": on by default.
 - "A buyer sent a phone number in the chat": on by default.
 - "The bot replies "Got your number"": this is not a notice but a reply to the buyer. Off by default: the bot's reply marks the chat as read, and the number is easy to miss.
+
+## 3D printing studio: order sheet {#print3d}
+
+Shown only to 3D printing studios. Paste the link to the Google Sheet of orders with access “Anyone with the link” (viewer). Columns: Номер, Имя, Телефон, Заказ, Срок, Сумма, Фото, Статус (or Order, Name, Phone, Item, Due, Price, Photo, Status); the order number and item are required. Photo is a public Google Drive link.
+
+With automatic confirmation enabled, the customer opens the bot and taps “Share phone number” once. The bot checks the sheet every minute and sends a confirmation to the matching chat when the row has an order number, phone and description. The work group gets the card when the photo link is present, even if the customer has yet to share their number. Enabling also processes existing orders without a send record.
+
+With automatic confirmation off, the customer sends the bot the order number from the receipt. The bot replies once with the order card (with photo, without phone), and a copy with the phone goes to the work group, whose ID is set in the “Telegram work group ID” field in this section. The bot doesn't answer other customer messages itself; it forwards them to the group. Reply to them with a swipe and the bot sends your answer to the customer. If the customer sends a number that isn't in the sheet yet, the bot remembers it and sends the card itself once the row appears (it waits up to 3 days).
+
+“Message the customer ‘order ready’”: when the Status column says “ready”, the bot messages the customer once, if they have already written to the bot. Off by default. In WhatsApp such a message more than 24 hours after the customer's last message needs an approved Meta template, so keep it off for WhatsApp until you have one.

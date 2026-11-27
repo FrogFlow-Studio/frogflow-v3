@@ -33,9 +33,31 @@ import { WorkspaceOverview } from "@/app/admin/workspace-ui";
 import { roleAllows } from "@/core/auth/roles";
 import { sellerTodosFn } from "@/app/admin/todos.functions";
 import { SellerTodos, type SellerTodosData } from "@/app/admin/seller-todos-card";
+import { settingsFn } from "@/app/admin/settings.functions";
+import { sheetCsvUrl } from "@/core/catalog/sheet";
+import { PRINT3D_AUTO_KEY, PRINT3D_SHEET_KEY } from "@/core/print3d/sheet";
 
 export const Route = createFileRoute("/admin/_authed/")({
   loader: async ({ context }) => {
+    if (context.shop.vertical === "print3d") {
+      const settings = roleAllows(context.shop.role, "admin")
+        ? (await settingsFn()).settings
+        : null;
+      return {
+        kind: "print3d" as const,
+        studio: settings
+          ? {
+              sheet: sheetCsvUrl(settings[PRINT3D_SHEET_KEY] ?? "")
+                ? settings[PRINT3D_SHEET_KEY]!.trim()
+                : null,
+              group: (settings.admin_chat_id ?? "")
+                .split(/[,;\s]+/)
+                .some((id) => /^-\d+$/.test(id)),
+              auto: settings[PRINT3D_AUTO_KEY] === "true",
+            }
+          : null,
+      };
+    }
     // Консультант без продаж (BOVI): сверху «Сегодня» рабочего места. Сбой — плашка, не пустой обзор.
     const [d, workspace, todos] = await Promise.all([
       dashboardFn(),
@@ -47,14 +69,89 @@ export const Route = createFileRoute("/admin/_authed/")({
         ? null
         : sellerTodosFn().catch((e: unknown) => ({ failed: e })),
     ]);
-    return { ...d, workspace, todos };
+    return { kind: "shop" as const, ...d, workspace, todos };
   },
   component: Dashboard,
 });
 
 function Dashboard() {
-  useLiveOrders();
   const d = Route.useLoaderData();
+  return d.kind === "print3d" ? <Print3dOverview studio={d.studio} /> : <ShopDashboard d={d} />;
+}
+
+type DashboardData = (typeof Route)["types"]["loaderData"];
+type ShopDashboardData = Extract<DashboardData, { kind: "shop" }>;
+
+function Print3dOverview({
+  studio,
+}: {
+  studio: Extract<DashboardData, { kind: "print3d" }>["studio"];
+}) {
+  const { shop } = Route.useRouteContext();
+  const t = adminT(shop.locale);
+  const states = studio
+    ? ([
+        ["settings.print3d.sheet", Boolean(studio.sheet)],
+        ["settings.print3d.group", studio.group],
+        ["settings.print3d.auto", studio.auto],
+      ] as const)
+    : [];
+  return (
+    <>
+      <PageTitle title={t(verticalTitleKey(shop.vertical))} />
+      <Card title={t("settings.print3d.overview.title")} className="max-w-2xl">
+        <p className="text-sm text-muted">{t("settings.print3d.overview.hint")}</p>
+        {studio && (
+          <dl className="mt-4 divide-y divide-line border-y border-line">
+            {states.map(([label, configured]) => (
+              <div key={label} className="flex items-center justify-between gap-3 py-2.5">
+                <dt className="text-sm">{t(label)}</dt>
+                <dd>
+                  <Badge tone={configured ? "ok" : "neutral"}>
+                    {t(
+                      configured
+                        ? "settings.print3d.overview.set"
+                        : "settings.print3d.overview.unset",
+                    )}
+                  </Badge>
+                </dd>
+              </div>
+            ))}
+          </dl>
+        )}
+        <div className="mt-4 flex flex-wrap gap-2">
+          {studio?.sheet && (
+            <a href={studio.sheet} target="_blank" rel="noreferrer" className="btn-primary">
+              {t("settings.print3d.overview.openSheet")}
+            </a>
+          )}
+          {studio && (
+            <Link
+              to="/admin/settings"
+              hash="print3d"
+              className={studio.sheet ? "btn-secondary" : "btn-primary"}
+            >
+              {t("nav.groupSettings")}
+            </Link>
+          )}
+          {shop.telegram && shop.role !== "accountant" && (
+            <a
+              href={`https://t.me/${encodeURIComponent(shop.telegram.replace(/^@/, ""))}`}
+              target="_blank"
+              rel="noreferrer"
+              className="btn-secondary"
+            >
+              {t("settings.print3d.overview.openBot")}
+            </a>
+          )}
+        </div>
+      </Card>
+    </>
+  );
+}
+
+function ShopDashboard({ d }: { d: ShopDashboardData }) {
+  useLiveOrders();
   const { shop } = Route.useRouteContext();
   const t = adminT(shop.locale);
   const loc = intlLocale(shop.locale);
@@ -585,7 +682,7 @@ function LimitsCard({ limits, t, loc }: { limits: LimitNotice[]; t: AdminT; loc:
   );
 }
 
-type Today = (typeof Route)["types"]["loaderData"]["today"];
+type Today = ShopDashboardData["today"];
 
 function TodayCard({
   tasks,

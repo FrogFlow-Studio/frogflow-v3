@@ -452,6 +452,30 @@ export const ru = {
   "settings.svcNotice.phone": "Покупатель прислал номер телефона в переписке",
   "settings.svcNotice.phoneReply":
     "Бот отвечает на номер «Записал ваш номер» (переписка станет прочитанной, и номер легко пропустить)",
+  "settings.print3d.title": "Студия 3D-печати: таблица заказов",
+  "settings.print3d.intro":
+    "Вносите заказы в Google Таблицу. Вопросы клиентов бот пересылает в рабочую группу. Ответьте на сообщение в группе, чтобы бот передал ответ клиенту.",
+  "settings.print3d.sheet": "Ссылка на Google Таблицу",
+  "settings.print3d.sheetHint":
+    "Доступ «Все, у кого есть ссылка», читатель. Колонки: Номер, Имя, Телефон, Заказ, Срок, Сумма, Фото, Статус; обязательны Номер и Заказ. Фото — ссылка Google Диска с открытым доступом.",
+  "settings.print3d.badLink": "Нужна ссылка вида https://docs.google.com/spreadsheets/…",
+  "settings.print3d.auto": "Подтверждать заказы автоматически по телефону",
+  "settings.print3d.autoHint":
+    "Бот проверяет таблицу раз в минуту. Клиент один раз делится своим номером в Telegram. Укажите рабочую группу и добавляйте фото ссылкой. При включении бот обработает и уже заполненные строки без отметки об отправке.",
+  "settings.print3d.ready": "Писать клиенту «заказ готов»",
+  "settings.print3d.readyHint":
+    "Когда в колонке «Статус» появится «готово», бот один раз напишет клиенту, если тот уже писал боту.",
+  "settings.print3d.group": "ID рабочей группы в Telegram",
+  "settings.print3d.groupHint":
+    "Добавьте бота в рабочую группу и введите её ID. ID группы начинается с минуса, например -1001234567890.",
+  "settings.print3d.search": "Раздел или настройка…",
+  "settings.print3d.overview.title": "Заказы студии",
+  "settings.print3d.overview.hint":
+    "Записывайте заказы в Google Таблицу. Карточки с фото и вопросы клиентов приходят в рабочую группу Telegram.",
+  "settings.print3d.overview.set": "Настроено",
+  "settings.print3d.overview.unset": "Не настроено",
+  "settings.print3d.overview.openSheet": "Открыть таблицу заказов",
+  "settings.print3d.overview.openBot": "Открыть бота",
   "settings.payRemind.title": "Напоминание об оплате",
   "settings.payRemind.intro":
     "Если заказ из бота, Instagram или WhatsApp не оплачен, бот один раз напомнит покупателю сумму и реквизиты. В Instagram и WhatsApp — только если покупатель писал магазину в последние сутки.",
@@ -488,7 +512,7 @@ export const ru = {
     "Покупатель прислал почту или просит прислать материалы, а его последнему заказу больше 14 дней. Бот спрашивает «Ваш последний заказ — №N от 10.09 (…). Отправить его ещё раз? Ответьте «да»» и отправляет только после «да». Другой ответ приходит вам.",
   "settings.triage.title": "Сообщения без вопроса и оплата из других стран",
   "settings.triage.intro":
-    "Что за сообщение пришло в Direct или WhatsApp, понимает ИИ, а не список слов. Сообщение всегда остаётся в «Чате».",
+    "Что за сообщение пришло в Direct или WhatsApp, понимает ИИ, а не список слов. Сообщение всегда остаётся в «Чате». Разбор тратит ИИ-баланс магазина (доли цента на сообщение); баланс кончился — сообщения идут прежним путём, к вам.",
   "settings.triage.keepUnreadLabel": "Не отвечать на обычные сообщения",
   "settings.triage.keepUnreadHint":
     "Бот не отвечает на сообщения не по заказу: вопросы об оплате из других стран, «как получить?», «несколько материалов одним чеком?», название материала, которого нет в боте. Вопрос приходит вам обращением, а диалог в Instagram остаётся непрочитанным — любой ответ бота пометил бы его прочитанным. Кнопки, коды материалов, заказ и чек бот ведёт как раньше. Переключатели ниже при этом не действуют.",
@@ -1046,6 +1070,30 @@ export const kk: SectionDict<typeof ru> = {
   "settings.svcNotice.phone": "Сатып алушы хат алмасуда телефон нөмірін жіберді",
   "settings.svcNotice.phoneReply":
     "Бот нөмірге «Нөміріңізді жазып алдым» деп жауап береді (хат оқылған болып белгіленеді, нөмірді байқамай қалу оңай)",
+  "settings.print3d.title": "3D-басып шығару студиясы: тапсырыстар кестесі",
+  "settings.print3d.intro":
+    "Тапсырыстарды Google Кестеге енгізіңіз. Бот клиент сұрақтарын жұмыс тобына жібереді. Топта хабарламаға жауап берсеңіз, бот жауабыңызды клиентке жібереді.",
+  "settings.print3d.sheet": "Google Кестеге сілтеме",
+  "settings.print3d.sheetHint":
+    "Қолжетімділік: «Сілтемесі бар барлығы», оқырман. Бағандар: Номер, Имя, Телефон, Заказ, Срок, Сумма, Фото, Статус; Номер мен Заказ міндетті. Фото — ашық қолжетімді Google Диск сілтемесі.",
+  "settings.print3d.badLink": "https://docs.google.com/spreadsheets/… түріндегі сілтеме керек",
+  "settings.print3d.auto": "Тапсырысты телефон нөмірі бойынша автоматты растау",
+  "settings.print3d.autoHint":
+    "Бот кестені минут сайын тексереді. Клиент Telegram арқылы өз нөмірін бір рет жібереді. Жұмыс тобын көрсетіп, фото сілтемесін қосыңыз. Режимді қосқанда, жіберу белгісі жоқ бұрынғы жолдар да өңделеді.",
+  "settings.print3d.ready": "Клиентке «тапсырыс дайын» деп жазу",
+  "settings.print3d.readyHint":
+    "«Статус» бағанында «готово» пайда болғанда, клиент ботқа бұрын жазған болса, бот оған бір рет жазады.",
+  "settings.print3d.group": "Telegram жұмыс тобының ID-і",
+  "settings.print3d.groupHint":
+    "Ботты жұмыс тобына қосып, топтың ID-ін жазыңыз. Топтың ID-і минустан басталады, мысалы -1001234567890.",
+  "settings.print3d.search": "Бөлім немесе баптау…",
+  "settings.print3d.overview.title": "Студия тапсырыстары",
+  "settings.print3d.overview.hint":
+    "Тапсырыстарды Google Кестеге жазыңыз. Фотосы бар карточкалар мен клиент сұрақтары Telegram жұмыс тобына келеді.",
+  "settings.print3d.overview.set": "Бапталған",
+  "settings.print3d.overview.unset": "Бапталмаған",
+  "settings.print3d.overview.openSheet": "Тапсырыстар кестесін ашу",
+  "settings.print3d.overview.openBot": "Ботты ашу",
   "settings.payRemind.title": "Төлем туралы еске салу",
   "settings.payRemind.intro":
     "Боттағы, Instagram немесе WhatsApp-тағы тапсырыс төленбесе, бот сатып алушыға соманы мен деректемелерді бір рет еске салады. Instagram мен WhatsApp-та — сатып алушы соңғы тәулікте дүкенге жазған болса ғана.",
@@ -1082,7 +1130,7 @@ export const kk: SectionDict<typeof ru> = {
     "Сатып алушы пошта жіберді немесе материалдарды жіберуді сұрайды, ал соңғы тапсырысына 14 күннен асқан. Бот «Соңғы тапсырысыңыз — №N, 10.09 (…). Қайта жіберейін бе? «Иә» деп жауап беріңіз» деп сұрайды және тек «иә» дегеннен кейін жібереді. Басқа жауап сізге келеді.",
   "settings.triage.title": "Сұрақсыз хабарламалар және басқа елдерден төлем",
   "settings.triage.intro":
-    "Direct немесе WhatsApp-қа қандай хабарлама келгенін сөздер тізімі емес, ЖИ түсінеді. Хабарлама әрдайым «Чатта» қалады.",
+    "Direct немесе WhatsApp-қа қандай хабарлама келгенін сөздер тізімі емес, ЖИ түсінеді. Хабарлама әрдайым «Чатта» қалады. Талдау дүкеннің ЖИ-балансын жұмсайды (бір хабарламаға центтің бір бөлігі); баланс біткенде хабарламалар бұрынғыдай сізге келеді.",
   "settings.triage.keepUnreadLabel": "Қарапайым хабарламаларға жауап бермеу",
   "settings.triage.keepUnreadHint":
     "Бот тапсырысқа қатысы жоқ хабарламаларға жауап бермейді: басқа елден төлем туралы сұрақтар, «қалай алуға болады?», «бірнеше материал бір чекпен бола ма?», ботта жоқ материалдың атауы. Сұрақ сізге өтініш болып келеді, ал Instagram-дағы диалог оқылмаған болып қалады — боттың кез келген жауабы оны оқылды деп белгілер еді. Батырмаларды, материал кодтарын, тапсырыс пен чекті бот бұрынғыдай жүргізеді. Бұл кезде төмендегі ауыстырғыштар әрекет етпейді.",
@@ -1636,6 +1684,30 @@ export const en: SectionDict<typeof ru> = {
   "settings.svcNotice.phone": "A buyer sent a phone number in the chat",
   "settings.svcNotice.phoneReply":
     "The bot replies “Got your number” (the chat becomes read, so the number is easy to miss)",
+  "settings.print3d.title": "3D printing studio: order sheet",
+  "settings.print3d.intro":
+    "Enter orders in Google Sheets. The bot forwards customer questions to your work group. Reply to a message in the group and the bot sends your answer back to the customer.",
+  "settings.print3d.sheet": "Google Sheet link",
+  "settings.print3d.sheetHint":
+    "Access: anyone with the link, viewer. Columns: Номер, Имя, Телефон, Заказ, Срок, Сумма, Фото, Статус (or Order, Name, Phone, Item, Due, Price, Photo, Status); Order number and Item are required. Photo is a public Google Drive link.",
+  "settings.print3d.badLink": "Use a link like https://docs.google.com/spreadsheets/…",
+  "settings.print3d.auto": "Automatically confirm orders by phone",
+  "settings.print3d.autoHint":
+    "The bot checks the sheet every minute. Customers share their own number once in Telegram. Set a work group and add photo links. Enabling also processes existing orders without a send record.",
+  "settings.print3d.ready": "Message the customer “order ready”",
+  "settings.print3d.readyHint":
+    "When the Status column says “ready”, the bot messages the customer once, if they have already written to the bot.",
+  "settings.print3d.group": "Telegram work group ID",
+  "settings.print3d.groupHint":
+    "Add the bot to the work group and enter its group ID. Group IDs are negative, for example -1001234567890.",
+  "settings.print3d.search": "Section or setting…",
+  "settings.print3d.overview.title": "Studio orders",
+  "settings.print3d.overview.hint":
+    "Enter orders in Google Sheets. Order cards with photos and customer questions go to the Telegram work group.",
+  "settings.print3d.overview.set": "Configured",
+  "settings.print3d.overview.unset": "Not configured",
+  "settings.print3d.overview.openSheet": "Open order sheet",
+  "settings.print3d.overview.openBot": "Open bot",
   "settings.payRemind.title": "Payment reminder",
   "settings.payRemind.intro":
     "If an order from the bot, Instagram or WhatsApp is not paid, the bot reminds the buyer once of the amount and payment details. In Instagram and WhatsApp only if the buyer wrote to the shop within the last day.",
@@ -1672,7 +1744,7 @@ export const en: SectionDict<typeof ru> = {
     "The buyer sent an email or asks for the materials, but their last order is older than 14 days. The bot asks “Your last order is #N from 10.09 (…). Send it again? Reply “yes”” and sends only after “yes”. Any other reply comes to you.",
   "settings.triage.title": "Messages without a question and payment from other countries",
   "settings.triage.intro":
-    "AI, not a word list, decides what kind of message arrived in Direct or WhatsApp. The message always stays in “Chat”.",
+    "AI, not a word list, decides what kind of message arrived in Direct or WhatsApp. The message always stays in “Chat”. Triage spends the shop’s AI balance (a fraction of a cent per message); when the balance runs out, messages go to you as before.",
   "settings.triage.keepUnreadLabel": "Don’t reply to ordinary messages",
   "settings.triage.keepUnreadHint":
     "The bot doesn’t reply to messages that aren’t part of an order: questions about paying from other countries, “how do I get it?”, “several materials with one receipt?”, the name of a material the bot doesn’t have. The question comes to you as a ticket and the Instagram conversation stays unread — any bot reply would mark it as read. Buttons, material codes, orders and receipts work as before. The switches below have no effect while this is on.",
@@ -2232,6 +2304,30 @@ export const uz: SectionDict<typeof ru> = {
   "settings.svcNotice.phone": "Xaridor yozishmada telefon raqamini yubordi",
   "settings.svcNotice.phoneReply":
     "Bot raqamga «Raqamingizni yozib oldim» deb javob beradi (yozishma o‘qilgan bo‘ladi va raqamni o‘tkazib yuborish oson)",
+  "settings.print3d.title": "3D bosma studiyasi: buyurtmalar jadvali",
+  "settings.print3d.intro":
+    "Buyurtmalarni Google Jadvalga kiriting. Bot mijoz savollarini ishchi guruhga yuboradi. Guruhdagi xabarga javob bersangiz, bot javobingizni mijozga yuboradi.",
+  "settings.print3d.sheet": "Google Jadvalga havola",
+  "settings.print3d.sheetHint":
+    "Kirish: «Havolaga ega barcha», o‘quvchi. Ustunlar: Номер, Имя, Телефон, Заказ, Срок, Сумма, Фото, Статус; Номер va Заказ majburiy. Rasm — ochiq Google Disk havolasi.",
+  "settings.print3d.badLink": "https://docs.google.com/spreadsheets/… ko‘rinishidagi havola kerak",
+  "settings.print3d.auto": "Buyurtmalarni telefon raqami orqali avtomatik tasdiqlash",
+  "settings.print3d.autoHint":
+    "Bot jadvalni har daqiqada tekshiradi. Mijoz Telegram orqali o‘z raqamini bir marta yuboradi. Ishchi guruhni belgilang va rasm havolasini kiriting. Funksiya yoqilganda yuborilganlik belgisi yo‘q eski qatorlar ham qayta ishlanadi.",
+  "settings.print3d.ready": "Mijozga «buyurtma tayyor» deb yozish",
+  "settings.print3d.readyHint":
+    "«Статус» ustunida «готово» paydo bo‘lganda, mijoz botga oldin yozgan bo‘lsa, bot unga bir marta yozadi.",
+  "settings.print3d.group": "Telegram ishchi guruhi ID raqami",
+  "settings.print3d.groupHint":
+    "Botni ishchi guruhga qo‘shing va guruh ID raqamini kiriting. Guruh ID raqami minus bilan boshlanadi, masalan -1001234567890.",
+  "settings.print3d.search": "Bo‘lim yoki sozlama…",
+  "settings.print3d.overview.title": "Studiya buyurtmalari",
+  "settings.print3d.overview.hint":
+    "Buyurtmalarni Google Jadvalga yozing. Rasmli buyurtma kartochkalari va mijoz savollari Telegram ishchi guruhiga keladi.",
+  "settings.print3d.overview.set": "Sozlangan",
+  "settings.print3d.overview.unset": "Sozlanmagan",
+  "settings.print3d.overview.openSheet": "Buyurtmalar jadvalini ochish",
+  "settings.print3d.overview.openBot": "Botni ochish",
   "settings.payRemind.title": "To‘lov haqida eslatma",
   "settings.payRemind.intro":
     "Botdagi, Instagram yoki WhatsApp’dagi buyurtma to‘lanmasa, bot xaridorga summa va rekvizitlarni bir marta eslatadi. Instagram va WhatsApp’da — faqat xaridor so‘nggi sutkada do‘konga yozgan bo‘lsa.",
@@ -2269,7 +2365,7 @@ export const uz: SectionDict<typeof ru> = {
     "Xaridor pochta yubordi yoki materiallarni so‘raydi, lekin oxirgi buyurtmasiga 14 kundan oshgan. Bot «Oxirgi buyurtmangiz — №N, 10.09 (…). Qayta yuboraymi? «Ha» deb javob bering» deb so‘raydi va faqat «ha» deganidan keyin yuboradi. Boshqa javob sizga keladi.",
   "settings.triage.title": "Savolsiz xabarlar va boshqa davlatlardan to‘lov",
   "settings.triage.intro":
-    "Direct yoki WhatsApp’ga qanday xabar kelganini so‘zlar ro‘yxati emas, SI tushunadi. Xabar har doim «Chat»da qoladi.",
+    "Direct yoki WhatsApp’ga qanday xabar kelganini so‘zlar ro‘yxati emas, SI tushunadi. Xabar har doim «Chat»da qoladi. Saralash do‘konning SI-balansini sarflaydi (har xabarga sentning bir qismi); balans tugasa, xabarlar avvalgidek sizga keladi.",
   "settings.triage.keepUnreadLabel": "Oddiy xabarlarga javob bermaslik",
   "settings.triage.keepUnreadHint":
     "Bot buyurtmaga aloqasi yo‘q xabarlarga javob bermaydi: boshqa davlatdan to‘lov haqidagi savollar, «qanday olsam bo‘ladi?», «bir nechta material bitta chek bilan mumkinmi?», botda yo‘q material nomi. Savol sizga murojaat bo‘lib keladi, Instagram’dagi dialog esa o‘qilmagan qoladi — botning har qanday javobi uni o‘qilgan deb belgilagan bo‘lardi. Tugmalar, material kodlari, buyurtma va chekni bot avvalgidek yuritadi. Bu yoqilganda quyidagi kalitlar ishlamaydi.",

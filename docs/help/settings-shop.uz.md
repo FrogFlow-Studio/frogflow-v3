@@ -147,3 +147,13 @@ Bot sizga Telegram’da Instagram va WhatsApp’dagi yozishmalar haqida yuboradi
 - «Suhbatda bot pauzada: siz xaridorga o‘zingiz javob berdingiz» — standart holatda yoqilgan.
 - «Xaridor yozishmada telefon raqamini yubordi» — standart holatda yoqilgan.
 - «Bot raqamga «Raqamingizni yozib oldim» deb javob beradi» — bu bildirishnoma emas, xaridorga javob. Standart holatda o‘chirilgan: botning javobi yozishmani o‘qilgan qiladi va raqamni o‘tkazib yuborish oson.
+
+## 3D bosma studiyasi: buyurtmalar jadvali {#print3d}
+
+Bo‘lim faqat 3D bosma studiyasiga ko‘rinadi. «Havolaga ega barcha» (o‘quvchi) kirishli Google Jadval havolasini qo‘ying. Ustunlar: Номер, Имя, Телефон, Заказ, Срок, Сумма, Фото, Статус; Номер va Заказ majburiy. Rasm — ochiq Google Disk havolasi.
+
+Avtomatik tasdiqlash yoqilganda mijoz botni ochib, «Telefon raqamini yuborish» tugmasini bir marta bosadi. Bot jadvalni har daqiqada tekshiradi va buyurtma raqami, telefon va tavsifi bor qator uchun mos chatga tasdiq yuboradi. Rasm havolasi qo‘shilganda ishchi guruh kartochkani oladi, mijoz hali raqamini yubormagan bo‘lsa ham. Funksiya yoqilganda yuborilganlik belgisi yo‘q eski qatorlar ham qayta ishlanadi.
+
+Avtomatik tasdiqlash o‘chirilganda mijoz botga chekdagi buyurtma raqamini yozadi. Bot bir marta buyurtma kartochkasi bilan (rasm bilan, telefonsiz) javob beradi, telefonli nusxasi ishchi guruhga ketadi — uning ID raqamini shu bo‘limdagi «Telegram ishchi guruhi ID raqami» maydoniga kiriting. Mijozning boshqa xabarlariga bot o‘zi javob bermaydi, guruhga yuboradi; ularga svayp bilan javob bering, bot javobni mijozga yuboradi. Mijoz jadvalda hali yo‘q raqamni yuborsa, bot uni eslab qoladi va qator paydo bo‘lganda kartochkani o‘zi yuboradi (3 kungacha kutadi).
+
+«Mijozga „buyurtma tayyor“ deb yozish»: «Статус» ustunida «готово» paydo bo‘lganda, mijoz botga oldin yozgan bo‘lsa, bot unga bir marta yozadi. Odatda o‘chiq. WhatsAppda mijoz xabaridan 24 soatdan keyin bunday xabar uchun Meta tasdiqlagan shablon kerak, shuning uchun shablon bo‘lmasa WhatsApp uchun o‘chiq qoldiring.

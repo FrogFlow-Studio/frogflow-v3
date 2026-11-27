@@ -3,6 +3,7 @@ import { useEffect, useState, type RefObject } from "react";
 import {
   instagramPostsFn,
   saveAutomationFn,
+  saveRuleTemplateFn,
   syncInstagramPostFn,
 } from "@/app/admin/instagram.functions";
 import { ProductSearch } from "@/app/admin/product-picker";
@@ -289,8 +290,11 @@ export function RuleForm({
   const [init] = useState<RuleFormValues>(() =>
     editing.kind === "copy"
       ? copyRuleFormValues(editing.rule, (name) => t("instagram.form.copyName", { name }))
-      : ruleFormValues(initial, data.accounts[0]!.id),
+      : ruleFormValues(initial, data.accounts[0]!.id, data.ruleTemplate),
   );
+  // Новое правило открылось с текстом по умолчанию — подсказать, что поменять.
+  const fromTemplate = editing.kind === "new" && Boolean(data.ruleTemplate.dmMessage.trim());
+  const [templateSaved, setTemplateSaved] = useState(false);
   const [accountId, setAccountId] = useState(init.accountId);
   const [name, setName] = useState(init.name);
   const [trigger, setTrigger] = useState<"comment" | "story_reply">(init.trigger);
@@ -391,6 +395,11 @@ export function RuleForm({
     ),
     ...genericKeywords.map((keyword) => t("instagram.form.keywordGeneric", { keyword })),
   ];
+  const saveTemplate = useAction(async () => {
+    await saveRuleTemplateFn({ data: { dmMessage, secondDmMessage } });
+    setTemplateSaved(true);
+    await router.invalidate();
+  });
   const save = useAction(async () => {
     const saved = await saveAutomationFn({
       data: {
@@ -559,9 +568,31 @@ export function RuleForm({
             value={dmMessage}
             maxLength={DM_LIMIT_PLAIN}
             required
-            onChange={(e) => setDmMessage(e.target.value)}
+            onChange={(e) => {
+              setDmMessage(e.target.value);
+              setTemplateSaved(false);
+            }}
             placeholder={t("instagram.form.dmPlaceholder")}
           />
+          {fromTemplate && !templateSaved && (
+            <p className="mt-1 text-xs text-muted">{t("instagram.form.templateUsed")}</p>
+          )}
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              className="btn-ghost text-xs"
+              disabled={saveTemplate.busy || !dmMessage.trim()}
+              onClick={() => void saveTemplate.run().catch(() => {})}
+            >
+              {t("instagram.form.saveTemplate")}
+            </button>
+            {templateSaved && (
+              <span className="text-xs text-muted" role="status">
+                {t("instagram.form.templateSaved")}
+              </span>
+            )}
+          </div>
+          <ErrorBox error={saveTemplate.error} />
         </Field>
         <div>
           <span className="label flex items-center gap-1.5">
@@ -610,7 +641,10 @@ export function RuleForm({
                 className="input mt-2"
                 value={secondDmMessage}
                 maxLength={1000}
-                onChange={(e) => setSecondDmMessage(e.target.value)}
+                onChange={(e) => {
+                  setSecondDmMessage(e.target.value);
+                  setTemplateSaved(false);
+                }}
                 placeholder={t("instagram.form.secondDmPlaceholder")}
               />
             </Field>

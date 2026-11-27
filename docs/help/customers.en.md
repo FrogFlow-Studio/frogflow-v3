@@ -38,7 +38,7 @@ A segment answers the question "who is in it". You launch a broadcast or a promo
 
 ## Block {#block}
 
-The button is there if the blocking module is connected, and works only for buyers from Telegram. A blocked person is marked "blocked", and the bot stops answering them. "Unblock" returns things as they were.
+The button is there if the blocking module is connected, and works for buyers from Telegram, Instagram and WhatsApp. A blocked person is marked "blocked": the bot stops answering their direct messages, the shop does not reply to their Instagram comments, and broadcasts and giveaways skip them. The first message of a Comment-to-DM rule goes out automatically right after the comment, so blocking does not stop it. "Unblock" returns things as they were.
 
 The bot does not answer a blocked person, so they may be missing from the main list. Such people are shown in a separate "Blocked" box above the list: name, @username, Telegram ID and an "Unblock" button. In search you can type a username with or without "@".
 

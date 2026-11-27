@@ -94,6 +94,8 @@ E’tibor bering: so‘zsiz qoidada «+» javobi bo‘yicha buyurtma faqat izohd
 
 Birinchi shaxsiy xabar, 1000 belgigacha (ikki qadamda — javob berishga chaqiriq bilan birga). Faqat matn, tugmasiz. Qoidada tugmalar bo‘lsa, bu yerda odam aynan nima olishini yozing va javob berishni so‘rang.
 
+Maydon ostidagi «Standart matn qilish» shu xabarni va ikkinchi xabarni (ikki qadamda) eslab qoladi: har bir yangi qoida ular bilan ochiladi, faqat nomi va narxini o‘zgartirish qoladi. Avval yaratilgan qoidalar o‘zgarmaydi.
+
 ## Xabar ostidagi tugmalar {#buttons}
 
 Uchtagacha tugma. Ular har doim ikkinchi xabar bilan ketadi, hech qachon birinchisida emas.

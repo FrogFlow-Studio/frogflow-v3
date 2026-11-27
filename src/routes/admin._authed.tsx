@@ -11,7 +11,7 @@ import { ADMIN_LOCALE_LABELS, adminT } from "@/app/i18n/admin";
 import { Badge, PageTitleAddon, Shell, ThemeToggle } from "@/app/ui";
 import { HelpPanelProvider, PageHelp } from "@/app/admin/help-panel";
 import { AdminBottomBar, AdminNavLinks } from "@/app/admin/admin-nav";
-import { buildAdminNav } from "@/app/admin/nav-model";
+import { adminPageAvailable, buildAdminNav } from "@/app/admin/nav-model";
 import { DeletionBanner } from "@/app/admin/deletion-ui";
 import { SubscriptionBanner } from "@/app/admin/subscription-banner";
 import { TrialBanner } from "@/app/admin/trial-banner";
@@ -22,9 +22,10 @@ import { SupportFab } from "@/app/admin/support-fab";
 import { SUPPORTED_LOCALES, type Locale } from "@/core/i18n/locale";
 
 export const Route = createFileRoute("/admin/_authed")({
-  beforeLoad: async () => {
+  beforeLoad: async ({ location }) => {
     const shop = await adminShopFn();
     if (!shop) throw redirect({ to: "/admin/login" });
+    if (!adminPageAvailable(shop, location.pathname)) throw redirect({ to: "/admin" });
     // «Несколько ботов»: связанные магазины владельца; сбой — просто без переключателя.
     const group = await adminShopsFn().catch(() => null);
     return { shop, group };
@@ -129,7 +130,7 @@ function Layout() {
       )}
       <div className="pb-16 md:pb-0">
         <HelpPanelProvider locale={shop.locale} t={t}>
-          <PageTitleAddon.Provider value={<PageHelp />}>
+          <PageTitleAddon.Provider value={<PageHelp print3d={shop.vertical === "print3d"} />}>
             <Outlet />
           </PageTitleAddon.Provider>
         </HelpPanelProvider>
