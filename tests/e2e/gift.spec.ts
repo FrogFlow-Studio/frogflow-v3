@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { expect, test, type APIRequestContext } from "@playwright/test";
 import * as F from "./fixtures.ts";
+import { hydrated } from "./helpers.ts";
 
 /**
  * Подарочный сертификат на витрине сайта: номинал → оплата картой через
@@ -32,6 +33,9 @@ test("покупатель покупает подарочный сертифи�
   await page.goto(`/s/${F.SHOP_SLUG}`);
   await page.getByRole("link", { name: "Подарочный сертификат" }).click();
   await expect(page).toHaveURL(new RegExp(`/s/${F.SHOP_SLUG}/gift$`));
+  // Ссылка, нажатая до гидратации витрины, грузит страницу целиком; выбор номинала до
+  // гидратации сбрасывается на первый (5 000), и заказ уходит не на ту сумму.
+  await hydrated(page, 'input[name="amount"]');
   await page.locator("label", { hasText: /^10\s?000/ }).click();
   await expect(page.getByRole("radio", { name: /^10\s?000/ })).toBeChecked();
   await page.locator('input[name="name"]').fill("Анна E2E");
