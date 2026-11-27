@@ -13,7 +13,7 @@ import {
   type TurnResult,
 } from "../sales-eval/checks";
 import { SALES_SCENARIOS } from "../sales-eval/scenarios";
-import { BUY_BUTTON_TITLE } from "@/channels/zernio/shop/buy-button";
+import { v4TurnOutcome } from "../sales-eval/v4-outcome";
 import { anthropicSellerModel, SELLER_MODEL } from "@/v4/seller/anthropic.server";
 import { buyNow, runSeller } from "@/v4/seller/seller";
 import { pgliteV4, v4Db } from "@/v4/test/pg";
@@ -196,15 +196,12 @@ describe.skipIf(!on)("ИИ-продавец v4 на живой модели (К�
             micro += r.costMicroUsd;
             sources[r.source + (r.fallbackReason ? `:${r.fallbackReason}` : "")] =
               (sources[r.source + (r.fallbackReason ? `:${r.fallbackReason}` : "")] ?? 0) + 1;
-            outcome.replies.push(r.text);
-            // Кнопки в v4 называются «Купить: <товар>»; для мерила v3 — заголовок кнопки v3.
-            outcome.buttons = r.buttons.map(() => BUY_BUTTON_TITLE.ru);
+            Object.assign(outcome, v4TurnOutcome(r));
             lastButtons = r.buttons;
-            outcome.handedOff = r.actions.some((a) => a.kind === "handoff");
             history.push({ role: "user", content: t.text });
             history.push({ role: "assistant", content: r.text || "…" });
           } else {
-            outcome.handedOff = true;
+            Object.assign(outcome, v4TurnOutcome(r));
           }
         }
         const flags = checkTurn(outcome, t.expect);

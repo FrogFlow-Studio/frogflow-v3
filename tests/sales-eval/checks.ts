@@ -73,7 +73,8 @@ export type Flag =
   | "not_kazakh"
   | "missing_fact"
   | "no_buy_button"
-  | "silent";
+  | "silent"
+  | "empty_answer";
 
 const PENDING_ORDER_RU = "Пока заказ не оформлен. Что именно вы хотели узнать о товаре?";
 const LOCALES: Locale[] = ["ru", "kk", "en", "uz"];
@@ -89,6 +90,32 @@ export function isCanned(reply: string): boolean {
 
 /** Казахские буквы, которых нет в русском. */
 const KAZAKH_LETTERS = /[әғқңөұүһі]/iu;
+
+/**
+ * Призыв нажать кнопку на любом языке: «Нажмите «Купить»», «кнопка ниже»,
+ * «оформляйте», «батырманы басыңыз», «tap Buy», «tugmani bosing».
+ */
+const BUY_CALL =
+  /купит|кнопк|оформ|сатып ал|батырма|рәсімде|\bbuy\b|\btap\b|button|sotib ol|tugma|rasmiylashtir/iu;
+
+/**
+ * Ответ без содержания (05.11, ≈11 из 22 ходов): кроме призыва нажать кнопку
+ * в нём ничего нет — ни цены, ни ответа на вопрос. Предложения с призывом
+ * вычёркиваются; если в остатке нет цифр (цена, срок) и он короче 15 букв,
+ * а призыв был — ответа нет.
+ * Вопрос без призыва («Какой класс?») пустым не считается.
+ */
+export function isEmptyAnswer(text: string): boolean {
+  const sentences = text
+    .split(/(?<=[.!?…])\s+|\n+/u)
+    .map((x) => x.trim())
+    .filter(Boolean);
+  if (!sentences.some((x) => BUY_CALL.test(x))) return false;
+  const rest = sentences.filter((x) => !BUY_CALL.test(x)).join(" ");
+  if (/\d/u.test(rest)) return false;
+  const letters = rest.replace(/\b(здравствуйте|сәлеметсіз бе|hello|hi|assalomu alaykum)\b/giu, "");
+  return (letters.match(/\p{L}/gu)?.length ?? 0) < 15;
+}
 
 export function hasBuyOffer(o: TurnOutcome): boolean {
   return o.newOrders > 0 || o.buttons.some((b) => isBuyButtonTitle(b));
@@ -110,6 +137,7 @@ export function checkTurn(o: TurnOutcome, e: SalesTurnExpect = {}): Flag[] {
   if (e.noQuestionEnd && /\?\s*$/u.test(text)) flags.push("question_end");
   if (e.kazakh && !KAZAKH_LETTERS.test(text)) flags.push("not_kazakh");
   if (e.must?.some((re) => !re.test(text))) flags.push("missing_fact");
+  if (text && isEmptyAnswer(text)) flags.push("empty_answer");
   return flags;
 }
 
@@ -179,6 +207,7 @@ export function salesSummary(results: ScenarioResult[]) {
           "missing_fact",
           "no_buy_button",
           "silent",
+          "empty_answer",
         ] as Flag[]
       )
         .map((f) => [f, count(f)] as const)
@@ -199,6 +228,7 @@ const FLAG_TEXT: Record<Flag, string> = {
   missing_fact: "нет факта из карточки",
   no_buy_button: "нажимать нечего: кнопки «Купить» нет",
   silent: "бот промолчал",
+  empty_answer: "кроме «нажмите Купить» в ответе ничего нет",
 };
 
 export function salesReport(
