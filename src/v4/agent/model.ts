@@ -32,6 +32,21 @@ export type AgentRequest = {
 
 export type AgentModel = { turn(req: AgentRequest): Promise<AgentTurn> };
 
+/**
+ * Заглушка вместо живой модели. Вебхук v4 отдаёт её, пока нет отдельного «да»
+ * на прогон: `turn` не зовёт API, а адаптер с этой моделью в мозг не входит.
+ */
+export const parkedAgentModel: AgentModel & { parked: true } = {
+  parked: true,
+  async turn() {
+    throw new Error("v4:live_model_parked");
+  },
+};
+
+export function isParkedModel(model: AgentModel): boolean {
+  return "parked" in model && (model as { parked?: boolean }).parked === true;
+}
+
 /** Перегрузка или лимит API (429, 529): один повтор допустим — это вызов модели, не отправка. */
 export class ModelBusyError extends Error {
   override name = "ModelBusyError";

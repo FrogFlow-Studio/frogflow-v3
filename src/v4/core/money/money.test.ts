@@ -107,11 +107,9 @@ describe("статусы в TS и в базе — один список (реш�
        where n.nspname = 'v4' and t.relname = $1 and c.contype = 'c'`,
       [table],
     );
-    const def = r.rows
-      .map((x) => x.def)
-      .find((d) =>
-        new RegExp(`\\(${column} = ANY|${column}\\)::text = ANY|\\(\\(${column}`).test(d),
-      );
+    const re = new RegExp(`\\(${column} = ANY|${column}\\)::text = ANY|\\(\\(${column}`);
+    const defs = r.rows.map((x) => x.def).filter((d) => re.test(d));
+    const def = defs.find((d) => d.includes(`${column} = ANY`)) ?? defs[0] ?? "";
     return [...(def ?? "").matchAll(/'([a-z_]+)'::text/g)].map((m) => m[1]).sort();
   };
   it.each([

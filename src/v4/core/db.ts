@@ -36,6 +36,12 @@ export const V4_REFUSALS = [
   "choose_variant",
   "access_not_found",
   "foreign_bot",
+  "stock_negative",
+  "bad_step",
+  "no_access",
+  "product_not_found",
+  "invoice_not_found",
+  "reply_closed",
 ] as const;
 export type V4Refusal = (typeof V4_REFUSALS)[number];
 

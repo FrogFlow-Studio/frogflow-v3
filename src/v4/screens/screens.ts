@@ -29,7 +29,7 @@ export type CaseAction = (typeof CASE_ACTIONS)[number];
 
 type L = Record<SellerLang, string>;
 
-/** Вид дела → заголовок и две кнопки. Тест проверяет, что все 12 видов здесь есть. */
+/** Вид дела → заголовок и две кнопки. Тест проверяет, что список совпадает с CASE_KINDS. */
 export const CASE_CARDS: Record<
   CaseKind,
   { title: L; primary: CaseAction; secondary: CaseAction }
@@ -172,6 +172,46 @@ export const CASE_CARDS: Record<
       uz: "SI-sotuvchida nosozlik: oddiy javoblar ko'p, model xatolari yoki hamyon mos kelmayapti",
     },
     primary: "close_case",
+    secondary: "close_case",
+  },
+  fulfillment: {
+    title: {
+      ru: "Физический заказ ждёт следующего шага",
+      kk: "Физикалық тапсырыс келесі қадамды күтуде",
+      en: "A physical order is waiting for the next step",
+      uz: "Jismoniy buyurtma keyingi qadamni kutmoqda",
+    },
+    primary: "open_order",
+    secondary: "close_case",
+  },
+  stock_low: {
+    title: {
+      ru: "Остаток товара на нуле",
+      kk: "Тауар қалдығы нөлде",
+      en: "A product is out of stock",
+      uz: "Mahsulot qoldig'i nolga tushdi",
+    },
+    primary: "open_order",
+    secondary: "close_case",
+  },
+  giveaway: {
+    title: {
+      ru: "Розыгрыш: выбрать победителя",
+      kk: "Ұтыс ойыны: жеңімпазды таңдаңыз",
+      en: "Giveaway: pick a winner",
+      uz: "O'yin: g'olibni tanlang",
+    },
+    primary: "close_case",
+    secondary: "close_case",
+  },
+  waitlist: {
+    title: {
+      ru: "Покупатель ждёт поступления",
+      kk: "Сатып алушы түсуін күтуде",
+      en: "A buyer is waiting for stock",
+      uz: "Xaridor kelishini kutmoqda",
+    },
+    primary: "reply_buyer",
     secondary: "close_case",
   },
 };

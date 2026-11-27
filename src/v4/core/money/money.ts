@@ -20,7 +20,15 @@ export const LEDGER_KINDS = [
 ] as const;
 export type LedgerKind = (typeof LEDGER_KINDS)[number];
 
-export const PAYMENT_METHOD_KINDS = ["transfer", "prodamus", "apipay", "robokassa"] as const;
+export const PAYMENT_METHOD_KINDS = [
+  "transfer",
+  "prodamus",
+  "apipay",
+  "robokassa",
+  "stripe",
+  "kaspi",
+  "nowpayments",
+] as const;
 export type PaymentMethodKind = (typeof PAYMENT_METHOD_KINDS)[number];
 
 export const LEDGER_METHODS = [...PAYMENT_METHOD_KINDS, "manual", "legacy"] as const;
