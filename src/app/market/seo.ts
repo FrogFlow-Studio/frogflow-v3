@@ -14,9 +14,20 @@ export function marketUrl(page: MarketPage, locale: Locale): string {
   return locale === "ru" ? `${SITE_URL}${page}` : `${SITE_URL}${page}?lang=${locale}`;
 }
 
-/** Страницы площадки для карты сайта, на всех языках, без повторов. */
-export function marketSitemapLocs(): string[] {
-  return MARKET_PAGES.flatMap((p) => SUPPORTED_LOCALES.map((l) => marketUrl(p, l)));
+/**
+ * Страницы площадки для карты сайта, на всех языках, без повторов. Пока на
+ * площадке нет ни одного магазина, каталог — пустой список («магазинов нет»):
+ * поиск считает такую страницу «ложной 404», поэтому в карту он не идёт.
+ */
+export function marketSitemapLocs(opts: { hasShops: boolean }): string[] {
+  return MARKET_PAGES.filter((p) => opts.hasShops || p !== "/market").flatMap((p) =>
+    SUPPORTED_LOCALES.map((l) => marketUrl(p, l)),
+  );
+}
+
+/** Пустой каталог площадки не индексируется, ссылки с него — да. */
+export function marketIndexRobots(shopsShown: number): { name: string; content: string }[] {
+  return shopsShown === 0 ? [{ name: "robots", content: "noindex,follow" }] : [];
 }
 
 /** canonical, переводы страницы и x-default для `head`. */

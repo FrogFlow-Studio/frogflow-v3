@@ -104,10 +104,9 @@ export const storeProductFn = createServerFn({ method: "GET" })
       if (!id) throw notFound();
     }
     const product = await storeProduct(ctx, id);
-    if (!product) {
-      if (!catalog) throw notFound();
-      throw shownError((await shopT(ctx))("error.productNotFound"));
-    }
+    // Снятого или удалённого товара нет: честный 404 (StorePageMissing), не 500 —
+    // иначе поиск считает старые ссылки «ложной 404» или сбоем сервера.
+    if (!product) throw notFound();
     if (!catalog) {
       const { storeLanding } = await import("@/core/courses/landing.server");
       if (product.kind !== "digital" || !(await storeLanding(ctx, product.id))) throw notFound();

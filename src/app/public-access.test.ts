@@ -198,6 +198,19 @@ describe("закрытая витрина отвечает как несущес
     await add("./storefront/quiz.functions", "storeQuizFn");
     await add("./storefront/tg-login.functions", "tgLoginStateFn");
     expect(fns.length).toBeGreaterThanOrEqual(15);
+    // Товар есть у открытого магазина: пропавший товар — тоже 404, и без него контроль пуст.
+    db.tables.products = [
+      {
+        id: UUID,
+        bot_id: BOT,
+        name: "Товар",
+        price: 100,
+        is_active: true,
+        fulfillment_kind: "physical",
+        category_ids: [],
+        images: [],
+      },
+    ];
     // Контроль: у открытого магазина те же функции отвечают иначе, иначе проверка пуста.
     let differs = 0;
     for (const [name, fn, extra] of fns) {
