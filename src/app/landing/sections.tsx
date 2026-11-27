@@ -182,11 +182,19 @@ export function Header({
   );
 }
 
-export function Steps({ t }: { t: LandingT }) {
+/** Ширина и заголовок блока тарифов по умолчанию; главная Enveriq передаёт свои. */
+const DEFAULT_WRAP = "mx-auto w-full max-w-[1440px] px-4 xl:px-8";
+type BlockLook = { wrap?: string; Title?: (p: { children: ReactNode }) => ReactNode };
+
+export function Steps({
+  t,
+  wrap = DEFAULT_WRAP,
+  Title = SectionTitle,
+}: { t: LandingT } & BlockLook) {
   return (
     <section id="how" className="scroll-mt-20 border-y border-line bg-surface">
-      <div className="mx-auto w-full max-w-[1440px] px-4 xl:px-8 py-16">
-        <SectionTitle>{t("steps.title")}</SectionTitle>
+      <div className={`${wrap} py-16`}>
+        <Title>{t("steps.title")}</Title>
         <ol className="mt-9 grid gap-0.5 overflow-hidden rounded-3xl bg-line md:grid-cols-3">
           {([1, 2, 3] as const).map((n) => (
             <li key={n} className="grid content-start gap-2 bg-bg p-7">
@@ -337,18 +345,20 @@ export function Pricing({
   signup,
   niche: fixed,
   page,
+  wrap = DEFAULT_WRAP,
+  Title = SectionTitle,
 }: {
   t: LandingT;
   signup: boolean;
   niche?: PricingNiche;
   /** Страница ниши: регистрация откроется с её нишей. */
   page?: NichePage;
-}) {
+} & BlockLook) {
   const [picked, setNiche] = useState<PricingNiche>("dig");
   const niche = fixed ?? picked;
   return (
-    <section id="pricing" className="mx-auto w-full max-w-[1440px] scroll-mt-20 px-4 xl:px-8 py-16">
-      <SectionTitle>{t("pricing.title")}</SectionTitle>
+    <section id="pricing" className={`${wrap} scroll-mt-20 py-16`}>
+      <Title>{t("pricing.title")}</Title>
       <p className="mt-2 max-w-2xl text-muted">
         {t("pricing.sub", { days: TRIAL_DAYS, tier: TIER_TITLES[TRIAL_TIER] })}
       </p>

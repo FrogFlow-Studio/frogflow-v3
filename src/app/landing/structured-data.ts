@@ -25,7 +25,9 @@ export function landingJsonLd(o: {
       {
         "@type": "Organization",
         "@id": orgId,
-        name: "FrogFlow",
+        // Компания — FrogFlow Studio, продукт — Enveriq (прежнее имя платформы — FrogFlow).
+        name: "FrogFlow Studio",
+        alternateName: "FrogFlow",
         url: `${SITE_URL}/`,
         areaServed: "KZ",
         ...(sameAs.length ? { sameAs } : {}),
@@ -33,6 +35,7 @@ export function landingJsonLd(o: {
       {
         "@type": "SoftwareApplication",
         name: o.name,
+        alternateName: "FrogFlow",
         description: o.description,
         url: o.url,
         inLanguage: o.locale,
