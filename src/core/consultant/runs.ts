@@ -143,7 +143,7 @@ export function summarizeConsultantRuns(
   };
 }
 
-/** Сводка за последние `days` суток — продавцу в панели. */
+/** Сводка за последние `days` суток — продавцу в панели, суммы с наценкой платформы. */
 export async function loadConsultantUsage(
   ctx: TenantContext,
   days = 7,
@@ -166,5 +166,15 @@ export async function loadConsultantUsage(
   } catch (e) {
     console.warn(`[consultant:${ctx.tenant.id}]`, e instanceof Error ? e.message : e);
   }
-  return summarizeConsultantRuns(data, ctx.timezone);
+  const stats = summarizeConsultantRuns(data, ctx.timezone);
+  // Продавцу — цена для него (API + наценка платформы, как списывается с ИИ-баланса), не себестоимость.
+  const { aiMarkupPercent } = await import("@/core/ai/markup");
+  const { withMarkup } = await import("@/core/ai/pure");
+  const m = await aiMarkupPercent();
+  return {
+    ...stats,
+    days: stats.days.map((d) => ({ ...d, usd: withMarkup(d.usd, m) })),
+    usd: withMarkup(stats.usd, m),
+    usdPerMessage: withMarkup(stats.usdPerMessage, m),
+  };
 }

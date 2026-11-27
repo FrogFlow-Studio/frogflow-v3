@@ -67,8 +67,16 @@ describe("сводка качества за сутки", () => {
     expect(text).toContain("Передано менеджеру: 1, отвечал менеджер (бот молчал): 1.");
     expect(text).toContain("Ответы без замечаний: 2 из 3 (67%).");
     expect(text).toMatch(/Замечания: [^\n]*рекламные слова 1/);
-    expect(text).toContain("Расход модели: $0.04");
+    expect(text).toContain("Списано с ИИ-баланса: $0.04");
     expect(text).toContain("Примеры:");
+  });
+
+  it("продавцу — сумма с наценкой платформы, а не цена API", () => {
+    const runs = [run({ token_usage: { usd: 0.28 } }), run({ token_usage: { usd: 0.12 } })];
+    const text = buildQualityDigest(runs, catalog, { day: "2026-09-24", markupPercent: 25 })!;
+    expect(text).toContain("Списано с ИИ-баланса: $0.50, в среднем $0.25 за ответ.");
+    expect(text).not.toContain("$0.40");
+    expect(text).not.toContain("Расход модели");
   });
 });
 

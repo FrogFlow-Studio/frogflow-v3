@@ -352,7 +352,11 @@ export async function sendQualityDigest(
     "[consultant] запуски не прочитаны",
   );
   const { products } = await loadPricelist(ctx);
-  const text = buildQualityDigest(data as DigestRun[], products, { day });
+  const { aiMarkupPercent } = await import("@/core/ai/markup");
+  const text = buildQualityDigest(data as DigestRun[], products, {
+    day,
+    markupPercent: await aiMarkupPercent(),
+  });
   if (!text) return { sent: false, reason: "empty" };
   return { sent: (await notify(ctx, escapeHtml(text))) > 0 };
 }
