@@ -28,7 +28,12 @@ export type V3Snapshot = {
     keywords: string[];
   }>;
   /** public.products и product_images v3 (id те же, что в v4): описание, ключевые слова, фото (пути Storage). */
-  v3Products: Array<{ id: string; description: string | null; keywords: string[]; photos: string[] }>;
+  v3Products: Array<{
+    id: string;
+    description: string | null;
+    keywords: string[];
+    photos: string[];
+  }>;
   /** state.consultant.recent по покупателям Telegram. */
   histories: Array<{
     telegramId: string;

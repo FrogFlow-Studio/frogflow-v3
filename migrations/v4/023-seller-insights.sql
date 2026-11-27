@@ -8,11 +8,13 @@
 --    простые ответы, передачи, предложения, нажатия, оплаченные заказы и выручка
 --    по валютам, цена одного оплаченного заказа.
 --  * В4: forget_buyer — обезличить покупателя по его просьбе: имя, почта, тексты
---    сообщений, факты и внешние id стираются; заказы и деньги остаются с пустым
---    покупателем (решение 2 «ничего не удаляем» — про деньги и дела).
---  * Сигналы оператору (дело ai_health, одно в час на причину): простых ответов
---    больше 10 % за час (не меньше 10 ответов), 3 сбоя модели за 10 минут,
---    расхождение кошелька с книгой (раз в сутки).
+--    сообщений и комментариев, факты, слова покупателя в делах и уведомлениях
+--    стираются; заказы, деньги, доступы и блок остаются. Канал (внешний id)
+--    остаётся: без него не дойдёт оплаченный товар, а заблокированный обошёл бы блок.
+--  * Сигналы оператору (дело ai_health, одно в час на причину): сбоев (модель не
+--    ответила или ответ не прошёл проверку) больше 10 % ответов за час (не меньше
+--    10 ответов), 3 сбоя модели за 10 минут. Предел и пустой кошелёк — не сбой:
+--    у них своё дело ai_limit. Кошелёк с книгой сверяет крон tick раз в сутки.
 
 -- ── Р8: кандидаты в экзамен ─────────────────────────────────────────────────
 create table v4.exam_candidates (
@@ -68,7 +70,8 @@ returns jsonb language sql stable as $$
     select distinct r.id, r.currency, r.total_minor, v4.order_paid_minor(r.id, r.currency) as paid_minor
     from o join v4.orders r on r.bot_id = o.bot_id and r.id = o.order_id
     where o.order_id is not null),
-  paid as (select * from ord where paid_minor > 0)
+  paid as (select * from ord where paid_minor >= total_minor),
+  part as (select * from ord where paid_minor > 0 and paid_minor < total_minor)
   select jsonb_build_object(
     'replies_model', (select count(*) from m where source = 'model'),
     'replies_simple', (select count(*) from m where source = 'fallback' and reason is not null),
@@ -77,8 +80,10 @@ returns jsonb language sql stable as $$
     'offers_shown', (select count(*) from o),
     'offers_pressed', (select count(*) from o where order_id is not null),
     'orders_paid', (select count(*) from paid),
+    'orders_part_paid', (select count(*) from part),
+    -- Выручка — всё пришедшее по этим заказам (и частичные оплаты), не больше суммы заказа.
     'revenue_minor', coalesce((select jsonb_object_agg(currency, s) from (
-      select currency, sum(least(paid_minor, total_minor)) s from paid group by currency) x), '{}'::jsonb),
+      select currency, sum(least(paid_minor, total_minor)) s from ord where paid_minor > 0 group by currency) x), '{}'::jsonb),
     'cost_per_paid_order_micro_usd', case when (select count(*) from paid) > 0
       then (select coalesce(sum(cost_micro_usd), 0) from m) / (select count(*) from paid) end)
 $$;
@@ -89,6 +94,9 @@ alter table v4.buyers add column forgotten_at timestamptz;
 create or replace function v4.forget_buyer(
   p_bot_id uuid, p_buyer_id uuid, p_by text, p_now timestamptz default now()
 ) returns boolean language plpgsql security definer set search_path = v4, pg_temp as $$
+declare
+  -- Ключи jsonb, где лежат слова покупателя (пересказ передачи, причина, текст).
+  pii text[] := array['reason', 'summary', 'text', 'comment', 'note', 'name', 'phone', 'email', 'question'];
 begin
   if v4.current_bot_id() is not null and v4.current_bot_id() <> p_bot_id then
     raise exception using errcode = 'P0001', message = 'v4:foreign_bot';
@@ -96,13 +104,27 @@ begin
   update v4.buyers set name = null, email = null, forgotten_at = coalesce(forgotten_at, p_now)
   where bot_id = p_bot_id and id = p_buyer_id;
   if not found then return false; end if;
-  update v4.messages set text = '', external_id = null
-  where bot_id = p_bot_id and buyer_id = p_buyer_id and (text <> '' or external_id is not null);
+  update v4.messages set text = ''
+  where bot_id = p_bot_id and buyer_id = p_buyer_id and text <> '';
+  update v4.comments set text = ''
+  where bot_id = p_bot_id and buyer_id = p_buyer_id and text <> '';
   delete from v4.buyer_facts where bot_id = p_bot_id and buyer_id = p_buyer_id;
-  delete from v4.buyer_channels where bot_id = p_bot_id and buyer_id = p_buyer_id;
-  update v4.cases set detail = jsonb_build_object('forgotten', true)
-  where bot_id = p_bot_id and buyer_id = p_buyer_id and detail <> jsonb_build_object('forgotten', true);
-  update v4.exam_candidates set question = '—', answer = '—'
+  -- Слова покупателя в делах, их событиях и уведомлениях; суммы и номера остаются.
+  update v4.cases set detail = (detail - pii) || jsonb_build_object('forgotten', true)
+  where bot_id = p_bot_id and buyer_id = p_buyer_id and detail ?| pii;
+  update v4.case_events e set detail = e.detail - pii
+  from v4.cases c
+  where c.bot_id = p_bot_id and c.buyer_id = p_buyer_id and e.bot_id = c.bot_id and e.case_id = c.id
+    and e.detail ?| pii;
+  update v4.notifications n set params = n.params - pii
+  from v4.cases c
+  where c.bot_id = p_bot_id and c.buyer_id = p_buyer_id and n.bot_id = c.bot_id and n.case_id = c.id
+    and n.params ?| pii;
+  -- Вопрос покупателя в знаниях и кандидатах в экзамен; ответ продавца остаётся.
+  update v4.knowledge k set question = '[обезличено]'
+  from v4.cases c
+  where c.bot_id = p_bot_id and c.buyer_id = p_buyer_id and k.bot_id = c.bot_id and k.case_id = c.id;
+  update v4.exam_candidates set question = '[обезличено]', answer = '[обезличено]'
   where bot_id = p_bot_id and buyer_id = p_buyer_id;
   insert into v4.case_events (bot_id, case_id, kind, detail, created_by)
   select p_bot_id, c.id, 'comment', jsonb_build_object('note', 'Покупатель обезличен по просьбе'), p_by
@@ -115,8 +137,8 @@ insert into v4.case_policies values
   ('ai_health', 'operator', '4 hours', 'remind', null, null, false, 'now');
 
 -- Проверить здоровье ИИ магазина и открыть дело ai_health (одно в час на
--- причину; в сутки — для кошелька). Возвращает причины, по которым дело открыто
--- или повторено. Зовёт ядро после простого ответа в боевом режиме.
+-- причину). Возвращает причины, по которым дело открыто. Зовёт ядро после
+-- простого ответа в боевом режиме: два счёта по индексу сообщений.
 create or replace function v4.ai_signals(p_bot_id uuid, p_now timestamptz default now())
 returns text[] language plpgsql as $$
 declare
@@ -124,15 +146,16 @@ declare
   total integer;
   simple integer;
   failed integer;
-  drift bigint;
   out text[] := '{}';
 begin
-  select count(*), count(*) filter (where source = 'fallback' and reason is not null)
+  select count(*), count(*) filter (where source = 'fallback' and reason in ('model_failed', 'check_failed'))
   into total, simple
   from v4.messages
   where bot_id = p_bot_id and mode = 'live' and direction = 'out' and author = 'bot'
     and source in ('model', 'fallback') and created_at > p_now - interval '1 hour' and created_at <= p_now;
-  if total >= 10 and simple * 10 > total then
+  if total >= 10 and simple * 10 > total
+     and not exists (select 1 from v4.cases where bot_id = p_bot_id and kind = 'ai_health'
+                     and dedupe_key = 'simple:' || hour_key and status = 'open') then
     perform v4.open_case(p_bot_id, 'ai_health', 'simple:' || hour_key, 'ai', null, null,
       jsonb_build_object('reason', 'simple_share', 'simple', simple, 'total', total), p_now);
     out := array_append(out, 'simple_share');
@@ -141,19 +164,28 @@ begin
   select count(*) into failed from v4.messages
   where bot_id = p_bot_id and mode = 'live' and direction = 'out' and reason = 'model_failed'
     and created_at > p_now - interval '10 minutes' and created_at <= p_now;
-  if failed >= 3 then
+  if failed >= 3
+     and not exists (select 1 from v4.cases where bot_id = p_bot_id and kind = 'ai_health'
+                     and dedupe_key = 'model_failed:' || hour_key and status = 'open') then
     perform v4.open_case(p_bot_id, 'ai_health', 'model_failed:' || hour_key, 'ai', null, null,
       jsonb_build_object('reason', 'model_failed', 'failed', failed), p_now);
     out := array_append(out, 'model_failed');
   end if;
 
-  drift := v4.ai_wallet_drift(p_bot_id);
-  if drift <> 0 then
-    perform v4.open_case(p_bot_id, 'ai_health', 'wallet_drift:' || left(hour_key, 10), 'ai', null, null,
-      jsonb_build_object('reason', 'wallet_drift', 'drift_micro_usd', drift), p_now);
-    out := array_append(out, 'wallet_drift');
-  end if;
   return out;
+end $$;
+
+-- Сверка кошелька с книгой (крон tick): расхождение — дело ai_health, одно в сутки.
+create or replace function v4.ai_wallet_check(p_bot_id uuid, p_now timestamptz default now())
+returns bigint language plpgsql as $$
+declare
+  drift bigint := v4.ai_wallet_drift(p_bot_id);
+begin
+  if drift <> 0 then
+    perform v4.open_case(p_bot_id, 'ai_health', 'wallet_drift:' || to_char(p_now at time zone 'UTC', 'YYYY-MM-DD'),
+      'ai', null, null, jsonb_build_object('reason', 'wallet_drift', 'drift_micro_usd', drift), p_now);
+  end if;
+  return drift;
 end $$;
 
 alter table v4.exam_candidates enable row level security;
@@ -166,12 +198,14 @@ grant select, insert on v4.exam_candidates to tenant_bot;
 revoke all on function v4.ai_value_report(uuid, timestamptz, timestamptz),
   v4.forget_buyer(uuid, uuid, text, timestamptz), v4.ai_signals(uuid, timestamptz)
   from public, anon, authenticated;
+revoke all on function v4.ai_wallet_check(uuid, timestamptz) from public, anon, authenticated, tenant_bot;
+grant execute on function v4.ai_wallet_check(uuid, timestamptz) to service_role;
 grant execute on function v4.ai_value_report(uuid, timestamptz, timestamptz),
   v4.forget_buyer(uuid, uuid, text, timestamptz), v4.ai_signals(uuid, timestamptz)
   to service_role, tenant_bot;
 
--- Проверка (должно вернуть 1 таблицу, 3 функции и политику ai_health):
+-- Проверка (должно вернуть 1 таблицу, 4 функции и политику ai_health):
 -- select (select count(*) from information_schema.tables where table_schema = 'v4' and table_name = 'exam_candidates') as t,
 --        (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
---          where n.nspname = 'v4' and p.proname in ('ai_value_report', 'forget_buyer', 'ai_signals')) as fns,
+--          where n.nspname = 'v4' and p.proname in ('ai_value_report', 'forget_buyer', 'ai_signals', 'ai_wallet_check')) as fns,
 --        (select count(*) from v4.case_policies where kind = 'ai_health') as policy;

@@ -16,15 +16,20 @@ export const Route = createFileRoute("/admin/_authed/v4-seller")({
   component: V4SellerPage,
 });
 
-const FIELDS: Array<{ key: keyof SellerSettings["profile"]; label: PanelKey; rows: number }> = [
+const FIELDS: Array<{
+  key: keyof SellerSettings["profile"];
+  label: PanelKey;
+  hint?: PanelKey;
+  rows: number;
+}> = [
   { key: "shop_name", label: "fShopName", rows: 1 },
-  { key: "about", label: "fAbout", rows: 4 },
-  { key: "payment_terms", label: "fPayment", rows: 3 },
-  { key: "delivery_terms", label: "fDelivery", rows: 3 },
-  { key: "tone", label: "fTone", rows: 2 },
-  { key: "advantages", label: "fAdvantages", rows: 3 },
-  { key: "voice_examples", label: "fVoice", rows: 4 },
-  { key: "work_hours_note", label: "fWorkHours", rows: 1 },
+  { key: "about", label: "fAbout", hint: "pAbout", rows: 4 },
+  { key: "payment_terms", label: "fPayment", hint: "pPayment", rows: 3 },
+  { key: "delivery_terms", label: "fDelivery", hint: "pDelivery", rows: 3 },
+  { key: "tone", label: "fTone", hint: "pTone", rows: 2 },
+  { key: "advantages", label: "fAdvantages", hint: "pAdvantages", rows: 3 },
+  { key: "voice_examples", label: "fVoice", hint: "pVoice", rows: 4 },
+  { key: "work_hours_note", label: "fWorkHours", hint: "pWorkHours", rows: 1 },
 ];
 
 function V4SellerPage() {
@@ -93,6 +98,7 @@ function SellerForm({ settings }: { settings: SellerSettings }) {
               className="input w-full"
               rows={f.rows}
               maxLength={2000}
+              {...(f.hint ? { placeholder: t(f.hint) } : {})}
               disabled={!canWrite}
               value={profile[f.key] ?? ""}
               onChange={(e) => setProfile({ ...profile, [f.key]: e.target.value })}

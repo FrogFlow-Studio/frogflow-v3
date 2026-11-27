@@ -158,16 +158,23 @@ describe("план переноса", () => {
       snapshot({
         v3Products: [
           { id: palId, description: "Описание из карточки v3.", keywords: [], photos: [] },
-          { id: "c0c0c0c0-0000-4000-8000-00000000dead", description: "x", keywords: [], photos: [] },
+          {
+            id: "c0c0c0c0-0000-4000-8000-00000000dead",
+            description: "x",
+            keywords: [],
+            photos: [],
+          },
         ],
       }),
     );
     expect(p.productTexts.find((t) => t.productId === palId)?.description).toBe(
       "Описание из карточки v3.",
     );
-    expect(p.knowledge.find((k) => k.question === "Палитра средств выразительности")).toMatchObject({
-      answer: "Печать на А4 или А3.",
-    });
+    expect(p.knowledge.find((k) => k.question === "Палитра средств выразительности")).toMatchObject(
+      {
+        answer: "Печать на А4 или А3.",
+      },
+    );
     expect(p.report.some((r) => r.area === "товары" && r.item.startsWith("1 товаров"))).toBe(true);
   });
 

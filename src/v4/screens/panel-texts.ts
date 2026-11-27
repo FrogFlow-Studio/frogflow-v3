@@ -157,6 +157,48 @@ export const PANEL_TEXTS = {
     en: "When the seller replies (the bot adds it to “the seller will reply”)",
     uz: "Sotuvchi qachon javob beradi (bot «sotuvchi javob beradi»ga qo'shadi)",
   },
+  pAbout: {
+    ru: "Например: Материалы для учителей русского языка 5–11 классов: папки, лестницы, формативное оценивание. Всё в Word и PDF.",
+    kk: "Мысалы: 5–11 сынып орыс тілі мұғалімдеріне арналған материалдар: папкалар, баспалдақтар, формативтік бағалау. Барлығы Word және PDF форматында.",
+    en: "For example: Materials for Russian teachers, grades 5–11: folders, ladders, formative assessment. All in Word and PDF.",
+    uz: "Masalan: 5–11-sinf rus tili o'qituvchilari uchun materiallar: papkalar, zinapoyalar, formativ baholash. Hammasi Word va PDF formatida.",
+  },
+  pPayment: {
+    ru: "Например: Перевод на Kaspi по номеру из кнопки оплаты. После перевода пришлите чек — проверим и отправим файл.",
+    kk: "Мысалы: Төлем түймесіндегі нөмір бойынша Kaspi-ге аударым. Аударған соң чекті жіберіңіз — тексеріп, файлды жібереміз.",
+    en: "For example: Kaspi transfer to the number in the payment button. Send the receipt after paying — we check it and send the file.",
+    uz: "Masalan: To'lov tugmasidagi raqamga Kaspi o'tkazmasi. O'tkazgandan keyin chekni yuboring — tekshirib, faylni yuboramiz.",
+  },
+  pDelivery: {
+    ru: "Например: Файл приходит в этот чат после проверки чека, обычно в течение часа в рабочее время.",
+    kk: "Мысалы: Чек тексерілген соң файл осы чатқа келеді, әдетте жұмыс уақытында бір сағат ішінде.",
+    en: "For example: The file arrives in this chat after the receipt is checked, usually within an hour during working hours.",
+    uz: "Masalan: Chek tekshirilgach fayl shu chatga keladi, odatda ish vaqtida bir soat ichida.",
+  },
+  pTone: {
+    ru: "Например: Тепло и на «вы», коротко, без восклицательных знаков.",
+    kk: "Мысалы: Жылы және «сіз» деп, қысқа, леп белгісіз.",
+    en: "For example: Warm and polite, short, no exclamation marks.",
+    uz: "Masalan: Iliq va «siz» deb, qisqa, undov belgisiz.",
+  },
+  pAdvantages: {
+    ru: "Например: Материалы сделаны учителем с 20-летним стажем, проверены на уроках; обновления бесплатно.",
+    kk: "Мысалы: Материалдарды 20 жылдық тәжірибесі бар мұғалім жасаған, сабақта тексерілген; жаңартулар тегін.",
+    en: "For example: Made by a teacher with 20 years of experience, tested in class; updates are free.",
+    uz: "Masalan: Materiallarni 20 yillik tajribaga ega o'qituvchi tayyorlagan, darslarda sinalgan; yangilanishlar bepul.",
+  },
+  pVoice: {
+    ru: "Например:\nДобрый день! Папка подойдёт для 5 класса, внутри 40 листов.\nСпасибо за заказ, файл уже в чате.",
+    kk: "Мысалы:\nҚайырлы күн! Папка 5-сыныпқа сай келеді, ішінде 40 парақ.\nТапсырысыңызға рақмет, файл чатта.",
+    en: "For example:\nGood afternoon! The folder fits grade 5, it has 40 pages.\nThanks for your order, the file is in the chat.",
+    uz: "Masalan:\nXayrli kun! Papka 5-sinfga mos, ichida 40 varaq.\nBuyurtmangiz uchun rahmat, fayl chatda.",
+  },
+  pWorkHours: {
+    ru: "Например: Продавец отвечает с 9:00 до 21:00 по Алматы.",
+    kk: "Мысалы: Сатушы Алматы уақытымен 9:00-ден 21:00-ге дейін жауап береді.",
+    en: "For example: The seller replies from 9:00 to 21:00 Almaty time.",
+    uz: "Masalan: Sotuvchi Olmaota vaqti bilan 9:00 dan 21:00 gacha javob beradi.",
+  },
   save: { ru: "Сохранить", kk: "Сақтау", en: "Save", uz: "Saqlash" },
   saved: { ru: "Сохранено.", kk: "Сақталды.", en: "Saved.", uz: "Saqlandi." },
   stale: {

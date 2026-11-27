@@ -1,4 +1,5 @@
 -- Откат v4/023: польза, учёба, право, сигналы. learn_from_reply — как в 021.
+drop function if exists v4.ai_wallet_check(uuid, timestamptz);
 drop function if exists v4.ai_signals(uuid, timestamptz);
 drop function if exists v4.forget_buyer(uuid, uuid, text, timestamptz);
 drop function if exists v4.ai_value_report(uuid, timestamptz, timestamptz);

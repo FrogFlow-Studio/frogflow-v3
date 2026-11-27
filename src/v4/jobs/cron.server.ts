@@ -1,3 +1,4 @@
+import { serverFailure } from "@/lib/server-failure";
 import type { TelegramApi } from "@/channels/telegram/api";
 import type { sendInboxMessage } from "@/channels/zernio/api.server";
 import type { DeliveryChannel } from "../core/access/access";
@@ -62,7 +63,17 @@ export async function runV4Cron(
 ): Promise<Record<string, unknown>> {
   if (!deps.botIds.length) return { shops: 0 };
   const base = deps.appUrl.replace(/\/+$/, "");
-  if (job === "tick") return { shops: deps.botIds.length, ...(await tick(deps.db)) };
+  if (job === "tick") {
+    const r = await tick(deps.db);
+    // Сверка кошелька ИИ с книгой: расхождение — дело оператору, одно в сутки.
+    let walletDrift = 0;
+    for (const botId of deps.botIds) {
+      const d = (await deps.db.call("ai_wallet_check", { p_bot_id: botId }))[0]?.ai_wallet_check;
+      if (d === undefined) throw serverFailure("v4.ai_wallet_check: пустой ответ");
+      if (Number(d) !== 0) walletDrift++;
+    }
+    return { shops: deps.botIds.length, ...r, walletDrift };
+  }
 
   const shops = new Map((await deps.shops()).map((s) => [s.botId, s]));
   if (job === "jobs") {

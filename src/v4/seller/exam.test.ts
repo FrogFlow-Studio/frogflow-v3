@@ -15,7 +15,7 @@ import { applyTransfer } from "../transfer/apply";
 import { planTransfer } from "../transfer/plan";
 
 /**
- * Экзамен роли «продавец» (Спецификация, раздел «Сценарии экзамена»): 88
+ * Экзамен роли «продавец» (Спецификация, раздел «Сценарии экзамена»): 89
  * сценариев в 10 группах, id — как в спецификации. Модель записанная: экзамен
  * проверяет код (кнопки, заказы, деньги, проверки, память, язык, режимы), а ум
  * модели — живой прогон на тех же фразах (tests/integration/v4-seller-eval).
@@ -1486,12 +1486,21 @@ describe("И. Расширение этапа: источник ответа, у
     const y = await ask(b, "А размер?", [{ text: "Формат А4. [K9]" }]);
     expect(y.x!.text).toBe("Формат А4.");
     expect(y.x!.actions.some((a) => a.kind === "knowledge")).toBe(false);
+    // Несколько меток в одной скобке и строчная буква — тоже вырезаются и записываются.
+    const z = await ask(b, "А шрифт какой?", [{ text: "Шрифт Таймс. [k1, K9]" }]);
+    expect(z.x!.text).toBe("Шрифт Таймс.");
+    expect(z.x!.actions).toContainEqual({ kind: "knowledge", ids: [kid] });
+    // В истории для модели служебной пометки «knowledge» нет.
+    expect(JSON.stringify(z.model.requests[0]!.messages)).not.toContain("knowledge");
   });
 
   it("I02 handoff-exam-candidate (Р8): ответ продавца — знание и одна строка «кандидат в экзамен»", async () => {
     const b = await buyer(X);
     const caseId = (
-      await pg.query<{ c: string }>("select v4.hand_to_seller($1, $2, 'Вопрос: опт', 'bot') c", [X, b])
+      await pg.query<{ c: string }>("select v4.hand_to_seller($1, $2, 'Вопрос: опт', 'bot') c", [
+        X,
+        b,
+      ])
     ).rows[0]!.c;
     const learn = () =>
       asX().call("learn_from_reply", {
@@ -1504,9 +1513,9 @@ describe("И. Расширение этапа: источник ответа, у
     expect(
       await count1("select count(*) c from v4.exam_candidates where case_id = $1", [caseId]),
     ).toBe(1);
-    expect(
-      await count1("select count(*) c from v4.knowledge where case_id = $1", [caseId]),
-    ).toBe(1);
+    expect(await count1("select count(*) c from v4.knowledge where case_id = $1", [caseId])).toBe(
+      1,
+    );
   });
 
   it("I03 ai-value-report (Р9): стоил — расход ответов; принёс — оплаченный заказ из кнопки бота", async () => {
@@ -1520,8 +1529,11 @@ describe("И. Расширение этапа: источник ответа, у
     const p = await pressBuy(asX(), { botId: X, buyerId: b, offerId: x!.buttons[0]!.offerId! });
     if (p.kind !== "order") throw new Error("нет заказа");
     const total = Number(
-      (await pg.query<{ t: string }>("select total_minor t from v4.orders where id = $1", [p.orderId]))
-        .rows[0]!.t,
+      (
+        await pg.query<{ t: string }>("select total_minor t from v4.orders where id = $1", [
+          p.orderId,
+        ])
+      ).rows[0]!.t,
     );
     await recordPayment(asX(), {
       botId: X,
@@ -1538,7 +1550,12 @@ describe("И. Расширение этапа: источник ответа, у
         [X, from.toISOString()],
       )
     ).rows[0]!.r;
-    expect(r).toMatchObject({ offers_shown: 1, offers_pressed: 1, orders_paid: 1 });
+    expect(r).toMatchObject({
+      offers_shown: 1,
+      offers_pressed: 1,
+      orders_paid: 1,
+      orders_part_paid: 0,
+    });
     expect(r.revenue_minor).toEqual({ KZT: total });
     expect(Number(r.spent_micro_usd)).toBeGreaterThan(0);
     expect(Number(r.replies_model)).toBeGreaterThanOrEqual(1);
@@ -1546,7 +1563,12 @@ describe("И. Расширение этапа: источник ответа, у
 
   it("I04 voice-transcript (Р14): расшифровка идёт как текст, помечена в журнале, модель предупреждена", async () => {
     const b = await buyer(X);
-    const { model } = await ask(b, "сколько стоит палитра", [{ text: "Палитра есть в каталоге." }], {});
+    const { model } = await ask(
+      b,
+      "сколько стоит палитра",
+      [{ text: "Палитра есть в каталоге." }],
+      {},
+    );
     expect(String(model.requests[0]!.system.at(-1)!.text)).not.toContain("голосового");
     const r = await runAgent({
       db: asX(),
@@ -1595,10 +1617,16 @@ describe("И. Расширение этапа: источник ответа, у
     });
     expect(p.kind).toBe("order");
     const { x } = await ask(b, "Удалите, пожалуйста, мои данные", [
-      { toolCalls: [tool("hand_to_seller", { kind: "privacy", summary_ru: "просит удалить данные" })] },
+      {
+        toolCalls: [
+          tool("hand_to_seller", { kind: "privacy", summary_ru: "просит удалить данные" }),
+        ],
+      },
       { text: "Передала продавцу вашу просьбу." },
     ]);
-    expect(x!.actions).toContainEqual(expect.objectContaining({ kind: "handoff", reason: "privacy" }));
+    expect(x!.actions).toContainEqual(
+      expect.objectContaining({ kind: "handoff", reason: "privacy" }),
+    );
 
     // Чужой магазин обезличить не может.
     await expect(
@@ -1613,7 +1641,16 @@ describe("И. Расширение этапа: источник ответа, у
       await count1("select count(*) c from v4.messages where buyer_id = $1 and text <> ''", [b]),
     ).toBe(0);
     expect(await count1("select count(*) c from v4.buyer_facts where buyer_id = $1", [b])).toBe(0);
-    expect(await count1("select count(*) c from v4.buyer_channels where buyer_id = $1", [b])).toBe(0);
+    // Канал остаётся: без него не дойдёт оплаченный товар и не удержится блок.
+    expect(await count1("select count(*) c from v4.buyer_channels where buyer_id = $1", [b])).toBe(
+      1,
+    );
+    expect(
+      await count1(
+        "select count(*) c from v4.case_events e join v4.cases c on c.id = e.case_id where c.buyer_id = $1 and e.detail::text like '%удалить%'",
+        [b],
+      ),
+    ).toBe(0);
     expect(
       await count1(
         "select count(*) c from v4.cases where buyer_id = $1 and detail::text like '%удалить%'",
@@ -1622,7 +1659,9 @@ describe("И. Расширение этапа: источник ответа, у
     ).toBe(0);
     expect(await count1("select count(*) c from v4.orders where buyer_id = $1", [b])).toBe(1);
     expect(
-      await count1("select count(*) c from v4.buyers where id = $1 and forgotten_at is not null", [b]),
+      await count1("select count(*) c from v4.buyers where id = $1 and forgotten_at is not null", [
+        b,
+      ]),
     ).toBe(1);
   });
 
@@ -1637,6 +1676,15 @@ describe("И. Расширение этапа: источник ответа, у
         "select v4.record_reply($1, $2, 'telegram', 'ок', '[]', '[]', 'live', 'model')",
         [S, b],
       );
+    // Предел и пустой кошелёк — не сбой: у них своё дело ai_limit.
+    for (let i = 0; i < 5; i++)
+      await pg.query(
+        "select v4.record_reply($1, $2, 'telegram', 'ок', '[]', '[]', 'live', 'fallback', 'limit_day')",
+        [S, b],
+      );
+    expect((await pg.query<{ s: string[] }>("select v4.ai_signals($1) s", [S])).rows[0]!.s).toEqual(
+      [],
+    );
     const fail = () =>
       say(b, "привет", [{ throws: new Error("boom") }, { throws: new Error("boom") }], { bot: S });
     for (let i = 0; i < 3; i++) await fail();
@@ -1653,5 +1701,34 @@ describe("И. Расширение этапа: источник ответа, у
         [S],
       ),
     ).toBe(2);
+    // Повтор в тот же час не плодит событий «повторено».
+    expect(
+      await count1(
+        "select count(*) c from v4.case_events e join v4.cases c on c.id = e.case_id where c.bot_id = $1 and c.kind = 'ai_health' and e.kind = 'repeated'",
+        [S],
+      ),
+    ).toBe(0);
+  });
+
+  it("I07 wallet-check: кошелёк не сходится с книгой — дело оператору раз в сутки", async () => {
+    const S = "c0c0c0c0-0000-4000-8000-00000000e006";
+    expect(
+      Number((await pg.query<{ d: string }>("select v4.ai_wallet_check($1) d", [S])).rows[0]!.d),
+    ).toBe(0);
+    await pg.query(
+      "update v4.ai_wallet set balance_micro_usd = balance_micro_usd + 7 where bot_id = $1",
+      [S],
+    );
+    await pg.query("select v4.ai_wallet_check($1)", [S]);
+    await pg.query("select v4.ai_wallet_check($1)", [S]);
+    expect(
+      await count1(
+        "select count(*) c from v4.cases where bot_id = $1 and kind = 'ai_health' and detail ->> 'reason' = 'wallet_drift'",
+        [S],
+      ),
+    ).toBe(1);
+    await expect(as(S).call("ai_wallet_check", { p_bot_id: S })).rejects.toThrow(
+      /permission denied/,
+    );
   });
 });

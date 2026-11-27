@@ -94,7 +94,11 @@ export async function readV3Snapshot(
       ctx.db.from("products").select("id, description, keywords").order("id").range(from, to),
     "перенос v3: products",
   );
-  const images = await pageAll<{ product_id: string; image_path: string; sort_order: number | null }>(
+  const images = await pageAll<{
+    product_id: string;
+    image_path: string;
+    sort_order: number | null;
+  }>(
     (from, to) =>
       ctx.db
         .from("product_images")
@@ -127,7 +131,9 @@ export async function readV3Snapshot(
     v3Products: v3Rows.map((p) => ({
       id: String(p.id),
       description: p.description ?? null,
-      keywords: Array.isArray(p.keywords as unknown) ? (p.keywords as unknown as unknown[]).map(String) : [],
+      keywords: Array.isArray(p.keywords as unknown)
+        ? (p.keywords as unknown as unknown[]).map(String)
+        : [],
       photos: (photos.get(p.id) ?? []).sort((a, b) => a.order - b.order).map((x) => x.path),
     })),
     histories,

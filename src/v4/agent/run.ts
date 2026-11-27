@@ -87,7 +87,8 @@ export const newSession = (): RoleSession => ({
 
 const isoNow = (now?: Date) => (now ? { p_now: now.toISOString() } : {});
 
-const SOURCE_MARK = /\s*\[[KК](\d{1,3})\]/gu;
+// [K1], [k1], [К1], [K1, K3], [K1;3] — одна скобка, одна или несколько меток.
+const SOURCE_MARK = /\s*\[\s*[KkКк]\s*\d{1,3}(?:\s*[,;]\s*(?:[KkКк]\s*)?\d{1,3})*\s*\]/gu;
 
 /**
  * Метки источников [K3] из ответа модели: покупатель их не видит, id знаний
@@ -96,9 +97,11 @@ const SOURCE_MARK = /\s*\[[KК](\d{1,3})\]/gu;
  */
 export function takeSources(text: string, s: RoleSession): string {
   const ids: string[] = [];
-  const clean = text.replace(SOURCE_MARK, (_m, n: string) => {
-    const id = s.sources[`K${n}`];
-    if (id && !ids.includes(id)) ids.push(id);
+  const clean = text.replace(SOURCE_MARK, (m: string) => {
+    for (const n of m.match(/\d{1,3}/gu) ?? []) {
+      const id = s.sources[`K${Number(n)}`];
+      if (id && !ids.includes(id)) ids.push(id);
+    }
     return "";
   });
   s.actions = s.actions.filter((a) => a.kind !== "knowledge");
@@ -278,6 +281,8 @@ async function answerOnce(
 
   const simple = async (reason: FallbackReason, cost = 0, checkResult: string | null = null) => {
     s.buttons = [];
+    // Простой ответ не опирается на знания, которые называл отвергнутый черновик.
+    s.actions = s.actions.filter((x) => x.kind !== "knowledge");
     const fb = await role.fallback(db, s, { ...args, text, lang: ctx.lang }, reason);
     const saved = await save({ text: fb.text, source: "fallback", reason, cost, checkResult });
     // Сигналы оператору (доля простых ответов, сбои модели, кошелёк): дело ai_health.
@@ -286,7 +291,9 @@ async function answerOnce(
       await db
         .call("ai_signals", { p_bot_id: botId, ...isoNow(input.now) })
         .catch((e: unknown) =>
-          console.error(`[v4 agent] сигналы оператору: ${e instanceof Error ? e.message : String(e)}`),
+          console.error(
+            `[v4 agent] сигналы оператору: ${e instanceof Error ? e.message : String(e)}`,
+          ),
         );
     return saved;
   };
@@ -500,7 +507,8 @@ export function toModelMessages(history: HistoryMessage[]): Anthropic.MessagePar
       if (m.author === "seller") content = `[ответ продавца] ${content}`;
       if (m.buttons.length)
         content += `\n[показаны кнопки: ${m.buttons.map((b) => b.label).join("; ")}]`;
-      const acts = m.actions.map((a) => a.kind).filter(Boolean);
+      // «knowledge» — служебная пометка журнала (Р10), не действие: модели не показываем.
+      const acts = m.actions.map((a) => a.kind).filter((k) => k && k !== "knowledge");
       if (acts.length) content += `\n[сделано: ${acts.join(", ")}]`;
     }
     content = content.trim();
