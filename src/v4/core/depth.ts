@@ -81,7 +81,10 @@ export function nextFulfillmentStep(
 
 export async function catalogSearchMode(db: V4Db): Promise<"trgm" | "typo"> {
   const raw = String(
-    cell(one(await db.call("catalog_search_mode", {}), "catalog_search_mode"), "catalog_search_mode"),
+    cell(
+      one(await db.call("catalog_search_mode", {}), "catalog_search_mode"),
+      "catalog_search_mode",
+    ),
   );
   return raw === "trgm" ? "trgm" : "typo";
 }

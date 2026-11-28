@@ -100,6 +100,7 @@ async function run(
   const model = scriptedAgentModel(turns);
   const r = await runAgent({
     db: asA(),
+    walletDb: pgliteV4(pg),
     role,
     model,
     markupBp: async () => 2500,
@@ -261,6 +262,7 @@ describe("пределы и деньги", () => {
     const model = scriptedAgentModel([]);
     const r = await runAgent({
       db: pgliteV4(pg, { botId: E }),
+      walletDb: pgliteV4(pg),
       role,
       model,
       markupBp: async () => 2500,
@@ -370,6 +372,7 @@ describe("сообщение во время хода — ответ и за н�
     };
     const r = await runAgent({
       db: asA(),
+      walletDb: pgliteV4(pg),
       role,
       model,
       markupBp: async () => 2500,

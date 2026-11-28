@@ -95,6 +95,10 @@ describe("правила проверки", () => {
         ctx({ shopText: "Комплект со скидкой 10 000 ₸" }),
       ),
     ).toBeNull();
+    expect(checkReply("Дам скидку", ctx({ shopText: "Скидок нет" }))?.code).toBe("promise");
+    expect(findNumbers("пять тысяч и 5к").filter((n) => n.value === 5000)).toHaveLength(2);
+    expect(checkReply("Это одна тысяча", ctx())?.code).toBe("price_unknown");
+    expect(checkReply("Это 11к", ctx())?.code).toBe("price_unknown");
   });
 
   it("6. чужой телефон, почта, ссылка — foreign_contact; из анкеты — можно", () => {

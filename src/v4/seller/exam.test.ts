@@ -75,6 +75,7 @@ async function say(b: string, text: string, turns: ScriptedTurn[], o: Opts = {})
   const model = scriptedAgentModel(turns);
   const r = await runAgent({
     db: as(bot),
+    walletDb: pgliteV4(pg),
     role: o.role ?? sellerRole(),
     model,
     markupBp: async () => 2500,
@@ -1581,6 +1582,7 @@ describe("И. Расширение этапа: источник ответа, у
     expect(String(model.requests[0]!.system.at(-1)!.text)).not.toContain("голосового");
     const r = await runAgent({
       db: asX(),
+      walletDb: pgliteV4(pg),
       role: sellerRole(),
       model: scriptedAgentModel([{ text: "Уточните, пожалуйста, какой товар?" }]),
       markupBp: async () => 2500,

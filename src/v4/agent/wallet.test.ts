@@ -60,7 +60,7 @@ describe("бронь и расчёт", () => {
     const h = await aiHold(asA(), { botId: A, purpose: "seller", mode: "live" });
     expect(h.ok).toBe(true);
     expect(await balance()).toBe(1_000_000 - 60_000);
-    const total = await aiSettle(asA(), {
+    const total = await aiSettle(service(), {
       botId: A,
       holdId: (h as { holdId: number }).holdId,
       apiMicroUsd: 12_000,
@@ -87,12 +87,14 @@ describe("бронь и расчёт", () => {
     const h = (await aiHold(asA(), { botId: A, purpose: "seller", mode: "live" })) as {
       holdId: number;
     };
-    await aiSettle(asA(), { botId: A, holdId: h.holdId, apiMicroUsd: 1000, markupBp: 2500 });
+    await aiSettle(service(), { botId: A, holdId: h.holdId, apiMicroUsd: 1000, markupBp: 2500 });
     const before = await balance();
     await expect(
-      aiSettle(asA(), { botId: A, holdId: h.holdId, apiMicroUsd: 1000, markupBp: 2500 }),
+      aiSettle(service(), { botId: A, holdId: h.holdId, apiMicroUsd: 1000, markupBp: 2500 }),
     ).rejects.toThrow(/append_only/);
-    await expect(aiRelease(asA(), { botId: A, holdId: h.holdId })).rejects.toThrow(/append_only/);
+    await expect(aiRelease(service(), { botId: A, holdId: h.holdId })).rejects.toThrow(
+      /append_only/,
+    );
     expect(await balance()).toBe(before);
     expect(await drift()).toBe(0);
   });
@@ -103,8 +105,8 @@ describe("бронь и расчёт", () => {
     };
     const before = await balance();
     const r = await Promise.allSettled([
-      aiSettle(asA(), { botId: A, holdId: h.holdId, apiMicroUsd: 2000, markupBp: 2500 }),
-      aiSettle(asA(), { botId: A, holdId: h.holdId, apiMicroUsd: 2000, markupBp: 2500 }),
+      aiSettle(service(), { botId: A, holdId: h.holdId, apiMicroUsd: 2000, markupBp: 2500 }),
+      aiSettle(service(), { botId: A, holdId: h.holdId, apiMicroUsd: 2000, markupBp: 2500 }),
     ]);
     expect(r.filter((x) => x.status === "fulfilled")).toHaveLength(1);
     expect(await balance()).toBe(before + 60_000 - 2500);
@@ -115,7 +117,7 @@ describe("бронь и расчёт", () => {
     const h = (await aiHold(asA(), { botId: A, purpose: "seller", mode: "live" })) as {
       holdId: number;
     };
-    await aiRelease(asA(), { botId: A, holdId: h.holdId });
+    await aiRelease(service(), { botId: A, holdId: h.holdId });
     expect(await balance()).toBe(before);
   });
 
@@ -159,16 +161,26 @@ describe("пусто, предел дня, гонка за последние д
   });
 
   it("дневной предел магазина: потрачено ≥ предела — limit_day, деньги не бронируются", async () => {
+    const open = await pg.query<{ id: string }>(
+      `select id::text from v4.ai_ledger l
+        where l.bot_id = $1 and l.kind = 'hold'
+          and not exists (select 1 from v4.ai_ledger c where c.hold_id = l.id)`,
+      [B],
+    );
+    for (const row of open.rows) {
+      await aiRelease(service(), { botId: B, holdId: Number(row.id) });
+    }
     await credit(B, 1_000_000);
     const day = new Date("2026-11-27T08:00:00Z");
     const h = (await aiHold(asB(), {
       botId: B,
+      amountMicroUsd: 10_000,
       purpose: "seller",
       mode: "live",
       dailyCapMicroUsd: 20_000,
       now: day,
     })) as { holdId: number };
-    await aiSettle(asB(), {
+    await aiSettle(service(), {
       botId: B,
       holdId: h.holdId,
       apiMicroUsd: 16_000,
@@ -179,6 +191,7 @@ describe("пусто, предел дня, гонка за последние д
     expect(
       await aiHold(asB(), {
         botId: B,
+        amountMicroUsd: 10_000,
         purpose: "seller",
         mode: "live",
         dailyCapMicroUsd: 20_000,
@@ -191,6 +204,7 @@ describe("пусто, предел дня, гонка за последние д
       (
         await aiHold(asB(), {
           botId: B,
+          amountMicroUsd: 10_000,
           purpose: "seller",
           mode: "live",
           dailyCapMicroUsd: 20_000,
@@ -199,9 +213,59 @@ describe("пусто, предел дня, гонка за последние д
       ).ok,
     ).toBe(true);
   });
+
+  it("открытая бронь входит в дневной предел, расчёт не уводит остаток ниже нуля", async () => {
+    await credit(A, 70_000);
+    const start = await balance(A);
+    const day = new Date("2026-01-15T08:00:00Z");
+    const held = await aiHold(asA(), {
+      botId: A,
+      amountMicroUsd: 60_000,
+      purpose: "cap",
+      mode: "live",
+      dailyCapMicroUsd: 100_000,
+      now: day,
+    });
+    expect(held.ok).toBe(true);
+    expect(
+      await aiHold(asA(), {
+        botId: A,
+        amountMicroUsd: 60_000,
+        purpose: "cap2",
+        mode: "live",
+        dailyCapMicroUsd: 100_000,
+        now: day,
+      }),
+    ).toEqual({ ok: false, reason: "limit_day" });
+    if (!held.ok) return;
+    await aiSettle(service(), {
+      botId: A,
+      holdId: held.holdId,
+      apiMicroUsd: 5_000_000,
+      markupBp: 2500,
+      now: day,
+    });
+    const left = await balance(A);
+    expect(left).toBeGreaterThanOrEqual(0);
+    expect(left).toBeLessThan(start);
+  });
 });
 
 describe("права арендатора", () => {
+  it("арендатор не считает и не возвращает бронь", async () => {
+    await expect(
+      asA().call("ai_settle", {
+        p_bot_id: A,
+        p_hold_id: 1,
+        p_api_micro_usd: 1,
+        p_markup_bp: 0,
+      }),
+    ).rejects.toThrow(/permission/);
+    await expect(asA().call("ai_release", { p_bot_id: A, p_hold_id: 1 })).rejects.toThrow(
+      /permission/,
+    );
+  });
+
   it("чужой кошелёк не бронируется, не видно чужой книги, пополнить себе нельзя", async () => {
     await expect(aiHold(asB(), { botId: A, purpose: "seller", mode: "live" })).rejects.toThrow(
       /foreign_bot/,

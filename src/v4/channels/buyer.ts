@@ -27,6 +27,33 @@ export async function buyFromChannel(
     externalId: input.claimId,
   });
   if (!claimed) return { ok: false, code: "duplicate" };
+  try {
+    return await placeClaimed(db, input);
+  } catch (e) {
+    await db.call("release_inbound", {
+      p_bot_id: input.botId,
+      p_channel: input.channel,
+      p_external_id: input.claimId,
+    });
+    throw e;
+  }
+}
+
+async function placeClaimed(
+  db: V4Db,
+  input: {
+    botId: string;
+    channel: BuyerChannel;
+    externalId: string;
+    country: string | null;
+    productIds: string[];
+    claimId: string;
+    by: string;
+    now?: Date;
+  },
+): Promise<
+  { ok: true; buyerId: string; orderId: string; no: number } | { ok: false; code: string }
+> {
   const order = await checkout(db, {
     botId: input.botId,
     channel: input.channel,
@@ -39,6 +66,11 @@ export async function buyFromChannel(
   if (order.type === "order") {
     return { ok: true, buyerId: order.buyerId, orderId: order.order.id, no: order.order.no };
   }
+  await db.call("release_inbound", {
+    p_bot_id: input.botId,
+    p_channel: input.channel,
+    p_external_id: input.claimId,
+  });
   if (order.type === "refused") return { ok: false, code: order.code };
   return { ok: false, code: "order_not_found" };
 }

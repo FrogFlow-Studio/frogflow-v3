@@ -115,7 +115,14 @@ export async function takeTurn(
 /** Отпустить ход; число входящих после afterMessageId, на которые ещё нет ответа (0 — отпущен). */
 export async function releaseTurn(
   db: V4Db,
-  a: { botId: string; buyerId: string; turnId: string; afterMessageId: number },
+  a: {
+    botId: string;
+    buyerId: string;
+    turnId: string;
+    afterMessageId: number;
+    /** Считать входящие только этого режима. Без него ход live не держит очередь test. */
+    mode?: "live" | "shadow" | "test";
+  },
 ): Promise<number> {
   return Number(
     one<number>(
@@ -124,6 +131,7 @@ export async function releaseTurn(
         p_buyer_id: a.buyerId,
         p_turn_id: a.turnId,
         p_after_message_id: a.afterMessageId,
+        p_mode: a.mode ?? "live",
       }),
       "release_turn",
     ),

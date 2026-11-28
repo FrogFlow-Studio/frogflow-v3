@@ -104,6 +104,7 @@ describe("тонкий адаптер без живой модели", () => {
       botId: A,
       claimId: "tg:3",
       model: parkedAgentModel,
+      loadFile: async () => new TextEncoder().encode("фото чека"),
       update: { message: { chat: { id: 77 }, photo: [{ file_id: "ph" }] } },
     });
     expect(receipt.kind).toBe("receipt");
@@ -141,6 +142,7 @@ describe("тонкий адаптер без живой модели", () => {
         claimId: "tg:5",
         model,
         mode: "test",
+        markupBp: async () => 2500,
         update: { message: { chat: { id: 88 }, text: "здравствуйте" } },
       });
       expect(model.requests.length).toBeGreaterThan(0);
@@ -166,6 +168,7 @@ describe("тонкий адаптер без живой модели", () => {
       botId: A,
       claimId: "tg:6",
       model,
+      sellerChatIds: ["1"],
       update: {
         message: { chat: { id: 1 }, text: `reply:${opened.value.caseId} Файл уже в чате` },
       },
@@ -175,6 +178,7 @@ describe("тонкий адаптер без живой модели", () => {
       botId: A,
       claimId: "tg:7",
       model,
+      sellerChatIds: ["1"],
       update: {
         message: { chat: { id: 1 }, text: `reply:${opened.value.caseId} Ещё раз` },
       },

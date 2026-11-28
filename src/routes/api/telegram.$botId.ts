@@ -39,7 +39,7 @@ export const Route = createFileRoute("/api/telegram/$botId")({
         if (tenant && payLane(tenant.settings.served_by) === "v4") {
           const { dispatchV4Telegram } = await import("@/v4/channels/dispatch.server");
           try {
-            await dispatchV4Telegram(botId, update);
+            await dispatchV4Telegram(botId, update, tenant);
           } catch (e) {
             if (e instanceof Error && e.message === "v4 not connected") {
               return new Response("v4 not connected", {

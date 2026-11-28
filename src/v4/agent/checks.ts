@@ -105,6 +105,52 @@ export function findNumbers(text: string): FoundNumber[] {
       money: !phone && !year && (hasCurrency || value >= 1000),
     });
   }
+  const thousand = wordThousands(text);
+  for (const hit of thousand) out.push(hit);
+  return out;
+}
+
+const SMALL: Record<string, number> = {
+  один: 1,
+  одна: 1,
+  два: 2,
+  две: 2,
+  три: 3,
+  четыре: 4,
+  пять: 5,
+  шесть: 6,
+  семь: 7,
+  восемь: 8,
+  девять: 9,
+};
+
+/** «пять тысяч» и «5к» — те же суммы, что и цифры. */
+function wordThousands(text: string): FoundNumber[] {
+  const out: FoundNumber[] = [];
+  const units = Object.keys(SMALL).join("|");
+  const words = new RegExp(`(?:(${units})\\s+)?тысяч(?:а|и)?`, "giu");
+  for (const m of text.matchAll(words)) {
+    const n = m[1] ? SMALL[m[1].toLowerCase()] : 1;
+    if (!n) continue;
+    out.push({
+      value: n * 1000,
+      raw: m[0],
+      index: m.index ?? 0,
+      phone: false,
+      money: true,
+    });
+  }
+  for (const m of text.matchAll(/(\d+)\s*к(?=$|[^\p{L}\p{N}])/giu)) {
+    const n = Number(m[1]);
+    if (!Number.isFinite(n) || n <= 0) continue;
+    out.push({
+      value: n * 1000,
+      raw: m[0],
+      index: m.index ?? 0,
+      phone: false,
+      money: n * 1000 >= 1000,
+    });
+  }
   return out;
 }
 
@@ -139,6 +185,12 @@ function stripQuoted(text: string, quoted: string[]): string {
   return t
     .replace(/«[^»]{1,80}»|"[^"]{1,80}"/gu, " ")
     .replace(/[\w.+-]+@[\w-]+(\.[\w-]+)+|https?:\/\/\S+|www\.\S+|t\.me\/\S+/giu, " ");
+}
+
+const NEGATED = /(?:^|[^\p{L}\p{N}])(?:не|нет|жоқ|no|not|yo['’]q)(?:$|[^\p{L}\p{N}])/iu;
+
+function shopAllows(re: RegExp, shop: string): boolean {
+  return shop.split(/[.!?\n]+/u).some((sentence) => re.test(sentence) && !NEGATED.test(sentence));
 }
 
 const sentences = (text: string) =>
@@ -208,9 +260,10 @@ export function checkReply(text: string, ctx: CheckContext): CheckFailure | null
   }
 
   // 5. Без обещаний, которых нет в текстах магазина.
+  // «скидок нет» слово содержит, но это отказ, а не разрешение обещать.
   const shop = ctx.shopText.toLowerCase();
   for (const [re, stem] of PROMISE_WORDS) {
-    if (re.test(t) && !re.test(shop)) {
+    if (re.test(t) && !shopAllows(re, shop)) {
       return {
         code: "promise",
         hint: `«${stem}…» — этого нет в условиях магазина, не обещай; передай продавцу, если просят`,
