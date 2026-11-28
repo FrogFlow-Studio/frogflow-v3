@@ -68,6 +68,55 @@ export type ClaimResult =
   | { ok: true; orderId: string; orderNo: number; reused: boolean; status: string }
   | { ok: false; reason: "not_found" | "expired" | "price_changed" | "shadow" };
 
+export type PeekOffer =
+  | {
+      ok: true;
+      state: "open" | "claimed";
+      currency: string;
+      totalMinor: number;
+      productIds: string[];
+      pricesMinor: number[];
+      orderId?: string;
+      orderNo?: number;
+    }
+  | { ok: false; reason: "not_found" | "expired" | "price_changed" | "shadow" };
+
+function asIds(v: unknown): string[] {
+  return Array.isArray(v) ? v.map(String) : [];
+}
+
+function asNums(v: unknown): number[] {
+  return Array.isArray(v) ? v.map((n) => Number(n)) : [];
+}
+
+/** Цена, которую уже показали. Заказа нет, пока покупатель не нажмёт «Купить». */
+export async function peekOffer(
+  db: V4Db,
+  a: { botId: string; buyerId: string; offerId: string; now?: Date },
+): Promise<PeekOffer> {
+  const r = (
+    await db.call("peek_offer", {
+      p_bot_id: a.botId,
+      p_buyer_id: a.buyerId,
+      p_offer_id: a.offerId,
+      ...(a.now ? { p_now: a.now.toISOString() } : {}),
+    })
+  )[0]?.peek_offer as Record<string, unknown> | undefined;
+  if (!r) throw serverFailure("v4.peek_offer: пустой ответ");
+  if (r.ok !== true)
+    return { ok: false, reason: r.reason as "not_found" | "expired" | "price_changed" | "shadow" };
+  return {
+    ok: true,
+    state: r.state === "claimed" ? "claimed" : "open",
+    currency: String(r.currency),
+    totalMinor: Number(r.total_minor),
+    productIds: asIds(r.product_ids),
+    pricesMinor: asNums(r.prices_minor),
+    ...(r.order_id ? { orderId: String(r.order_id) } : {}),
+    ...(r.order_no != null ? { orderNo: Number(r.order_no) } : {}),
+  };
+}
+
 export async function claimOffer(
   db: V4Db,
   a: { botId: string; buyerId: string; offerId: string; now?: Date },

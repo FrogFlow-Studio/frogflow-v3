@@ -3,13 +3,14 @@ import { serverFailure } from "@/lib/server-failure";
 import { sendInboxMessage } from "@/channels/zernio/api.server";
 import { env } from "@/config/env";
 import { serviceDb, tenantDb } from "@/core/db/client.server";
+import { adminRecipients } from "@/core/notify/recipients";
+import { storefrontBase } from "@/core/tenant/custom-domain";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Tenant } from "@/core/tenant/types";
-import { adminRecipients } from "@/core/notify/recipients";
 import { parkedAgentModel } from "../agent/model";
 import { postgrestV4Db, type RpcClient } from "../core/db";
 import { adaptComment, adaptDirect, adaptTelegram, zernioIntent } from "./adapt";
-import { outboundOf, sendOnce, type Outbound } from "./reply";
+import { outboundOf, sendOnce, telegramButton, type Outbound } from "./reply";
 import { telegramOutcome, zernioOutcome } from "./senders.server";
 
 /**
@@ -51,7 +52,7 @@ function telegramSend(
   return async (message) => {
     const markup = message.buttons.length
       ? {
-          inline_keyboard: [message.buttons.map((b) => ({ text: b.label, callback_data: b.data }))],
+          inline_keyboard: [message.buttons.map((b) => telegramButton(b))],
         }
       : undefined;
     return telegramOutcome(
@@ -103,7 +104,11 @@ export async function dispatchV4Telegram(botId: string, update: unknown, tenant:
         : {}),
     });
     const chat = chatOf(update);
-    if (send && chat) await sendOnce(send, outboundOf(result, chat));
+    const shop =
+      tenant.modules.telegram_mini_app && tenant.modules.shop
+        ? storefrontBase(tenant, ctx.appUrl)
+        : undefined;
+    if (send && chat) await sendOnce(send, outboundOf(result, chat, "ru", shop));
     return result;
   } catch (e) {
     if (e instanceof Error && SCHEMA.test(e.message)) throw new Error("v4 not connected");

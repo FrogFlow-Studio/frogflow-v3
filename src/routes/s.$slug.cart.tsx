@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   createHandoffFn,
   miniAppCheckoutFn,
@@ -8,6 +8,8 @@ import {
 } from "@/app/storefront/storefront.functions";
 import { webCheckoutInfoFn } from "@/app/storefront/checkout.functions";
 import { useCart, useTelegramWebApp } from "@/app/storefront/cart";
+import { useTelegramMainAction } from "@/app/storefront/telegram-main";
+import { shopOrderFn, shopPayLaneFn } from "@/app/storefront/shop-order.functions";
 import { useStorefrontLocale } from "@/app/storefront/locale";
 import { formatMoneyUi } from "@/core/money/money";
 import { Empty, ErrorBox, useAction } from "@/app/ui";
@@ -16,6 +18,7 @@ import { StorePageMissing } from "@/app/storefront/missing";
 export const Route = createFileRoute("/s/$slug/cart")({
   loader: async ({ params }) => ({
     web: (await webCheckoutInfoFn({ data: { slug: params.slug } })).enabled,
+    lane: (await shopPayLaneFn({ data: { slug: params.slug } })).lane,
   }),
   component: CartPage,
   notFoundComponent: StorePageMissing,
@@ -26,8 +29,10 @@ function CartPage() {
   const { t } = useStorefrontLocale();
   const cart = useCart();
   const wa = useTelegramWebApp();
-  const { web } = Route.useLoaderData();
-  // Оформление на сайте — вне Mini App: из Telegram заказ уходит в бота.
+  const { web, lane } = Route.useLoaderData();
+  const claimSeq = useRef(0);
+  // Сайт оформляет заказ сам. В Telegram магазин на v4 пишет заказ здесь,
+  // магазин на v2 по-прежнему отправляет корзину в чат бота.
   const webCheckout = web && !wa;
   const [done, setDone] = useState<string | null>(null);
   const upsell = useUpsell(
@@ -40,6 +45,20 @@ function CartPage() {
       product_variant_id: l.variantId,
       quantity: l.qty,
     }));
+    if (wa && lane === "v4") {
+      const r = await shopOrderFn({
+        data: {
+          slug,
+          initData: wa.initData,
+          items,
+          claimId: `cart-${slug}-${claimSeq.current}`,
+        },
+      });
+      claimSeq.current += 1;
+      cart.clear();
+      setDone(t("product.orderAccepted", { no: r.no }));
+      return;
+    }
     if (wa) {
       await miniAppCheckoutFn({ data: { slug, initData: wa.initData, items } });
       cart.clear();
@@ -51,6 +70,9 @@ function CartPage() {
     cart.clear();
     setDone(t("cart.openingTelegram"));
     window.location.href = url;
+  });
+  useTelegramMainAction(Boolean(wa) && cart.lines.length > 0, t("cart.checkout"), () => {
+    void checkout.run().catch(() => {});
   });
   if (cart.lines.length === 0 && !done) {
     return (

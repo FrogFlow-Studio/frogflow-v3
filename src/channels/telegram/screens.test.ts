@@ -335,10 +335,20 @@ describe("главное меню консультанта без товаров
       expect(texts, l).toContain(m.myTicketsBtn);
     }
   });
-  it("продаёт — меню прежнее, витрина подписана на языке покупателя", async () => {
+  it("продаёт с Mini App — магазин и заказы в окне, каталог и корзина не повторяются", async () => {
     const { mainMenu } = await import("./screens");
+    const { COPY } = await import("./copy");
     const buttons = mainMenu(consultant, "uz", "https://a.test").keyboard.flat();
-    expect(buttons[0]).toMatchObject({ text: "🛍 Do‘kon", web_app: { url: expect.any(String) } });
-    expect(buttons.map((b) => b.text)).toContain("📚 Katalog");
+    const m = COPY.uz;
+    expect(buttons[0]).toMatchObject({
+      text: "🛍 Do‘kon",
+      web_app: { url: expect.stringMatching(/\/s\//) },
+    });
+    expect(buttons[1]).toMatchObject({
+      text: m.myOrders,
+      web_app: { url: expect.stringMatching(/\/orders$/) },
+    });
+    for (const gone of [m.catalog, m.search, m.cart])
+      expect(buttons.map((b) => b.text)).not.toContain(gone);
   });
 });

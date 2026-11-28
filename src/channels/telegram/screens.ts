@@ -68,8 +68,32 @@ export function mainMenu(tenant: Tenant, locale: Locale, appUrl: string, sells =
   if (tenant.modules.courses && !school)
     keyboard.splice(keyboard.length - 2, 0, [{ text: m.myCourses }]);
   if (sells && tenant.modules.telegram_mini_app && tenant.modules.shop) {
-    keyboard.unshift([{ text: m.shopAppBtn, web_app: { url: storefrontBase(tenant, appUrl) } }]);
+    return shopAppMenu(tenant, locale, appUrl, keyboard);
   }
+  return { keyboard, resize_keyboard: true };
+}
+
+/**
+ * Магазин с Mini App: полки, поиск и корзина живут в окне Telegram.
+ * Внизу остаются магазин, заказы (то же окно), связь и то, что не является каталогом.
+ */
+function shopAppMenu(
+  tenant: Tenant,
+  locale: Locale,
+  appUrl: string,
+  rest: MenuButton[][],
+): MainMenu {
+  const m = COPY[locale];
+  const shopUrl = storefrontBase(tenant, appUrl);
+  const catalog = new Set([m.catalog, m.catalogCourses, m.search, m.cart, m.myOrders]);
+  const kept = rest
+    .map((row) => row.filter((b) => !catalog.has(b.text)))
+    .filter((row) => row.length > 0);
+  const keyboard: MenuButton[][] = [
+    [{ text: m.shopAppBtn, web_app: { url: shopUrl } }],
+    [{ text: m.myOrders, web_app: { url: `${shopUrl}/orders` } }],
+    ...kept,
+  ];
   return { keyboard, resize_keyboard: true };
 }
 

@@ -70,6 +70,7 @@ describe("витрина клиента открыта или «не найде�
     expect(storefrontOpen({ ...shop, archived: true }, "catalog")).toBe(false);
     expect(storefrontOpen({ ...shop, settings: { served_by: "v1" } }, "catalog")).toBe(false);
     expect(storefrontOpen({ ...shop, settings: {} }, "catalog")).toBe(false);
+    expect(storefrontOpen({ ...shop, settings: { served_by: "v4" } }, "catalog")).toBe(true);
   });
 
   it("шапка открыта по юр. страницам, каталог — только с оплаченной витриной", () => {

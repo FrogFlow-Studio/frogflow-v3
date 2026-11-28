@@ -123,6 +123,14 @@ export type TgWebApp = {
     onClick: (cb: () => void) => void;
     offClick: (cb: () => void) => void;
   };
+  /** Нижняя кнопка действия Mini App (app/storefront/telegram-main). */
+  MainButton?: {
+    setText: (text: string) => void;
+    show: () => void;
+    hide: () => void;
+    onClick: (cb: () => void) => void;
+    offClick: (cb: () => void) => void;
+  };
 };
 
 export function useTelegramWebApp(): TgWebApp | null {

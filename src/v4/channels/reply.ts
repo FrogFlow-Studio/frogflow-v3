@@ -5,7 +5,23 @@ import type { AdaptResult } from "./adapt";
  * не повторяются. Кнопка карточки — offer:<код>, тот же путь, что и нажатие.
  */
 
-export type OutboundButton = { label: string; data: string };
+export type OutboundButton = {
+  label: string;
+  /** callback_data, если это не кнопка Mini App. */
+  data: string;
+  /** Открыть магазин внутри Telegram. Тогда data в callback не уходит. */
+  webAppUrl?: string;
+};
+
+/** Кнопка Telegram: окно магазина или нажатие в чате. */
+export function telegramButton(b: OutboundButton): {
+  text: string;
+  callback_data?: string;
+  web_app?: { url: string };
+} {
+  if (b.webAppUrl) return { text: b.label, web_app: { url: b.webAppUrl } };
+  return { text: b.label, callback_data: b.data };
+}
 
 export type Outbound = {
   chatId: string;
@@ -18,6 +34,13 @@ const BUY: Record<string, string> = {
   kk: "Сатып алу",
   en: "Buy",
   uz: "Sotib olish",
+};
+
+const OPEN: Record<string, string> = {
+  ru: "Открыть",
+  kk: "Ашу",
+  en: "Open",
+  uz: "Ochish",
 };
 
 const TAKEN: Record<string, string> = {
@@ -33,15 +56,28 @@ function money(minor: number, currency: string): string {
 }
 
 /** null — отвечать нечем (дубль, молчание, отказ). */
-export function outboundOf(result: AdaptResult, chatId: string, lang = "ru"): Outbound | null {
+export function outboundOf(
+  result: AdaptResult,
+  chatId: string,
+  lang = "ru",
+  shopBase?: string,
+): Outbound | null {
   const buy = BUY[lang] ?? "Купить";
   const taken = TAKEN[lang] ?? "Заказ принят";
   if (result.kind === "offer") {
     const title = result.title || buy;
+    const open =
+      shopBase && result.productId
+        ? {
+            label: OPEN[lang] ?? "Открыть",
+            data: `offer:${result.offerId}`,
+            webAppUrl: `${shopBase.replace(/\/$/, "")}/p/${result.productId}?offer=${result.offerId}`,
+          }
+        : null;
     return {
       chatId,
       text: `${title}\n${money(result.totalMinor, result.currency)}`,
-      buttons: [{ label: buy, data: `offer:${result.offerId}` }],
+      buttons: [...(open ? [open] : []), { label: buy, data: `offer:${result.offerId}` }],
     };
   }
   if (result.kind === "buttons" || result.kind === "reply") {
