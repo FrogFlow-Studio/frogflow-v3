@@ -52,3 +52,7 @@ revoke all on function v4.peek_offer(uuid, uuid, text, timestamptz)
   from public, anon, authenticated;
 grant execute on function v4.peek_offer(uuid, uuid, text, timestamptz)
   to service_role, tenant_bot;
+
+-- Проверка (должна вернуть функцию):
+-- select proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+--  where n.nspname = 'v4' and proname = 'peek_offer';

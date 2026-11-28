@@ -58,8 +58,8 @@ function Layout() {
           const first = g.items.find((i) => i.to !== "/operator")!;
           return (
             <Link key={g.id} to={first.to} data-active={group?.id === g.id}>
-              {g.id === "work" ? "Входящие" : g.title}
-              {g.id === "work" && (pendingRequests ?? 0) > 0 && <span>{pendingRequests}</span>}
+              {g.title}
+              {g.id === "leads" && (pendingRequests ?? 0) > 0 && <span>{pendingRequests}</span>}
             </Link>
           );
         })}
@@ -67,7 +67,7 @@ function Layout() {
       <div className={group ? "operator-page-layout" : "operator-page-layout operator-page-full"}>
         {group && (
           <aside className="operator-context-nav">
-            <p>{group.id === "work" ? "Входящие" : group.title}</p>
+            <p>{group.title}</p>
             <select
               className="operator-context-select input"
               aria-label="Раздел рабочей области"

@@ -27,6 +27,10 @@ export type Outbound = {
   chatId: string;
   text: string;
   buttons: OutboundButton[];
+  /** Фото карточки. Без него сообщение текстовое. */
+  photoUrl?: string;
+  /** Править это сообщение. Канал отверг — отправитель шлёт новое. */
+  editMessageId?: string;
 };
 
 const BUY: Record<string, string> = {
@@ -77,6 +81,7 @@ export function outboundOf(
     return {
       chatId,
       text: `${title}\n${money(result.totalMinor, result.currency)}`,
+      ...(result.photoUrl ? { photoUrl: result.photoUrl } : {}),
       buttons: [...(open ? [open] : []), { label: buy, data: `offer:${result.offerId}` }],
     };
   }

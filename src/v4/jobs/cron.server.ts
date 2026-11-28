@@ -72,7 +72,13 @@ export async function runV4Cron(
       if (d === undefined) throw serverFailure("v4.ai_wallet_check: пустой ответ");
       if (Number(d) !== 0) walletDrift++;
     }
-    return { shops: deps.botIds.length, ...r, walletDrift };
+    let reminded = 0;
+    for (const botId of deps.botIds) {
+      const n = (await deps.db.call("remind_physical", { p_bot_id: botId }))[0]?.remind_physical;
+      if (n === undefined) throw serverFailure("v4.remind_physical: пустой ответ");
+      reminded += Number(n);
+    }
+    return { shops: deps.botIds.length, ...r, walletDrift, reminded };
   }
 
   const shops = new Map((await deps.shops()).map((s) => [s.botId, s]));

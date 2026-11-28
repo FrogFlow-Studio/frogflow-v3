@@ -36,6 +36,8 @@ export type NavShop = {
    * Нет значения — продаёт.
    */
   sells?: boolean;
+  /** Магазин смотрит в v4: меню из десяти экранов. Нет значения — меню v3. */
+  platform?: "v3" | "v4";
   chatUnread?: number | null;
   /**
    * Открытые задачи консультанта (передачи менеджеру) — бейдж «Задачи» в
@@ -136,6 +138,10 @@ export function buildAdminNav(shop: NavShop): AdminNav {
       ]),
       pinned: items.map((i) => i.to),
     };
+  }
+
+  if (shop.platform === "v4" && sells && shop.role !== "accountant" && !consultantWorkspace(shop)) {
+    return v4AdminNav(shop, orders);
   }
 
   if (shop.role === "accountant") {
@@ -367,6 +373,105 @@ export function buildAdminNav(shop: NavShop): AdminNav {
     return { overview, groups, primary, pinned };
   }
   return { overview, groups, primary: [overview, orders, products, fourth] };
+}
+
+export type V4Screen =
+  | "today"
+  | "orders"
+  | "catalog"
+  | "buyers"
+  | "chat"
+  | "money"
+  | "broadcast"
+  | "module"
+  | "channels"
+  | "settings";
+
+/** Старый адрес магазина v3 → экран v4. Чужой путь остаётся настройками только если это помощь. */
+export function v4ScreenOf(pathname: string): V4Screen | null {
+  const path = pathname.replace(/\/+$/, "") || "/admin";
+  if (path === "/admin" || path.startsWith("/admin/v4-today")) return "today";
+  if (path.startsWith("/admin/orders")) return "orders";
+  if (
+    path.startsWith("/admin/products") ||
+    path.startsWith("/admin/categories") ||
+    path.startsWith("/admin/collections")
+  )
+    return "catalog";
+  if (path.startsWith("/admin/customers") || path.startsWith("/admin/reviews")) return "buyers";
+  if (path.startsWith("/admin/chat") || path.startsWith("/admin/tickets")) return "chat";
+  if (
+    path.startsWith("/admin/analytics") ||
+    path.startsWith("/admin/reports") ||
+    path.startsWith("/admin/cost")
+  )
+    return "money";
+  if (path.startsWith("/admin/broadcasts") || path.startsWith("/admin/discounts"))
+    return "broadcast";
+  if (
+    path.startsWith("/admin/students") ||
+    path.startsWith("/admin/homework") ||
+    path.startsWith("/admin/warehouse") ||
+    path.startsWith("/admin/vip")
+  )
+    return "module";
+  if (
+    path.startsWith("/admin/instagram") ||
+    path.startsWith("/admin/posts") ||
+    path.startsWith("/admin/share")
+  )
+    return "channels";
+  if (
+    path.startsWith("/admin/settings") ||
+    path.startsWith("/admin/modules") ||
+    path.startsWith("/admin/bot-texts") ||
+    path.startsWith("/admin/log") ||
+    path.startsWith("/admin/support") ||
+    path.startsWith("/admin/help") ||
+    path.startsWith("/admin/billing")
+  )
+    return "settings";
+  return null;
+}
+
+function v4AdminNav(shop: NavShop, orders: NavItem): AdminNav {
+  const m = shop.modules;
+  const today: NavItem = { to: "/admin/v4-today", label: "nav.today", exact: true };
+  const catalog: NavItem = { to: "/admin/products", label: "nav.products" };
+  const buyers: NavItem = { to: "/admin/customers", label: "nav.customers" };
+  const chat: NavItem = {
+    to: "/admin/chat",
+    label: "nav.chat",
+    badge: (shop.chatUnread ?? 0) > 0 ? { value: shop.chatUnread!, tone: "accent" } : undefined,
+  };
+  const school = shop.vertical === "courses" || Boolean(m.courses);
+  const physical = PHYSICAL.has(shop.vertical) || Boolean(m.warehouse);
+  const items = compact<NavItem>([
+    orders,
+    catalog,
+    buyers,
+    m.manager_chat && chat,
+    (m.dashboard || m.profit) && {
+      to: m.dashboard ? "/admin/analytics" : "/admin/cost",
+      label: "nav.shopMoney",
+    },
+    (m.broadcasts || m.wa_broadcasts || m.funnel) && {
+      to: "/admin/broadcasts",
+      label: "nav.funnels",
+      hash: "funnels",
+    },
+    school && { to: "/admin/students", label: "nav.students" },
+    physical && { to: "/admin/warehouse", label: "warehouse.nav" },
+    { to: m.instagram ? "/admin/instagram" : "/admin/share", label: "nav.channels" },
+    { to: "/admin/settings", label: "nav.settings" },
+  ]);
+  const fourth = m.manager_chat ? chat : buyers;
+  return {
+    overview: today,
+    groups: [{ id: "sales", label: "nav.groupSales", items }],
+    primary: [today, orders, catalog, fourth],
+    pinned: ["/admin/orders", "/admin/products"],
+  };
 }
 
 /** Старые ссылки на страницы магазина возвращают студию к её рабочему обзору. */

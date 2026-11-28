@@ -1,7 +1,6 @@
 /**
- * Меню оператора: группы и пункты одним списком. Маршрутный файл
- * `operator._authed.tsx` только рисует его; новый раздел оператора добавляет
- * строку сюда, а не правит разметку.
+ * Меню оператора: четыре рабочих места. Здоровье и кроны открываются из
+ * «Внимания», журнал — из карточки клиента. Лиды не смешаны с застрявшим магазином.
  */
 import type { LinkProps } from "@tanstack/react-router";
 
@@ -15,21 +14,24 @@ export type OperatorMenuItem = {
 };
 
 export type OperatorMenuGroup = {
-  id: "work" | "clients" | "growth" | "platform" | "content";
+  id: "attention" | "clients" | "money" | "leads";
   title: string;
   items: OperatorMenuItem[];
 };
 
 export const OPERATOR_MENU: OperatorMenuGroup[] = [
   {
-    id: "work",
-    title: "Работа",
+    id: "attention",
+    title: "Внимание",
     items: [
-      { to: "/operator", label: "Обзор", exact: true },
+      { to: "/operator/v4-attention", label: "Внимание" },
+      { to: "/operator", label: "Сводка", exact: true },
       { to: "/operator/support", label: "Поддержка" },
-      { to: "/operator/requests", label: "Заявки на модули", badge: "requests" },
       { to: "/operator/community", label: "Жалобы сообщества" },
       { to: "/operator/market-reports", label: "Жалобы на магазины" },
+      { to: "/operator/health", label: "Здоровье платформы" },
+      { to: "/operator/crons", label: "Кроны" },
+      { to: "/operator/observer", label: "Наблюдатель" },
     ],
   },
   {
@@ -40,37 +42,29 @@ export const OPERATOR_MENU: OperatorMenuGroup[] = [
       { to: "/operator/clients/new", label: "Подключить клиента" },
       { to: "/operator/bulk", label: "Массовые действия" },
       { to: "/operator/migration", label: "Переезд на v2" },
+      { to: "/operator/log", label: "Журнал действий" },
+      { to: "/operator/settings", label: "Настройки платформы" },
     ],
   },
   {
-    id: "growth",
+    id: "money",
     title: "Продажи и деньги",
     items: [
-      { to: "/operator/leads", label: "Лиды" },
       { to: "/operator/revenue", label: "Выручка" },
       { to: "/operator/renewals", label: "Продления" },
       { to: "/operator/partners", label: "Партнёры" },
     ],
   },
   {
-    id: "content",
-    title: "Контент",
+    id: "leads",
+    title: "Лиды и заявки",
     items: [
+      { to: "/operator/leads", label: "Лиды" },
+      { to: "/operator/requests", label: "Заявки на модули", badge: "requests" },
       { to: "/operator/news", label: "Новости платформы" },
       { to: "/operator/broadcast", label: "Сообщение владельцам" },
       { to: "/operator/market-collections", label: "Подборки площадки" },
       { to: "/operator/market-stats", label: "Аналитика площадки" },
-    ],
-  },
-  {
-    id: "platform",
-    title: "Платформа",
-    items: [
-      { to: "/operator/health", label: "Здоровье платформы" },
-      { to: "/operator/crons", label: "Кроны" },
-      { to: "/operator/observer", label: "Наблюдатель" },
-      { to: "/operator/log", label: "Журнал действий" },
-      { to: "/operator/settings", label: "Настройки платформы" },
     ],
   },
 ];

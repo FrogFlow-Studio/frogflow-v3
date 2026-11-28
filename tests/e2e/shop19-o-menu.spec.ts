@@ -22,14 +22,14 @@ test("меню оператора: рабочие области и контек
       .click();
   }
   await expect(page).toHaveURL(/\/operator\/revenue$/);
-  await nav.getByRole("link", { name: "Платформа", exact: true }).click();
+  await nav.getByRole("link", { name: "Внимание", exact: true }).click();
   if (info.project.name === "phone") {
     await page
       .getByRole("combobox", { name: "Раздел рабочей области", exact: true })
       .selectOption("/operator/crons");
   } else {
     await page
-      .getByRole("navigation", { name: "Платформа" })
+      .getByRole("navigation", { name: "Внимание" })
       .getByRole("link", { name: "Кроны", exact: true })
       .click();
   }

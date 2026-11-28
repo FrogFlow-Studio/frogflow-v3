@@ -6,6 +6,8 @@ import type { BuyerSender } from "../jobs/deliver";
 import type { NotifyTarget } from "../jobs/notify";
 import type { ZernioAccountSnapshot } from "@/core/tenant/types";
 import type { SellerLang } from "../screens/screens";
+import { afterEdit } from "./card";
+import { telegramButton, type Outbound } from "./reply";
 
 /**
  * Настоящие отправители v4 поверх клиентов v3 (Telegram Bot API, Zernio).
@@ -18,6 +20,51 @@ import type { SellerLang } from "../screens/screens";
 export function telegramOutcome(r: TgResult): SendOutcome {
   if (r.ok) return "sent";
   return rejectedForSure(r) ? "failed" : "unknown";
+}
+
+function markup(message: Outbound) {
+  if (!message.buttons.length) return undefined;
+  return { inline_keyboard: [message.buttons.map(telegramButton)] };
+}
+
+/**
+ * Карточка в Telegram: фото и подпись, либо правка того же сообщения.
+ * Правку отвергли — новое сообщение. Обрыв и 5xx вторым сообщением не закрываем.
+ */
+export async function sendTelegramCard(api: TelegramApi, message: Outbound): Promise<SendOutcome> {
+  const keys = markup(message);
+  const fresh = async (): Promise<SendOutcome> => {
+    if (message.photoUrl) {
+      return telegramOutcome(
+        await api.call("sendPhoto", {
+          chat_id: message.chatId,
+          photo: message.photoUrl,
+          caption: message.text,
+          ...(keys ? { reply_markup: keys } : {}),
+        }),
+      );
+    }
+    return telegramOutcome(
+      await api.call("sendMessage", {
+        chat_id: message.chatId,
+        text: message.text,
+        ...(keys ? { reply_markup: keys } : {}),
+        link_preview_options: { is_disabled: true },
+      }),
+    );
+  };
+  if (!message.editMessageId) return fresh();
+  const edited = telegramOutcome(
+    await api.call(message.photoUrl ? "editMessageCaption" : "editMessageText", {
+      chat_id: message.chatId,
+      message_id: message.editMessageId,
+      ...(message.photoUrl ? { caption: message.text } : { text: message.text }),
+      ...(keys ? { reply_markup: keys } : {}),
+      ...(!message.photoUrl ? { link_preview_options: { is_disabled: true } } : {}),
+    }),
+  );
+  if (afterEdit(edited) === "keep") return edited;
+  return fresh();
 }
 
 export function zernioOutcome(r: SendResult): SendOutcome {

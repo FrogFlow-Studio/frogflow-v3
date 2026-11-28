@@ -4,6 +4,7 @@ import { AutoStatsBlock } from "@/app/admin/auto-stats";
 import { GiveawaysCard } from "@/app/admin/giveaways-card";
 import { createFileRoute, useRouter, redirect } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { v4FunnelsFn } from "@/app/admin/v4-funnels.functions";
 import { broadcastsFn } from "@/app/admin/broadcasts.functions";
 import { adminT, intlLocale } from "@/app/i18n/admin";
 import { Card, Empty, PageTitle } from "@/app/ui";
@@ -126,7 +127,12 @@ function BroadcastsPage() {
               />
             </Card>
           )}
-          {shop.modules.funnel && <FunnelCard />}
+          <div id="funnels">
+            {shop.platform === "v4" && (
+              <V4FunnelList title={t("nav.funnels")} hint={t("nav.funnelsHint")} />
+            )}
+            {shop.modules.funnel && <FunnelCard />}
+          </div>
           {shop.modules.funnel && <BirthdayCard />}
           {shop.modules.giveaways && <GiveawaysCard t={t} locale={intlLocale(shop.locale)} />}
           <History
@@ -138,5 +144,24 @@ function BroadcastsPage() {
         </div>
       </div>
     </>
+  );
+}
+
+function V4FunnelList({ title, hint }: { title: string; hint: string }) {
+  const [list, setList] = useState<Awaited<ReturnType<typeof v4FunnelsFn>> | null>(null);
+  useEffect(() => {
+    void v4FunnelsFn().then(setList);
+  }, []);
+  return (
+    <Card title={title}>
+      <p className="text-sm text-muted">{hint}</p>
+      {list?.state === "ready" &&
+        list.funnels.map((f) => (
+          <p key={f.id} className="mt-2 text-sm">
+            {f.name} · {f.trigger}
+            {f.steps.length > 0 ? ` · ${f.steps.join(" → ")}` : ""}
+          </p>
+        ))}
+    </Card>
   );
 }

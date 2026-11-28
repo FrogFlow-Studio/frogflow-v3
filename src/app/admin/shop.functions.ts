@@ -79,6 +79,8 @@ export const adminShopFn = createServerFn({ method: "GET" }).handler(async () =>
       role,
       username: s.data.admin.username,
       vertical: ctx.tenant.vertical,
+      /** v4 — короткое меню. Запись флага этот ответ не делает. */
+      platform: ctx.tenant.settings.served_by === "v4" ? ("v4" as const) : ("v3" as const),
       verticalTitle: VERTICALS[ctx.tenant.vertical].title,
       modules: ctx.tenant.modules,
       /** Работы учеников на проверке (модуль «Курсы») — бейдж «Домашние задания». */

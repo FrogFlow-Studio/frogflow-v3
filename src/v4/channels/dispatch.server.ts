@@ -10,8 +10,8 @@ import type { Tenant } from "@/core/tenant/types";
 import { parkedAgentModel } from "../agent/model";
 import { postgrestV4Db, type RpcClient } from "../core/db";
 import { adaptComment, adaptDirect, adaptTelegram, zernioIntent } from "./adapt";
-import { outboundOf, sendOnce, telegramButton, type Outbound } from "./reply";
-import { telegramOutcome, zernioOutcome } from "./senders.server";
+import { outboundOf, sendOnce, type Outbound } from "./reply";
+import { sendTelegramCard, zernioOutcome } from "./senders.server";
 
 /**
  * Ветка вебхука для магазина с served_by = v4. Модель припаркована: текст
@@ -49,21 +49,7 @@ function telegramSend(
   }
   if (!token) return null;
   const api = telegramApi(token, env().TELEGRAM_API_BASE);
-  return async (message) => {
-    const markup = message.buttons.length
-      ? {
-          inline_keyboard: [message.buttons.map((b) => telegramButton(b))],
-        }
-      : undefined;
-    return telegramOutcome(
-      await api.call("sendMessage", {
-        chat_id: message.chatId,
-        text: message.text,
-        ...(markup ? { reply_markup: markup } : {}),
-        link_preview_options: { is_disabled: true },
-      }),
-    );
-  };
+  return async (message) => sendTelegramCard(api, message);
 }
 
 export async function dispatchV4Telegram(botId: string, update: unknown, tenant: Tenant) {
@@ -171,6 +157,13 @@ export async function dispatchV4Zernio(botId: string, payload: unknown, tenant: 
           const sent = await sendInboxMessage(conversationId, accountId, message.text, {
             platform: intent.channel,
             idempotencyScope: "v4",
+            ...(message.photoUrl
+              ? { attachmentUrl: message.photoUrl, attachmentType: "image" as const }
+              : {}),
+            buttons: message.buttons
+              .filter((b) => !b.webAppUrl)
+              .slice(0, 3)
+              .map((b) => ({ type: "postback" as const, title: b.label, payload: b.data })),
           });
           return zernioOutcome(sent);
         }, out);

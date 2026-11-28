@@ -39,6 +39,7 @@ export type AdaptResult =
       title: string;
       /** Товар карточки: кнопка «Открыть» ведёт на него в Mini App. */
       productId?: string;
+      photoUrl?: string;
     }
   | { kind: "receipt"; buyerId: string; orderId: string }
   | { kind: "buttons"; buyerId: string; text: string }
