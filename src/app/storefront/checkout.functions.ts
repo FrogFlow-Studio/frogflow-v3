@@ -223,6 +223,7 @@ export const webCheckoutFn = createServerFn({ method: "POST" })
       giftCode,
       gift: giftMark,
       giftWrap: giftMark ? giftWrap : false,
+      claimId: challengeNonce(data.challenge) ?? undefined,
     });
     if (!r.ok) {
       switch (r.reason) {

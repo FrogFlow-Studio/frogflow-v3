@@ -203,6 +203,45 @@ describe("крон v4", () => {
     expect(await runV4Cron("notify-now", deps())).toMatchObject({ failed: 1 });
   });
 
+  it("tick закрывает просроченную бронь и открывает дело на молчание", async () => {
+    await pg.query("select v4.ai_credit($1, 'topup', 200000, 't', 'operator')", [A]);
+    await pg.query("select v4.ai_hold($1, 60000, 't', null, null, 'live', now())", [A]);
+    await pg.query(
+      "update v4.ai_ledger set expires_at = now() - interval '1 minute' where bot_id = $1 and kind = 'hold'",
+      [A],
+    );
+    const buyer = (
+      await pg.query<{ id: string }>(
+        "insert into v4.buyers (bot_id, country) values ($1, 'KZ') returning id",
+        [A],
+      )
+    ).rows[0]!.id;
+    await pg.query(
+      `insert into v4.messages (bot_id, buyer_id, channel, direction, author, mode, text, created_at)
+       values ($1, $2, 'telegram', 'in', 'buyer', 'live', 'алло', now() - interval '11 minutes')`,
+      [A, buyer],
+    );
+    await runV4Cron("tick", deps());
+    const bal = Number(
+      (
+        await pg.query<{ b: string }>(
+          "select balance_micro_usd::text b from v4.ai_wallet where bot_id = $1",
+          [A],
+        )
+      ).rows[0]!.b,
+    );
+    expect(bal).toBe(200_000);
+    const cases = Number(
+      (
+        await pg.query<{ n: number }>(
+          "select count(*)::int n from v4.cases where bot_id = $1 and kind = 'handoff' and dedupe_key like 'unanswered:%'",
+          [A],
+        )
+      ).rows[0]!.n,
+    );
+    expect(cases).toBe(1);
+  });
+
   it("шаг планировщика идёт, когда есть магазины v4", async () => {
     expect(await runV4Cron("tick", deps())).toMatchObject({ shops: 1 });
   });

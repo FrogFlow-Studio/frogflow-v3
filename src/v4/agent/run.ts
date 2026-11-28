@@ -175,6 +175,8 @@ export type AgentRole = {
 
 export type AgentInput = TurnArgs & {
   db: V4Db;
+  /** Расчёт и возврат брони. Арендатор цену не передаёт: только сервисная роль. */
+  walletDb?: V4Db;
   role: AgentRole;
   model: AgentModel;
   /** Наценка в базисных пунктах (wallet.markupBp поверх настройки оператора). */
@@ -304,7 +306,13 @@ export async function runAgent(input: AgentInput): Promise<AgentResult> {
       replies.push(
         await answerOnce(input, passArgs, passCtx, text, deadline, seen, pass === 0 ? first : {}),
       );
-      const pending = await releaseTurn(db, { botId, buyerId, turnId, afterMessageId: seen.id });
+      const pending = await releaseTurn(db, {
+        botId,
+        buyerId,
+        turnId,
+        afterMessageId: seen.id,
+        mode,
+      });
       if (pending === 0) break;
       // За время хода пришли новые сообщения — отвечаем за них тем же ходом.
       const hist = await conversationHistory(db, { botId, buyerId, mode, limit: 20 });
@@ -315,12 +323,14 @@ export async function runAgent(input: AgentInput): Promise<AgentResult> {
       if (Date.now() > deadline - 5_000) break;
     }
   } finally {
-    // Ход отпускается и при сбое: иначе покупатель ждал бы до истечения хода.
+    // Ход отпускается и при сбое, но только если отвечать больше не на что.
+    // Номер больше всех входящих обнулял очередь, и новые сообщения терялись.
     await releaseTurn(db, {
       botId,
       buyerId,
       turnId,
-      afterMessageId: Number.MAX_SAFE_INTEGER,
+      afterMessageId: seen.id,
+      mode,
     }).catch(() => undefined);
   }
   return { kind: "reply", replies };
@@ -345,6 +355,7 @@ async function transcribeVoice(
   dailyCapMicroUsd: number | null,
 ): Promise<{ text: string | null; unclear: boolean; cost: number }> {
   const { db, botId, buyerId, mode } = input;
+  const wallet = input.walletDb ?? db;
   const nowArg = input.now ? { now: input.now } : {};
   if (!input.transcribe || voiceTooLong(media.durationSec))
     return { text: null, unclear: true, cost: 0 };
@@ -376,7 +387,7 @@ async function transcribeVoice(
     if (holdId === null) return { text: heard.trim(), unclear: false, cost: withMarkup(api, 0) };
     const id = holdId;
     holdId = null;
-    const cost = await aiSettle(db, {
+    const cost = await aiSettle(wallet, {
       botId,
       holdId: id,
       apiMicroUsd: api,
@@ -386,7 +397,8 @@ async function transcribeVoice(
     return { text: heard.trim(), unclear: false, cost };
   } finally {
     // Не разобрали или сбой — бронь вернуть: за пустую расшифровку не платят.
-    if (holdId !== null) await aiRelease(db, { botId, holdId, ...nowArg }).catch(() => undefined);
+    if (holdId !== null)
+      await aiRelease(wallet, { botId, holdId, ...nowArg }).catch(() => undefined);
   }
 }
 
@@ -400,6 +412,7 @@ async function answerOnce(
   first: FirstPass,
 ): Promise<AgentReply> {
   const { db, role, botId, buyerId, mode } = input;
+  const wallet = input.walletDb ?? db;
   const s = newSession();
   Object.assign(s.sources, ctx.sources ?? {});
   const nowArg = input.now ? { now: input.now } : {};
@@ -507,11 +520,11 @@ async function answerOnce(
   const finishMoney = async (): Promise<number> => {
     if (holdId === null) return withMarkup(apiCost, 0);
     if (apiCost === 0) {
-      await aiRelease(db, { botId, holdId, ...nowArg });
+      await aiRelease(wallet, { botId, holdId, ...nowArg });
       return 0;
     }
     const bp = await input.markupBp();
-    return aiSettle(db, { botId, holdId, apiMicroUsd: apiCost, markupBp: bp, ...nowArg });
+    return aiSettle(wallet, { botId, holdId, apiMicroUsd: apiCost, markupBp: bp, ...nowArg });
   };
 
   try {
@@ -648,7 +661,8 @@ async function answerOnce(
     });
   } finally {
     // Непредвиденный сбой между бронью и расчётом — бронь вернуть, а не ждать тика.
-    if (holdId !== null) await aiRelease(db, { botId, holdId, ...nowArg }).catch(() => undefined);
+    if (holdId !== null)
+      await aiRelease(wallet, { botId, holdId, ...nowArg }).catch(() => undefined);
   }
 }
 

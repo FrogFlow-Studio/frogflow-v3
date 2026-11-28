@@ -1,10 +1,8 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
-import { postgrestV4Db, type RpcClient, type V4Db, type V4Result } from "@/v4/core/db";
+import { attempt, postgrestV4Db, type RpcClient, type V4Db, type V4Result } from "@/v4/core/db";
 import { lastFulfillmentStep, nextFulfillmentStep, sellerReply } from "@/v4/core/depth";
 import {
-  addLesson,
   advanceFulfillment,
-  listLessons,
   savePaymentMethod,
   saveProduct,
   sellerDesk,
@@ -162,16 +160,16 @@ export async function addV4Lesson(
   db: V4Db = v4DbOf(ctx),
 ): Promise<V4Result<string>> {
   if (!(await shopReady(db, ctx.tenant.id))) return { ok: false, code: "shop_not_found" };
-  const lessons = await listLessons(db, ctx.tenant.id);
-  const position =
-    lessons
-      .filter((l) => l.productId === input.productId)
-      .reduce((m, l) => Math.max(m, l.position), 0) + 1;
-  return addLesson(db, {
-    botId: ctx.tenant.id,
-    productId: input.productId,
-    title: input.title,
-    position,
+  return attempt(async () => {
+    const id = (
+      await db.call("append_lesson", {
+        p_bot_id: ctx.tenant.id,
+        p_product_id: input.productId,
+        p_title: input.title,
+      })
+    )[0]?.append_lesson;
+    if (typeof id !== "string" || !id) throw new Error("v4:bad_status");
+    return id;
   });
 }
 

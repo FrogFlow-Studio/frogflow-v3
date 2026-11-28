@@ -6,7 +6,7 @@ import { fakeDb } from "../../../tests/fake-db";
 import { sellerContext } from "../seller/role";
 import { seedKopilka } from "../test/kopilka";
 import { pgliteV4, v4Db } from "../test/pg";
-import { applyTransfer } from "./apply";
+import { applyTransfer, revertTransferBalance } from "./apply";
 import { HISTORY_PER_BUYER, planTransfer, type V3Snapshot } from "./plan";
 import { readV3Snapshot } from "./read-v3.server";
 
@@ -261,6 +261,50 @@ describe("запись в v4", () => {
       [ids.get("Палитра средств выразительности")],
     );
     expect(ph.rows[0]!.ph).toEqual(["bot/pal-1.jpg", "bot/pal-2.jpg"]);
+  });
+
+  it("сумма v3 и v4 одна до переноса, после и после отката", async () => {
+    const shop = "d4d4d4d4-0000-4000-8000-0000000000d4";
+    await pg.query("insert into v4.shops (bot_id, base_currency) values ($1, 'KZT')", [shop]);
+    let usd = 2.5;
+    const book = {
+      async set(next: number, expected: number) {
+        if (Math.abs(usd - expected) > 1e-9) return false;
+        usd = next;
+        return true;
+      },
+    };
+    const v4micro = async () =>
+      Number(
+        (
+          await pg.query<{ b: string }>(
+            "select coalesce((select balance_micro_usd from v4.ai_wallet where bot_id = $1), 0)::text b",
+            [shop],
+          )
+        ).rows[0]!.b,
+      );
+    const sum = async () => Math.round(usd * 1_000_000) + (await v4micro());
+    const before = await sum();
+    await applyTransfer(
+      pgliteV4(pg),
+      shop,
+      planTransfer(
+        snapshot({
+          balanceUsd: 2.5,
+          products: [],
+          v3Products: [],
+          histories: [],
+          knowledge: [],
+          blockedTelegramIds: [],
+        }),
+      ),
+      { withBalance: true, by: "operator", book },
+    );
+    expect(usd).toBe(0);
+    expect(await sum()).toBe(before);
+    await revertTransferBalance(pgliteV4(pg), shop, book, "operator");
+    expect(usd).toBe(2.5);
+    expect(await sum()).toBe(before);
   });
 
   it("без остатка до переключения — остаток в отчёте", async () => {

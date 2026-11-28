@@ -138,6 +138,37 @@ describe("ход: один ответ на покупателя за раз", ()
     ).toBe(0);
     expect(await takeTurn(asA(), { botId: A, buyerId: b, turnId: T2 })).toBe(true);
   });
+
+  it("входящее другого режима не держит ход", async () => {
+    const b = await buyer();
+    const live = await recordIncoming(asA(), {
+      botId: A,
+      buyerId: b,
+      channel: "telegram",
+      mode: "live",
+      externalId: "live-1",
+      text: "есть",
+    });
+    expect(await takeTurn(asA(), { botId: A, buyerId: b, turnId: T1 })).toBe(true);
+    await recordIncoming(asA(), {
+      botId: A,
+      buyerId: b,
+      channel: "test",
+      mode: "test",
+      externalId: "test-1",
+      text: "проверка",
+    });
+    expect(
+      await releaseTurn(asA(), {
+        botId: A,
+        buyerId: b,
+        turnId: T1,
+        afterMessageId: live.messageId,
+        mode: "live",
+      }),
+    ).toBe(0);
+    expect(await takeTurn(asA(), { botId: A, buyerId: b, turnId: T2 })).toBe(true);
+  });
 });
 
 describe("предел ответов ИИ покупателю в день (E05)", () => {

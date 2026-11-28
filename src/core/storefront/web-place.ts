@@ -65,10 +65,12 @@ export async function placeWebOrder(
     gift?: { recipient: string; message: string } | null;
     /** Подарочная упаковка к подарку (core/orders/gift-wrap). */
     giftWrap?: boolean;
+    /** Ключ нажатия «оформить». Повтор той же заявки не создаёт второй заказ. */
+    claimId?: string;
   } = {},
 ): Promise<WebPlaceResult> {
   if (payLane(ctx.tenant.settings.served_by) === "v4") {
-    return placeOnV4(ctx, customer, items, countryCode);
+    return placeOnV4(ctx, customer, items, countryCode, opts.claimId);
   }
   if (items.some((it) => Number(it.quantity) > WEB_MAX_QTY))
     return { ok: false, reason: "too_many" };
@@ -82,16 +84,27 @@ export async function placeWebOrder(
   }
 }
 
+function cartProductIds(items: HandoffItem[]): string[] {
+  const ids: string[] = [];
+  for (const it of items) {
+    if (!it.product_id) continue;
+    const qty = Math.max(1, Math.floor(Number(it.quantity) || 1));
+    for (let i = 0; i < qty; i++) ids.push(it.product_id);
+  }
+  return ids;
+}
+
 async function placeOnV4(
   ctx: TenantContext,
   customer: Customer,
   items: HandoffItem[],
   countryCode: string,
+  claimId: string | undefined,
 ): Promise<WebPlaceResult> {
   if (items.some((it) => Number(it.quantity) > WEB_MAX_QTY))
     return { ok: false, reason: "too_many" };
-  const ids = [...new Set(items.map((it) => it.product_id).filter((id) => id))];
-  if (ids.length === 0) return { ok: false, reason: "nothing_imported" };
+  const ids = cartProductIds(items);
+  if (ids.length === 0 || !claimId) return { ok: false, reason: "nothing_imported" };
   const { buyFromChannel } = await import("@/v4/channels/buyer");
   const { v4DbOf } = await import("@/app/admin/v4-today.server");
   const bought = await buyFromChannel(v4DbOf(ctx), {
@@ -100,7 +113,7 @@ async function placeOnV4(
     externalId: customer.userKey,
     country: countryCode,
     productIds: ids,
-    claimId: `web:${customer.userKey}:${crypto.randomUUID()}`,
+    claimId: `web:${customer.userKey}:${claimId}`,
     by: "web",
   });
   if (!bought.ok) return { ok: false, reason: "order_failed" };

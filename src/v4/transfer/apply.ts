@@ -18,11 +18,16 @@ export type TransferResult = {
   report: ReportLine[];
 };
 
+/** Книга остатка v3. Запись проходит, только если сейчас ровно expectedUsd. */
+export type BalanceBook = {
+  set(nextUsd: number, expectedUsd: number): Promise<boolean>;
+};
+
 export async function applyTransfer(
   db: V4Db,
   botId: string,
   plan: TransferPlan,
-  opts: { withBalance: boolean; by: string; now?: Date },
+  opts: { withBalance: boolean; by: string; now?: Date; book?: BalanceBook },
 ): Promise<TransferResult> {
   const now = opts.now ? { p_now: opts.now.toISOString() } : {};
   const r = (
@@ -76,9 +81,20 @@ export async function applyTransfer(
         p_created_by: opts.by,
         ...now,
       })
-    )[0]?.ai_transfer_from_v3 as { micro_usd?: number | string } | undefined;
+    )[0]?.ai_transfer_from_v3 as { micro_usd?: number | string; transferred?: boolean } | undefined;
     if (!b) throw serverFailure("v4.ai_transfer_from_v3: пустой ответ");
     balanceMicroUsd = Number(b.micro_usd);
+    if (b.transferred && opts.book) {
+      const cleared = await opts.book.set(0, plan.balanceUsd);
+      if (!cleared) {
+        await db.call("ai_transfer_to_v3", {
+          p_bot_id: botId,
+          p_created_by: opts.by,
+          ...now,
+        });
+        throw serverFailure("остаток v3 изменился во время переноса");
+      }
+    }
   } else if (plan.balanceUsd !== null) {
     report.push({
       area: "кошелёк",
@@ -94,4 +110,23 @@ export async function applyTransfer(
     balanceMicroUsd,
     report,
   };
+}
+
+/** Откат остатка: v4 отдаёт сумму, книга v3 принимает её, только если там ноль. */
+export async function revertTransferBalance(
+  db: V4Db,
+  botId: string,
+  book: BalanceBook,
+  by: string,
+  now?: Date,
+): Promise<number> {
+  const stamp = now ? { p_now: now.toISOString() } : {};
+  const micro = Number(
+    (await db.call("ai_transfer_to_v3", { p_bot_id: botId, p_created_by: by, ...stamp }))[0]
+      ?.ai_transfer_to_v3,
+  );
+  if (!Number.isFinite(micro)) throw serverFailure("v4.ai_transfer_to_v3: пустой ответ");
+  const wrote = await book.set(micro / 1_000_000, 0);
+  if (!wrote) throw serverFailure("остаток v3 уже не ноль, откат не записан");
+  return micro;
 }

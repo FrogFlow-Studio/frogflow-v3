@@ -1,3 +1,4 @@
+import { sha256Hex } from "@/lib/hash";
 import { submitReceipt } from "../core/money/money";
 import { placeOrder, replyWindowOpen, touchBuyer } from "../core/platform";
 import type { V4Db } from "../core/db";
@@ -110,8 +111,10 @@ export async function handleTelegramUpdate(
     botId: string;
     update: TgUpdate;
     country?: string | null;
-    fingerprint?: string;
     now?: Date;
+    /** Байты файла. Без них чек не принимается: один и тот же отпечаток ломал бы проверку дубля. */
+    loadFile?: (fileId: string) => Promise<Uint8Array | null>;
+    saveFile?: (path: string, bytes: Uint8Array) => Promise<void>;
   },
 ): Promise<InboundResult> {
   const intent = parseTelegramUpdate(input.update);
@@ -124,17 +127,18 @@ export async function handleTelegramUpdate(
     ...(input.now ? { now: input.now } : {}),
   });
   if (intent.type === "text") return { type: "text", buyerId, text: intent.text };
-  if (intent.type === "offer") return { type: "ignore" };
-  if (intent.type === "buy") {
-    const order = await placeOrder(db, {
-      botId: input.botId,
-      buyerId,
-      country: input.country ?? null,
-      productIds: [intent.productId],
-      by: "telegram",
-    });
-    if (!order.ok) return { type: "refused", code: order.code };
-    return { type: "order", buyerId, order: order.value };
+  // Кнопка товара и карточка идут через adapt: там цена на 72 часа, а не сразу заказ.
+  if (intent.type === "offer" || intent.type === "buy") return { type: "ignore" };
+  const bytes = input.loadFile ? await input.loadFile(intent.fileId) : null;
+  if (!bytes || bytes.byteLength === 0) return { type: "refused", code: "receipt_unread" };
+  const fingerprint = sha256Hex(bytes);
+  const storagePath = `${input.botId}/receipt-${fingerprint}`;
+  if (input.saveFile) {
+    try {
+      await input.saveFile(storagePath, bytes);
+    } catch {
+      return { type: "refused", code: "receipt_unread" };
+    }
   }
   const open = await db.call("buyer_open_orders", { p_bot_id: input.botId, p_buyer_id: buyerId });
   const due = open.find((r) => Number(r.due_minor) > 0);
@@ -143,8 +147,8 @@ export async function handleTelegramUpdate(
   const receipt = await submitReceipt(db, {
     botId: input.botId,
     orderId,
-    storagePath: `receipts/${intent.fileId}`,
-    fingerprint: input.fingerprint ?? "ab".repeat(32),
+    storagePath,
+    fingerprint,
     by: "telegram",
   });
   if (!receipt.ok) return { type: "refused", code: receipt.code };

@@ -1,3 +1,4 @@
+import { serverFailure } from "@/lib/server-failure";
 import type { AgentModel } from "../agent/model";
 import { isParkedModel } from "../agent/model";
 import type { IncomingMedia, Transcriber } from "../agent/media";
@@ -57,6 +58,52 @@ async function once(db: V4Db, botId: string, channel: string, claimId: string): 
   return claimInbound(db, { botId, channel, externalId: claimId });
 }
 
+/** Сорвавшаяся обработка снимает заявку: повтор вебхука — не «уже было». */
+async function claimed<T>(
+  db: V4Db,
+  botId: string,
+  channel: string,
+  claimId: string,
+  work: () => Promise<T>,
+): Promise<T | { kind: "duplicate" }> {
+  if (!(await once(db, botId, channel, claimId))) return { kind: "duplicate" };
+  try {
+    return await work();
+  } catch (e) {
+    await db.call("release_inbound", {
+      p_bot_id: botId,
+      p_channel: channel,
+      p_external_id: claimId,
+    });
+    throw e;
+  }
+}
+
+const markupState = {
+  lastGoodBp: null as number | null,
+  cache: null as { at: number; bp: number } | null,
+};
+
+/** Процент оператора. Ошибка чтения бросается, чтобы сработал запасной путь и дело. */
+async function shopMarkupBp(db: V4Db, botId: string): Promise<number> {
+  const { markupBp, v4MarkupSource } = await import("../agent/wallet");
+  const { serviceDb } = await import("@/core/db/client.server");
+  const readPercent = async () => {
+    const { data, error } = await serviceDb()
+      .from("operator_settings")
+      .select("value")
+      .eq("key", "ai_markup_percent")
+      .maybeSingle();
+    if (error) throw serverFailure(error.message);
+    if (!data || data.value == null || data.value === "")
+      throw new Error("ai_markup_percent missing");
+    const n = Number(data.value);
+    if (!Number.isFinite(n)) throw new Error("ai_markup_percent bad");
+    return n;
+  };
+  return (await markupBp(v4MarkupSource(db, readPercent, botId), markupState)).bp;
+}
+
 /** Карточка с ценой на 72 часа. Заказа ещё нет: его создаёт нажатие на код. */
 async function showOffer(
   db: V4Db,
@@ -66,6 +113,7 @@ async function showOffer(
     externalId: string;
     country: string | null;
     productId: string;
+    mode?: AgentMode;
   },
 ): Promise<AdaptResult> {
   const buyerId = await touchBuyer(db, {
@@ -78,7 +126,7 @@ async function showOffer(
     botId: input.botId,
     buyerId,
     productIds: [input.productId],
-    mode: "live",
+    mode: input.mode ?? "live",
   });
   if (!made.ok) return { kind: "refused", code: made.reason };
   return {
@@ -138,13 +186,42 @@ export async function adaptTelegram(
     media?: IncomingMedia;
     transcribe?: Transcriber;
     country?: string | null;
+    /** Чаты продавца. reply: принимает только отсюда, не от любого покупателя. */
+    sellerChatIds?: readonly string[];
+    loadFile?: (fileId: string) => Promise<Uint8Array | null>;
+    saveFile?: (path: string, bytes: Uint8Array) => Promise<void>;
+    /** Наценка в базисных пунктах. Без неё читается настройка оператора. */
+    markupBp?: () => Promise<number>;
+    /** Сервисная роль: расчёт брони. Арендатор цену не передаёт. */
+    walletDb?: V4Db;
   },
 ): Promise<AdaptResult> {
-  if (!(await once(db, input.botId, "telegram", input.claimId))) return { kind: "duplicate" };
+  return claimed(db, input.botId, "telegram", input.claimId, () => adaptTelegramBody(db, input));
+}
+
+async function adaptTelegramBody(
+  db: V4Db,
+  input: {
+    botId: string;
+    update: Parameters<typeof parseTelegramUpdate>[0];
+    claimId: string;
+    model: AgentModel;
+    mode?: AgentMode;
+    media?: IncomingMedia;
+    transcribe?: Transcriber;
+    country?: string | null;
+    sellerChatIds?: readonly string[];
+    loadFile?: (fileId: string) => Promise<Uint8Array | null>;
+    saveFile?: (path: string, bytes: Uint8Array) => Promise<void>;
+    markupBp?: () => Promise<number>;
+    walletDb?: V4Db;
+  },
+): Promise<AdaptResult> {
   const intent = parseTelegramUpdate(input.update);
   if (intent.type === "ignore") return { kind: "ignore" };
+  const sellers = new Set(input.sellerChatIds ?? []);
   const reply = intent.type === "text" ? SELLER_REPLY.exec(intent.text) : null;
-  if (reply && UUID.test(reply[1]!)) {
+  if (reply && UUID.test(reply[1]!) && sellers.has(intent.chatId)) {
     const wrote = await sellerReply(db, {
       botId: input.botId,
       caseId: reply[1]!,
@@ -170,6 +247,7 @@ export async function adaptTelegram(
       externalId: intent.chatId,
       country: input.country ?? null,
       productId: intent.productId,
+      mode: input.mode,
     });
   }
   const ai = await buyerAiOn(db, input.botId);
@@ -178,6 +256,8 @@ export async function adaptTelegram(
       botId: input.botId,
       update: input.update,
       country: input.country,
+      ...(input.loadFile ? { loadFile: input.loadFile } : {}),
+      ...(input.saveFile ? { saveFile: input.saveFile } : {}),
     });
     if (receipt.type === "receipt")
       return { kind: "receipt", buyerId: receipt.buyerId, orderId: receipt.orderId };
@@ -185,7 +265,7 @@ export async function adaptTelegram(
     return { kind: "refused", code: "order_not_found" };
   }
   if (intent.type !== "text" && !input.media) return { kind: "ignore" };
-  const externalId = intent.type === "text" ? intent.chatId : input.claimId;
+  const externalId = intent.chatId;
   const text = intent.type === "text" ? intent.text : "";
   const buyerId = await touchBuyer(db, {
     botId: input.botId,
@@ -199,10 +279,11 @@ export async function adaptTelegram(
     db,
     role: sellerRole(),
     model: input.model,
-    markupBp: async () => 2500,
+    markupBp: input.markupBp ?? (() => shopMarkupBp(db, input.botId)),
+    ...(input.walletDb ? { walletDb: input.walletDb } : {}),
     botId: input.botId,
     buyerId,
-    mode: input.mode ?? "test",
+    mode: input.mode ?? "live",
     channel: "telegram",
     externalId: input.claimId,
     text,
@@ -226,9 +307,10 @@ export async function adaptComment(
     commentedAt: Date;
   },
 ): Promise<AdaptResult> {
-  if (!(await once(db, input.botId, "instagram", input.claimId))) return { kind: "duplicate" };
-  const row = await acceptComment(db, input);
-  return { kind: "comment", buyerId: row.buyerId, verdict: row.verdict };
+  return claimed(db, input.botId, "instagram", input.claimId, async () => {
+    const row = await acceptComment(db, input);
+    return { kind: "comment" as const, buyerId: row.buyerId, verdict: row.verdict };
+  });
 }
 
 export async function adaptDirect(
@@ -242,10 +324,30 @@ export async function adaptDirect(
     productId?: string;
     offerId?: string;
     model: AgentModel;
+    mode?: AgentMode;
     country?: string | null;
+    walletDb?: V4Db;
   },
 ): Promise<AdaptResult> {
-  if (!(await once(db, input.botId, input.channel, input.claimId))) return { kind: "duplicate" };
+  return claimed(db, input.botId, input.channel, input.claimId, () => adaptDirectBody(db, input));
+}
+
+async function adaptDirectBody(
+  db: V4Db,
+  input: {
+    botId: string;
+    channel: BuyerChannel;
+    claimId: string;
+    externalId: string;
+    text: string;
+    productId?: string;
+    offerId?: string;
+    model: AgentModel;
+    mode?: AgentMode;
+    country?: string | null;
+    walletDb?: V4Db;
+  },
+): Promise<AdaptResult> {
   if (input.offerId && /^[A-HJ-NP-Z2-9]{8}$/i.test(input.offerId)) {
     return claimShown(db, {
       botId: input.botId,
@@ -262,6 +364,7 @@ export async function adaptDirect(
       externalId: input.externalId,
       country: input.country ?? null,
       productId: input.productId,
+      mode: input.mode,
     });
   }
   const ai = await buyerAiOn(db, input.botId);
@@ -280,10 +383,11 @@ export async function adaptDirect(
     db,
     role: sellerRole(),
     model: input.model,
-    markupBp: async () => 2500,
+    markupBp: () => shopMarkupBp(db, input.botId),
+    ...(input.walletDb ? { walletDb: input.walletDb } : {}),
     botId: input.botId,
     buyerId,
-    mode: "test",
+    mode: input.mode ?? "live",
     channel: input.channel === "web" ? "web" : input.channel,
     externalId: input.claimId,
     text: input.text,

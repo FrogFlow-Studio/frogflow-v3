@@ -50,6 +50,7 @@ async function say(
   const model = scriptedAgentModel(turns);
   const r = await runAgent({
     db: pgliteV4(pg, { botId: bot }),
+    walletDb: pgliteV4(pg),
     role: sellerRole(),
     model,
     markupBp: async () => 2500,

@@ -285,21 +285,50 @@ describe("покупка, склад, школа, площадка и предп
 });
 
 describe("каналы", () => {
-  it("кнопка Telegram создаёт заказ, чек садится на открытый", async () => {
+  it("кнопка Telegram не создаёт заказ сразу, чек садится по хешу файла", async () => {
     const product = (await listProducts(svc(), A)).find((p) => p.title === "Тетрадь");
     if (!product) throw new Error("no product");
+    const orders = async () =>
+      Number(
+        (
+          await pg.query<{ n: number }>("select count(*)::int n from v4.orders where bot_id = $1", [
+            A,
+          ])
+        ).rows[0]!.n,
+      );
+    const before = await orders();
     const bought = await handleTelegramUpdate(svc(), {
       botId: A,
       country: "KZ",
       update: { callback_query: { data: `buy:${product.id}`, message: { chat: { id: 99 } } } },
     });
-    expect(bought.type).toBe("order");
+    expect(bought.type).toBe("ignore");
+    expect(await orders()).toBe(before);
+    const placed = await checkout(svc(), {
+      botId: A,
+      channel: "telegram",
+      externalId: "99",
+      country: "KZ",
+      productIds: [product.id],
+      by: "test",
+    });
+    expect(placed.type).toBe("order");
+    const bytes = new TextEncoder().encode("чек магазина");
+    const { sha256Hex } = await import("@/lib/hash");
     const receipt = await handleTelegramUpdate(svc(), {
       botId: A,
       update: { message: { chat: { id: 99 }, photo: [{ file_id: "ph" }] } },
-      fingerprint: "cd".repeat(32),
+      loadFile: async () => bytes,
     });
     expect(receipt.type).toBe("receipt");
+    const fp = (
+      await pg.query<{ fingerprint: string }>(
+        "select fingerprint from v4.receipts where bot_id = $1 order by submitted_at desc limit 1",
+        [A],
+      )
+    ).rows[0]!.fingerprint;
+    expect(fp).toBe(sha256Hex(bytes));
+    expect(fp).not.toBe("ab".repeat(32));
     expect(parseTelegramUpdate({ message: { chat: { id: 1 }, text: "привет" } })).toEqual({
       type: "text",
       chatId: "1",

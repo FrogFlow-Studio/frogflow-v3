@@ -1,7 +1,9 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Tenant } from "@/core/tenant/types";
+import { openCase } from "../core/cases/cases";
+import type { V4Db } from "../core/db";
 import type { Gateway } from "../core/platform";
-import { v4PaidFacts } from "./gateway-facts";
+import { v4PaidFacts, type V4Paid } from "./gateway-facts";
 
 /**
  * Оплата магазина v4 после той же проверки подписи, что у v2. Фактов заказа
@@ -21,27 +23,79 @@ export async function handleV4Gateway(
   const ctx = tenantContext(tenant);
   const verified = await readVerified(kind, request, ctx);
   if (verified instanceof Response) return verified;
-  const facts = v4PaidFacts(verified);
-  if (!facts) return new Response("ok");
   const { v4DbOf } = await import("@/app/admin/v4-today.server");
-  const { recordGatewayPayment } = await import("../core/platform");
   try {
-    await recordGatewayPayment(v4DbOf(ctx), {
-      botId,
-      orderId: facts.orderId,
-      gateway: kind,
-      amountMinor: facts.amountMinor,
-      currency: facts.currency,
-      externalRef: facts.externalRef,
-      by: kind,
-    });
-    return new Response("ok");
+    await applyVerifiedGateway(v4DbOf(ctx), botId, kind, verified);
   } catch (e) {
     if (e instanceof Error && SCHEMA.test(e.message)) {
       return new Response("v4 not connected", { status: 503, headers: { "retry-after": "60" } });
     }
     throw e;
   }
+  return ack(kind, verified);
+}
+
+/** Записать проверенное уведомление. Неуспешный статус — ignored, книга пустая. */
+export async function applyVerifiedGateway(
+  db: V4Db,
+  botId: string,
+  kind: Gateway,
+  payload: unknown,
+): Promise<"recorded" | "ignored" | "unapplied"> {
+  const facts = v4PaidFacts(kind, payload);
+  if (!facts) return "ignored";
+  const { recordGatewayPayment } = await import("../core/platform");
+  const result = await recordGatewayPayment(db, {
+    botId,
+    orderId: facts.orderId,
+    gateway: kind,
+    amountMinor: facts.amountMinor,
+    currency: facts.currency,
+    externalRef: facts.externalRef,
+    by: kind,
+  });
+  if (!result.ok) {
+    await reportUnapplied(db, botId, kind, facts, result.code);
+    return "unapplied";
+  }
+  if (result.value.orderClosed) await reportUnapplied(db, botId, kind, facts, "order_closed");
+  if (result.value.currencyMismatch)
+    await reportUnapplied(db, botId, kind, facts, "currency_mismatch");
+  return "recorded";
+}
+
+async function reportUnapplied(
+  db: V4Db,
+  botId: string,
+  kind: Gateway,
+  facts: V4Paid,
+  code: string,
+): Promise<void> {
+  const caseKind = code === "currency_mismatch" ? "currency_mismatch" : "payment_on_closed";
+  const opened = await openCase(db, {
+    botId,
+    kind: caseKind,
+    dedupeKey: `pay:${kind}:${facts.externalRef}`,
+    by: kind,
+    orderId: code === "order_not_found" ? undefined : facts.orderId,
+    detail: {
+      code,
+      amount_minor: facts.amountMinor,
+      currency: facts.currency,
+      external_ref: facts.externalRef,
+      order_id: facts.orderId,
+    },
+  });
+  if (!opened.ok) throw new Error(`v4:${opened.code}`);
+}
+
+function ack(kind: Gateway, payload: unknown): Response {
+  if (kind === "robokassa") {
+    const inv = (payload as { external_ref?: unknown } | null)?.external_ref;
+    return new Response(`OK${inv == null ? "" : String(inv)}`);
+  }
+  if (kind === "prodamus") return new Response("success");
+  return new Response("ok");
 }
 
 async function readVerified(
@@ -130,9 +184,11 @@ async function readProdamus(request: Request, ctx: TenantContext): Promise<unkno
 }
 
 async function readRobokassa(request: Request, ctx: TenantContext): Promise<unknown | Response> {
-  const action = new URL(request.url).pathname.split("/").pop();
-  if (action !== "result") return new Response("ok");
-  const params = new URL(request.url).searchParams;
+  const url = new URL(request.url);
+  if (url.pathname.split("/").pop() !== "result") return new Response("ok");
+  const posted =
+    request.method === "POST" ? new URLSearchParams(await request.text()) : url.searchParams;
+  const params = posted.get("OutSum") ? posted : url.searchParams;
   const outSum = params.get("OutSum");
   const invId = params.get("InvId");
   const signature = params.get("SignatureValue");
@@ -142,15 +198,26 @@ async function readRobokassa(request: Request, ctx: TenantContext): Promise<unkn
   if (!rk.ready) return new Response("robokassa disabled", { status: 403 });
   const shp: Array<[string, string]> = [];
   for (const [k, v] of params.entries()) if (k.toLowerCase().startsWith("shp_")) shp.push([k, v]);
-  const { verifyResultSignature } = await import("@/core/payments/robokassa");
+  const { verifyResultSignature, ROBOKASSA_CURRENCY } = await import("@/core/payments/robokassa");
   if (!verifyResultSignature({ outSum, invId, signature, pass2: rk.pass2, shp }))
     return new Response("bad sign", { status: 400 });
-  const order = shp.find(([k]) => k.toLowerCase() === "shp_v4order")?.[1];
+  const order = shp.find(([k]) => k.toLowerCase() === "shp_v4order")?.[1] ?? null;
+  const { v4DbOf } = await import("@/app/admin/v4-today.server");
+  const region = rk.region === "ru" ? "ru" : "kz";
+  let currency = ROBOKASSA_CURRENCY[region];
+  if (order && /^[0-9a-f-]{36}$/i.test(order)) {
+    const rows = await v4DbOf(ctx).call("order_currency", {
+      p_bot_id: ctx.tenant.id,
+      p_order_id: order,
+    });
+    const fromOrder = rows[0]?.order_currency;
+    if (typeof fromOrder === "string" && fromOrder) currency = fromOrder;
+  }
   const major = Number(outSum);
   return {
     v4_order_id: order,
     amount_minor: Number.isFinite(major) ? Math.round(major * 100) : 0,
-    currency: "KZT",
+    currency,
     external_ref: invId,
   };
 }
