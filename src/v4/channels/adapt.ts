@@ -37,6 +37,9 @@ export type AdaptResult =
       currency: string;
       totalMinor: number;
       title: string;
+      /** Товар карточки: кнопка «Открыть» ведёт на него в Mini App. */
+      productId?: string;
+      photoUrl?: string;
     }
   | { kind: "receipt"; buyerId: string; orderId: string }
   | { kind: "buttons"; buyerId: string; text: string }
@@ -136,6 +139,7 @@ async function showOffer(
     currency: made.offer.currency,
     totalMinor: made.offer.totalMinor,
     title: made.offer.items[0]?.title ?? "",
+    productId: input.productId,
   };
 }
 
@@ -171,6 +175,7 @@ async function claimShown(
       currency: pressed.offer.currency,
       totalMinor: pressed.offer.totalMinor,
       title: pressed.offer.items[0]?.title ?? "",
+      productId: pressed.offer.items[0]?.productId,
     };
   return { kind: "refused", code: pressed.reason };
 }

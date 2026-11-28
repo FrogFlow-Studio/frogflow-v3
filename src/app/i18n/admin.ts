@@ -106,6 +106,11 @@ import * as commission from "./admin/commission";
 const baseRu = {
   // навигация и оболочка
   "nav.overview": "Обзор",
+  "nav.today": "Сегодня",
+  "nav.shopMoney": "Деньги магазина",
+  "nav.channels": "Каналы",
+  "nav.funnels": "Воронки",
+  "nav.funnelsHint": "Шаги: карточка, пауза, ветка по кнопке, дело. Холста с узлами нет.",
   "nav.orders": "Заказы",
   "nav.analytics": "Аналитика",
   "nav.courses": "Курсы",
@@ -594,6 +599,11 @@ type Dict = Partial<Record<AdminKey, string>>;
 
 const baseKk: Dict = {
   "nav.overview": "Шолу",
+  "nav.today": "Бүгін",
+  "nav.shopMoney": "Дүкен ақшасы",
+  "nav.channels": "Арналар",
+  "nav.funnels": "Воронкалар",
+  "nav.funnelsHint": "Қадамдар: карточка, кідіріс, батырма бойынша тармақ, іс. Түйіндер тақтасы жоқ.",
   "nav.orders": "Тапсырыстар",
   "nav.analytics": "Аналитика",
   "nav.courses": "Курстар",
@@ -972,6 +982,11 @@ const baseKk: Dict = {
 
 const baseEn: Dict = {
   "nav.overview": "Overview",
+  "nav.today": "Today",
+  "nav.shopMoney": "Shop money",
+  "nav.channels": "Channels",
+  "nav.funnels": "Funnels",
+  "nav.funnelsHint": "Steps: card, pause, branch on a button, a case. There is no node canvas.",
   "nav.orders": "Orders",
   "nav.analytics": "Analytics",
   "nav.courses": "Courses",
@@ -1350,6 +1365,11 @@ const baseEn: Dict = {
 
 const baseUz: Dict = {
   "nav.overview": "Umumiy",
+  "nav.today": "Bugun",
+  "nav.shopMoney": "Do'kon pullari",
+  "nav.channels": "Kanallar",
+  "nav.funnels": "Voronkalar",
+  "nav.funnelsHint": "Qadamlar: karta, pauza, tugma bo'yicha tarmoq, ish. Tugunlar xolsti yo'q.",
   "nav.orders": "Buyurtmalar",
   "nav.analytics": "Tahlil",
   "nav.courses": "Kurslar",

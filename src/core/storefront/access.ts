@@ -68,7 +68,8 @@ export function storefrontAllows(
 /**
  * Открыта ли эта часть витрины клиента. Нет клиента, он в архиве, ещё на v1
  * или без оплаченного модуля — для покупателя это одно и то же: «магазин не
- * найден» (404), а не ошибка сервера.
+ * найден» (404), а не ошибка сервера. Магазин на v4 открыт так же: Mini App
+ * и ссылка — это его полки.
  */
 export function storefrontOpen(
   t:
@@ -77,7 +78,6 @@ export function storefrontOpen(
   part: StorefrontPart,
 ): boolean {
   // Модуль «в разработке» не открывает витрину, даже если флаг стоит в базе.
-  return Boolean(
-    t && !t.archived && servedByV2(t) && storefrontAllows(availableModules(t.modules), part),
-  );
+  const served = Boolean(t && (servedByV2(t) || t.settings.served_by === "v4"));
+  return Boolean(t && !t.archived && served && storefrontAllows(availableModules(t.modules), part));
 }

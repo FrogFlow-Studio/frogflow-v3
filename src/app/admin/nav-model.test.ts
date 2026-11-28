@@ -5,6 +5,7 @@ import {
   adminPageAvailable,
   buildAdminNav,
   consultantWorkspace,
+  v4ScreenOf,
   WORKSPACE_PAGES,
   type NavShop,
 } from "./nav-model";
@@ -22,6 +23,45 @@ const labels = (s: NavShop) =>
   buildAdminNav(s).groups.flatMap((g) =>
     g.items.map((i) => `${i.to}${i.hash ? `#${i.hash}` : ""}`),
   );
+
+describe("меню магазина v4", () => {
+  it("десять экранов, дом — Сегодня, телефон: сегодня, заказы, каталог, переписка", () => {
+    const n = buildAdminNav(
+      shop({
+        platform: "v4",
+        modules: {
+          manager_chat: true,
+          dashboard: true,
+          broadcasts: true,
+          courses: true,
+          instagram: true,
+        },
+        vertical: "courses",
+      }),
+    );
+    expect(n.overview).toMatchObject({ to: "/admin/v4-today", label: "nav.today" });
+    expect(n.primary.map((i) => i.to)).toEqual([
+      "/admin/v4-today",
+      "/admin/orders",
+      "/admin/products",
+      "/admin/chat",
+    ]);
+    expect(n.groups[0]!.items.map((i) => `${i.to}${i.hash ? `#${i.hash}` : ""}`)).toEqual([
+      "/admin/orders",
+      "/admin/products",
+      "/admin/customers",
+      "/admin/chat",
+      "/admin/analytics",
+      "/admin/broadcasts#funnels",
+      "/admin/students",
+      "/admin/instagram",
+      "/admin/settings",
+    ]);
+    expect(v4ScreenOf("/admin/categories")).toBe("catalog");
+    expect(v4ScreenOf("/admin/help/start")).toBe("settings");
+    expect(buildAdminNav(shop()).overview.to).toBe("/admin");
+  });
+});
 
 describe("меню админки", () => {
   it("3D-студия показывает только рабочие страницы, даже с модулями магазина", () => {

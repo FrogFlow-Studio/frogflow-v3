@@ -889,18 +889,10 @@ exports[`приветствие и меню по /start > mini_app, en 1`] = `
         ],
         [
           {
-            "text": "📚 Catalog",
-          },
-          {
-            "text": "🔍 Search",
-          },
-        ],
-        [
-          {
-            "text": "🛒 Cart",
-          },
-          {
             "text": "📋 My orders",
+            "web_app": {
+              "url": "https://app.test/s/bot-1/orders",
+            },
           },
         ],
         [
@@ -945,18 +937,10 @@ exports[`приветствие и меню по /start > mini_app, kk 1`] = `
         ],
         [
           {
-            "text": "📚 Каталог",
-          },
-          {
-            "text": "🔍 Іздеу",
-          },
-        ],
-        [
-          {
-            "text": "🛒 Себет",
-          },
-          {
             "text": "📋 Тапсырыстарым",
+            "web_app": {
+              "url": "https://app.test/s/bot-1/orders",
+            },
           },
         ],
         [
@@ -1001,18 +985,10 @@ exports[`приветствие и меню по /start > mini_app, ru 1`] = `
         ],
         [
           {
-            "text": "📚 Каталог",
-          },
-          {
-            "text": "🔍 Поиск",
-          },
-        ],
-        [
-          {
-            "text": "🛒 Корзина",
-          },
-          {
             "text": "📋 Мои заказы",
+            "web_app": {
+              "url": "https://app.test/s/bot-1/orders",
+            },
           },
         ],
         [
@@ -1057,18 +1033,10 @@ exports[`приветствие и меню по /start > mini_app, uz 1`] = `
         ],
         [
           {
-            "text": "📚 Katalog",
-          },
-          {
-            "text": "🔍 Qidirish",
-          },
-        ],
-        [
-          {
-            "text": "🛒 Savat",
-          },
-          {
             "text": "📋 Buyurtmalarim",
+            "web_app": {
+              "url": "https://app.test/s/bot-1/orders",
+            },
           },
         ],
         [

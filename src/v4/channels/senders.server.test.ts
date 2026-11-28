@@ -3,6 +3,7 @@ import type { TelegramApi, TgResult } from "@/channels/telegram/api";
 import type { SendResult } from "@/channels/zernio/api.server";
 import { CONNECT_FAILED } from "@/channels/zernio/errors";
 import {
+  sendTelegramCard,
   soleZernioAccount,
   telegramOutcome,
   v4BuyerSender,
@@ -29,6 +30,45 @@ function fakeTelegram(answers: Record<string, TgResult>) {
 }
 
 const signal = AbortSignal.timeout(1000);
+
+describe("карточка Telegram", () => {
+  it("правку отвергли — новое сообщение; обрыв вторым не закрываем", async () => {
+    const rejected = fakeTelegram({});
+    rejected.api.call = async <T>(method: string) => {
+      return (
+        method === "editMessageText" ? { ok: false, error_code: 400 } : { ok: true }
+      ) as TgResult<T>;
+    };
+    const calls: string[] = [];
+    const orig = rejected.api.call.bind(rejected.api);
+    rejected.api.call = async <T>(method: string, payload?: unknown) => {
+      calls.push(method);
+      return orig<T>(method, payload);
+    };
+    await sendTelegramCard(rejected.api, {
+      chatId: "1",
+      text: "Палитра",
+      editMessageId: "9",
+      buttons: [{ label: "Купить", data: "offer:ABCDEFGH" }],
+    });
+    expect(calls).toEqual(["editMessageText", "sendMessage"]);
+
+    const lost = fakeTelegram({});
+    const lostCalls: string[] = [];
+    lost.api.call = async <T>(method: string) => {
+      lostCalls.push(method);
+      return { ok: false } as TgResult<T>;
+    };
+    await sendTelegramCard(lost.api, {
+      chatId: "1",
+      text: "Палитра",
+      editMessageId: "9",
+      photoUrl: "https://cdn.test/p.jpg",
+      buttons: [],
+    });
+    expect(lostCalls).toEqual(["editMessageCaption"]);
+  });
+});
 
 describe("итог отправки", () => {
   it("Telegram: принял — sent; 4xx — failed; 429, 5xx, обрыв — unknown", () => {

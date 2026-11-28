@@ -4,11 +4,10 @@ import { OPERATOR_MENU, operatorMenuItems } from "./menu";
 describe("меню оператора", () => {
   it("группы отражают рабочие задачи оператора", () => {
     expect(OPERATOR_MENU.map((g) => g.title)).toEqual([
-      "Работа",
+      "Внимание",
       "Клиенты",
       "Продажи и деньги",
-      "Контент",
-      "Платформа",
+      "Лиды и заявки",
     ]);
   });
 
@@ -26,6 +25,7 @@ describe("меню оператора", () => {
       "/operator/migration",
       "/operator/log",
       "/operator/crons",
+      "/operator/v4-attention",
       "/operator/settings",
       "/operator/requests",
     ]) {

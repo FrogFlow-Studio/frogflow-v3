@@ -1,10 +1,12 @@
 import { NoPhoto } from "@/app/storefront/no-photo";
 import { publicHeaders } from "@/app/cache-policy";
 import { createFileRoute, Link, useLoaderData } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { storeProductFn } from "@/app/storefront/storefront.functions";
 import { sendVisit, trackProductView, trackVisit } from "@/app/storefront/visit-track";
-import { useCart } from "@/app/storefront/cart";
+import { useCart, useTelegramWebApp } from "@/app/storefront/cart";
+import { useTelegramMainAction } from "@/app/storefront/telegram-main";
+import { shopOrderFn, storeOfferPeekFn } from "@/app/storefront/shop-order.functions";
 import { FavoriteButton } from "@/app/storefront/favorites";
 import { useStorefrontLocale } from "@/app/storefront/locale";
 import { reviewsWord } from "@/app/i18n/storefront";
@@ -36,8 +38,11 @@ import { StorePageMissing } from "@/app/storefront/missing";
 export const Route = createFileRoute("/s/$slug/p/$id")({
   headers: publicHeaders,
   // Товар открыт из поиска: запрос (и категория) — для ссылки «← Результаты» (Т2).
-  validateSearch: (raw: Record<string, unknown>): { q?: string; cat?: string } =>
-    parseSearchReturn(raw) ?? {},
+  validateSearch: (raw: Record<string, unknown>): { q?: string; cat?: string; offer?: string } => {
+    const back = parseSearchReturn(raw) ?? {};
+    const offer = typeof raw.offer === "string" ? raw.offer.toUpperCase() : "";
+    return /^[A-HJ-NP-Z2-9]{8}$/.test(offer) ? { ...back, offer } : back;
+  },
   loader: async ({ params }) => {
     // Короткая ссылка курса (/p/kurs): номер товара узнаём со страницей, разметка — следом.
     const byId = isProductUuid(params.id);
@@ -111,6 +116,36 @@ export const Route = createFileRoute("/s/$slug/p/$id")({
   notFoundComponent: StorePageMissing,
 });
 
+type Held =
+  | { state: "open"; amountMajor: number; currency: string }
+  | { state: "expired" }
+  | { state: "changed" }
+  | { state: "none" };
+
+/** Цена предложения внутри Telegram. Вне окна и без кода — обычная цена каталога. */
+function useHeldPrice(
+  slug: string,
+  initData: string | undefined,
+  offer: string | undefined,
+  productId: string,
+): Held | null {
+  const [held, setHeld] = useState<Held | null>(null);
+  useEffect(() => {
+    if (!initData || !offer) {
+      setHeld(null);
+      return;
+    }
+    let live = true;
+    storeOfferPeekFn({ data: { slug, initData, offer, productId } })
+      .then((r) => live && setHeld(r))
+      .catch(() => live && setHeld({ state: "none" }));
+    return () => {
+      live = false;
+    };
+  }, [slug, initData, offer, productId]);
+  return held;
+}
+
 /** Другой товар — новая страница: выбранные фото и вариант не переносятся при листании. */
 function ProductPageKeyed() {
   const { id } = Route.useParams();
@@ -151,15 +186,19 @@ function ProductPage() {
     set: "photos" | "preview" | "works";
     i: number;
   } | null>(null);
-  const fromSearch = parseSearchReturn(Route.useSearch());
+  const search = Route.useSearch();
+  const fromSearch = parseSearchReturn(search);
+  const wa = useTelegramWebApp();
+  const held = useHeldPrice(slug, wa?.initData, search.offer, p.id);
   const [variant, setVariant] = useState<string | null>(p.variants[0]?.id ?? null);
   const [msg, setMsg] = useState<string | null>(null);
   // «Написать магазину»: ссылка продавца (WhatsApp/Instagram/Telegram), иначе бот в Telegram.
   const writeUrl =
     shop.contactLink ?? (shop.botUsername ? `https://t.me/${shop.botUsername}` : null);
   const chosen = p.variants.find((v) => v.id === variant) ?? null;
-  const price = chosen ? chosen.price : p.price;
-  const currency = chosen ? chosen.currency : p.currency;
+  const heldOpen = held?.state === "open" ? held : null;
+  const price = heldOpen ? heldOpen.amountMajor : chosen ? chosen.price : p.price;
+  const currency = heldOpen ? heldOpen.currency : chosen ? chosen.currency : p.currency;
   const tariff = course
     ? {
         homework: true,
@@ -188,6 +227,26 @@ function ProductPage() {
     setMsg(r === "ok" ? t("product.addedToCart") : t("catalog.mixed"));
     setTimeout(() => setMsg(null), 2000);
   };
+  const claimId = useRef(`offer-${p.id}-${Math.random().toString(36).slice(2, 12)}`);
+  const buyHeld = () => {
+    if (!wa || !search.offer) return;
+    void shopOrderFn({
+      data: {
+        slug,
+        initData: wa.initData,
+        items: [{ product_id: p.id, quantity: 1 }],
+        claimId: claimId.current,
+        offer: search.offer,
+      },
+    })
+      .then((r) => setMsg(t("product.orderAccepted", { no: r.no })))
+      .catch((e: unknown) => setMsg(e instanceof Error ? e.message : t("error.orderUnavailable")));
+  };
+  useTelegramMainAction(
+    Boolean(wa) && (Boolean(heldOpen) || Boolean(siteCart && (p.inStock || p.preorder))),
+    heldOpen ? t("product.buyNow") : t("product.addToCart"),
+    heldOpen ? buyHeld : add,
+  );
   const program = course ? (
     <>
       {/* На странице курса заголовок «Программа курса» — у блока. */}
@@ -469,12 +528,21 @@ function ProductPage() {
             >
               <OfferPrice
                 price={price}
-                oldPrice={chosen ? chosen.oldPrice : (p.offer?.oldPrice ?? null)}
+                oldPrice={heldOpen ? null : chosen ? chosen.oldPrice : (p.offer?.oldPrice ?? null)}
                 currency={currency}
-                offer={p.offer}
+                offer={heldOpen ? null : p.offer}
               />
             </div>
-            {p.offer && <OfferNote offer={p.offer} className="mt-1 block text-sm text-accent" />}
+            {heldOpen && <p className="mt-1 text-sm text-accent">{t("product.offerHolds")}</p>}
+            {held?.state === "expired" && (
+              <p className="mt-1 text-sm text-muted">{t("product.offerExpired")}</p>
+            )}
+            {held?.state === "changed" && (
+              <p className="mt-1 text-sm text-muted">{t("product.offerChanged")}</p>
+            )}
+            {!heldOpen && p.offer && (
+              <OfferNote offer={p.offer} className="mt-1 block text-sm text-accent" />
+            )}
             {p.leadTimeDays ? (
               <div className="mt-1 text-sm text-muted">
                 {t("product.leadTime", { n: p.leadTimeDays })}

@@ -77,7 +77,7 @@ export async function checkout(
     country: input.country,
     ...(input.now ? { now: input.now } : {}),
   });
-  if (input.channel === "whatsapp") {
+  if (input.channel === "whatsapp" || input.channel === "instagram") {
     const open = await replyWindowOpen(db, {
       botId: input.botId,
       channel: input.channel,
@@ -97,7 +97,7 @@ export async function checkout(
   return { type: "order", buyerId, order: order.value };
 }
 
-/** Можно ли написать покупателю в WhatsApp не в ответ на его сообщение. */
+/** Можно ли написать покупателю в Instagram или WhatsApp не в ответ на его сообщение. */
 export function marketingAllowed(
   db: V4Db,
   input: { botId: string; channel: BuyerChannel; externalId: string; now?: Date },

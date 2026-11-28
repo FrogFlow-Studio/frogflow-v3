@@ -10,6 +10,7 @@ import { CartProvider, useCart, useTelegramWebApp } from "@/app/storefront/cart"
 import { FavoritesProvider, useFavorites } from "@/app/storefront/favorites";
 import { MarketBand } from "@/app/storefront/market-band";
 import { TelegramBackButton } from "@/app/storefront/telegram-back";
+import { TelegramMainButton, useTelegramMainActive } from "@/app/storefront/telegram-main";
 import { InstallPrompt } from "@/app/storefront/install";
 import { StorefrontLocaleProvider, useStorefrontLocale } from "@/app/storefront/locale";
 import { ThemeToggle } from "@/app/ui";
@@ -241,6 +242,7 @@ function StoreFrame() {
       </footer>
       {wa && <TabBar slug={shop.slug} vertical={shop.vertical} />}
       <TelegramBackButton wa={wa} slug={shop.slug} />
+      <TelegramMainButton wa={wa} />
       {!wa && <MobileCartBar slug={shop.slug} />}
     </div>
   );
@@ -260,8 +262,13 @@ function TabBar({ slug, vertical }: { slug: string; vertical: string }) {
   const location = useRouterState({ select: (s) => s.location });
   const tab = (location.search as { tab?: unknown }).tab;
   const active = activeTab(location.pathname, slug, typeof tab === "string" ? tab : undefined);
+  const main = useTelegramMainActive();
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur">
+    <nav
+      className={`fixed inset-x-0 z-20 border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur ${
+        main ? "bottom-14" : "bottom-0"
+      }`}
+    >
       <ul className="mx-auto flex max-w-md">
         {miniAppTabs(vertical).map((key) => {
           const cls = `relative flex flex-col items-center gap-0.5 py-2 text-xs ${
